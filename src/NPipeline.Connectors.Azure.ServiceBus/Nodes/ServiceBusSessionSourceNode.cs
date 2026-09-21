@@ -31,7 +31,7 @@ namespace NPipeline.Connectors.Azure.ServiceBus.Nodes;
 ///         <see cref="ServiceBusConfiguration.MaxConcurrentSessions" />.
 ///     </para>
 /// </remarks>
-public sealed class ServiceBusSessionSourceNode<T> : SourceNode<ServiceBusMessage<T>>
+public sealed class ServiceBusSessionSourceNode<T> : SourceNode<ServiceBusMessage<T>>, IAsyncDisposable
 {
     private readonly ServiceBusConfiguration _configuration;
     private readonly ILogger _logger;
@@ -224,7 +224,7 @@ public sealed class ServiceBusSessionSourceNode<T> : SourceNode<ServiceBusMessag
     }
 
     /// <inheritdoc />
-    public override async ValueTask DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         _messageChannel?.Writer.TryComplete();
 
@@ -239,7 +239,6 @@ public sealed class ServiceBusSessionSourceNode<T> : SourceNode<ServiceBusMessag
         }
 
         await _processor.DisposeAsync().ConfigureAwait(false);
-        await base.DisposeAsync().ConfigureAwait(false);
     }
 
     private static ServiceBusSessionProcessor CreateSessionProcessor(

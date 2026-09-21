@@ -18,6 +18,7 @@ public sealed class NodeInstantiationServiceTests
         var builder = new PipelineBuilder().WithoutExtendedValidation();
         var source = builder.AddSource<TestSourceNode, int>("source");
         var stream = builder.AddStreamTransform<NonStreamStrategyPassthroughNode, int, int>("stream");
+        builder.WithExecutionStrategy(stream, new SequentialExecutionStrategy());
         var sink = builder.AddSink<TestSinkNode, int>("sink");
         builder.Connect(source, stream).Connect(stream, sink);
 
@@ -27,13 +28,13 @@ public sealed class NodeInstantiationServiceTests
         var nodeInstances = service.InstantiateNodes(graph, new DefaultNodeFactory());
 
         var ex = Assert.Throws<InvalidOperationException>(() => service.BuildPlans(graph, nodeInstances));
-        Assert.Contains("does not implement IStreamExecutionStrategy", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("cannot run a stream transform", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("IStreamExecutionStrategy", ex.Message, StringComparison.Ordinal);
         Assert.Contains("stream", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     private sealed class NonStreamStrategyPassthroughNode : IStreamTransformNode<int, int>
     {
-        public IExecutionStrategy ExecutionStrategy { get; set; } = new SequentialExecutionStrategy();
 
         public async IAsyncEnumerable<int> TransformAsync(
             IAsyncEnumerable<int> items,

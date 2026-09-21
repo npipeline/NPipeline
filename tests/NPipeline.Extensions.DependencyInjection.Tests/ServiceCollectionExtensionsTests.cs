@@ -358,7 +358,7 @@ public sealed class ServiceCollectionExtensionsTests
     }
 
     // DI-owned disposal detection
-    private sealed class DisposableSink : SinkNode<string>
+    private sealed class DisposableSink : SinkNode<string>, IAsyncDisposable
     {
         public static int DisposeCount;
 
@@ -368,10 +368,9 @@ public sealed class ServiceCollectionExtensionsTests
             return Task.CompletedTask;
         }
 
-        public override async ValueTask DisposeAsync()
+        public async ValueTask DisposeAsync()
         {
             Interlocked.Increment(ref DisposeCount);
-            await base.DisposeAsync();
         }
     }
 

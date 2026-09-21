@@ -100,7 +100,6 @@ public static class PipelineBuilderExtensions
         var node = new AIBatchedStreamTransformNode<TIn, TOut>(chatClient)
         {
             Options = options,
-            ExecutionStrategy = AIStreamPassthroughExecutionStrategy.Instance,
         };
 
         builder.AddPreconfiguredNodeInstance(handle.Id, node);
@@ -241,7 +240,6 @@ public static class PipelineBuilderExtensions
         var node = new AIBatchedStreamEnrichNode<TIn, TField>(chatClient)
         {
             Options = options,
-            ExecutionStrategy = AIStreamPassthroughExecutionStrategy.Instance,
         };
 
         builder.AddPreconfiguredNodeInstance(handle.Id, node);

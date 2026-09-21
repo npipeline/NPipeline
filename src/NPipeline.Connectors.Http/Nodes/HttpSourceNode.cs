@@ -18,7 +18,7 @@ namespace NPipeline.Connectors.Http.Nodes;
 ///     Supports auth, retry, rate limiting and observability via pluggable abstractions.
 /// </summary>
 /// <typeparam name="T">The item type to deserialise from the API response.</typeparam>
-public sealed partial class HttpSourceNode<T> : SourceNode<T>
+public sealed partial class HttpSourceNode<T> : SourceNode<T>, IAsyncDisposable
 {
     private static readonly ActivitySource ActivitySource = new("NPipeline.Connectors.Http");
 
@@ -381,12 +381,10 @@ public sealed partial class HttpSourceNode<T> : SourceNode<T>
     }
 
     /// <inheritdoc />
-    public override async ValueTask DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         if (_ownsClient)
             _httpClient.Dispose();
-
-        await base.DisposeAsync().ConfigureAwait(false);
     }
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "HttpSourceNode<{TypeName}>: reached MaxPages limit of {MaxPages}, stopping.")]

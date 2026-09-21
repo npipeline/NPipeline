@@ -188,10 +188,11 @@ public sealed class ExecutionObserverTests
         }
     }
 
-    private sealed class FlakyTransform : ITransformNode<int, int>, IAsyncDisposable
+    private sealed class FlakyTransform : ITransformNode<int, int>, IExecutionStrategyProvider, IAsyncDisposable
     {
         private int _count;
-        public IExecutionStrategy ExecutionStrategy { get; set; } = new ParallelExecutionStrategy(1);
+
+        public IExecutionStrategy DefaultExecutionStrategy { get; } = new ParallelExecutionStrategy(1);
 
         public ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken ct)
         {

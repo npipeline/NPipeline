@@ -41,7 +41,11 @@ internal sealed class PipelineExecutionCleanupStage(IObservabilitySurface observ
         {
             foreach (var node in nodeInstances.Values)
             {
-                await node.DisposeAsync().ConfigureAwait(false);
+                // A node is disposable only if it opted in: INode itself carries no lifecycle.
+                if (node is IAsyncDisposable asyncDisposable)
+                    await asyncDisposable.DisposeAsync().ConfigureAwait(false);
+                else if (node is IDisposable disposable)
+                    disposable.Dispose();
             }
         }
 

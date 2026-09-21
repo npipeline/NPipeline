@@ -15,7 +15,7 @@ namespace Sample_CustomNodeImplementation.Nodes;
 ///     - Performance monitoring capabilities
 ///     - Structured code for testability
 /// </remarks>
-public class LifecycleMonitorNode : TransformNode<SensorData, SensorData>
+public class LifecycleMonitorNode : TransformNode<SensorData, SensorData>, IAsyncDisposable
 {
     private readonly List<LifecycleEvent> _lifecycleEvents = new();
     private readonly DateTime _startTime;
@@ -108,7 +108,7 @@ public class LifecycleMonitorNode : TransformNode<SensorData, SensorData>
     ///     Asynchronously disposes of the node and releases all resources.
     /// </summary>
     /// <returns>A <see cref="ValueTask" /> that represents the asynchronous dispose operation.</returns>
-    public override async ValueTask DisposeAsync()
+    public ValueTask DisposeAsync()
     {
         if (!_disposed)
         {
@@ -122,6 +122,6 @@ public class LifecycleMonitorNode : TransformNode<SensorData, SensorData>
         }
 
         GC.SuppressFinalize(this);
-        await base.DisposeAsync();
+        return ValueTask.CompletedTask;
     }
 }

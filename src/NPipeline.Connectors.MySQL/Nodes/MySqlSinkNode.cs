@@ -14,7 +14,7 @@ namespace NPipeline.Connectors.MySql.Nodes;
 ///     MySQL sink node for writing data to a MySQL database table.
 /// </summary>
 /// <typeparam name="T">The type of objects consumed by the sink.</typeparam>
-public class MySqlSinkNode<T> : DatabaseSinkNode<T>
+public class MySqlSinkNode<T> : DatabaseSinkNode<T>, IAsyncDisposable
 {
     private static readonly Lazy<IStorageResolver> DefaultResolver = new(
         () => MySqlStorageResolverFactory.CreateResolver(),
@@ -23,6 +23,7 @@ public class MySqlSinkNode<T> : DatabaseSinkNode<T>
     private readonly MySqlConfiguration _configuration;
     private readonly string? _connectionName;
     private readonly IMySqlConnectionPool? _connectionPool;
+    private readonly bool _ownsConnectionPool;
     private readonly Func<T, IEnumerable<DatabaseParameter>>? _parameterMapper;
     private readonly IStorageProvider? _storageProvider;
     private readonly IStorageResolver? _storageResolver;
@@ -45,6 +46,7 @@ public class MySqlSinkNode<T> : DatabaseSinkNode<T>
         _configuration = configuration ?? new MySqlConfiguration();
         _configuration.Validate();
         _connectionPool = new MySqlConnectionPool(connectionString);
+        _ownsConnectionPool = true;
         _tableName = tableName;
         _writeStrategy = _configuration.WriteStrategy;
         _parameterMapper = customMapper;
@@ -195,5 +197,16 @@ public class MySqlSinkNode<T> : DatabaseSinkNode<T>
         };
 
         return Task.FromResult(writer);
+    }
+
+    /// <summary>
+    ///     Disposes the connection pool, but only when this node created it: an injected pool belongs to its caller.
+    /// </summary>
+    public async ValueTask DisposeAsync()
+    {
+        GC.SuppressFinalize(this);
+
+        if (_ownsConnectionPool && _connectionPool is not null)
+            await _connectionPool.DisposeAsync().ConfigureAwait(false);
     }
 }

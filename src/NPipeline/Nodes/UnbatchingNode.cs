@@ -11,10 +11,10 @@ namespace NPipeline.Nodes;
 ///     This node works in conjunction with the <see cref="UnbatchingExecutionStrategy" />.
 /// </summary>
 /// <typeparam name="T">The type of item in the batches.</typeparam>
-public sealed class UnbatchingNode<T> : IStreamTransformNode<IEnumerable<T>, T>
+public sealed class UnbatchingNode<T> : IStreamTransformNode<IEnumerable<T>, T>, IExecutionStrategyProvider
 {
     /// <inheritdoc />
-    public IExecutionStrategy ExecutionStrategy { get; set; } = new UnbatchingExecutionStrategy();
+    public IExecutionStrategy DefaultExecutionStrategy { get; } = new UnbatchingExecutionStrategy();
 
     /// <summary>
     ///     Transforms an input stream of batches into a stream of individual items asynchronously.
@@ -33,15 +33,5 @@ public sealed class UnbatchingNode<T> : IStreamTransformNode<IEnumerable<T>, T>
         {
             yield return item;
         }
-    }
-
-    /// <summary>
-    ///     Asynchronously disposes of the node.
-    /// </summary>
-    /// <returns>A <see cref="ValueTask" /> that represents the asynchronous dispose operation.</returns>
-    public ValueTask DisposeAsync()
-    {
-        GC.SuppressFinalize(this);
-        return ValueTask.CompletedTask;
     }
 }

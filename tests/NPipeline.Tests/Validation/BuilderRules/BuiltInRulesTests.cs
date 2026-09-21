@@ -119,7 +119,6 @@ public sealed class BuiltInRulesTests
 
     private sealed class IntToString : ITransformNode<int, string>
     {
-        public IExecutionStrategy ExecutionStrategy { get; set; } = new SequentialExecutionStrategy();
 
         public ValueTask<string> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {

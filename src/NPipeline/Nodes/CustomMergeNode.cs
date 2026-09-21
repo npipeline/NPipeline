@@ -84,16 +84,6 @@ public abstract class CustomMergeNode<TIn> : ICustomMergeNode<TIn>, ICustomMerge
     public abstract Task<IDataStream<TIn>> MergeAsync(IEnumerable<IDataStream> pipes, CancellationToken cancellationToken);
 
     /// <summary>
-    ///     Asynchronously disposes of the node resources.
-    /// </summary>
-    /// <returns>A <see cref="ValueTask" /> representing the asynchronous dispose operation.</returns>
-    public virtual ValueTask DisposeAsync()
-    {
-        GC.SuppressFinalize(this);
-        return ValueTask.CompletedTask;
-    }
-
-    /// <summary>
     ///     Merges multiple input pipes without type information by delegating to the typed implementation.
     /// </summary>
     /// <param name="pipes">The input data pipes to merge.</param>

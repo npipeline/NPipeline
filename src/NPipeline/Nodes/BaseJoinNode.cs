@@ -53,15 +53,6 @@ public abstract class BaseJoinNode<TKey, TIn1, TIn2, TOut> : IJoinNode where TKe
     }
 
     /// <summary>
-    ///     Asynchronously disposes of the node. This can be overridden by derived classes to release resources.
-    /// </summary>
-    public virtual ValueTask DisposeAsync()
-    {
-        GC.SuppressFinalize(this);
-        return ValueTask.CompletedTask;
-    }
-
-    /// <summary>
     ///     When implemented in a derived class, creates the output item from the two joined input items.
     /// </summary>
     public abstract TOut CreateOutput(TIn1 item1, TIn2 item2);

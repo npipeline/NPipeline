@@ -22,7 +22,7 @@ For specialized patterns, NPipeline also provides `IAggregateNode`, `IJoinNode`,
 
 ## 2. Extend the Base Class
 
-Always extend the base class rather than implementing the interface directly. Base classes provide `INodeTypeMetadata`, default disposal, and (for transforms) default `ExecutionStrategy`.
+Always extend the base class rather than implementing the interface directly. Base classes provide `INodeTypeMetadata` and the type metadata the executor needs.
 
 ### Example: Transform Node
 
@@ -114,10 +114,10 @@ You'll also need a corresponding `Add*` method on `PipelineBuilder` or an extens
 
 ## 5. Resource Disposal
 
-Override `DisposeAsync()` if your node holds resources:
+Implement `IAsyncDisposable` if your node holds resources. `INode` does not require it, so a node that owns nothing writes no disposal code at all:
 
 ```csharp
-public sealed class DbSink<T>(IDbConnection connection) : SinkNode<T>
+public sealed class DbSink<T>(IDbConnection connection) : SinkNode<T>, IAsyncDisposable
 {
     public override async Task ConsumeAsync(
         IDataStream<T> input, PipelineContext context, CancellationToken ct)
@@ -125,16 +125,15 @@ public sealed class DbSink<T>(IDbConnection connection) : SinkNode<T>
         // consume items...
     }
 
-    public override async ValueTask DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         if (connection is IAsyncDisposable disposable)
             await disposable.DisposeAsync().ConfigureAwait(false);
-        await base.DisposeAsync().ConfigureAwait(false);
     }
 }
 ```
 
-> ⚠️ **Warning:** Always call `base.DisposeAsync()` when overriding disposal.
+> **Note:** There is no base `DisposeAsync()` to call — the base classes hold no resources.
 
 ## 6. Write Tests
 
@@ -167,7 +166,7 @@ Use `AwesomeAssertions` (`.Should()`) for assertions and `FakeItEasy` (`A.Fake<T
 - [ ] Has a public parameterless constructor (or uses DI)
 - [ ] Forwards `CancellationToken` to all async calls
 - [ ] Calls `.WithCancellation(ct)` on `IAsyncEnumerable<T>` enumerations
-- [ ] Overrides `DisposeAsync()` if holding resources
+- [ ] Implements `IAsyncDisposable` if holding resources
 - [ ] Has XML documentation on public members
 - [ ] Tests cover happy path, edge cases, and cancellation
 

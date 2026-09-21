@@ -44,12 +44,6 @@ internal sealed class DiContainerNodeFactory(IServiceProvider serviceProvider) :
                 $"Failed to create an instance of node type '{nodeDefinition.NodeType.FullName}'. Ensure it is registered in the service provider or its dependencies are resolvable.");
         }
 
-        if (node is ITransformNode transformNode)
-        {
-            if (nodeDefinition.ExecutionStrategy is not null)
-                transformNode.ExecutionStrategy = nodeDefinition.ExecutionStrategy;
-        }
-
         return (INode)node;
     }
 

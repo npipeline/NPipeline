@@ -1,5 +1,7 @@
 using System.Runtime.CompilerServices;
 using NPipeline.DataFlow;
+using NPipeline.Execution;
+using NPipeline.Execution.Strategies;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 
@@ -11,12 +13,14 @@ namespace NPipeline.Tests.TestHarness;
 public static class TransformTestHarness
 {
     /// <summary>
-    ///     Executes a transform node against an in-memory set of input items using its configured execution strategy.
+    ///     Executes a transform node against an in-memory set of input items under the given execution strategy,
+    ///     defaulting to sequential execution as the pipeline does.
     /// </summary>
     public static async Task<IReadOnlyList<TOut>> RunAsync<TIn, TOut>(
         ITransformNode<TIn, TOut> node,
         IEnumerable<TIn> items,
         PipelineContext? context = null,
+        IExecutionStrategy? executionStrategy = null,
         CancellationToken cancellationToken = default)
     {
         context ??= PipelineContext.CreateDefault();
@@ -24,7 +28,9 @@ public static class TransformTestHarness
         // Use a lightweight in-memory pipe that does not enforce notnull constraint
         var list = items.ToList();
         var inputPipe = new HarnessListPipe<TIn>(list, "HarnessInput");
-        var strategy = node.ExecutionStrategy;
+        var strategy = executionStrategy
+                       ?? (node as IExecutionStrategyProvider)?.DefaultExecutionStrategy
+                       ?? new SequentialExecutionStrategy();
         var outputPipe = await strategy.ExecuteAsync<TIn, TOut>(inputPipe, node, context, context.NodeEnvironment.CurrentNodeId, cancellationToken).ConfigureAwait(false);
         var results = new List<TOut>();
 
@@ -43,9 +49,10 @@ public static class TransformTestHarness
         ITransformNode<TIn, TOut> node,
         TIn item,
         PipelineContext? context = null,
+        IExecutionStrategy? executionStrategy = null,
         CancellationToken cancellationToken = default)
     {
-        var results = await RunAsync(node, [item], context, cancellationToken).ConfigureAwait(false);
+        var results = await RunAsync(node, [item], context, executionStrategy, cancellationToken).ConfigureAwait(false);
         return results.Single();
     }
 }

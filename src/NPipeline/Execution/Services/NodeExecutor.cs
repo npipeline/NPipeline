@@ -87,6 +87,7 @@ public sealed class NodeExecutor(
         INode instance)
     {
         var input = await GetNodeInputAsync(plan.NodeId, graph, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, context.CancellationToken);
+        var strategy = NodeExecutionStrategyResolver.Resolve(nodeDef, instance);
         IDataStream transformed;
 
         if (graph.Lineage.ItemLevelLineageEnabled)
@@ -96,7 +97,7 @@ public sealed class NodeExecutor(
             var (unwrapped, rewrap) = adapter(input, plan.NodeId, context.RunIdentity.PipelineId, context.RunIdentity.PipelineName,
                 nodeDef.DeclaredCardinality ?? TransformCardinality.OneToOne, graph.Lineage.LineageOptions, context.CancellationToken);
 
-            var transformTask = plan.ExecuteTransform!(instance, unwrapped, context, context.CancellationToken);
+            var transformTask = plan.ExecuteTransform!(instance, strategy, unwrapped, context, context.CancellationToken);
 
             var raw = transformTask.IsCompletedSuccessfully
                 ? transformTask.Result
@@ -106,7 +107,7 @@ public sealed class NodeExecutor(
         }
         else
         {
-            var transformTask = plan.ExecuteTransform!(instance, input, context, context.CancellationToken);
+            var transformTask = plan.ExecuteTransform!(instance, strategy, input, context, context.CancellationToken);
 
             transformed = transformTask.IsCompletedSuccessfully
                 ? transformTask.Result

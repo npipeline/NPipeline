@@ -190,7 +190,6 @@ public sealed class ResilienceConfigurationRuleTests
 
     private sealed class ResilientTransform : ITransformNode<int, int>
     {
-        public IExecutionStrategy ExecutionStrategy { get; set; } = new ResilientExecutionStrategy(new SequentialExecutionStrategy());
 
         public ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
@@ -205,7 +204,6 @@ public sealed class ResilienceConfigurationRuleTests
 
     private sealed class RegularTransform : ITransformNode<int, int>
     {
-        public IExecutionStrategy ExecutionStrategy { get; set; } = new SequentialExecutionStrategy();
 
         public ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
@@ -431,7 +429,6 @@ public sealed class ParallelConfigurationRuleTests
 
     private sealed class ParallelTransform : ITransformNode<int, int>
     {
-        public IExecutionStrategy ExecutionStrategy { get; set; } = new SequentialExecutionStrategy();
 
         public ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {

@@ -118,7 +118,7 @@ public class MongoChangeStreamSourceNode<T> : SourceNode<T>, IAsyncDisposable
     /// <summary>
     ///     Disposes resources used by the source node.
     /// </summary>
-    public override async ValueTask DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         if (_cursor != null)
         {
@@ -132,7 +132,6 @@ public class MongoChangeStreamSourceNode<T> : SourceNode<T>, IAsyncDisposable
             _ownedClient = null;
         }
 
-        await base.DisposeAsync();
         GC.SuppressFinalize(this);
     }
 

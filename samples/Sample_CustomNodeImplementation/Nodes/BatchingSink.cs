@@ -16,7 +16,7 @@ namespace Sample_CustomNodeImplementation.Nodes;
 ///     - Configurable batch sizes and timeouts
 ///     - Structured code for testability
 /// </remarks>
-public class BatchingSink : SinkNode<ProcessedSensorData>
+public class BatchingSink : SinkNode<ProcessedSensorData>, IAsyncDisposable
 {
     private readonly TimeSpan _batchTimeout = TimeSpan.FromSeconds(2);
     private readonly Timer? _batchTimer;
@@ -182,7 +182,7 @@ public class BatchingSink : SinkNode<ProcessedSensorData>
     ///     Asynchronously disposes of resources used by the batching sink node.
     /// </summary>
     /// <returns>A ValueTask representing the asynchronous dispose operation.</returns>
-    public override async ValueTask DisposeAsync()
+    public ValueTask DisposeAsync()
     {
         if (!_disposed)
         {
@@ -197,7 +197,8 @@ public class BatchingSink : SinkNode<ProcessedSensorData>
 
             _disposed = true;
             GC.SuppressFinalize(this);
-            await base.DisposeAsync();
         }
+
+        return ValueTask.CompletedTask;
     }
 }

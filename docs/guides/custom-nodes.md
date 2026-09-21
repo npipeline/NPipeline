@@ -107,7 +107,7 @@ var dedup = builder.AddStreamTransform<DeduplicateNode, Order, Order>("deduplica
 Extend `SinkNode<TIn>` and override `ConsumeAsync` to process the incoming stream:
 
 ```csharp
-public class DatabaseSink : SinkNode<Order>
+public class DatabaseSink : SinkNode<Order>, IAsyncDisposable
 {
     private readonly IDbConnection _connection;
 
@@ -123,11 +123,10 @@ public class DatabaseSink : SinkNode<Order>
         }
     }
 
-    public override async ValueTask DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         if (_connection is IAsyncDisposable d)
             await d.DisposeAsync().ConfigureAwait(false);
-        await base.DisposeAsync().ConfigureAwait(false);
     }
 }
 ```
@@ -136,15 +135,25 @@ public class DatabaseSink : SinkNode<Order>
 
 ## Resource Disposal
 
-All nodes implement `IAsyncDisposable`. Override `DisposeAsync()` if your node holds resources like connections, file handles, or HTTP clients. Always call `base.DisposeAsync()`:
+Nodes are disposable only if they implement `IAsyncDisposable` or `IDisposable`. If your node holds resources like connections, file handles, or HTTP clients, implement `IAsyncDisposable` (or `IDisposable`) on it; the runtime checks for it and disposes the instance at the end of the run that created it. There is no base implementation to call:
 
 ```csharp
-public override async ValueTask DisposeAsync()
+public sealed class HttpEnricher : TransformNode<Order, Order>, IAsyncDisposable
 {
-    await _resource.DisposeAsync().ConfigureAwait(false);
-    await base.DisposeAsync().ConfigureAwait(false);
+    private readonly HttpClient _client = new();
+
+    public override ValueTask<Order> TransformAsync(
+        Order item, PipelineContext context, CancellationToken cancellationToken) => /* ... */;
+
+    public ValueTask DisposeAsync()
+    {
+        _client.Dispose();
+        return ValueTask.CompletedTask;
+    }
 }
 ```
+
+Nodes that hold nothing — most nodes — implement neither and are left alone.
 
 ## Choosing the Right Base
 

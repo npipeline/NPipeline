@@ -49,7 +49,6 @@ public sealed class CustomGraphRuleTests
 
     private sealed class Passthrough : ITransformNode<int, int>
     {
-        public IExecutionStrategy ExecutionStrategy { get; set; } = new SequentialExecutionStrategy();
 
         public ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {

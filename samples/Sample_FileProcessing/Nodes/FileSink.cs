@@ -9,7 +9,7 @@ namespace Sample_FileProcessing.Nodes;
 ///     Sink node for writing processed data to files.
 ///     This node demonstrates output to new files with proper resource management.
 /// </summary>
-public class FileSink : SinkNode<string>
+public class FileSink : SinkNode<string>, IAsyncDisposable
 {
     private readonly string? _outputFilePath;
 
@@ -118,10 +118,10 @@ public class FileSink : SinkNode<string>
     ///     Asynchronously disposes of the sink node resources.
     /// </summary>
     /// <returns>A ValueTask that represents the asynchronous dispose operation.</returns>
-    public override ValueTask DisposeAsync()
+    public ValueTask DisposeAsync()
     {
         Console.WriteLine("FileSink: Disposing resources...");
         GC.SuppressFinalize(this);
-        return base.DisposeAsync();
+        return ValueTask.CompletedTask;
     }
 }

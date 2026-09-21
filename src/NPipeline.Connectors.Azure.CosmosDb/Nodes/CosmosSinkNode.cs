@@ -13,7 +13,7 @@ namespace NPipeline.Connectors.Azure.CosmosDb.Nodes;
 ///     Cosmos DB sink node for writing data to Cosmos DB.
 /// </summary>
 /// <typeparam name="T">The type of objects consumed by sink.</typeparam>
-public class CosmosSinkNode<T> : DatabaseSinkNode<T>
+public class CosmosSinkNode<T> : DatabaseSinkNode<T>, IAsyncDisposable
 {
     private static readonly Lazy<IStorageResolver> DefaultResolver = new(
         () => CosmosStorageResolverFactory.CreateResolver(),
@@ -22,6 +22,7 @@ public class CosmosSinkNode<T> : DatabaseSinkNode<T>
     private readonly CosmosConfiguration _configuration;
     private readonly string? _connectionName;
     private readonly ICosmosConnectionPool? _connectionPool;
+    private readonly bool _ownsConnectionPool;
     private readonly string _containerId;
     private readonly string _databaseId;
     private readonly Func<T, string>? _idSelector;
@@ -76,6 +77,7 @@ public class CosmosSinkNode<T> : DatabaseSinkNode<T>
 
         _configuration.Validate();
         _connectionPool = new CosmosConnectionPool(connectionString, _configuration);
+        _ownsConnectionPool = true;
         _databaseId = databaseId;
         _containerId = containerId;
         _writeStrategy = writeStrategy;
@@ -324,5 +326,16 @@ public class CosmosSinkNode<T> : DatabaseSinkNode<T>
         }
 
         return (segments[0], segments[1]);
+    }
+
+    /// <summary>
+    ///     Disposes the connection pool, but only when this node created it: an injected pool belongs to its caller.
+    /// </summary>
+    public async ValueTask DisposeAsync()
+    {
+        GC.SuppressFinalize(this);
+
+        if (_ownsConnectionPool && _connectionPool is not null)
+            await _connectionPool.DisposeAsync().ConfigureAwait(false);
     }
 }

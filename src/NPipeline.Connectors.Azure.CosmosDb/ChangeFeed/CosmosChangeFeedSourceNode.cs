@@ -109,11 +109,10 @@ public class CosmosChangeFeedSourceNode<T> : SourceNode<T>, IAsyncDisposable
     /// <summary>
     ///     Disposes the change feed source node and releases associated resources.
     /// </summary>
-    public override async ValueTask DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         if (_disposed)
         {
-            await base.DisposeAsync();
             return;
         }
 
@@ -122,7 +121,6 @@ public class CosmosChangeFeedSourceNode<T> : SourceNode<T>, IAsyncDisposable
 
         _disposed = true;
         GC.SuppressFinalize(this);
-        await base.DisposeAsync();
     }
 
     /// <summary>

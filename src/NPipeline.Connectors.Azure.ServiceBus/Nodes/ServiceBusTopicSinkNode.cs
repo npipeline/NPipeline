@@ -24,7 +24,7 @@ namespace NPipeline.Connectors.Azure.ServiceBus.Nodes;
 ///     Requires <see cref="ServiceBusConfiguration.TopicName" /> to be set.
 ///     For queue publishing, use <see cref="ServiceBusQueueSinkNode{T}" />.
 /// </remarks>
-public sealed class ServiceBusTopicSinkNode<T> : SinkNode<T>
+public sealed class ServiceBusTopicSinkNode<T> : SinkNode<T>, IAsyncDisposable
 {
     private readonly AcknowledgmentStrategy _ackStrategy;
     private readonly ServiceBusConfiguration _configuration;
@@ -294,14 +294,12 @@ public sealed class ServiceBusTopicSinkNode<T> : SinkNode<T>
     }
 
     /// <inheritdoc />
-    public override async ValueTask DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         await _sender.DisposeAsync().ConfigureAwait(false);
 
         if (_ownsClient && _ownedClient != null)
             await _ownedClient.DisposeAsync().ConfigureAwait(false);
-
-        await base.DisposeAsync().ConfigureAwait(false);
     }
 
     private static JsonSerializerOptions CreateSerializerOptions(ServiceBusConfiguration config)

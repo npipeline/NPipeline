@@ -82,7 +82,7 @@ public abstract class DatabaseSourceNode<TReader, T> : SourceNode<T>, IAsyncDisp
     /// <summary>
     ///     Disposes resources used by the source node.
     /// </summary>
-    public override async ValueTask DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         GC.SuppressFinalize(this);
 
@@ -90,8 +90,6 @@ public abstract class DatabaseSourceNode<TReader, T> : SourceNode<T>, IAsyncDisp
             await _checkpointManager.DisposeAsync();
 
         _inMemoryStorage?.Dispose();
-
-        await base.DisposeAsync();
     }
 
     /// <summary>

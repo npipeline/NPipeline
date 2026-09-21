@@ -69,6 +69,8 @@ NPipeline error codes follow the pattern `NPxxxx` where the first two digits ind
 | NP0418 | SinkNodeLineageUnwrapMissing | Internal: sink node lineage unwrap delegate not configured. |
 | NP0419 | MissingTypeMetadata | Internal: node is missing type metadata. |
 | NP0420 | TimeWindowAssignerCannotBeNull | The time window assigner cannot be null for time-windowed operations. |
+| NP0421 | StreamTransformNodeRequiresStreamStrategy | A stream transform node was configured with a strategy that cannot execute streams. |
+| NP0422 | NodeCannotSupplyExecutionStrategy | A node scheduled as a transform does not implement the transform interface. |
 
 ## NP05xx - Resource Management Errors
 

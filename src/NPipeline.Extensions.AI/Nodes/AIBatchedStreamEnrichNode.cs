@@ -16,7 +16,7 @@ namespace NPipeline.Extensions.AI.Nodes;
 /// </summary>
 /// <typeparam name="TIn">The input item type.</typeparam>
 /// <typeparam name="TField">The AI-generated field type.</typeparam>
-public sealed class AIBatchedStreamEnrichNode<TIn, TField> : IStreamTransformNode<TIn, TIn>
+public sealed class AIBatchedStreamEnrichNode<TIn, TField> : IStreamTransformNode<TIn, TIn>, IExecutionStrategyProvider
 {
     private readonly IChatClient _chatClient;
 
@@ -34,7 +34,7 @@ public sealed class AIBatchedStreamEnrichNode<TIn, TField> : IStreamTransformNod
     ///     Gets or sets the execution strategy.
     ///     Defaults to a stream-aware passthrough strategy so this node preserves its native stream batching behavior.
     /// </summary>
-    public IExecutionStrategy ExecutionStrategy { get; set; } = AIStreamPassthroughExecutionStrategy.Instance;
+    public IExecutionStrategy DefaultExecutionStrategy => AIStreamPassthroughExecutionStrategy.Instance;
 
     /// <inheritdoc />
     public async IAsyncEnumerable<TIn> TransformAsync(
@@ -55,13 +55,6 @@ public sealed class AIBatchedStreamEnrichNode<TIn, TField> : IStreamTransformNod
                 yield return item;
             }
         }
-    }
-
-    /// <inheritdoc />
-    public ValueTask DisposeAsync()
-    {
-        GC.SuppressFinalize(this);
-        return ValueTask.CompletedTask;
     }
 
     private async Task<IReadOnlyCollection<TIn>> ProcessBatchAsync(

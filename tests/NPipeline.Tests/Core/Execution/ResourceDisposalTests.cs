@@ -81,7 +81,7 @@ public sealed class ResourceDisposalTests : IAsyncLifetime
         public bool WasDisposed { get; private set; }
         public static int DisposeCount { get; set; }
 
-        public new async ValueTask DisposeAsync()
+        public async ValueTask DisposeAsync()
         {
             WasDisposed = true;
             DisposeCount++;
@@ -103,7 +103,7 @@ public sealed class ResourceDisposalTests : IAsyncLifetime
         public bool WasDisposed { get; private set; }
         public static int DisposeCount { get; set; }
 
-        public new async ValueTask DisposeAsync()
+        public async ValueTask DisposeAsync()
         {
             WasDisposed = true;
             DisposeCount++;
@@ -124,7 +124,7 @@ public sealed class ResourceDisposalTests : IAsyncLifetime
         public bool WasDisposed { get; private set; }
         public static int DisposeCount { get; set; }
 
-        public new async ValueTask DisposeAsync()
+        public async ValueTask DisposeAsync()
         {
             WasDisposed = true;
             DisposeCount++;
@@ -170,7 +170,7 @@ public sealed class ResourceDisposalTests : IAsyncLifetime
         public bool WasDisposed { get; private set; }
         public static int DisposeCount { get; set; }
 
-        public new async ValueTask DisposeAsync()
+        public async ValueTask DisposeAsync()
         {
             WasDisposed = true;
             DisposeCount++;

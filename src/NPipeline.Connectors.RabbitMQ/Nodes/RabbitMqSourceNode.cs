@@ -24,7 +24,7 @@ namespace NPipeline.Connectors.RabbitMQ.Nodes;
 ///     for backpressure integration with RabbitMQ's prefetch QoS.
 /// </summary>
 /// <typeparam name="T">The type of messages to consume.</typeparam>
-public sealed class RabbitMqSourceNode<T> : SourceNode<RabbitMqMessage<T>>
+public sealed class RabbitMqSourceNode<T> : SourceNode<RabbitMqMessage<T>>, IAsyncDisposable
 {
     private readonly IRabbitMqConnectionManager _connectionManager;
     private readonly ILogger _logger;
@@ -207,7 +207,7 @@ public sealed class RabbitMqSourceNode<T> : SourceNode<RabbitMqMessage<T>>
     }
 
     /// <inheritdoc />
-    public override async ValueTask DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         if (_channel is not null)
         {
@@ -236,8 +236,6 @@ public sealed class RabbitMqSourceNode<T> : SourceNode<RabbitMqMessage<T>>
 
             _channel = null;
         }
-
-        await base.DisposeAsync().ConfigureAwait(false);
     }
 
     private static int GetDeliveryAttemptCount(BasicDeliverEventArgs args)

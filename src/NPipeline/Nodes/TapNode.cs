@@ -10,7 +10,7 @@ namespace NPipeline.Nodes;
 /// </summary>
 /// <typeparam name="T">The type of data being processed.</typeparam>
 /// <param name="sink">The sink node to send data copies to.</param>
-public sealed class TapNode<T>(ISinkNode<T> sink) : TransformNode<T, T>
+public sealed class TapNode<T>(ISinkNode<T> sink) : TransformNode<T, T>, IAsyncDisposable
 {
     private readonly ISinkNode<T> _sink = sink;
 
@@ -30,10 +30,19 @@ public sealed class TapNode<T>(ISinkNode<T> sink) : TransformNode<T, T>
         return item;
     }
 
-    /// <inheritdoc />
-    public override async ValueTask DisposeAsync()
+    /// <summary>
+    ///     Disposes the sink this node taps into, if the sink owns resources.
+    /// </summary>
+    public async ValueTask DisposeAsync()
     {
-        await _sink.DisposeAsync().ConfigureAwait(false);
-        await base.DisposeAsync().ConfigureAwait(false);
+        switch (_sink)
+        {
+            case IAsyncDisposable asyncDisposable:
+                await asyncDisposable.DisposeAsync().ConfigureAwait(false);
+                break;
+            case IDisposable disposable:
+                disposable.Dispose();
+                break;
+        }
     }
 }

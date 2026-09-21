@@ -16,7 +16,7 @@ namespace NPipeline.Connectors.Http.Nodes;
 ///     Supports batching, auth, retry, rate limiting, idempotency keys and observability.
 /// </summary>
 /// <typeparam name="T">The item type to serialise and send.</typeparam>
-public sealed partial class HttpSinkNode<T> : SinkNode<T>
+public sealed partial class HttpSinkNode<T> : SinkNode<T>, IAsyncDisposable
 {
     private static readonly ActivitySource ActivitySource = new("NPipeline.Connectors.Http");
 
@@ -347,12 +347,10 @@ public sealed partial class HttpSinkNode<T> : SinkNode<T>
     }
 
     /// <inheritdoc />
-    public override async ValueTask DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         if (_ownsClient)
             _httpClient.Dispose();
-
-        await base.DisposeAsync().ConfigureAwait(false);
     }
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "HttpSinkNode<{TypeName}>: sending {Method} {Uri} with {Count} item(s) (attempt {Attempt}).")]

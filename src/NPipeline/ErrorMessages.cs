@@ -339,6 +339,21 @@ internal static class ErrorMessages
                $"See: {DocsBaseUrl}#{ErrorCodes.UnbatchingExecutionStrategyMissingDeadLetterHandler}";
     }
 
+    public static string StreamTransformNodeRequiresStreamStrategy(string nodeId, string nodeTypeName, string strategyTypeName)
+    {
+        return $"[{ErrorCodes.StreamTransformNodeRequiresStreamStrategy}] Stream transform node '{nodeId}' ({nodeTypeName}) would run under execution strategy '{strategyTypeName}', " +
+               $"which processes items one at a time and cannot run a stream transform. " +
+               $"Configure a stream-capable strategy (one implementing IStreamExecutionStrategy) with WithExecutionStrategy, or have the node supply one through IExecutionStrategyProvider. " +
+               $"See: {DocsBaseUrl}#{ErrorCodes.StreamTransformNodeRequiresStreamStrategy}";
+    }
+
+    public static string NodeCannotSupplyExecutionStrategy(string nodeId, string nodeTypeName, string expectedInterfaceName)
+    {
+        return $"[{ErrorCodes.NodeCannotSupplyExecutionStrategy}] Node '{nodeId}' ({nodeTypeName}) is scheduled as a transform but does not implement {expectedInterfaceName}. " +
+               $"Implement {expectedInterfaceName} on the node, or add it to the pipeline with the builder method that matches its kind. " +
+               $"See: {DocsBaseUrl}#{ErrorCodes.NodeCannotSupplyExecutionStrategy}";
+    }
+
     public static string LineageAdapterMissing(string nodeId)
     {
         return $"[{ErrorCodes.LineageAdapterMissing}] Lineage adapter missing for node '{nodeId}'. " +

@@ -1,5 +1,3 @@
-using NPipeline.Execution;
-using NPipeline.Execution.Strategies;
 using NPipeline.Pipeline;
 using NPipeline.Utils;
 
@@ -27,15 +25,8 @@ internal sealed class ValueTaskTransformAdapter<TIn, TOut> : ITransformNode<TIn,
         _producer = producer;
     }
 
-    public IExecutionStrategy ExecutionStrategy { get; set; } = new SequentialExecutionStrategy();
-
     public ValueTask<TOut> TransformAsync(TIn item, PipelineContext context, CancellationToken cancellationToken)
     {
         return _producer(item, context, cancellationToken);
-    }
-
-    public ValueTask DisposeAsync()
-    {
-        return ValueTask.CompletedTask;
     }
 }

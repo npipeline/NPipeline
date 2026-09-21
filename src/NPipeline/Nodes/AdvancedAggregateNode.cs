@@ -50,17 +50,6 @@ public abstract class AdvancedAggregateNode<TIn, TKey, TAccumulate, TResult> : I
             : new Dictionary<(IWindow Window, TKey Key), TAccumulate>();
     }
 
-    /// <summary>
-    ///     Asynchronously disposes of the node. This can be overridden by derived classes to release resources.
-    /// </summary>
-    /// <returns>A <see cref="ValueTask" /> that represents the asynchronous dispose operation.</returns>
-    public virtual ValueTask DisposeAsync()
-    {
-        _accumulators.Clear();
-        GC.SuppressFinalize(this);
-        return ValueTask.CompletedTask;
-    }
-
     /// <inheritdoc />
     public ValueTask<object?> ExecuteAsync(
         IAsyncEnumerable<object?> inputStream,

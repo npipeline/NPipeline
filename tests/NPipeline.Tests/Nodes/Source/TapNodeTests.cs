@@ -284,7 +284,7 @@ public sealed class TapNodeTests
         }
     }
 
-    private sealed class DisposableSink<T> : SinkNode<T>
+    private sealed class DisposableSink<T> : SinkNode<T>, IAsyncDisposable
     {
         public bool IsDisposed { get; private set; }
 
@@ -299,10 +299,9 @@ public sealed class TapNodeTests
             }
         }
 
-        public override async ValueTask DisposeAsync()
+        public async ValueTask DisposeAsync()
         {
             IsDisposed = true;
-            await base.DisposeAsync();
         }
     }
 

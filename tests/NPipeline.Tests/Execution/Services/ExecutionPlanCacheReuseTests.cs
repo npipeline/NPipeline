@@ -132,7 +132,7 @@ public sealed class ExecutionPlanCacheReuseTests
         }
     }
 
-    private sealed class RecordingSource : SourceNode<int>
+    private sealed class RecordingSource : SourceNode<int>, IAsyncDisposable
     {
         private readonly int _instanceId = InstanceRecorder.Current!.NextSourceId();
         private bool _disposed;
@@ -148,10 +148,10 @@ public sealed class ExecutionPlanCacheReuseTests
             return new NPipeline.DataFlow.DataStreams.InMemoryDataStream<int>([1, 2, 3], "numbers");
         }
 
-        public override ValueTask DisposeAsync()
+        public ValueTask DisposeAsync()
         {
             _disposed = true;
-            return base.DisposeAsync();
+            return ValueTask.CompletedTask;
         }
     }
 
@@ -163,7 +163,7 @@ public sealed class ExecutionPlanCacheReuseTests
         }
     }
 
-    private sealed class RecordingSink : SinkNode<int>
+    private sealed class RecordingSink : SinkNode<int>, IAsyncDisposable
     {
         private readonly int _instanceId = InstanceRecorder.Current!.NextSinkId();
         private bool _disposed;
@@ -183,10 +183,10 @@ public sealed class ExecutionPlanCacheReuseTests
             }
         }
 
-        public override ValueTask DisposeAsync()
+        public ValueTask DisposeAsync()
         {
             _disposed = true;
-            return base.DisposeAsync();
+            return ValueTask.CompletedTask;
         }
     }
 

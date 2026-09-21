@@ -32,7 +32,7 @@ namespace NPipeline.Connectors.Azure.ServiceBus.Nodes;
 ///         <see cref="Connection.IServiceBusConnectionPool" />.
 ///     </para>
 /// </remarks>
-public sealed class ServiceBusQueueSinkNode<T> : SinkNode<T>
+public sealed class ServiceBusQueueSinkNode<T> : SinkNode<T>, IAsyncDisposable
 {
     private readonly AcknowledgmentStrategy _ackStrategy;
     private readonly ServiceBusConfiguration _configuration;
@@ -304,14 +304,12 @@ public sealed class ServiceBusQueueSinkNode<T> : SinkNode<T>
     }
 
     /// <inheritdoc />
-    public override async ValueTask DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         await _sender.DisposeAsync().ConfigureAwait(false);
 
         if (_ownsClient && _ownedClient != null)
             await _ownedClient.DisposeAsync().ConfigureAwait(false);
-
-        await base.DisposeAsync().ConfigureAwait(false);
     }
 
     private static JsonSerializerOptions CreateSerializerOptions(ServiceBusConfiguration config)

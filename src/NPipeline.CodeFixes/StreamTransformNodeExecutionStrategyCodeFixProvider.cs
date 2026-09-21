@@ -10,7 +10,7 @@ namespace NPipeline.CodeFixes;
 
 /// <summary>
 ///     Provides Roslyn code fixes for NP9402 diagnostics on stream transform node execution strategies.
-///     Registers fixes to replace object creation or assignments with batching or unbatching execution strategies.
+///     Registers fixes to replace the supplied default strategy with a batching or unbatching execution strategy.
 /// </summary>
 [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(StreamTransformNodeExecutionStrategyCodeFixProvider))]
 [Shared]
@@ -46,13 +46,8 @@ public class StreamTransformNodeExecutionStrategyCodeFixProvider : CodeFixProvid
         if (semanticModel == null)
             return;
 
-        // Check for object creation expression
         if (node is ObjectCreationExpressionSyntax objectCreation)
             await RegisterObjectCreationFixes(context, objectCreation, semanticModel, diagnostic).ConfigureAwait(false);
-
-        // Check for assignment expression
-        else if (node is AssignmentExpressionSyntax assignment)
-            await RegisterAssignmentFixes(context, assignment, semanticModel, diagnostic).ConfigureAwait(false);
     }
 
     private Task RegisterObjectCreationFixes(CodeFixContext context, ObjectCreationExpressionSyntax objectCreation, SemanticModel semanticModel,
@@ -76,33 +71,6 @@ public class StreamTransformNodeExecutionStrategyCodeFixProvider : CodeFixProvid
             CodeAction.Create(
                 "Replace with UnbatchingExecutionStrategy",
                 ct => ReplaceWithUnbatchingExecutionStrategyAsync(context.Document, objectCreation, ct),
-                "ReplaceWithUnbatchingExecutionStrategy"),
-            diagnostic);
-
-        return Task.CompletedTask;
-    }
-
-    private Task RegisterAssignmentFixes(CodeFixContext context, AssignmentExpressionSyntax assignment, SemanticModel semanticModel,
-        Diagnostic diagnostic)
-    {
-        var typeSymbol = semanticModel.GetTypeInfo(assignment.Right).Type;
-
-        if (typeSymbol == null)
-            return Task.CompletedTask;
-
-        // Register code fix for BatchingExecutionStrategy
-        context.RegisterCodeFix(
-            CodeAction.Create(
-                "Replace with BatchingExecutionStrategy",
-                ct => ReplaceWithBatchingExecutionStrategyAsync(context.Document, assignment.Right, ct),
-                "ReplaceWithBatchingExecutionStrategy"),
-            diagnostic);
-
-        // Register code fix for UnbatchingExecutionStrategy
-        context.RegisterCodeFix(
-            CodeAction.Create(
-                "Replace with UnbatchingExecutionStrategy",
-                ct => ReplaceWithUnbatchingExecutionStrategyAsync(context.Document, assignment.Right, ct),
                 "ReplaceWithUnbatchingExecutionStrategy"),
             diagnostic);
 

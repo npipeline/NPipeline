@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
 using System.Linq.Expressions;
-using NPipeline.Execution.Strategies;
 using NPipeline.Graph;
 using NPipeline.Nodes;
 
@@ -32,8 +31,7 @@ public sealed class DefaultNodeFactory : INodeFactory
         // If we successfully compiled a factory, use it (fast path)
         if (factory != null)
         {
-            var instance = factory();
-            return ConfigureNode(instance, nodeDefinition);
+            return factory();
         }
 
         // Fall back to Activator.CreateInstance (slow path for types without parameterless constructors)
@@ -43,7 +41,7 @@ public sealed class DefaultNodeFactory : INodeFactory
                            ?? throw new InvalidOperationException(
                                $"Failed to create node instance of type '{nodeDefinition.NodeType.FullName}'. Activator returned null.");
 
-            return ConfigureNode((INode)instance, nodeDefinition);
+            return (INode)instance;
         }
         catch (MissingMethodException)
         {
@@ -83,22 +81,5 @@ public sealed class DefaultNodeFactory : INodeFactory
             // If compilation fails for any reason, fall back to Activator
             return null;
         }
-    }
-
-    /// <summary>
-    ///     Configures a node instance with execution strategy and error handler if applicable.
-    /// </summary>
-    /// <param name="instance">The node instance to configure.</param>
-    /// <param name="nodeDefinition">The node definition containing configuration.</param>
-    /// <returns>The configured node instance.</returns>
-    private INode ConfigureNode(INode instance, NodeDefinition nodeDefinition)
-    {
-        if (instance is ITransformNode transformNode)
-        {
-            // Apply execution strategy if specified, falling back to SequentialExecutionStrategy.
-            transformNode.ExecutionStrategy = nodeDefinition.ExecutionStrategy ?? new SequentialExecutionStrategy();
-        }
-
-        return instance;
     }
 }

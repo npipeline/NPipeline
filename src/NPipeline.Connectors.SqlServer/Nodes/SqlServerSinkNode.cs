@@ -14,7 +14,7 @@ namespace NPipeline.Connectors.SqlServer.Nodes;
 ///     SQL Server sink node for writing data to SQL Server database.
 /// </summary>
 /// <typeparam name="T">The type of objects consumed by sink.</typeparam>
-public class SqlServerSinkNode<T> : DatabaseSinkNode<T>
+public class SqlServerSinkNode<T> : DatabaseSinkNode<T>, IAsyncDisposable
 {
     private static readonly Lazy<IStorageResolver> DefaultResolver = new(
         () => SqlServerStorageResolverFactory.CreateResolver(),
@@ -23,6 +23,7 @@ public class SqlServerSinkNode<T> : DatabaseSinkNode<T>
     private readonly SqlServerConfiguration _configuration;
     private readonly string? _connectionName;
     private readonly ISqlServerConnectionPool? _connectionPool;
+    private readonly bool _ownsConnectionPool;
     private readonly Func<T, IEnumerable<DatabaseParameter>>? _parameterMapper;
     private readonly string _schema;
     private readonly IStorageProvider? _storageProvider;
@@ -50,6 +51,7 @@ public class SqlServerSinkNode<T> : DatabaseSinkNode<T>
         _configuration = configuration ?? new SqlServerConfiguration();
         _configuration.Validate();
         _connectionPool = new SqlServerConnectionPool(connectionString);
+        _ownsConnectionPool = true;
         _tableName = tableName;
         _writeStrategy = _configuration.WriteStrategy;
         _parameterMapper = customMapper;
@@ -261,5 +263,16 @@ public class SqlServerSinkNode<T> : DatabaseSinkNode<T>
         };
 
         return writer;
+    }
+
+    /// <summary>
+    ///     Disposes the connection pool, but only when this node created it: an injected pool belongs to its caller.
+    /// </summary>
+    public async ValueTask DisposeAsync()
+    {
+        GC.SuppressFinalize(this);
+
+        if (_ownsConnectionPool && _connectionPool is not null)
+            await _connectionPool.DisposeAsync().ConfigureAwait(false);
     }
 }

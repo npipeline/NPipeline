@@ -15,7 +15,7 @@ namespace Sample_CustomNodeImplementation.Nodes;
 ///     - Cache invalidation strategies
 ///     - Structured code for testability
 /// </remarks>
-public class CachedTransform : TransformNode<SensorData, ProcessedSensorData>
+public class CachedTransform : TransformNode<SensorData, ProcessedSensorData>, IAsyncDisposable
 {
     private readonly Dictionary<string, ProcessedSensorData> _cache;
     private readonly TimeSpan _cacheExpiry = TimeSpan.FromMinutes(5);
@@ -187,7 +187,7 @@ public class CachedTransform : TransformNode<SensorData, ProcessedSensorData>
     ///     Asynchronously disposes of resources used by the cached transform node.
     /// </summary>
     /// <returns>A ValueTask representing the asynchronous dispose operation.</returns>
-    public override async ValueTask DisposeAsync()
+    public ValueTask DisposeAsync()
     {
         if (!_disposed)
         {
@@ -209,7 +209,8 @@ public class CachedTransform : TransformNode<SensorData, ProcessedSensorData>
 
             _disposed = true;
             GC.SuppressFinalize(this);
-            await base.DisposeAsync();
         }
+
+        return ValueTask.CompletedTask;
     }
 }

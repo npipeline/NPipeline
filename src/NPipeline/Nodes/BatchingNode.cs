@@ -11,10 +11,11 @@ namespace NPipeline.Nodes;
 ///     This node works in conjunction with the <see cref="BatchingExecutionStrategy" />.
 /// </summary>
 /// <typeparam name="T">The type of items to batch.</typeparam>
-public sealed class BatchingNode<T>(int batchSize, TimeSpan timespan) : IStreamTransformNode<T, IReadOnlyCollection<T>>
+public sealed class BatchingNode<T>(int batchSize, TimeSpan timespan)
+    : IStreamTransformNode<T, IReadOnlyCollection<T>>, IExecutionStrategyProvider
 {
     /// <inheritdoc />
-    public IExecutionStrategy ExecutionStrategy { get; set; } = new BatchingExecutionStrategy(batchSize, timespan);
+    public IExecutionStrategy DefaultExecutionStrategy { get; } = new BatchingExecutionStrategy(batchSize, timespan);
 
     /// <summary>
     ///     Transforms an input stream of items into batches of items asynchronously.
@@ -28,24 +29,10 @@ public sealed class BatchingNode<T>(int batchSize, TimeSpan timespan) : IStreamT
         PipelineContext context,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        // Get the batching parameters from the execution strategy
-        if (ExecutionStrategy is not BatchingExecutionStrategy batchingStrategy)
-            throw new InvalidOperationException($"The {nameof(BatchingNode<T>)} requires a {nameof(BatchingExecutionStrategy)} to be configured.");
-
         // Delegate to the BatchAsync extension method for the actual batching logic
-        await foreach (var batch in items.BatchAsync(batchingStrategy.BatchSize, batchingStrategy.Timespan, cancellationToken))
+        await foreach (var batch in items.BatchAsync(batchSize, timespan, cancellationToken))
         {
             yield return batch;
         }
-    }
-
-    /// <summary>
-    ///     Asynchronously disposes of the node.
-    /// </summary>
-    /// <returns>A <see cref="ValueTask" /> that represents the asynchronous dispose operation.</returns>
-    public ValueTask DisposeAsync()
-    {
-        GC.SuppressFinalize(this);
-        return ValueTask.CompletedTask;
     }
 }

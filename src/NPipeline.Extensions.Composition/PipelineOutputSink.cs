@@ -38,12 +38,4 @@ public sealed class PipelineOutputSink<T> : ISinkNode<T>
         // Note: outputItem may be null for nullable types, which is valid
         context.Parameters[CompositeContextKeys.OutputItem] = (object?)outputItem ?? DBNull.Value;
     }
-
-    /// <inheritdoc />
-    public ValueTask DisposeAsync()
-    {
-        // No resources to dispose
-        GC.SuppressFinalize(this);
-        return ValueTask.CompletedTask;
-    }
 }

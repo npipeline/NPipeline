@@ -1,4 +1,3 @@
-using NPipeline.Execution;
 using NPipeline.Pipeline;
 
 namespace NPipeline.Nodes;
@@ -6,12 +5,13 @@ namespace NPipeline.Nodes;
 /// <summary>
 ///     Represents a stream-based transform node in the pipeline, which takes an input stream, processes it, and produces an output stream.
 /// </summary>
+/// <remarks>
+///     How a node is run is a property of the graph, not of the node: the execution strategy lives on the
+///     <see cref="Graph.NodeDefinition" /> and is set with <c>WithExecutionStrategy</c>. A node type with an inherent
+///     default strategy declares it by implementing <see cref="IExecutionStrategyProvider" />.
+/// </remarks>
 public interface IStreamTransformNode : INode
 {
-    /// <summary>
-    ///     Gets or sets the execution strategy for this node.
-    /// </summary>
-    IExecutionStrategy ExecutionStrategy { get; set; }
 }
 
 /// <summary>

@@ -72,7 +72,6 @@ public static class PipelineBuilderAIRouteExtensions
         var enrichNode = new AIBatchedStreamEnrichNode<TIn, TField>(chatClient)
         {
             Options = options,
-            ExecutionStrategy = AIStreamPassthroughExecutionStrategy.Instance,
         };
 
         builder.AddPreconfiguredNodeInstance(enrichHandle.Id, enrichNode);

@@ -19,7 +19,7 @@ namespace NPipeline.Connectors.Aws.Sqs.Nodes;
 ///     Supports individual and batch acknowledgment strategies.
 /// </summary>
 /// <typeparam name="T">Type to serialize to JSON.</typeparam>
-public sealed class SqsSinkNode<T> : SinkNode<T>
+public sealed class SqsSinkNode<T> : SinkNode<T>, IAsyncDisposable
 {
     private readonly AcknowledgmentStrategy _acknowledgmentStrategy;
     private readonly AcknowledgmentBatcher _batcher;
@@ -431,7 +431,7 @@ public sealed class SqsSinkNode<T> : SinkNode<T>
     }
 
     /// <inheritdoc />
-    public override async ValueTask DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         await _batcher.DisposeAsync().ConfigureAwait(false);
         List<Task> delayedTasks;
@@ -456,8 +456,6 @@ public sealed class SqsSinkNode<T> : SinkNode<T>
                 _delayedAcknowledgmentTasks.RemoveAll(task => task.IsCompleted);
             }
         }
-
-        await base.DisposeAsync().ConfigureAwait(false);
     }
 
     private void TrackDelayedAcknowledgmentTask(Task delayedTask)

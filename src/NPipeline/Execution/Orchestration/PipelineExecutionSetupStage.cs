@@ -36,7 +36,6 @@ internal sealed class PipelineExecutionSetupStage(
         ConfigureCircuitBreaker(graph, context);
 
         var nodeInstances = nodeInstantiationService.InstantiateNodes(graph, nodeFactory);
-        ApplyNodeExecutionStrategies(graph, nodeInstances);
         ApplyGlobalExecutionAnnotations(graph, context);
         ApplyGlobalServicesFromProperties(context);
 
@@ -126,15 +125,6 @@ internal sealed class PipelineExecutionSetupStage(
 
         if (runtimeBinding.DeadLetterSink is not null)
             context.DeadLetterSink = runtimeBinding.DeadLetterSink;
-    }
-
-    private static void ApplyNodeExecutionStrategies(PipelineGraph graph, IReadOnlyDictionary<string, INode> nodeInstances)
-    {
-        foreach (var def in graph.Nodes)
-        {
-            if (def.ExecutionStrategy is not null && nodeInstances.TryGetValue(def.Id, out var inst) && inst is ITransformNode transformNode)
-                transformNode.ExecutionStrategy = def.ExecutionStrategy;
-        }
     }
 
     private static void ApplyGlobalExecutionAnnotations(PipelineGraph graph, PipelineContext context)

@@ -255,12 +255,6 @@ public sealed class BranchNode<T> : TransformNode<T, T>
                 context.NodeEnvironment.CurrentNodeId);
         }
     }
-
-    /// <inheritdoc />
-    public override async ValueTask DisposeAsync()
-    {
-        await base.DisposeAsync().ConfigureAwait(false);
-    }
 }
 
 /// <summary>

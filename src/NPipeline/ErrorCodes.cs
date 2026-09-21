@@ -250,6 +250,12 @@ public static class ErrorCodes
     /// <summary>Time window assigner cannot be null.</summary>
     public const string TimeWindowAssignerCannotBeNull = "NP0420";
 
+    /// <summary>A stream transform node was configured with a strategy that cannot execute streams.</summary>
+    public const string StreamTransformNodeRequiresStreamStrategy = "NP0421";
+
+    /// <summary>A node was reached on an execution path that requires an execution strategy it cannot supply.</summary>
+    public const string NodeCannotSupplyExecutionStrategy = "NP0422";
+
     #endregion
 
     #region Resource Management Errors (NP05xx)

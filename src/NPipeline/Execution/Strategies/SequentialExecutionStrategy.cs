@@ -19,6 +19,12 @@ namespace NPipeline.Execution.Strategies;
 /// </summary>
 public sealed class SequentialExecutionStrategy : IExecutionStrategy
 {
+    /// <summary>
+    ///     The strategy used when a node's graph definition configures none. The type holds no per-run state, so one
+    ///     instance serves every node and every run.
+    /// </summary>
+    internal static readonly SequentialExecutionStrategy Instance = new();
+
     private readonly IPerItemRetryExecutor _perItemRetryExecutor;
 
     /// <summary>

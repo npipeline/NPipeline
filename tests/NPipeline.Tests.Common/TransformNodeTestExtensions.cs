@@ -1,4 +1,6 @@
 using NPipeline.DataFlow;
+using NPipeline.Execution;
+using NPipeline.Execution.Strategies;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 
@@ -11,7 +13,7 @@ namespace NPipeline.Tests.Common;
 public static class TransformNodeTestExtensions
 {
     /// <summary>
-    ///     Executes the transform node using its execution strategy for testing purposes.
+    ///     Executes the transform node under an execution strategy for testing purposes.
     ///     This simulates how the node would be executed within the pipeline.
     /// </summary>
     /// <typeparam name="TIn">The input type.</typeparam>
@@ -20,6 +22,7 @@ public static class TransformNodeTestExtensions
     /// <param name="input">The input data pipe.</param>
     /// <param name="context">The pipeline context.</param>
     /// <param name="nodeId">The id the node is executing under; defaults to the context's current node id.</param>
+    /// <param name="strategy">The strategy to run the node under; defaults to sequential execution, as the pipeline does.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The output data pipe.</returns>
     public static Task<IDataStream<TOut>> ExecuteWithStrategyAsync<TIn, TOut>(
@@ -27,9 +30,14 @@ public static class TransformNodeTestExtensions
         IDataStream<TIn> input,
         PipelineContext context,
         string? nodeId = null,
+        IExecutionStrategy? strategy = null,
         CancellationToken cancellationToken = default)
     {
-        return node.ExecutionStrategy.ExecuteAsync(input, node, context, nodeId ?? context.NodeEnvironment.CurrentNodeId, cancellationToken);
+        var effectiveStrategy = strategy
+                                ?? (node as IExecutionStrategyProvider)?.DefaultExecutionStrategy
+                                ?? new SequentialExecutionStrategy();
+
+        return effectiveStrategy.ExecuteAsync(input, node, context, nodeId ?? context.NodeEnvironment.CurrentNodeId, cancellationToken);
     }
 
     /// <summary>

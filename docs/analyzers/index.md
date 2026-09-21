@@ -69,7 +69,7 @@ Rules NP9103–NP9107 are **profile-gated**: they only fire when the [optimizati
 | Rule | Severity | Title | Fix |
 |------|----------|-------|-----|
 | NP9401 | Info | Consider IStreamTransformNode | For transforms that operate on entire streams rather than individual items, implement `IStreamTransformNode<TIn, TOut>`. |
-| NP9402 | Warning | IStreamTransformNode should use IStreamExecutionStrategy | `IStreamTransformNode` requires `IStreamExecutionStrategy`. Don't combine with per-item strategies. |
+| NP9402 | Warning | IStreamTransformNode should use IStreamExecutionStrategy | An `IStreamTransformNode` that supplies a `DefaultExecutionStrategy` must supply a stream-capable one. Don't combine with per-item strategies. |
 | NP9403 | Warning | Node missing public parameterless constructor | Node types resolved by the framework need a public parameterless constructor or DI registration. |
 | NP9404 | Warning | Dependency injection anti-pattern | Avoid service locator patterns; use constructor injection instead. |
 

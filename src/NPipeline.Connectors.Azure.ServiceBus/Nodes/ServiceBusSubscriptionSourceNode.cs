@@ -26,7 +26,7 @@ namespace NPipeline.Connectors.Azure.ServiceBus.Nodes;
 ///     <see cref="ServiceBusConfiguration.SubscriptionName" /> to be set.
 ///     See <see cref="ServiceBusQueueSourceNode{T}" /> for the queue variant.
 /// </remarks>
-public sealed class ServiceBusSubscriptionSourceNode<T> : SourceNode<ServiceBusMessage<T>>
+public sealed class ServiceBusSubscriptionSourceNode<T> : SourceNode<ServiceBusMessage<T>>, IAsyncDisposable
 {
     private readonly ServiceBusConfiguration _configuration;
     private readonly ILogger _logger;
@@ -225,7 +225,7 @@ public sealed class ServiceBusSubscriptionSourceNode<T> : SourceNode<ServiceBusM
     }
 
     /// <inheritdoc />
-    public override async ValueTask DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         _messageChannel?.Writer.TryComplete();
 
@@ -240,7 +240,6 @@ public sealed class ServiceBusSubscriptionSourceNode<T> : SourceNode<ServiceBusM
         }
 
         await _processor.DisposeAsync().ConfigureAwait(false);
-        await base.DisposeAsync().ConfigureAwait(false);
     }
 
     private static ServiceBusProcessor CreateProcessor(

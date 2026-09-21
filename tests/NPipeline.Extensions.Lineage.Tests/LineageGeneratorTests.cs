@@ -209,7 +209,6 @@ public sealed class LineageGeneratorTests
 
     private sealed class DummyTransform : ITransformNode<int, string>
     {
-        public IExecutionStrategy ExecutionStrategy { get; set; } = new SequentialExecutionStrategy();
 
         public ValueTask<string> TransformAsync(
             int item,

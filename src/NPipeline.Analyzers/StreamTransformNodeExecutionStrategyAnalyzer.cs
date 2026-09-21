@@ -7,8 +7,8 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace NPipeline.Analyzers;
 
 /// <summary>
-///     Analyzer that verifies that classes implementing IStreamTransformNode also use an execution strategy
-///     that implements IStreamExecutionStrategy. It warns if there's a mismatch between the node type and strategy type.
+///     Analyzer that verifies that a class implementing IStreamTransformNode and supplying a default execution
+///     strategy through IExecutionStrategyProvider supplies one that implements IStreamExecutionStrategy.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class StreamTransformNodeExecutionStrategyAnalyzer : DiagnosticAnalyzer
@@ -21,7 +21,7 @@ public sealed class StreamTransformNodeExecutionStrategyAnalyzer : DiagnosticAna
     private static readonly DiagnosticDescriptor Rule = new(
         StreamTransformNodeExecutionStrategyId,
         "IStreamTransformNode should use IStreamExecutionStrategy",
-        "IStreamTransformNode '{0}' uses an execution strategy that doesn't implement IStreamExecutionStrategy. Consider using a strategy that implements both IExecutionStrategy and IStreamExecutionStrategy for optimal performance.",
+        "IStreamTransformNode '{0}' supplies a default execution strategy that doesn't implement IStreamExecutionStrategy. A stream transform cannot run under a per-item strategy.",
         "Design & Architecture",
         DiagnosticSeverity.Warning,
         true,
@@ -59,53 +59,40 @@ public sealed class StreamTransformNodeExecutionStrategyAnalyzer : DiagnosticAna
 
         var compilation = semanticModel.Compilation;
         var streamStrategyInterface = compilation.GetTypeByMetadataName("NPipeline.Execution.IStreamExecutionStrategy");
-        var executionStrategyInterface = compilation.GetTypeByMetadataName("NPipeline.Execution.IExecutionStrategy");
 
-        if (streamStrategyInterface == null || executionStrategyInterface == null)
+        if (streamStrategyInterface == null)
             return;
 
         CheckExecutionStrategyUsage(
             classDeclaration,
             classSymbol,
             context,
-            streamStrategyInterface,
-            executionStrategyInterface);
+            streamStrategyInterface);
     }
 
     private static void CheckExecutionStrategyUsage(
         ClassDeclarationSyntax classDeclaration,
         INamedTypeSymbol classSymbol,
         SyntaxNodeAnalysisContext context,
-        INamedTypeSymbol streamStrategyInterface,
-        INamedTypeSymbol executionStrategyInterface)
+        INamedTypeSymbol streamStrategyInterface)
     {
         var semanticModel = context.SemanticModel;
 
         foreach (var propertyDeclaration in classDeclaration.Members.OfType<PropertyDeclarationSyntax>())
         {
-            if (propertyDeclaration.Identifier.Text != "ExecutionStrategy")
+            if (propertyDeclaration.Identifier.Text != "DefaultExecutionStrategy")
                 continue;
 
-            var initializer = propertyDeclaration.Initializer?.Value;
+            // The strategy is supplied either as a property initializer or as an expression body.
+            var supplied = propertyDeclaration.Initializer?.Value ?? propertyDeclaration.ExpressionBody?.Expression;
 
-            if (initializer == null)
+            if (supplied == null)
                 continue;
 
-            var assignedType = semanticModel.GetTypeInfo(initializer).Type;
+            var suppliedType = semanticModel.GetTypeInfo(supplied).Type;
 
-            if (!ImplementsIStreamExecutionStrategy(assignedType, streamStrategyInterface))
-                ReportDiagnostic(classSymbol.Name, initializer.GetLocation(), context);
-        }
-
-        foreach (var assignment in classDeclaration.DescendantNodes().OfType<AssignmentExpressionSyntax>())
-        {
-            if (!IsExecutionStrategyAssignment(assignment.Left, semanticModel, executionStrategyInterface))
-                continue;
-
-            var assignedType = semanticModel.GetTypeInfo(assignment.Right).Type;
-
-            if (!ImplementsIStreamExecutionStrategy(assignedType, streamStrategyInterface))
-                ReportDiagnostic(classSymbol.Name, assignment.Right.GetLocation(), context);
+            if (!ImplementsIStreamExecutionStrategy(suppliedType, streamStrategyInterface))
+                ReportDiagnostic(classSymbol.Name, supplied.GetLocation(), context);
         }
     }
 
@@ -131,27 +118,6 @@ public sealed class StreamTransformNodeExecutionStrategyAnalyzer : DiagnosticAna
             return namedType.AllInterfaces.Any(i => SymbolEqualityComparer.Default.Equals(i, streamStrategyInterface));
 
         return false;
-    }
-
-    private static bool IsExecutionStrategyAssignment(
-        ExpressionSyntax left,
-        SemanticModel semanticModel,
-        INamedTypeSymbol executionStrategyInterface)
-    {
-        var symbol = semanticModel.GetSymbolInfo(left).Symbol;
-
-        if (symbol is not IPropertySymbol property)
-            return false;
-
-        if (property.Name != "ExecutionStrategy")
-            return false;
-
-        var propertyType = property.Type;
-
-        if (SymbolEqualityComparer.Default.Equals(propertyType, executionStrategyInterface))
-            return true;
-
-        return propertyType.AllInterfaces.Any(i => SymbolEqualityComparer.Default.Equals(i, executionStrategyInterface));
     }
 
     /// <summary>

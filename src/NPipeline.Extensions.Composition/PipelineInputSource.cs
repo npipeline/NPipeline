@@ -47,14 +47,6 @@ public sealed class PipelineInputSource<T> : ISourceNode<T>
             $"Input item type mismatch. Expected {typeof(T)}, got {item.GetType()}.");
     }
 
-    /// <inheritdoc />
-    public ValueTask DisposeAsync()
-    {
-        // No resources to dispose
-        GC.SuppressFinalize(this);
-        return ValueTask.CompletedTask;
-    }
-
     private static bool IsNullableType()
     {
         var type = typeof(T);

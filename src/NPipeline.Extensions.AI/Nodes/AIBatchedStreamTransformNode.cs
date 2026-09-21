@@ -12,7 +12,7 @@ namespace NPipeline.Extensions.AI.Nodes;
 /// <summary>A stream-level transform that internally buffers items into batches, sends each batch to an LLM, and fans out results as individual items.</summary>
 /// <typeparam name="TIn">The input item type.</typeparam>
 /// <typeparam name="TOut">The output item type.</typeparam>
-public sealed class AIBatchedStreamTransformNode<TIn, TOut> : IStreamTransformNode<TIn, TOut>
+public sealed class AIBatchedStreamTransformNode<TIn, TOut> : IStreamTransformNode<TIn, TOut>, IExecutionStrategyProvider
 {
     private readonly IChatClient _chatClient;
 
@@ -30,7 +30,7 @@ public sealed class AIBatchedStreamTransformNode<TIn, TOut> : IStreamTransformNo
     ///     Gets or sets the execution strategy.
     ///     Defaults to a stream-aware passthrough strategy so this node preserves its native stream batching behavior.
     /// </summary>
-    public IExecutionStrategy ExecutionStrategy { get; set; } = AIStreamPassthroughExecutionStrategy.Instance;
+    public IExecutionStrategy DefaultExecutionStrategy => AIStreamPassthroughExecutionStrategy.Instance;
 
     /// <inheritdoc />
     public async IAsyncEnumerable<TOut> TransformAsync(
@@ -51,13 +51,6 @@ public sealed class AIBatchedStreamTransformNode<TIn, TOut> : IStreamTransformNo
                 yield return result;
             }
         }
-    }
-
-    /// <inheritdoc />
-    public ValueTask DisposeAsync()
-    {
-        GC.SuppressFinalize(this);
-        return ValueTask.CompletedTask;
     }
 
     private async Task<IReadOnlyCollection<TOut>> ProcessBatchAsync(

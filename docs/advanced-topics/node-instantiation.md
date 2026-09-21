@@ -93,21 +93,27 @@ Key properties for instantiation:
 
 ## Execution Strategy Assignment
 
-Every transform node has an `IExecutionStrategy`. The default is `SequentialExecutionStrategy`. Strategies are assigned in two ways:
+How a node runs is a property of the graph, not of the node. The strategy is defined in the `NodeDefinition` and is configured in two ways:
 
-1. **Builder methods:** `handle.WithResilience(builder)` wraps the current strategy in `ResilientExecutionStrategy`.
-2. **Extension methods:** The parallelism extension adds `.WithParallelExecution()` which replaces the strategy.
+1. **Builder methods:** `handle.WithExecutionStrategy(builder, strategy)` sets it; `handle.WithResilience(builder)` wraps the current strategy in `ResilientExecutionStrategy`.
+2. **Extension methods:** The parallelism extension adds `.WithParallelExecution()`, which replaces the strategy.
 
-The strategy is stored on the `NodeDefinition` and set on the `ITransformNode.ExecutionStrategy` property after instantiation.
+A node type that only makes sense under a particular strategy — the batching and unbatching nodes, for example — declares that default by implementing `IExecutionStrategyProvider`, whose `DefaultExecutionStrategy` is read-only. The framework does not modify node instances, making them safe to share.
+
+The strategy for a node is resolved per run, in this order:
+
+1. `NodeDefinition.ExecutionStrategy`, if the graph configured one.
+2. `IExecutionStrategyProvider.DefaultExecutionStrategy`, if the node supplies one.
+3. `SequentialExecutionStrategy`.
 
 ## Node Lifecycle
 
 1. **Instantiation** - `INodeFactory.Create(definition)` during orchestration setup.
-2. **Strategy assignment** - `node.ExecutionStrategy = definition.ExecutionStrategy` for transform nodes.
+2. **Strategy resolution** - the strategy is resolved from the definition and the node's own default, and passed to the execution plan. The node instance is not modified.
 3. **Execution** - `OpenStream()`, `TransformAsync()`, or `ConsumeAsync()` called by the executor.
-4. **Disposal** - `IAsyncDisposable.DisposeAsync()` called during cleanup.
+4. **Disposal** - nodes that implement `IAsyncDisposable` (or `IDisposable`) are disposed during cleanup; the rest are left alone.
 
-All nodes implement `INode : IAsyncDisposable`. The base classes (`SourceNode<T>`, `TransformNode<TIn, TOut>`, `SinkNode<T>`) provide default no-op disposal. Override `DisposeAsync()` if your node holds resources (database connections, file handles, etc.).
+`INode` carries no lifecycle: it is a marker interface. A node that owns resources (database connections, file handles, etc.) implements `IAsyncDisposable` itself. There is no base implementation to call.
 
 ## Next Steps
 

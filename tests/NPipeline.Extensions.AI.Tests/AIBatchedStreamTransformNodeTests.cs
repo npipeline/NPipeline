@@ -10,11 +10,11 @@ namespace NPipeline.Extensions.AI.Tests;
 public class AIBatchedStreamTransformNodeTests
 {
     [Fact]
-    public void ExecutionStrategy_Default_IsStreamCapable()
+    public void DefaultExecutionStrategy_IsStreamCapable()
     {
         var node = new AIBatchedStreamTransformNode<TestDomain.Comment, TestDomain.ClassificationResult>(FakeChatClient.ThatReturns("[]"));
 
-        _ = Assert.IsType<IStreamExecutionStrategy>(node.ExecutionStrategy, false);
+        _ = Assert.IsType<IStreamExecutionStrategy>(node.DefaultExecutionStrategy, false);
     }
 
     [Fact]

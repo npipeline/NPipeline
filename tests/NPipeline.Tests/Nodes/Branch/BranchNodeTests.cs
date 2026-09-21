@@ -685,28 +685,14 @@ public sealed class BranchNodeTests
     #region Disposal Tests
 
     [Fact]
-    public async Task BranchNode_DisposeAsync_CompletesSuccessfully()
+    public void BranchNode_HoldsNoResources_AndIsNotDisposable()
     {
-        // Arrange
         BranchNode<int> node = new();
         node.AddOutput(async x => await Task.Yield());
 
-        // Act & Assert
-        await node.DisposeAsync();
-    }
-
-    [Fact]
-    public async Task BranchNode_DisposeAsync_MultipleTimes_IsIdempotent()
-    {
-        // Arrange
-        BranchNode<int> node = new();
-
-        // Act & Assert
-        await node.DisposeAsync();
-        await node.DisposeAsync();
-        await node.DisposeAsync();
-
-        Assert.True(true);
+        // A node opts into disposal only when it owns something; this one does not.
+        node.Should().NotBeAssignableTo<IAsyncDisposable>();
+        node.Should().NotBeAssignableTo<IDisposable>();
     }
 
     #endregion

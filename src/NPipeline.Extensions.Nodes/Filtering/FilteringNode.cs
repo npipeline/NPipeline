@@ -1,4 +1,3 @@
-using NPipeline.Execution;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 
@@ -28,12 +27,13 @@ public sealed class FilteringNode<T> : TransformNode<T, T>
     private readonly List<Rule> _rules = [];
 
     /// <summary>
-    ///     Initializes a new instance with optional execution strategy.
+    ///     Initializes a new instance with no predicates.
     /// </summary>
-    public FilteringNode(IExecutionStrategy? executionStrategy = null)
+    /// <remarks>
+    ///     How the node runs is configured on the graph with <c>WithExecutionStrategy</c>, not on the node.
+    /// </remarks>
+    public FilteringNode()
     {
-        if (executionStrategy != null)
-            ExecutionStrategy = executionStrategy;
     }
 
     /// <summary>
@@ -41,12 +41,7 @@ public sealed class FilteringNode<T> : TransformNode<T, T>
     /// </summary>
     /// <param name="predicate">The filtering predicate (return true to pass, false to filter out).</param>
     /// <param name="reason">Optional factory to generate a descriptive message per item on rejection.</param>
-    /// <param name="executionStrategy">Optional execution strategy.</param>
-    public FilteringNode(
-        Func<T, bool> predicate,
-        Func<T, string>? reason = null,
-        IExecutionStrategy? executionStrategy = null)
-        : this(executionStrategy)
+    public FilteringNode(Func<T, bool> predicate, Func<T, string>? reason = null)
     {
         Where(predicate, reason);
     }

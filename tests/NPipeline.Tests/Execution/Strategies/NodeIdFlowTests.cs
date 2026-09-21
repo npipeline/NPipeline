@@ -21,7 +21,7 @@ public sealed class NodeIdFlowTests
     public async Task Strategy_ReceivesItsOwnNodeId_NotWhateverTheSharedFieldHolds()
     {
         var recorder = new RecordingStrategy();
-        var node = new PassthroughNode { ExecutionStrategy = recorder };
+        var node = new PassthroughNode();
         await using var context = new PipelineContext(PipelineContextConfiguration.Default);
 
         // Whatever is in the shared field must not reach the strategy.

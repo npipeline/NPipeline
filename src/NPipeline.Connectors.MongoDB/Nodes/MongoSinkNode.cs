@@ -133,7 +133,7 @@ public class MongoSinkNode<T> : SinkNode<T>, IAsyncDisposable
     /// <summary>
     ///     Disposes resources used by the sink node.
     /// </summary>
-    public override async ValueTask DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         if (_ownedClient != null)
         {
@@ -141,7 +141,6 @@ public class MongoSinkNode<T> : SinkNode<T>, IAsyncDisposable
             _ownedClient = null;
         }
 
-        await base.DisposeAsync();
         GC.SuppressFinalize(this);
     }
 

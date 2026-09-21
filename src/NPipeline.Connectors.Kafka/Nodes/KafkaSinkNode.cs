@@ -22,7 +22,7 @@ namespace NPipeline.Connectors.Kafka.Nodes;
 ///     idempotence, and transactions.
 /// </summary>
 /// <typeparam name="T">The type of messages to produce.</typeparam>
-public sealed class KafkaSinkNode<T> : SinkNode<T>
+public sealed class KafkaSinkNode<T> : SinkNode<T>, IAsyncDisposable
 {
     // LoggerMessage delegates for performance
     private static readonly Action<ILogger, Exception?> LogTransactionFailed =
@@ -618,7 +618,7 @@ public sealed class KafkaSinkNode<T> : SinkNode<T>
     }
 
     /// <inheritdoc />
-    public override async ValueTask DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         try
         {
@@ -634,8 +634,6 @@ public sealed class KafkaSinkNode<T> : SinkNode<T>
 
         _batcher.Dispose();
         _batchFlushSemaphore.Dispose();
-
-        await base.DisposeAsync().ConfigureAwait(false);
     }
 
     private int GetPartitionCount()

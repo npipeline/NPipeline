@@ -21,11 +21,11 @@ public sealed class NodeInstantiationService : INodeInstantiationService
     private static readonly MethodInfo UpcastTaskGenericMethod = typeof(NodeInstantiationService)
         .GetMethod(nameof(UpcastTask), BindingFlags.NonPublic | BindingFlags.Static)!;
 
-    private static readonly MethodInfo ResolveExecutionStrategyMethod = typeof(NodeInstantiationService)
-        .GetMethod(nameof(ResolveExecutionStrategy), BindingFlags.NonPublic | BindingFlags.Static)!;
+    private static readonly MethodInfo CoerceExecutionStrategyMethod = typeof(NodeInstantiationService)
+        .GetMethod(nameof(CoerceExecutionStrategy), BindingFlags.NonPublic | BindingFlags.Static)!;
 
-    private static readonly MethodInfo ResolveStreamExecutionStrategyMethod = typeof(NodeInstantiationService)
-        .GetMethod(nameof(ResolveStreamExecutionStrategy), BindingFlags.NonPublic | BindingFlags.Static)!;
+    private static readonly MethodInfo CoerceStreamExecutionStrategyMethod = typeof(NodeInstantiationService)
+        .GetMethod(nameof(CoerceStreamExecutionStrategy), BindingFlags.NonPublic | BindingFlags.Static)!;
 
     /// <inheritdoc />
     public Dictionary<string, INode> InstantiateNodes(PipelineGraph graph, INodeFactory nodeFactory)
@@ -141,7 +141,7 @@ public sealed class NodeInstantiationService : INodeInstantiationService
         return plans;
     }
 
-    private static Func<INode, IDataStream, PipelineContext, CancellationToken, Task<IDataStream>> BuildTransformDelegate(NodeDefinition def)
+    private static Func<INode, IExecutionStrategy, IDataStream, PipelineContext, CancellationToken, Task<IDataStream>> BuildTransformDelegate(NodeDefinition def)
     {
         var inType = def.InputType ?? throw new InvalidOperationException($"Missing InputType for transform node '{def.Id}'.");
         var outType = def.OutputType ?? throw new InvalidOperationException($"Missing OutputType for transform node '{def.Id}'.");
@@ -152,11 +152,11 @@ public sealed class NodeInstantiationService : INodeInstantiationService
             outType,
             typeof(IExecutionStrategy),
             nameof(IExecutionStrategy.ExecuteAsync),
-            ResolveExecutionStrategyMethod,
+            CoerceExecutionStrategyMethod,
             typeof(ITransformNode<,>));
     }
 
-    private static Func<INode, IDataStream, PipelineContext, CancellationToken, Task<IDataStream>> BuildStreamTransformDelegate(
+    private static Func<INode, IExecutionStrategy, IDataStream, PipelineContext, CancellationToken, Task<IDataStream>> BuildStreamTransformDelegate(
         NodeDefinition def,
         IStreamTransformNode streamTransformNode)
     {
@@ -164,8 +164,8 @@ public sealed class NodeInstantiationService : INodeInstantiationService
         var outType = def.OutputType ?? throw new InvalidOperationException($"Missing OutputType for stream transform node '{def.Id}'.");
 
         // Validate eagerly so a misconfigured strategy is reported at build time with the node type in hand,
-        // rather than on first enumeration. The strategy is still resolved per-run from the executing instance.
-        _ = ResolveStreamExecutionStrategy(streamTransformNode, def.Id);
+        // rather than on first enumeration. The strategy is still resolved per-run from the current definition.
+        _ = NodeExecutionStrategyResolver.ResolveStream(def, streamTransformNode);
 
         return BuildStrategyDelegate(
             def.Id,
@@ -173,24 +173,24 @@ public sealed class NodeInstantiationService : INodeInstantiationService
             outType,
             typeof(IStreamExecutionStrategy),
             nameof(IStreamExecutionStrategy.ExecuteAsync),
-            ResolveStreamExecutionStrategyMethod,
+            CoerceStreamExecutionStrategyMethod,
             typeof(IStreamTransformNode<,>));
     }
 
     /// <summary>
-    ///     Compiles a delegate that resolves the execution strategy from the supplied node instance and invokes it.
+    ///     Compiles a delegate that invokes the supplied execution strategy against the supplied node instance.
     /// </summary>
     /// <remarks>
-    ///     Neither the node nor its strategy is captured: both are reached through the <c>node</c> parameter on each
-    ///     call, which is what makes the compiled delegate safe to cache across runs.
+    ///     Neither the node nor its strategy is captured: both arrive as parameters on each call, which is what makes
+    ///     the compiled delegate safe to cache across runs.
     /// </remarks>
-    private static Func<INode, IDataStream, PipelineContext, CancellationToken, Task<IDataStream>> BuildStrategyDelegate(
+    private static Func<INode, IExecutionStrategy, IDataStream, PipelineContext, CancellationToken, Task<IDataStream>> BuildStrategyDelegate(
         string nodeId,
         Type inType,
         Type outType,
         Type strategyInterface,
         string executeMethodName,
-        MethodInfo strategyResolver,
+        MethodInfo strategyCoercion,
         Type nodeInterfaceDefinition)
     {
         var execMethod = strategyInterface.GetMethod(executeMethodName) ??
@@ -199,6 +199,7 @@ public sealed class NodeInstantiationService : INodeInstantiationService
         var closedExec = execMethod.MakeGenericMethod(inType, outType);
 
         var nodeParam = Expression.Parameter(typeof(INode), "node");
+        var strategyParam = Expression.Parameter(typeof(IExecutionStrategy), "strategy");
         var pipeParam = Expression.Parameter(typeof(IDataStream), "pipe");
         var ctxParam = Expression.Parameter(typeof(PipelineContext), "ctx");
         var ctParam = Expression.Parameter(typeof(CancellationToken), "ct");
@@ -207,45 +208,48 @@ public sealed class NodeInstantiationService : INodeInstantiationService
         var castInput = Expression.Convert(pipeParam, typedInputInterface);
         var typedNodeInterface = nodeInterfaceDefinition.MakeGenericType(inType, outType);
         var castNode = Expression.Convert(nodeParam, typedNodeInterface);
-        var strategyExpr = Expression.Call(strategyResolver, nodeParam, Expression.Constant(nodeId));
+        var strategyExpr = Expression.Call(strategyCoercion, strategyParam, nodeParam, Expression.Constant(nodeId));
 
         var call = Expression.Call(strategyExpr, closedExec, castInput, castNode, ctxParam, Expression.Constant(nodeId), ctParam);
         var upcastCall = Expression.Call(UpcastTaskGenericMethod.MakeGenericMethod(outType), call);
 
-        return Expression.Lambda<Func<INode, IDataStream, PipelineContext, CancellationToken, Task<IDataStream>>>(
+        return Expression.Lambda<Func<INode, IExecutionStrategy, IDataStream, PipelineContext, CancellationToken, Task<IDataStream>>>(
             upcastCall,
             nodeParam,
+            strategyParam,
             pipeParam,
             ctxParam,
             ctParam).Compile();
     }
 
-    private static IExecutionStrategy ResolveExecutionStrategy(INode node, string nodeId)
+    private static IExecutionStrategy CoerceExecutionStrategy(IExecutionStrategy strategy, INode node, string nodeId)
     {
-        if (node is ITransformNode transformNode)
-            return transformNode.ExecutionStrategy;
+        if (node is ITransformNode)
+            return strategy;
 
-        throw new InvalidOperationException(
-            $"Node '{nodeId}' of type '{node.GetType().FullName}' does not implement {nameof(ITransformNode)} and cannot supply an execution strategy.");
+        throw new InvalidOperationException(ErrorMessages.NodeCannotSupplyExecutionStrategy(
+            nodeId,
+            node.GetType().FullName ?? node.GetType().Name,
+            nameof(ITransformNode)));
     }
 
-    private static IStreamExecutionStrategy ResolveStreamExecutionStrategy(INode node, string nodeId)
+    private static IStreamExecutionStrategy CoerceStreamExecutionStrategy(IExecutionStrategy strategy, INode node, string nodeId)
     {
-        var strategy = node switch
+        if (node is not (IStreamTransformNode or ITransformNode))
         {
-            IStreamTransformNode streamTransformNode => streamTransformNode.ExecutionStrategy,
-            ITransformNode transformNode => transformNode.ExecutionStrategy,
-            _ => throw new InvalidOperationException(
-                $"Node '{nodeId}' of type '{node.GetType().FullName}' does not implement {nameof(IStreamTransformNode)} and cannot supply an execution strategy."),
-        };
+            throw new InvalidOperationException(ErrorMessages.NodeCannotSupplyExecutionStrategy(
+                nodeId,
+                node.GetType().FullName ?? node.GetType().Name,
+                nameof(IStreamTransformNode)));
+        }
 
         if (strategy is IStreamExecutionStrategy streamStrategy)
             return streamStrategy;
 
-        throw new InvalidOperationException(
-            $"Stream transform node '{nodeId}' is configured with execution strategy '{strategy?.GetType().FullName ?? "<null>"}', " +
-            $"which does not implement {nameof(IStreamExecutionStrategy)}. " +
-            $"Configure a stream-capable strategy for node type '{node.GetType().FullName}'.");
+        throw new InvalidOperationException(ErrorMessages.StreamTransformNodeRequiresStreamStrategy(
+            nodeId,
+            node.GetType().FullName ?? node.GetType().Name,
+            strategy.GetType().FullName ?? strategy.GetType().Name));
     }
 
     // Helper used by expression tree to upcast Task<IDataStream<T>> to Task<IDataStream>

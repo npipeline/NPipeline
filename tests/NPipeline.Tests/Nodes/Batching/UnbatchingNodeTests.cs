@@ -78,12 +78,12 @@ public sealed class UnbatchingNodeTests
     }
 
     [Fact]
-    public async Task UnbatchingNode_Disposal_Works()
+    public void UnbatchingNode_HoldsNoResources_AndIsNotDisposable()
     {
-        // Arrange
         UnbatchingNode<int> node = new();
 
-        // Act & Assert - disposal should not throw
-        _ = await node.Invoking(n => n.DisposeAsync().AsTask()).Should().NotThrowAsync();
+        // A node opts into disposal only when it owns something; this one does not.
+        node.Should().NotBeAssignableTo<IAsyncDisposable>();
+        node.Should().NotBeAssignableTo<IDisposable>();
     }
 }
