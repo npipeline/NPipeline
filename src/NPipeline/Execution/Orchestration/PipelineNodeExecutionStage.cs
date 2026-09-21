@@ -18,6 +18,23 @@ internal sealed class PipelineNodeExecutionStage(
     IPersistenceService persistenceService,
     IObservabilitySurface observabilitySurface)
 {
+    /// <summary>
+    ///     Executes every node in the graph.
+    /// </summary>
+    /// <remarks>
+    ///     <para>
+    ///         Only terminal nodes actually pull data: sources, transforms, joins and aggregates all return a lazy stream
+    ///         handle and do no work until something enumerates them. Walking the whole graph sequentially is therefore
+    ///         correct for a linear pipeline, where the single terminal node drains everything.
+    ///     </para>
+    ///     <para>
+    ///         It is not correct once the graph fans out. A fan-out node feeds its subscribers through one multicast pump
+    ///         that advances only when every subscriber accepts the current item, so draining the terminals one after
+    ///         another stalls it: with a bounded per-subscriber buffer the pump blocks forever once the first buffer fills
+    ///         (a deadlock), and with an unbounded buffer it races ahead and holds the whole stream in memory. Terminal
+    ///         nodes below a fan-out are therefore drained concurrently, which restores real backpressure.
+    ///     </para>
+    /// </remarks>
     public async Task ExecuteAsync(
         PipelineExecutionSetupResult setup,
         PipelineContext context,
@@ -28,35 +45,183 @@ internal sealed class PipelineNodeExecutionStage(
 
         var inputLookup = topologyService.BuildInputLookup(setup.Graph);
         var sortedNodes = topologyService.TopologicalSort(setup.Graph);
+        var deferTerminals = HasFanOut(setup.Graph);
+
+        List<NodeDefinition>? terminals = null;
 
         foreach (var nodeDef in sortedNodes.Select(id => setup.NodeDefinitionMap[id]))
         {
+            if (deferTerminals && IsTerminal(setup.Graph, nodeDef))
+            {
+                (terminals ??= []).Add(nodeDef);
+                continue;
+            }
+
             context.CancellationToken.ThrowIfCancellationRequested();
-            using var nodeScopeHandle = context.ScopedNode(nodeDef.Id);
+            await ExecuteNodeAsync(nodeDef, setup, context, inputLookup, nodeOutputs, null).ConfigureAwait(false);
+        }
 
-            ApplyPerNodeExecutionAnnotation(setup.Graph, context, nodeDef.Id);
+        if (terminals is not null)
+            await DrainTerminalsAsync(terminals, setup, context, inputLookup, nodeOutputs).ConfigureAwait(false);
+    }
 
-            var nodeInstance = setup.NodeInstances[nodeDef.Id];
-            var nodeScope = observabilitySurface.BeginNode(context, setup.Graph, nodeDef, nodeInstance);
+    /// <summary>
+    ///     Drains the deferred terminal nodes together so no subscriber of a shared multicast pump is left unread.
+    /// </summary>
+    private async Task DrainTerminalsAsync(
+        List<NodeDefinition> terminals,
+        PipelineExecutionSetupResult setup,
+        PipelineContext context,
+        ILookup<string, Edge> inputLookup,
+        IDictionary<string, IDataStream?> nodeOutputs)
+    {
+        if (terminals.Count == 1)
+        {
+            context.CancellationToken.ThrowIfCancellationRequested();
+            await ExecuteNodeAsync(terminals[0], setup, context, inputLookup, nodeOutputs, null).ConfigureAwait(false);
+            return;
+        }
 
-            try
-            {
-                await ExecuteNodeWithRetriesAsync(
-                    nodeDef,
-                    nodeInstance,
-                    setup,
-                    context,
-                    nodeScope,
-                    inputLookup,
-                    nodeOutputs).ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                context.Properties[$"NodeError_{nodeDef.Id}"] = true;
-                var failedEvent = observabilitySurface.CompleteNodeFailure(context, nodeScope, ex);
-                persistenceService.TryPersistAfterNode(context, failedEvent);
-                HandleNodeExecutionException(nodeDef, context, ex);
-            }
+        // Terminal nodes run on separate threads from here, so the shared per-run state they touch needs guarding.
+        var gate = new object();
+        var synchronizedOutputs = new SynchronizedNodeOutputs(nodeOutputs, gate);
+        var tasks = new List<Task>(terminals.Count);
+
+        foreach (var nodeDef in terminals)
+        {
+            tasks.Add(Task.Run(
+                () => ExecuteNodeAsync(nodeDef, setup, context, inputLookup, synchronizedOutputs, gate),
+                context.CancellationToken));
+        }
+
+        // Surface the first failure without waiting on the siblings. A terminal that throws before it starts
+        // reading never drains its branch, so the multicast pump blocks on that branch and its siblings stop
+        // making progress. Cleanup disposes the streams, which cancels the pump and releases them.
+        var pending = new List<Task>(tasks);
+
+        while (pending.Count > 0)
+        {
+            var finished = await Task.WhenAny(pending).ConfigureAwait(false);
+            _ = pending.Remove(finished);
+
+            if (finished.IsCompletedSuccessfully)
+                continue;
+
+            // Cleanup is about to iterate and dispose the node outputs; stragglers must stop touching them.
+            synchronizedOutputs.DetachFromInner();
+            ObserveInBackground(pending);
+            await finished.ConfigureAwait(false); // rethrows with the original stack
+        }
+    }
+
+    /// <summary>
+    ///     Keeps abandoned terminal tasks from surfacing as unobserved exceptions once the run is already failing.
+    /// </summary>
+    private static void ObserveInBackground(List<Task> pending)
+    {
+        foreach (var task in pending)
+        {
+            _ = task.ContinueWith(
+                static t => _ = t.Exception,
+                CancellationToken.None,
+                TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default);
+        }
+    }
+
+    private async Task ExecuteNodeAsync(
+        NodeDefinition nodeDef,
+        PipelineExecutionSetupResult setup,
+        PipelineContext context,
+        ILookup<string, Edge> inputLookup,
+        IDictionary<string, IDataStream?> nodeOutputs,
+        object? gate)
+    {
+        context.CancellationToken.ThrowIfCancellationRequested();
+
+        // CurrentNodeId is a single field on the shared context, so it is only meaningful while nodes run one at a
+        // time. Concurrent terminals address themselves by node id explicitly instead.
+        using var nodeScopeHandle = gate is null
+            ? context.ScopedNode(nodeDef.Id)
+            : default;
+
+        ApplyPerNodeExecutionAnnotation(setup.Graph, context, nodeDef.Id);
+
+        var nodeInstance = setup.NodeInstances[nodeDef.Id];
+        var nodeScope = observabilitySurface.BeginNode(context, setup.Graph, nodeDef, nodeInstance);
+
+        try
+        {
+            await ExecuteNodeWithRetriesAsync(
+                nodeDef,
+                nodeInstance,
+                setup,
+                context,
+                nodeScope,
+                inputLookup,
+                nodeOutputs,
+                gate).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            SetNodeFlag(context, gate, $"NodeError_{nodeDef.Id}");
+            var failedEvent = observabilitySurface.CompleteNodeFailure(context, nodeScope, ex);
+            persistenceService.TryPersistAfterNode(context, failedEvent);
+            HandleNodeExecutionException(nodeDef, context, ex);
+        }
+    }
+
+    /// <summary>
+    ///     A node is terminal when nothing downstream consumes it, which makes it safe to defer and drain alongside
+    ///     its siblings.
+    /// </summary>
+    private static bool IsTerminal(PipelineGraph graph, NodeDefinition nodeDef)
+    {
+        if (nodeDef.Kind is not (NodeKind.Sink or NodeKind.CompositeOutput))
+            return false;
+
+        foreach (var edge in graph.Edges)
+        {
+            if (string.Equals(edge.SourceNodeId, nodeDef.Id, StringComparison.Ordinal))
+                return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    ///     Reports whether any node feeds more than one downstream node, which is what puts a multicast pump in play.
+    /// </summary>
+    private static bool HasFanOut(PipelineGraph graph)
+    {
+        if (graph.Edges.Length < 2)
+            return false;
+
+        HashSet<string>? seen = null;
+
+        foreach (var edge in graph.Edges)
+        {
+            seen ??= new HashSet<string>(StringComparer.Ordinal);
+
+            if (!seen.Add(edge.SourceNodeId))
+                return true;
+        }
+
+        return false;
+    }
+
+    private static void SetNodeFlag(PipelineContext context, object? gate, string key)
+    {
+        // Properties is a plain dictionary under the HighThroughput profile, so concurrent terminals must serialize.
+        if (gate is null)
+        {
+            context.Properties[key] = true;
+            return;
+        }
+
+        lock (gate)
+        {
+            context.Properties[key] = true;
         }
     }
 
@@ -81,7 +246,8 @@ internal sealed class PipelineNodeExecutionStage(
         PipelineContext context,
         NodeObservationScope nodeScope,
         ILookup<string, Edge> inputLookup,
-        IDictionary<string, IDataStream?> nodeOutputs)
+        IDictionary<string, IDataStream?> nodeOutputs,
+        object? gate)
     {
         await errorHandlingService.ExecuteWithRetriesAsync(
             nodeDef,
@@ -102,7 +268,7 @@ internal sealed class PipelineNodeExecutionStage(
                     setup.NodeDefinitionMap).ConfigureAwait(false);
 
                 var completedEvent = observabilitySurface.CompleteNodeSuccess(context, nodeScope);
-                context.Properties[$"NodeCompleted_{nodeDef.Id}"] = true;
+                SetNodeFlag(context, gate, $"NodeCompleted_{nodeDef.Id}");
                 persistenceService.TryPersistAfterNode(context, completedEvent);
             },
             context.CancellationToken).ConfigureAwait(false);

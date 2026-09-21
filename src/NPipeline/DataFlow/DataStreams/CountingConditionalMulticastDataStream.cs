@@ -17,6 +17,7 @@ internal sealed class CountingConditionalMulticastDataStream<T> : IForwardOnlyDa
     private readonly CancellationTokenSource _cts = new();
     private readonly Dictionary<Edge, int> _edgeToChannel;
     private readonly Dictionary<string, int[]> _namedOutputChannels;
+    private readonly int[] _abandonedChannels;
     private readonly RouteOptions<T> _options;
     private readonly int[] _pendingPerChannel;
     private readonly Task _pumpTask;
@@ -46,6 +47,7 @@ internal sealed class CountingConditionalMulticastDataStream<T> : IForwardOnlyDa
         _channels = new Channel<T>[subscriberEdges.Count];
         _channelTaken = new int[subscriberEdges.Count];
         _pendingPerChannel = new int[subscriberEdges.Count];
+        _abandonedChannels = new int[subscriberEdges.Count];
         _edgeToChannel = new Dictionary<Edge, int>(subscriberEdges.Count);
 
         var namedOutputChannels = new Dictionary<string, List<int>>(StringComparer.Ordinal);
@@ -204,7 +206,17 @@ internal sealed class CountingConditionalMulticastDataStream<T> : IForwardOnlyDa
 
                 void QueueWrite(int channelIndex)
                 {
-                    writes[writeCount++] = _channels[channelIndex].Writer.WriteAsync(item, _cts.Token).AsTask();
+                    // A subscriber that stopped early would otherwise fill its buffer and block the pump,
+                    // stalling every sibling. Its channel is drained and discarded by AbandonChannel.
+                    if (Volatile.Read(ref _abandonedChannels[channelIndex]) != 0)
+                        return;
+
+                    var writer = _channels[channelIndex].Writer;
+
+                    // TryWrite succeeds whenever the buffer has room, which keeps the common path allocation-free.
+                    if (!writer.TryWrite(item))
+                        writes[writeCount++] = writer.WriteAsync(item, _cts.Token).AsTask();
+
                     var pending = Interlocked.Increment(ref _pendingPerChannel[channelIndex]);
                     aggregatePending += pending;
                     Metrics.ObservePerSubscriberPending(channelIndex, pending);
@@ -305,19 +317,63 @@ internal sealed class CountingConditionalMulticastDataStream<T> : IForwardOnlyDa
 
     private async IAsyncEnumerator<T> ReadChannel(Channel<T> channel, int channelIndex, CancellationToken ct)
     {
-        await foreach (var item in channel.Reader.ReadAllAsync(ct))
+        var drainedToCompletion = false;
+
+        try
         {
-            yield return item;
+            await foreach (var item in channel.Reader.ReadAllAsync(ct).ConfigureAwait(false))
+            {
+                yield return item;
 
-            var remaining = Interlocked.Decrement(ref _pendingPerChannel[channelIndex]);
+                var remaining = Interlocked.Decrement(ref _pendingPerChannel[channelIndex]);
 
-            if (remaining < 0)
-                remaining = 0;
+                if (remaining < 0)
+                    remaining = 0;
 
-            Metrics.ObservePerSubscriberPending(channelIndex, remaining);
+                Metrics.ObservePerSubscriberPending(channelIndex, remaining);
+            }
+
+            drainedToCompletion = true;
+            Metrics.MarkSubscriberCompleted();
         }
+        finally
+        {
+            // Reached on break, on an exception in the consumer, and on cancellation - any case where this
+            // subscriber stops before the stream ends.
+            if (!drainedToCompletion)
+                AbandonChannel(channelIndex);
+        }
+    }
 
-        Metrics.MarkSubscriberCompleted();
+    /// <summary>
+    ///     Marks a subscriber as no longer reading and discards whatever it leaves behind.
+    /// </summary>
+    /// <remarks>
+    ///     The pump feeds every matching subscriber in lockstep, so a reader that stops early would fill its buffer and
+    ///     block the pump forever, stalling subscribers that are still consuming. Discarding the abandoned channel
+    ///     keeps the rest of the fan-out running.
+    /// </remarks>
+    private void AbandonChannel(int channelIndex)
+    {
+        if (Interlocked.Exchange(ref _abandonedChannels[channelIndex], 1) != 0)
+            return;
+
+        var reader = _channels[channelIndex].Reader;
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await foreach (var _ in reader.ReadAllAsync(CancellationToken.None).ConfigureAwait(false))
+                {
+                    // Discard: this subscriber is gone, the items only exist to unblock the pump.
+                }
+            }
+            catch
+            {
+                // The pump completed the channel with a fault; there is nothing left to discard.
+            }
+        });
     }
 
     private sealed class EdgeRoutedDataStream(

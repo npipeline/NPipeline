@@ -87,9 +87,11 @@ public sealed class PipelineContext
     private readonly bool _itemsIsPooled;
     private readonly bool _propertiesIsPooled;
 
-    // Composite disposal registry for lifecycle-managed IAsyncDisposable resources (lazy initialized)
+    // Composite disposal registry for lifecycle-managed IAsyncDisposable resources (lazy initialized).
+    // Guarded by _disposalGate: terminal nodes below a fan-out drain concurrently and may each register a resource.
+    private readonly object _disposalGate = new();
     private List<IAsyncDisposable>? _disposables;
-    private bool _disposed;
+    private volatile bool _disposed;
 
     /// <summary>
     ///     Creates a new <see cref="PipelineContext" /> with the specified configuration.
@@ -525,29 +527,39 @@ public sealed class PipelineContext
     /// </summary>
     public void RegisterForDisposal(IAsyncDisposable disposable)
     {
-        if (_disposed)
-        {
-            // If already disposed, dispose immediately to avoid leaks.
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    await disposable.DisposeAsync().ConfigureAwait(false); // CA2012 satisfied by awaiting inside background task
-                }
-                catch (Exception ex)
-                {
-                    // Log but don't propagate - we're already past disposal
-                    var logger = LoggerFactory.CreateLogger("PipelineContext");
-                    PipelineContextLogMessages.LateRegistrationDisposalFailed(logger, ex.Message);
-                }
-            });
+        ArgumentNullException.ThrowIfNull(disposable);
 
-            return;
+        lock (_disposalGate)
+        {
+            // Re-check under the gate: disposal may have started between the fast check above and here.
+            if (!_disposed)
+            {
+                // Lazy initialize the disposables list only when needed
+                _disposables ??= new List<IAsyncDisposable>(8);
+                _disposables.Add(disposable);
+                return;
+            }
         }
 
-        // Lazy initialize the disposables list only when needed
-        _disposables ??= new List<IAsyncDisposable>(8);
-        _disposables.Add(disposable);
+        DisposeLateRegistration(disposable);
+    }
+
+    private void DisposeLateRegistration(IAsyncDisposable disposable)
+    {
+        // Registered after disposal completed: dispose immediately to avoid leaking the resource.
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await disposable.DisposeAsync().ConfigureAwait(false); // CA2012 satisfied by awaiting inside background task
+            }
+            catch (Exception ex)
+            {
+                // Log but don't propagate - we're already past disposal
+                var logger = LoggerFactory.CreateLogger("PipelineContext");
+                PipelineContextLogMessages.LateRegistrationDisposalFailed(logger, ex.Message);
+            }
+        });
     }
 
     /// <summary>
@@ -555,16 +567,23 @@ public sealed class PipelineContext
     /// </summary>
     public async ValueTask DisposeAsync()
     {
-        if (_disposed)
-            return;
+        List<IAsyncDisposable>? disposables;
 
-        _disposed = true;
+        lock (_disposalGate)
+        {
+            if (_disposed)
+                return;
+
+            _disposed = true;
+            disposables = _disposables;
+            _disposables = null;
+        }
 
         List<Exception>? errors = null;
 
-        if (_disposables is not null)
+        if (disposables is not null)
         {
-            foreach (var d in _disposables)
+            foreach (var d in disposables)
             {
                 try
                 {
@@ -577,7 +596,7 @@ public sealed class PipelineContext
                 }
             }
 
-            _disposables.Clear();
+            disposables.Clear();
         }
 
         ReturnPooledDictionaries();
@@ -643,7 +662,7 @@ public sealed class PipelineContext
     /// </summary>
     public readonly struct NodeScope : IDisposable
     {
-        private readonly PipelineContext _context;
+        private readonly PipelineContext? _context;
         private readonly string _previousNodeId;
 
         internal NodeScope(PipelineContext context, string newNodeId)
@@ -654,11 +673,12 @@ public sealed class PipelineContext
         }
 
         /// <summary>
-        ///     Restores the previous node id.
+        ///     Restores the previous node id. A default-constructed scope tracks no context and does nothing.
         /// </summary>
         public void Dispose()
         {
-            _context.CurrentNodeId = _previousNodeId;
+            if (_context is not null)
+                _context.CurrentNodeId = _previousNodeId;
         }
     }
 }
