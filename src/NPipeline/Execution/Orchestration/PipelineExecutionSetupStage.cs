@@ -1,4 +1,3 @@
-using System.Collections.Immutable;
 using NPipeline.Execution.Annotations;
 using NPipeline.Execution.Caching;
 using NPipeline.Execution.CircuitBreaking;
@@ -37,14 +36,12 @@ internal sealed class PipelineExecutionSetupStage(
 
         var nodeInstances = nodeInstantiationService.InstantiateNodes(graph, nodeFactory);
         context.NodeEnvironment.RegisterNodes(nodeInstances);
-        ApplyGlobalExecutionAnnotations(graph, context);
-        ApplyGlobalServicesFromProperties(context);
+        ApplyGlobalServices(graph, context);
 
         graph = graph.EnsureNodeDefinitionMapInitialized();
         var nodeDefinitionMap = graph.NodeDefinitionMap;
         var executionPlans = BuildExecutionPlans(definitionType, graph, nodeInstances);
 
-        ApplyStatefulRegistryFromProperties(context);
         nodeInstantiationService.RegisterStatefulNodes(nodeInstances, context);
 
         return new PipelineExecutionSetupResult(
@@ -128,26 +125,31 @@ internal sealed class PipelineExecutionSetupStage(
             context.DeadLetterSink = runtimeBinding.DeadLetterSink;
     }
 
-    private static void ApplyGlobalExecutionAnnotations(PipelineGraph graph, PipelineContext context)
+    /// <summary>
+    ///     Copies the services supplied as global annotations onto the typed members of the context that own them.
+    /// </summary>
+    /// <remarks>
+    ///     The annotations bag is the builder's, so it is read here and never mirrored into
+    ///     <see cref="PipelineContext.Properties" />, which belongs to the user.
+    /// </remarks>
+    private static void ApplyGlobalServices(PipelineGraph graph, PipelineContext context)
     {
-        foreach (var kv in graph.ExecutionOptions.NodeExecutionAnnotations ?? ImmutableDictionary<string, object>.Empty)
-        {
-            if (!kv.Key.StartsWith(ExecutionAnnotationKeys.GlobalAnnotationPrefix, StringComparison.Ordinal))
-                continue;
+        var annotations = graph.ExecutionOptions.NodeExecutionAnnotations;
 
-            var trimmed = kv.Key.Substring(ExecutionAnnotationKeys.GlobalAnnotationPrefix.Length);
-            var newKey = $"{ExecutionAnnotationKeys.GlobalPropertyPrefix}{trimmed}";
-            context.Properties[newKey] = kv.Value;
-        }
-    }
+        if (annotations is not { Count: > 0 })
+            return;
 
-    private static void ApplyGlobalServicesFromProperties(PipelineContext context)
-    {
-        if (context.Properties.TryGetValue(ExecutionAnnotationKeys.GlobalPropertyPrefix + "NPipeline.StateManager", out var sm))
-            context.StateManager = sm as IPipelineStateManager;
+        if (annotations.TryGetValue(ExecutionAnnotationKeys.GlobalExecutionObserver, out var observer) &&
+            observer is IExecutionObserver executionObserver)
+            context.Observability.ExecutionObserver = executionObserver;
 
-        if (context.Properties.TryGetValue(ExecutionAnnotationKeys.ExecutionObserverProperty, out var eo) && eo is IExecutionObserver execObs)
-            context.Observability.ExecutionObserver = execObs;
+        if (annotations.TryGetValue(ExecutionAnnotationKeys.GlobalStateManager, out var stateManager) &&
+            stateManager is IPipelineStateManager pipelineStateManager)
+            context.StateManager = pipelineStateManager;
+
+        if (annotations.TryGetValue(ExecutionAnnotationKeys.GlobalStatefulRegistry, out var registry) &&
+            registry is IStatefulRegistry statefulRegistry)
+            context.StatefulRegistry = statefulRegistry;
     }
 
     private Dictionary<string, NodeExecutionPlan> BuildExecutionPlans(
@@ -176,12 +178,6 @@ internal sealed class PipelineExecutionSetupStage(
         executionPlanCache.CachePlans(pipelineDefinitionType, graph, plans);
 
         return plans;
-    }
-
-    private static void ApplyStatefulRegistryFromProperties(PipelineContext context)
-    {
-        if (context.Properties.TryGetValue("NPipeline.Global.NPipeline.State.StatefulRegistry", out var regObj))
-            context.StatefulRegistry = regObj as IStatefulRegistry;
     }
 
     private bool ShouldUseCache(PipelineGraph graph)

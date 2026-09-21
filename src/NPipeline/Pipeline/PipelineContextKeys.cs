@@ -6,13 +6,16 @@ namespace NPipeline.Pipeline;
 /// </summary>
 /// <remarks>
 ///     <para>
-///         Framework-managed execution services (for example retry options, circuit breaker manager, and lineage sinks)
-///         are exposed as strongly-typed <see cref="PipelineContext" /> members.
-///         <see cref="PipelineContext.Items" /> remains available for user-defined and extension-defined values.
+///         Framework-managed execution state (retry options and delay strategy, circuit breaker manager, lineage
+///         sinks, node status, state manager and stateful registry) lives on strongly-typed
+///         <see cref="PipelineContext" /> members and its sub-contexts. The framework writes nothing to
+///         <see cref="PipelineContext.Items" /> or <see cref="PipelineContext.Properties" />: those are yours, and
+///         the keys below are hooks you set for the framework to read, or keys in the internal runtime-annotation
+///         registry.
 ///     </para>
 ///     <para>
 ///         <strong>Reserved Key Prefixes:</strong>
-///         NPipeline reserves the following key prefixes to prevent conflicts with user-defined keys in context.Items:
+///         NPipeline reserves the following key prefixes, so avoid them for your own values:
 ///     </para>
 ///     <list type="table">
 ///         <listheader>
@@ -21,33 +24,36 @@ namespace NPipeline.Pipeline;
 ///         </listheader>
 ///         <item>
 ///             <term>
-///                 <c>parallel.*</c>
+///                 <c>NPipeline.*</c>
 ///             </term>
-///             <description>Parallel execution mode flags and metrics for parallel execution strategies</description>
+///             <description>
+///                 Extension hooks you place in <see cref="PipelineContext.Properties" /> for the framework to read,
+///                 such as the sink decorators and lineage overrides below
+///             </description>
 ///         </item>
 ///         <item>
 ///             <term>
 ///                 <c>testing.*</c>
 ///             </term>
-///             <description>Test data and test-specific configuration</description>
+///             <description>Test data and test-specific configuration in <see cref="PipelineContext.Items" /></description>
 ///         </item>
 ///         <item>
 ///             <term>
-///                 <c>NPipeline.*</c>
+///                 <c>parallel.*</c>
 ///             </term>
-///             <description>NPipeline-internal data (testing source data)</description>
+///             <description>Parallel execution metrics, in the node runtime-annotation registry</description>
 ///         </item>
 ///         <item>
 ///             <term>
 ///                 <c>branch.metrics::</c>
 ///             </term>
-///             <description>Branch-specific execution metrics (format: "branch.metrics::{nodeId}")</description>
+///             <description>Branch execution metrics, in the node runtime-annotation registry</description>
 ///         </item>
 ///         <item>
 ///             <term>
 ///                 <c>diag.resilience.</c>
 ///             </term>
-///             <description>Per-node resilience diagnostics (format: "diag.resilience.{nodeId}.*")</description>
+///             <description>Per-node resilience diagnostics, in the node runtime-annotation registry</description>
 ///         </item>
 ///     </list>
 ///     <para>
@@ -64,8 +70,8 @@ namespace NPipeline.Pipeline;
 ///         // Safe: User-defined key with clear naming
 ///         context.Items["MyApp.CustomSetting"] = "value";
 /// 
-///         // Unsafe: Using reserved prefix - may conflict
-///         context.Items["parallel.customFlag"] = true; // Avoid! Uses reserved prefix
+///         // Unsafe: Using a reserved prefix - may conflict
+///         context.Items["NPipeline.CustomFlag"] = true; // Avoid! Uses reserved prefix
 ///         </code>
 ///     </example>
 /// </remarks>

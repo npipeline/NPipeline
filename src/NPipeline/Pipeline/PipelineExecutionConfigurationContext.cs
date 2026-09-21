@@ -1,6 +1,8 @@
 using NPipeline.Configuration;
+using NPipeline.Configuration.RetryDelay;
 using NPipeline.ErrorHandling;
 using NPipeline.Execution.CircuitBreaking;
+using NPipeline.Execution.RetryDelay;
 using NPipeline.Resilience;
 
 namespace NPipeline.Pipeline;
@@ -16,6 +18,7 @@ public sealed class PipelineExecutionConfigurationContext
     {
         RetryOptions = retryOptions;
         GlobalRetryOptions = retryOptions;
+        _effectiveRetryOptions = retryOptions;
         ResiliencePolicy = DefaultResiliencePolicy.Instance;
         OptimizationProfile = optimizationProfile;
     }
@@ -24,6 +27,49 @@ public sealed class PipelineExecutionConfigurationContext
     ///     Initial execution / retry configuration for this pipeline run.
     /// </summary>
     public PipelineRetryOptions RetryOptions { get; }
+
+    /// <summary>
+    ///     Retry options as amended at runtime, which is what retry delays are computed from.
+    /// </summary>
+    /// <remarks>
+    ///     Identical to <see cref="RetryOptions" /> until something overrides the delay strategy through one of the
+    ///     <c>Use*Delay</c> extensions on <see cref="PipelineContext" />.
+    /// </remarks>
+    public PipelineRetryOptions EffectiveRetryOptions => Volatile.Read(ref _effectiveRetryOptions);
+
+    /// <summary>
+    ///     Replaces the delay strategy configuration for this run and discards the cached strategy built from the
+    ///     previous one.
+    /// </summary>
+    internal void OverrideRetryDelayConfiguration(RetryDelayStrategyConfiguration configuration)
+    {
+        lock (_retryDelayGate)
+        {
+            Volatile.Write(ref _effectiveRetryOptions, _effectiveRetryOptions with { DelayStrategyConfiguration = configuration });
+            _retryDelayStrategy = null;
+        }
+    }
+
+    /// <summary>
+    ///     Returns the retry delay strategy for this run, building it once through <paramref name="factory" />.
+    /// </summary>
+    /// <remarks>
+    ///     The strategy is per-run state, so the cache and its gate live on the run's context rather than in a static
+    ///     field shared by every pipeline in the process.
+    /// </remarks>
+    internal IRetryDelayStrategy GetOrCreateRetryDelayStrategy(Func<PipelineRetryOptions, IRetryDelayStrategy> factory)
+    {
+        var cached = Volatile.Read(ref _retryDelayStrategy);
+
+        if (cached is not null)
+            return cached;
+
+        lock (_retryDelayGate)
+        {
+            _retryDelayStrategy ??= factory(_effectiveRetryOptions);
+            return _retryDelayStrategy;
+        }
+    }
 
     /// <summary>
     ///     Effective global retry options for the current pipeline run.
@@ -63,6 +109,10 @@ public sealed class PipelineExecutionConfigurationContext
     ///     Indicates the current run uses parallel execution behavior.
     /// </summary>
     public bool IsParallelExecution { get; internal set; }
+
+    private readonly object _retryDelayGate = new();
+    private PipelineRetryOptions _effectiveRetryOptions;
+    private IRetryDelayStrategy? _retryDelayStrategy;
 
     private RetryExhaustedException? _lastRetryExhaustedException;
 

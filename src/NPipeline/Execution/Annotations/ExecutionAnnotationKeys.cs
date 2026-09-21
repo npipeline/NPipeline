@@ -53,20 +53,17 @@ public static class ExecutionAnnotationKeys
     /// </summary>
     public const string GlobalExecutionObserver = GlobalAnnotationPrefix + "ExecutionObserver";
 
-    // ============================
-    // Context property keys (after PipelineRunner copies global annotations into pipeline context)
-    // ============================
+    /// <summary>
+    ///     Fully-qualified annotation key (in the annotations bag) for a globally-supplied pipeline state manager
+    ///     (value: IPipelineStateManager). Applied to <c>PipelineContext.StateManager</c> during setup.
+    /// </summary>
+    public const string GlobalStateManager = GlobalAnnotationPrefix + "NPipeline.StateManager";
 
     /// <summary>
-    ///     Prefix used for properties added to <c>PipelineContext.Properties</c> when global annotations are copied over.
-    ///     For example, "NPipeline.Global.ExecutionObserver".
+    ///     Fully-qualified annotation key (in the annotations bag) for a globally-supplied stateful registry
+    ///     (value: IStatefulRegistry). Applied to <c>PipelineContext.StatefulRegistry</c> during setup.
     /// </summary>
-    public const string GlobalPropertyPrefix = "NPipeline.Global.";
-
-    /// <summary>
-    ///     The <c>PipelineContext.Properties</c> key under which a resolved <c>IExecutionObserver</c> is stored.
-    /// </summary>
-    public const string ExecutionObserverProperty = GlobalPropertyPrefix + "ExecutionObserver";
+    public const string GlobalStatefulRegistry = GlobalAnnotationPrefix + "NPipeline.StatefulRegistry";
 
     // ============================
     // Context-level metrics storage (branching)

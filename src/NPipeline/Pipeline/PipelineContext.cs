@@ -244,7 +244,7 @@ public sealed class PipelineContext : IAsyncDisposable
     ///         In parallel execution scenarios, if multiple worker threads need to share state, consider:
     ///         <list type="bullet">
     ///             <item>
-    ///                 <description>Using <see cref="IPipelineStateManager" /> from the Properties dictionary</description>
+    ///                 <description>Using <see cref="IPipelineStateManager" /> from <see cref="StateManager" /></description>
     ///             </item>
     ///             <item>
     ///                 <description>Implementing node-level synchronization in custom transforms</description>
@@ -264,14 +264,10 @@ public sealed class PipelineContext : IAsyncDisposable
     /// <remarks>
     ///     Thread-safe in <see cref="PipelineOptimizationProfile.Default" /> mode
     ///     (backed by <see cref="ConcurrentDictionary{TKey,TValue}" />). Common uses include:
-    ///     <list type="bullet">
-    ///         <item>
-    ///             <description>Storing <see cref="IPipelineStateManager" /> for thread-safe state management</description>
-    ///         </item>
-    ///         <item>
-    ///             <description>Storing execution observers and configuration extensions</description>
-    ///         </item>
-    ///     </list>
+    ///     <para>
+    ///         This bag is yours: the framework keeps its own state on the typed members of this context and its
+    ///         sub-contexts, and never reads or writes a key here.
+    ///     </para>
     /// </remarks>
     public IDictionary<string, object> Properties { get; }
 
@@ -303,14 +299,23 @@ public sealed class PipelineContext : IAsyncDisposable
     }
 
     /// <summary>
-    ///     Gets the state manager for this pipeline run, if available.
+    ///     The state manager for this pipeline run, if any.
     /// </summary>
-    public IPipelineStateManager? StateManager { get; internal set; }
+    /// <remarks>
+    ///     Set it here, or supply one for every run of a pipeline with the
+    ///     <c>ExecutionAnnotationKeys.GlobalStateManager</c> builder annotation, which setup applies to this property.
+    /// </remarks>
+    public IPipelineStateManager? StateManager { get; set; }
 
     /// <summary>
-    ///     Gets the stateful registry for this pipeline run, if available.
+    ///     The stateful registry for this pipeline run, if any.
     /// </summary>
-    public IStatefulRegistry? StatefulRegistry { get; internal set; }
+    /// <remarks>
+    ///     Set it here, or supply one for every run of a pipeline with the
+    ///     <c>ExecutionAnnotationKeys.GlobalStatefulRegistry</c> builder annotation, which setup applies to this
+    ///     property.
+    /// </remarks>
+    public IStatefulRegistry? StatefulRegistry { get; set; }
 
     /// <summary>
     ///     Registers an <see cref="IAsyncDisposable" /> resource to be disposed when the pipeline context is disposed.

@@ -58,7 +58,7 @@ internal sealed class PipelineNodeExecutionStage(
             }
 
             context.CancellationToken.ThrowIfCancellationRequested();
-            await ExecuteNodeAsync(nodeDef, setup, context, inputLookup, nodeOutputs, null).ConfigureAwait(false);
+            await ExecuteNodeAsync(nodeDef, setup, context, inputLookup, nodeOutputs).ConfigureAwait(false);
         }
 
         if (terminals is not null)
@@ -78,11 +78,11 @@ internal sealed class PipelineNodeExecutionStage(
         if (terminals.Count == 1)
         {
             context.CancellationToken.ThrowIfCancellationRequested();
-            await ExecuteNodeAsync(terminals[0], setup, context, inputLookup, nodeOutputs, null).ConfigureAwait(false);
+            await ExecuteNodeAsync(terminals[0], setup, context, inputLookup, nodeOutputs).ConfigureAwait(false);
             return;
         }
 
-        // Terminal nodes run on separate threads from here, so the shared per-run state they touch needs guarding.
+        // Terminal nodes run on separate threads from here, so the node output bag they share needs guarding.
         var gate = new object();
         var synchronizedOutputs = new SynchronizedNodeOutputs(nodeOutputs, gate);
         var tasks = new List<Task>(terminals.Count);
@@ -90,7 +90,7 @@ internal sealed class PipelineNodeExecutionStage(
         foreach (var nodeDef in terminals)
         {
             tasks.Add(Task.Run(
-                () => ExecuteNodeAsync(nodeDef, setup, context, inputLookup, synchronizedOutputs, gate),
+                () => ExecuteNodeAsync(nodeDef, setup, context, inputLookup, synchronizedOutputs),
                 context.CancellationToken));
         }
 
@@ -134,8 +134,7 @@ internal sealed class PipelineNodeExecutionStage(
         PipelineExecutionSetupResult setup,
         PipelineContext context,
         ILookup<string, Edge> inputLookup,
-        IDictionary<string, IDataStream?> nodeOutputs,
-        object? gate)
+        IDictionary<string, IDataStream?> nodeOutputs)
     {
         context.CancellationToken.ThrowIfCancellationRequested();
 
@@ -153,12 +152,11 @@ internal sealed class PipelineNodeExecutionStage(
                 context,
                 nodeScope,
                 inputLookup,
-                nodeOutputs,
-                gate).ConfigureAwait(false);
+                nodeOutputs).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
-            SetNodeFlag(context, gate, $"NodeError_{nodeDef.Id}");
+            context.NodeEnvironment.SetNodeStatus(nodeDef.Id, NodeExecutionStatus.Failed);
             var failedEvent = observabilitySurface.CompleteNodeFailure(context, nodeScope, ex);
             persistenceService.TryPersistAfterNode(context, failedEvent);
             HandleNodeExecutionException(nodeDef, context, ex);
@@ -204,21 +202,6 @@ internal sealed class PipelineNodeExecutionStage(
         return false;
     }
 
-    private static void SetNodeFlag(PipelineContext context, object? gate, string key)
-    {
-        // Properties is a plain dictionary under the HighThroughput profile, so concurrent terminals must serialize.
-        if (gate is null)
-        {
-            context.Properties[key] = true;
-            return;
-        }
-
-        lock (gate)
-        {
-            context.Properties[key] = true;
-        }
-    }
-
     private static void ApplyPerNodeExecutionAnnotation(PipelineGraph graph, PipelineContext context, string nodeId)
     {
         if (graph.ExecutionOptions.NodeExecutionAnnotations != null &&
@@ -240,8 +223,7 @@ internal sealed class PipelineNodeExecutionStage(
         PipelineContext context,
         NodeObservationScope nodeScope,
         ILookup<string, Edge> inputLookup,
-        IDictionary<string, IDataStream?> nodeOutputs,
-        object? gate)
+        IDictionary<string, IDataStream?> nodeOutputs)
     {
         await errorHandlingService.ExecuteWithRetriesAsync(
             nodeDef,
@@ -262,7 +244,7 @@ internal sealed class PipelineNodeExecutionStage(
                     setup.NodeDefinitionMap).ConfigureAwait(false);
 
                 var completedEvent = observabilitySurface.CompleteNodeSuccess(context, nodeScope);
-                SetNodeFlag(context, gate, $"NodeCompleted_{nodeDef.Id}");
+                context.NodeEnvironment.SetNodeStatus(nodeDef.Id, NodeExecutionStatus.Completed);
                 persistenceService.TryPersistAfterNode(context, completedEvent);
             },
             context.CancellationToken).ConfigureAwait(false);

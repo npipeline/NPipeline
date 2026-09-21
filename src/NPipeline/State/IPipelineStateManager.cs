@@ -20,9 +20,9 @@ namespace NPipeline.State;
 ///     </para>
 ///     <para>
 ///         <strong>Usage Pattern:</strong>
-///         Register an implementation in <see cref="PipelineContext.Properties" /> under the key
-///         <c>"NPipeline.StateManager"</c> or use <see cref="PipelineContext.StateManager" /> property accessor
-///         for convenient access.
+///         Assign an implementation to <see cref="PipelineContext.StateManager" />, or supply one for every run of a
+///         pipeline with the <c>ExecutionAnnotationKeys.GlobalStateManager</c> builder annotation, which setup
+///         applies to that property.
 ///     </para>
 ///     <para>
 ///         <strong>Alternative to Context Dictionaries:</strong>

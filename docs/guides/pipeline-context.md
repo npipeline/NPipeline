@@ -43,7 +43,9 @@ PipelineContext exposes three `IDictionary<string, object>` collections with dif
 |-----------|---------|--------|---------|
 | `Parameters` | Runtime inputs (file paths, dates, config values) | Caller before execution | Nodes during execution |
 | `Items` | Node-to-node shared state | Any node during execution | Any downstream node |
-| `Properties` | Extension/plugin storage | Extensions and framework | Extensions and framework |
+| `Properties` | Extension/plugin storage, and hooks the framework reads | You and your extensions | Extensions and the framework (for published hook keys) |
+
+All three belong to you. The framework keeps its own state on the typed members below and never writes to `Items` or `Properties`. It only reads keys that you set deliberately, such as the decorator hooks on `PipelineContextKeys`.
 
 ### Using Parameters
 
@@ -97,8 +99,8 @@ sub-context that owns it:
 |-------------|-------|----------|
 | `RunIdentity` | Who this run is | `PipelineId`, `RunId`, `PipelineName`, `PipelineStartTimeUtc` |
 | `Observability` | Logging, tracing, metrics | `LoggerFactory`, `Tracer`, `ExecutionObserver`, `ObservabilityFactory` |
-| `ExecutionConfiguration` | Retry and resilience | `RetryOptions`, `GlobalRetryOptions`, `NodeRetryOverrides`, `ResiliencePolicy`, `CircuitBreakerOptions` |
-| `NodeEnvironment` | Per-node execution state | `GetNodeId(node)`, `TryGetNodeId(node, out id)`, `NodeExecutionScopeRegistry`, `DiOwnedNodes` |
+| `ExecutionConfiguration` | Retry and resilience | `RetryOptions`, `EffectiveRetryOptions`, `GlobalRetryOptions`, `NodeRetryOverrides`, `ResiliencePolicy`, `CircuitBreakerOptions` |
+| `NodeEnvironment` | Per-node execution state | `GetNodeId(node)`, `TryGetNodeId(node, out id)`, `GetNodeStatus(nodeId)`, `EnumerateNodeStatuses()`, `NodeExecutionScopeRegistry`, `DiOwnedNodes` |
 | `Lineage` | Lineage sinks and collectors | `LineageSink`, `PipelineLineageSink`, `LineageCollector`, `LineageFactory` |
 
 ```csharp
@@ -135,6 +137,19 @@ var node = new MyTransform();
 context.NodeEnvironment.RegisterNode("my-node", node);
 ```
 
+### Node status
+
+The run records how each node finished, eliminating the need to check flags in a dictionary:
+
+```csharp
+if (context.NodeEnvironment.GetNodeStatus("enrich") == NodeExecutionStatus.Failed)
+{
+    // ...
+}
+```
+
+Nodes that have not finished report `NodeExecutionStatus.Pending` and are absent from `EnumerateNodeStatuses()`.
+
 A few members sit directly on the context because they belong to no single concern:
 
 | Member | Type | Description |
@@ -143,7 +158,7 @@ A few members sit directly on the context because they belong to no single conce
 | `Parameters`, `Items`, `Properties` | `IDictionary<string, object>` | The three dictionaries above |
 | `DeadLetterSink` | `IDeadLetterSink?` | For routing failed items |
 | `ErrorHandlerFactory` | `IErrorHandlerFactory` | Creates error handlers |
-| `StateManager`, `StatefulRegistry` | `IPipelineStateManager?`, `IStatefulRegistry?` | Stateful execution services |
+| `StateManager`, `StatefulRegistry` | `IPipelineStateManager?`, `IStatefulRegistry?` | Stateful execution services. Assign them here, or supply one for every run with the `ExecutionAnnotationKeys.GlobalStateManager` / `GlobalStatefulRegistry` builder annotation |
 
 > **Note:** Earlier versions also exposed every one of these as a flat property on `PipelineContext` itself, so
 > `context.LoggerFactory` and `context.Observability.LoggerFactory` both worked. The flat forwarders are gone: there is

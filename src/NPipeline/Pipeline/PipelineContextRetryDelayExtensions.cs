@@ -11,8 +11,9 @@ namespace NPipeline.Pipeline;
 /// <remarks>
 ///     <para>
 ///         These extensions provide convenient access to retry delay strategies
-///         with caching to avoid repeated strategy creation. The strategies
-///         are cached in context.Items dictionary for efficient reuse.
+///         with caching to avoid repeated strategy creation. The strategy is cached
+///         on <see cref="PipelineExecutionConfigurationContext" /> for the run, not in
+///         the user-facing context bags.
 ///     </para>
 ///     <para>
 ///         When no delay strategy is configured, a NoOpRetryDelayStrategy
@@ -21,15 +22,11 @@ namespace NPipeline.Pipeline;
 ///     <para>
 ///         Thread Safety: The caching mechanism is thread-safe to prevent
 ///         race conditions when multiple threads access the same context
-///         concurrently.
+///         concurrently. Each run caches independently.
 ///     </para>
 /// </remarks>
 public static class PipelineContextRetryDelayExtensions
 {
-    private const string RetryDelayStrategyCacheKey = "NPipeline.RetryDelayStrategy";
-    private const string UpdatedRetryOptionsKey = "NPipeline.UpdatedRetryOptions";
-    private static readonly object CacheLock = new();
-
     /// <summary>
     ///     Gets retry delay strategy from pipeline context.
     /// </summary>
@@ -42,7 +39,7 @@ public static class PipelineContextRetryDelayExtensions
     ///         using following logic:
     ///         <list type="number">
     ///             <item>
-    ///                 <description>If a strategy is already cached in context.Items, return it</description>
+    ///                 <description>If a strategy has already been built for this run, return it</description>
     ///             </item>
     ///             <item>
     ///                 <description>If RetryOptions.DelayStrategyConfiguration is configured, create and cache a strategy</description>
@@ -53,69 +50,19 @@ public static class PipelineContextRetryDelayExtensions
     ///         </list>
     ///     </para>
     ///     <para>
-    ///         The strategy is cached using key "NPipeline.RetryDelayStrategy"
-    ///         to avoid repeated creation and ensure consistent behavior across
-    ///         multiple calls within the same pipeline execution.
-    ///     </para>
-    ///     <para>
-    ///         Thread Safety: This method uses double-checked locking pattern
-    ///         to ensure thread-safe strategy creation and caching.
+    ///         The strategy is cached on
+    ///         <see cref="PipelineContext.ExecutionConfiguration" /> so it is built once per run
+    ///         and is consistent across calls.
     ///     </para>
     /// </remarks>
     public static IRetryDelayStrategy GetRetryDelayStrategy(this PipelineContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
 
-        // Double-checked locking pattern for thread safety
-        if (context.Items.TryGetValue(RetryDelayStrategyCacheKey, out var cachedStrategy) &&
-            cachedStrategy is IRetryDelayStrategy strategy)
-            return strategy;
-
-        lock (CacheLock)
-        {
-            // Check again inside the lock in case another thread created the strategy
-            if (context.Items.TryGetValue(RetryDelayStrategyCacheKey, out var cachedStrategyInsideLock) &&
-                cachedStrategyInsideLock is IRetryDelayStrategy strategyInsideLock)
-                return strategyInsideLock;
-
-            IRetryDelayStrategy retryDelayStrategy;
-
-            // Get current retry options (check if we have updated ones)
-            var currentRetryOptions = GetCurrentRetryOptions(context);
-
-            // Check if delay strategy is configured
-            if (currentRetryOptions.DelayStrategyConfiguration is { } delayConfig)
-            {
-                // Create strategy from configuration using factory
-                retryDelayStrategy = CreateStrategyFromConfiguration(context, delayConfig);
-            }
-            else
-            {
-                // Fallback to no-op strategy
-                retryDelayStrategy = NoOpRetryDelayStrategy.Instance;
-            }
-
-            // Cache strategy
-            context.Items[RetryDelayStrategyCacheKey] = retryDelayStrategy;
-
-            return retryDelayStrategy;
-        }
-    }
-
-    /// <summary>
-    ///     Gets current retry options, checking for updated ones in Properties.
-    /// </summary>
-    /// <param name="context">The pipeline context.</param>
-    /// <returns>The current retry options.</returns>
-    private static PipelineRetryOptions GetCurrentRetryOptions(PipelineContext context)
-    {
-        // Check if we have updated retry options in Properties
-        if (context.Properties.TryGetValue(UpdatedRetryOptionsKey, out var updatedOptions) &&
-            updatedOptions is PipelineRetryOptions options)
-            return options;
-
-        // Return original retry options
-        return context.ExecutionConfiguration.RetryOptions;
+        return context.ExecutionConfiguration.GetOrCreateRetryDelayStrategy(
+            retryOptions => retryOptions.DelayStrategyConfiguration is { } delayConfig
+                ? CreateStrategyFromConfiguration(context, delayConfig)
+                : NoOpRetryDelayStrategy.Instance);
     }
 
     /// <summary>
@@ -235,12 +182,7 @@ public static class PipelineContextRetryDelayExtensions
         var jitterStrategy = JitterStrategies.DecorrelatedJitter(TimeSpan.FromMinutes(1));
         var strategyConfig = new RetryDelayStrategyConfiguration(backoffStrategy, jitterStrategy);
 
-        // Store updated retry options in Properties since RetryOptions is read-only
-        var updatedRetryOptions = context.ExecutionConfiguration.RetryOptions with { DelayStrategyConfiguration = strategyConfig };
-        context.Properties[UpdatedRetryOptionsKey] = updatedRetryOptions;
-
-        // Clear cached strategy to force recreation
-        _ = context.Items.Remove(RetryDelayStrategyCacheKey);
+        context.ExecutionConfiguration.OverrideRetryDelayConfiguration(strategyConfig);
 
         return context;
     }
@@ -288,12 +230,7 @@ public static class PipelineContextRetryDelayExtensions
         var jitterStrategy = JitterStrategies.DecorrelatedJitter(TimeSpan.FromMinutes(1));
         var strategyConfig = new RetryDelayStrategyConfiguration(backoffStrategy, jitterStrategy);
 
-        // Store updated retry options in Properties since RetryOptions is read-only
-        var updatedRetryOptions = context.ExecutionConfiguration.RetryOptions with { DelayStrategyConfiguration = strategyConfig };
-        context.Properties[UpdatedRetryOptionsKey] = updatedRetryOptions;
-
-        // Clear cached strategy to force recreation
-        _ = context.Items.Remove(RetryDelayStrategyCacheKey);
+        context.ExecutionConfiguration.OverrideRetryDelayConfiguration(strategyConfig);
 
         return context;
     }
@@ -331,12 +268,7 @@ public static class PipelineContextRetryDelayExtensions
         var jitterStrategy = JitterStrategies.DecorrelatedJitter(TimeSpan.FromMinutes(1));
         var strategyConfig = new RetryDelayStrategyConfiguration(backoffStrategy, jitterStrategy);
 
-        // Store updated retry options in Properties since RetryOptions is read-only
-        var updatedRetryOptions = context.ExecutionConfiguration.RetryOptions with { DelayStrategyConfiguration = strategyConfig };
-        context.Properties[UpdatedRetryOptionsKey] = updatedRetryOptions;
-
-        // Clear cached strategy to force recreation
-        _ = context.Items.Remove(RetryDelayStrategyCacheKey);
+        context.ExecutionConfiguration.OverrideRetryDelayConfiguration(strategyConfig);
 
         return context;
     }
@@ -382,12 +314,7 @@ public static class PipelineContextRetryDelayExtensions
         var jitterStrategy = JitterStrategies.EqualJitter();
         var strategyConfig = new RetryDelayStrategyConfiguration(backoffStrategy, jitterStrategy);
 
-        // Store updated retry options in Properties since RetryOptions is read-only
-        var updatedRetryOptions = context.ExecutionConfiguration.RetryOptions with { DelayStrategyConfiguration = strategyConfig };
-        context.Properties[UpdatedRetryOptionsKey] = updatedRetryOptions;
-
-        // Clear cached strategy to force recreation
-        _ = context.Items.Remove(RetryDelayStrategyCacheKey);
+        context.ExecutionConfiguration.OverrideRetryDelayConfiguration(strategyConfig);
 
         return context;
     }

@@ -14,6 +14,9 @@ public sealed class PipelineNodeEnvironmentContext
     private readonly ConcurrentDictionary<INode, string> _nodeIdsByInstance =
         new(ReferenceEqualityComparer.Instance as IEqualityComparer<INode>);
 
+    private readonly ConcurrentDictionary<string, NodeExecutionStatus> _nodeStatuses =
+        new(StringComparer.Ordinal);
+
     /// <summary>
     ///     Gets the id under which <paramref name="node" /> is running in this pipeline.
     /// </summary>
@@ -92,6 +95,44 @@ public sealed class PipelineNodeEnvironmentContext
         {
             RegisterNode(nodeId, instance);
         }
+    }
+
+    /// <summary>
+    ///     Gets the outcome recorded for <paramref name="nodeId" /> in this run.
+    /// </summary>
+    /// <param name="nodeId">The node's id in the graph.</param>
+    /// <returns>
+    ///     <see cref="NodeExecutionStatus.Pending" /> until the node finishes, then
+    ///     <see cref="NodeExecutionStatus.Completed" /> or <see cref="NodeExecutionStatus.Failed" />.
+    /// </returns>
+    public NodeExecutionStatus GetNodeStatus(string nodeId)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(nodeId);
+
+        return _nodeStatuses.TryGetValue(nodeId, out var status) ? status : NodeExecutionStatus.Pending;
+    }
+
+    /// <summary>
+    ///     Enumerates the nodes that have finished, with the outcome recorded for each.
+    /// </summary>
+    /// <remarks>
+    ///     Nodes still pending are absent rather than reported as <see cref="NodeExecutionStatus.Pending" />.
+    /// </remarks>
+    public IEnumerable<KeyValuePair<string, NodeExecutionStatus>> EnumerateNodeStatuses()
+    {
+        return _nodeStatuses;
+    }
+
+    /// <summary>
+    ///     Records the outcome of a node that has finished executing.
+    /// </summary>
+    /// <remarks>
+    ///     Terminal nodes below a fan-out finish on separate threads, so this is backed by a concurrent dictionary
+    ///     rather than the profile-dependent context bags.
+    /// </remarks>
+    internal void SetNodeStatus(string nodeId, NodeExecutionStatus status)
+    {
+        _nodeStatuses[nodeId] = status;
     }
 
     /// <summary>

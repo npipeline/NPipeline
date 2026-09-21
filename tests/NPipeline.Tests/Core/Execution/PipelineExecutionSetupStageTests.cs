@@ -87,7 +87,7 @@ public sealed class PipelineExecutionSetupStageTests
     }
 
     [Fact]
-    public async Task PrepareAsync_ProjectsGlobalAnnotationsAndContextServices()
+    public async Task PrepareAsync_AppliesGlobalServiceAnnotationsToTypedContextMembers()
     {
         // Arrange
         var nodeFactory = A.Fake<INodeFactory>();
@@ -103,7 +103,8 @@ public sealed class PipelineExecutionSetupStageTests
             new Dictionary<string, object>
             {
                 [ExecutionAnnotationKeys.GlobalExecutionObserver] = executionObserver,
-                [$"{ExecutionAnnotationKeys.GlobalAnnotationPrefix}NPipeline.StateManager"] = stateManager,
+                [ExecutionAnnotationKeys.GlobalStateManager] = stateManager,
+                [ExecutionAnnotationKeys.GlobalStatefulRegistry] = statefulRegistry,
             });
 
         var nodeInstances = new Dictionary<string, INode> { ["node-a"] = A.Fake<INode>() };
@@ -127,7 +128,6 @@ public sealed class PipelineExecutionSetupStageTests
             runtimeBinder);
 
         var context = PipelineContext.CreateDefault();
-        context.Properties["NPipeline.Global.NPipeline.State.StatefulRegistry"] = statefulRegistry;
 
         // Act
         _ = await stage.PrepareAsync(typeof(PipelineExecutionSetupStageTests), graph, context, CancellationToken.None);
@@ -136,8 +136,10 @@ public sealed class PipelineExecutionSetupStageTests
         _ = context.Observability.ExecutionObserver.Should().BeSameAs(executionObserver);
         _ = context.StateManager.Should().BeSameAs(stateManager);
         _ = context.StatefulRegistry.Should().BeSameAs(statefulRegistry);
-        _ = context.Properties.Should().ContainKey(ExecutionAnnotationKeys.ExecutionObserverProperty);
-        _ = context.Properties[ExecutionAnnotationKeys.ExecutionObserverProperty].Should().BeSameAs(executionObserver);
+
+        // Framework state stays on typed members: the user's bags are left untouched.
+        _ = context.Properties.Should().BeEmpty();
+        _ = context.Items.Should().BeEmpty();
 
         _ = A.CallTo(() => nodeInstantiationService.RegisterStatefulNodes(nodeInstances, context))
             .MustHaveHappenedOnceExactly();
