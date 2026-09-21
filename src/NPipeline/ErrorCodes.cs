@@ -158,6 +158,15 @@ public static class ErrorCodes
     /// <summary>Cannot concatenate streams due to type mismatch.</summary>
     public const string CannotConcatenateStreamsTypeMismatch = "NP0210";
 
+    /// <summary>A node produced a stream whose item type does not match its declared output type.</summary>
+    public const string NodeOutputTypeMismatch = "NP0211";
+
+    /// <summary>A node's output needs adapting to its declared type but no adapter is available.</summary>
+    public const string OutputAdaptationUnavailable = "NP0212";
+
+    /// <summary>A node received an input stream whose item type it cannot consume.</summary>
+    public const string InputStreamContractMismatch = "NP0213";
+
     #endregion
 
     #region Node Execution Errors (NP03xx)

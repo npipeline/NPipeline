@@ -172,14 +172,10 @@ public sealed class NodeExecutor(
             {
                 output = AdaptOutput(plan, output, nodeDef.OutputType, $"JoinResult_{plan.NodeId}");
 
-                // If still mismatched after adaptation, capture diagnostic information
                 if (output.GetDataType() != nodeDef.OutputType)
                 {
-                    var actualType = output.GetType();
-                    var ifaceList = string.Join(",", actualType.GetInterfaces().Select(i => i.FullName));
-
                     throw new InvalidOperationException(
-                        $"Join output type mismatch for node {plan.NodeId}. Expected {nodeDef.OutputType}, GetDataType={output.GetDataType()}, PipeType={actualType.FullName}, Ifaces={ifaceList}");
+                        ErrorMessages.NodeOutputTypeMismatch(plan.NodeId, "Join", nodeDef.OutputType, output.GetDataType()));
                 }
             }
         }
@@ -238,14 +234,10 @@ public sealed class NodeExecutor(
             {
                 output = AdaptOutput(plan, output, nodeDef.OutputType, $"AggregateResult_{plan.NodeId}");
 
-                // If still mismatched after adaptation, capture diagnostic information
                 if (output.GetDataType() != nodeDef.OutputType)
                 {
-                    var actualType = output.GetType();
-                    var ifaceList = string.Join(",", actualType.GetInterfaces().Select(i => i.FullName));
-
                     throw new InvalidOperationException(
-                        $"Aggregate output type mismatch for node {plan.NodeId}. Expected {nodeDef.OutputType}, GetDataType={output.GetDataType()}, PipeType={actualType.FullName}, Ifaces={ifaceList}");
+                        ErrorMessages.NodeOutputTypeMismatch(plan.NodeId, "Aggregate", nodeDef.OutputType, output.GetDataType()));
                 }
             }
         }
@@ -361,22 +353,17 @@ public sealed class NodeExecutor(
             // Allow interface/base-type compatibility (e.g., IReadOnlyCollection<T> for IEnumerable<T> inputs).
             if (!expectedType.IsAssignableFrom(actualType))
             {
-                throw new InvalidOperationException(
-                    $"Runtime stream contract mismatch for node '{nodeId}'. " +
-                    $"Expected input item type '{GetAssemblyQualifiedTypeName(expectedType)}' but got '{GetAssemblyQualifiedTypeName(actualType)}'.");
+                throw new InvalidOperationException(ErrorMessages.InputStreamContractMismatch(nodeId, expectedType, actualType));
             }
         }
     }
-
-    private static string GetAssemblyQualifiedTypeName(Type type)
-        => type.AssemblyQualifiedName ?? type.FullName ?? type.Name;
 
     private static IDataStream AdaptOutput(NodeExecutionPlan plan, IDataStream output, Type expectedType, string streamName)
     {
         if (plan.AdaptOutput is null)
         {
             throw new InvalidOperationException(
-                $"Node '{plan.NodeId}' returned output type '{output.GetDataType()}', expected '{expectedType}', but no adaptation delegate is available.");
+                ErrorMessages.OutputAdaptationUnavailable(plan.NodeId, expectedType, output.GetDataType()));
         }
 
         return plan.AdaptOutput(output, streamName);

@@ -14,7 +14,7 @@ NPipeline error codes follow the pattern `NPxxxx` where the first two digits ind
 |------|------|-------------|
 | NP0101 | PipelineRequiresAtLeastOneNode | A pipeline must have at least one node. Add at least one source, transform, or sink. |
 | NP0102 | NodeMissingInputConnection | A non-source node has no input connection. Connect an upstream node to it. |
-| NP0103 | CyclicDependencyDetected | The pipeline graph contains a cycle. NPipeline requires a directed acyclic graph (DAG). |
+| NP0103 | CyclicDependencyDetected | The pipeline graph contains a cycle. NPipeline requires a directed acyclic graph (DAG). The message names the nodes that could not be ordered and traces one cycle through them. |
 | NP0104 | NodeAlreadyAdded | A node with this ID has already been added to the builder. Use a unique ID. |
 | NP0105 | NodeNameNotUnique | A node with this name already exists. Choose a different name. |
 
@@ -31,6 +31,9 @@ NPipeline error codes follow the pattern `NPxxxx` where the first two digits ind
 | NP0207 | SetterCreationFailed | Failed to create a setter for the specified member via reflection. |
 | NP0208 | ValueTupleConstructorNotFound | Could not find the expected ValueTuple constructor. |
 | NP0210 | CannotConcatenateStreamsTypeMismatch | Cannot concatenate data streams of different types. |
+| NP0211 | NodeOutputTypeMismatch | A node produced items whose type does not match its declared output type, and no conversion applied. |
+| NP0212 | OutputAdaptationUnavailable | A node's output needs converting to its declared type but no converter exists for that node kind. |
+| NP0213 | InputStreamContractMismatch | A node received input items of a type it cannot consume. Check the connection's source node. |
 
 ## NP03xx - Node Execution Errors
 

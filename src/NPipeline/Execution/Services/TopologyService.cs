@@ -56,9 +56,47 @@ public sealed class TopologyService : ITopologyService
 
         // Check for cycles
         if (sortedOrder.Count != graph.Nodes.Length)
-            throw new InvalidOperationException(ErrorMessages.CyclicDependencyDetected());
+        {
+            var remaining = graph.Nodes.Where(node => inDegree[node.Id] > 0).Select(node => node.Id).ToArray();
+
+            throw new InvalidOperationException(ErrorMessages.CyclicDependencyDetected(remaining, TraceCycle(remaining, edgesByTarget)));
+        }
 
         return sortedOrder;
+    }
+
+    /// <summary>
+    ///     Recovers one concrete cycle from the nodes that survived the topological sort.
+    ///     A surviving node has a non-zero in-degree because at least one of its predecessors also never
+    ///     got processed, so walking backwards stays inside the set and is guaranteed to revisit a node.
+    ///     The first repeat closes the cycle.
+    /// </summary>
+    private static IReadOnlyList<string> TraceCycle(IReadOnlyList<string> remaining, ILookup<string, string> edgesByTarget)
+    {
+        if (remaining.Count == 0)
+            return [];
+
+        var unprocessed = new HashSet<string>(remaining);
+        var path = new List<string>();
+        var positionInPath = new Dictionary<string, int>();
+        var current = remaining[0];
+
+        while (positionInPath.TryAdd(current, path.Count))
+        {
+            path.Add(current);
+            var predecessor = edgesByTarget[current].FirstOrDefault(unprocessed.Contains);
+
+            if (predecessor is null)
+                return [];
+
+            current = predecessor;
+        }
+
+        // Drop the tail that leads out of the cycle, then reverse so the path reads in edge direction.
+        var cycle = path.Skip(positionInPath[current]).Reverse().ToList();
+        cycle.Add(cycle[0]);
+
+        return cycle;
     }
 
     /// <summary>

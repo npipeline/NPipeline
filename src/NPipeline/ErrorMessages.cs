@@ -47,11 +47,21 @@ internal static class ErrorMessages
                $"See: {DocsBaseUrl}#{ErrorCodes.NodeMissingInputConnection}";
     }
 
-    public static string CyclicDependencyDetected()
+    public static string CyclicDependencyDetected(IReadOnlyCollection<string> nodesInCycle, IReadOnlyCollection<string> cyclePath)
     {
+        var participants = nodesInCycle.Count == 0
+            ? string.Empty
+            : $"Nodes that could not be ordered: {string.Join(", ", nodesInCycle.Order().Select(id => $"'{id}'"))}. ";
+
+        var path = cyclePath.Count == 0
+            ? string.Empty
+            : $"Cycle: {string.Join(" -> ", cyclePath.Select(id => $"'{id}'"))}. ";
+
         return $"[{ErrorCodes.CyclicDependencyDetected}] Cyclic dependency detected in pipeline graph. " +
+               participants +
+               path +
                $"Pipelines must be directed acyclic graphs (DAGs) without cycles. " +
-               $"Check your node connections and remove any circular references. " +
+               $"Remove one of the connections in the cycle above. " +
                $"See: {DocsBaseUrl}#{ErrorCodes.CyclicDependencyDetected}";
     }
 
@@ -89,6 +99,29 @@ internal static class ErrorMessages
                $"Expected '{expectedType}' but found '{actualType}'. " +
                $"This usually indicates a graph construction error. " +
                $"See: {DocsBaseUrl}#{ErrorCodes.InputDataStreamWrongType}";
+    }
+
+    public static string NodeOutputTypeMismatch(string nodeId, string nodeKind, Type expectedType, Type actualType)
+    {
+        return $"[{ErrorCodes.NodeOutputTypeMismatch}] {nodeKind} node '{nodeId}' produced items of type '{actualType}' but its declared output type is '{expectedType}'. " +
+               $"The framework could not adapt one to the other. " +
+               $"Make the node's result type argument match the type it actually yields, or insert a transform that converts between them. " +
+               $"See: {DocsBaseUrl}#{ErrorCodes.NodeOutputTypeMismatch}";
+    }
+
+    public static string OutputAdaptationUnavailable(string nodeId, Type expectedType, Type actualType)
+    {
+        return $"[{ErrorCodes.OutputAdaptationUnavailable}] Node '{nodeId}' produced items of type '{actualType}' but its declared output type is '{expectedType}', " +
+               $"and no conversion is available for this node kind. " +
+               $"Make the node's result type argument match the type it actually yields. " +
+               $"See: {DocsBaseUrl}#{ErrorCodes.OutputAdaptationUnavailable}";
+    }
+
+    public static string InputStreamContractMismatch(string nodeId, Type expectedType, Type actualType)
+    {
+        return $"[{ErrorCodes.InputStreamContractMismatch}] Node '{nodeId}' expects input items of type '{expectedType}' but an upstream node supplied '{actualType}'. " +
+               $"Connect it to a node whose output type is '{expectedType}' (or a subtype), or insert a transform that converts between them. " +
+               $"See: {DocsBaseUrl}#{ErrorCodes.InputStreamContractMismatch}";
     }
 
     public static string CannotRegisterMappingsAfterExecution(string nodeName)
