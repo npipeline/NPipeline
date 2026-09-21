@@ -1,0 +1,34 @@
+# Normalize every text file to LF in the repository, and check it out as LF on
+# every platform.
+* text=auto eol=lf
+
+# Batch files are read by cmd.exe, which needs CRLF.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binary files: never normalized, never diffed as text.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.gz binary
+*.dll binary
+*.exe binary
+*.snk binary
+*.pfx binary
+*.parquet binary
+*.ttf binary
+*.woff binary
+*.woff2 binary
+
+# Office documents are zip archives: binary, but worth naming explicitly since
+# the samples carry .xlsx fixtures.
+*.xlsx binary
+*.docx binary
+*.pptx binary
+
+# Language hints for diffs and GitHub's linguist.
+*.cs diff=csharp
