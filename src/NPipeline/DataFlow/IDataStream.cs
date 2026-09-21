@@ -46,6 +46,11 @@ public interface IDataStream : IAsyncDisposable
     ///     This is marked public in the interface (due to C# constraints on interface implementation)
     ///     but should be treated as internal. The main public API is the typed IDataStream&lt;T&gt;.
     /// </remarks>
+    /// <remarks>
+    ///     Implementations must yield every item of the underlying stream, including nulls. Filtering here would make
+    ///     an item count depend on which decorators happen to wrap the stream, and would silently discard data from
+    ///     joins and aggregates over nullable item types. Callers that need nulls removed must do so explicitly.
+    /// </remarks>
     IAsyncEnumerable<object?> ToAsyncEnumerable(CancellationToken cancellationToken = default);
 }
 

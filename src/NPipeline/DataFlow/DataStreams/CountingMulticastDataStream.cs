@@ -93,8 +93,7 @@ internal sealed class CountingMulticastDataStream<T> : IForwardOnlyDataStream<T>
 
         while (await enumerator.MoveNextAsync())
         {
-            if (enumerator.Current is not null)
-                yield return enumerator.Current;
+            yield return enumerator.Current;
         }
     }
 

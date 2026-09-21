@@ -44,8 +44,7 @@ internal sealed class CountingPassthroughDataStream<T> : IForwardOnlyDataStream<
 
         await foreach (var item in EnumerateWithCounting(cancellationToken))
         {
-            if (item is not null)
-                yield return item;
+            yield return item;
         }
     }
 

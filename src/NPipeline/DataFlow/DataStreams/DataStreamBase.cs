@@ -48,8 +48,7 @@ public abstract class DataStreamBase<T> : IForwardOnlyDataStream<T>
     {
         await foreach (var item in this.WithCancellation(cancellationToken))
         {
-            if (item is not null)
-                yield return item;
+            yield return item;
         }
     }
 

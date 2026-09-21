@@ -25,8 +25,7 @@ internal sealed class AsyncEnumerableDataStream<T>(IAsyncEnumerable<T> source, s
     {
         await foreach (var item in source.WithCancellation(cancellationToken))
         {
-            if (item is not null)
-                yield return item;
+            yield return item;
         }
     }
 
