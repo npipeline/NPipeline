@@ -26,7 +26,7 @@ namespace NPipeline.Execution.Caching;
 public sealed class InMemoryPipelineExecutionPlanCache : IPipelineExecutionPlanCache
 {
     private const int MaxCacheSize = 100;
-    private readonly ConcurrentDictionary<CacheKey, (Dictionary<string, NodeExecutionPlan> Plans, long LastAccess)> _cache = new();
+    private readonly ConcurrentDictionary<PipelineExecutionPlanCacheKey, (Dictionary<string, NodeExecutionPlan> Plans, long LastAccess)> _cache = new();
     private readonly object _evictionLock = new();
 
     /// <inheritdoc />
@@ -99,7 +99,7 @@ public sealed class InMemoryPipelineExecutionPlanCache : IPipelineExecutionPlanC
     /// </summary>
     private void EvictOldestEntry()
     {
-        CacheKey? oldestKey = null;
+        PipelineExecutionPlanCacheKey? oldestKey = null;
         var oldestTimestamp = long.MaxValue;
 
         // Find the entry with the oldest timestamp
@@ -118,19 +118,14 @@ public sealed class InMemoryPipelineExecutionPlanCache : IPipelineExecutionPlanC
     }
 
     /// <summary>
-    ///     Generates a cache key based on pipeline definition type and graph structure.
+    ///     Generates a cache key from the pipeline definition type and the graph properties plans are built from.
     /// </summary>
     /// <remarks>
-    ///     The cache key includes:
-    ///     - Pipeline definition type full name
-    ///     - Hash of node definitions (ID, type, input/output types)
-    ///     - Hash of edge connections
-    ///     This ensures that structurally identical pipelines share cached plans.
+    ///     See <see cref="PipelineExecutionPlanCacheKey" /> for why the key is derived from the node definitions
+    ///     directly rather than from a hash of the graph as a whole.
     /// </remarks>
-    private static CacheKey GenerateCacheKey(Type pipelineDefinitionType, PipelineGraph graph)
+    private static PipelineExecutionPlanCacheKey GenerateCacheKey(Type pipelineDefinitionType, PipelineGraph graph)
     {
-        return new CacheKey(pipelineDefinitionType.FullName ?? pipelineDefinitionType.Name, graph.GraphHash);
+        return PipelineExecutionPlanCacheKey.Create(pipelineDefinitionType, graph);
     }
-
-    private readonly record struct CacheKey(string TypeName, string GraphHash);
 }

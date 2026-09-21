@@ -1,7 +1,5 @@
 using System.Collections.Frozen;
 using System.Collections.Immutable;
-using System.Security.Cryptography;
-using System.Text;
 using NPipeline.Configuration;
 using NPipeline.ErrorHandling;
 using NPipeline.Lineage;
@@ -76,13 +74,6 @@ public sealed record PipelineGraph
     ///     The execution options configuration.
     /// </summary>
     public ExecutionOptionsConfiguration ExecutionOptions { get; init; } = ExecutionOptionsConfiguration.Default;
-
-    /// <summary>
-    ///     A cached hash of the graph structure, computed once during build.
-    ///     This eliminates the need to recompute the hash on every cache lookup,
-    ///     reducing string allocations in high-throughput scenarios.
-    /// </summary>
-    public string GraphHash { get; init; } = string.Empty;
 
     /// <summary>
     ///     Child sub-pipeline graphs for composite nodes, keyed by the composite node's ID.
@@ -516,54 +507,6 @@ public sealed class PipelineGraphBuilder
             },
         };
 
-        // Compute and cache the graph hash once during build
-        graph = graph with { GraphHash = ComputeGraphHash(graph) };
-
         return graph;
-    }
-
-    /// <summary>
-    ///     Computes a stable hash of the pipeline graph structure.
-    /// </summary>
-    /// <remarks>
-    ///     The hash includes all structural elements that affect execution plan compilation:
-    ///     - Node IDs, types, input types, output types
-    ///     - Edge connections (source and target node IDs)
-    ///     - Execution strategies (if specified at definition time)
-    ///     Changes to any of these elements will result in a different hash and cache miss.
-    /// </remarks>
-    private static string ComputeGraphHash(PipelineGraph graph)
-    {
-        var sb = new StringBuilder();
-
-        // Sort nodes by ID for stable hashing
-        foreach (var node in graph.Nodes.OrderBy(n => n.Id))
-        {
-            _ = sb.Append(node.Id);
-            _ = sb.Append(':');
-            _ = sb.Append(node.NodeType.FullName ?? node.NodeType.Name);
-            _ = sb.Append(':');
-            _ = sb.Append(node.InputType?.FullName ?? "null");
-            _ = sb.Append(':');
-            _ = sb.Append(node.OutputType?.FullName ?? "null");
-            _ = sb.Append(':');
-            _ = sb.Append(node.ExecutionStrategy?.GetType().FullName ?? "null");
-            _ = sb.Append(';');
-        }
-
-        _ = sb.Append('|');
-
-        // Sort edges for stable hashing
-        foreach (var edge in graph.Edges.OrderBy(e => e.SourceNodeId).ThenBy(e => e.TargetNodeId))
-        {
-            _ = sb.Append(edge.SourceNodeId);
-            _ = sb.Append("->");
-            _ = sb.Append(edge.TargetNodeId);
-            _ = sb.Append(';');
-        }
-
-        // Use SHA256 to create a fixed-length hash
-        var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(sb.ToString()));
-        return Convert.ToBase64String(hashBytes);
     }
 }
