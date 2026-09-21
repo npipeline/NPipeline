@@ -48,6 +48,18 @@ namespace NPipeline.Execution.Strategies;
 ///         - Total failures are still tracked separately for retry limits
 ///     </para>
 ///     <para>
+///         Delivery guarantee on restart — <b>at-least-once, with duplicates</b>:
+///         a restart calls the stream factory again and re-yields from the beginning of the input, but items already
+///         emitted downstream before the failure are not retracted. A node that fails after emitting items therefore
+///         delivers those items twice. Sinks fed by a resilient node must be idempotent, or must tolerate duplicates
+///         some other way (for example by deduplicating on a key).
+///     </para>
+///     <para>
+///         Cancellation: cancelling the pipeline's token throws <see cref="OperationCanceledException" /> out of the
+///         stream rather than ending it. A cancelled run never completes normally with a partial result set, and
+///         cancellation neither consumes a restart attempt nor counts as a circuit-breaker failure.
+///     </para>
+///     <para>
 ///         Pattern matching enhancements:
 ///         - Uses C# switch expressions for efficient error decision handling
 ///         - Implements pattern-based circuit breaker logic
@@ -249,8 +261,12 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
         if (circuitBreaker is not null)
             ResilientExecutionStrategyLogMessages.CircuitBreakerResolved(logger, nodeId, circuitBreaker.GetSnapshot().State);
 
-        while (!cancellationToken.IsCancellationRequested)
+        while (true)
         {
+            // Cancellation must surface as an OperationCanceledException. Exiting the loop instead would complete the
+            // iterator normally, and a cancelled run would report success with a silently truncated result set.
+            cancellationToken.ThrowIfCancellationRequested();
+
             if (circuitBreaker is not null && !circuitBreaker.CanExecute())
             {
                 context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.DiagnosticsResilienceFailures(nodeId), failures);
@@ -278,8 +294,10 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
             await using var enumerator = sourceStream.GetAsyncEnumerator(cancellationToken);
             var restartRequested = false;
 
-            while (!cancellationToken.IsCancellationRequested)
+            while (true)
             {
+                cancellationToken.ThrowIfCancellationRequested();
+
                 TOut current;
 
                 try
@@ -291,6 +309,12 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
 
                         current = enumerator.Current;
                     }
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    // Cancellation of the pipeline's own token is not a node failure: it must not consume a restart
+                    // attempt, trip the circuit breaker, or be rewritten into a RetryExhaustedException.
+                    throw;
                 }
                 catch (Exception ex)
                 {
@@ -380,9 +404,10 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
                                 await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
                             }
                         }
-                        catch (Exception delayEx)
+                        catch (Exception delayEx) when (delayEx is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
                         {
-                            // Log delay strategy failure but continue with retry
+                            // Log delay strategy failure but continue with retry. A cancellation of the pipeline's own
+                            // token is excluded by the filter so it propagates instead of being logged and ignored.
                             ResilientExecutionStrategyLogMessages.RetryDelayFailed(logger, delayEx, nodeId);
                         }
 
