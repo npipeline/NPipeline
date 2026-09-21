@@ -13,9 +13,7 @@ public sealed class PipelineBuilderCharacterizationTests
     [Fact]
     public void EnableLineage_OneToOne_NoMaterializationPathRetained()
     {
-        PipelineBuilder.Lineage = new LineageService();
-
-        var b = new PipelineBuilder().WithoutExtendedValidation();
+        var b = new PipelineBuilder(new LineageService()).WithoutExtendedValidation();
         var s = b.AddSource<InMemorySourceNode<int>, int>("s");
         var t = b.AddTransform<PassthroughTransform, int, int>("t");
         var k = b.AddSink<InMemorySinkNode<int>, int>("k");
@@ -30,9 +28,7 @@ public sealed class PipelineBuilderCharacterizationTests
     [Fact]
     public void Lineage_WithDeclaredOneToMany_AdapterPresent()
     {
-        PipelineBuilder.Lineage = new LineageService();
-
-        var b = new PipelineBuilder().WithoutExtendedValidation();
+        var b = new PipelineBuilder(new LineageService()).WithoutExtendedValidation();
         var s = b.AddSource<InMemorySourceNode<int>, int>("s");
         var t = b.AddTransform<OneToManyTransform, int, int>("oom");
         var k = b.AddSink<InMemorySinkNode<int>, int>("k");
@@ -50,9 +46,7 @@ public sealed class PipelineBuilderCharacterizationTests
     [Fact]
     public void Lineage_OverflowPolicyStrict_WhenCapExceeded_ThrowsDuringBuildMaterializationPhase()
     {
-        PipelineBuilder.Lineage = new LineageService();
-
-        var b = new PipelineBuilder().WithoutExtendedValidation();
+        var b = new PipelineBuilder(new LineageService()).WithoutExtendedValidation();
         var s = b.AddSource<InMemorySourceNode<int>, int>("s");
         var t = b.AddTransform<OneToManyTransform, int, int>("oom");
         var k = b.AddSink<InMemorySinkNode<int>, int>("k");
@@ -69,9 +63,7 @@ public sealed class PipelineBuilderCharacterizationTests
     [Fact]
     public void Lineage_OverflowPolicyWarnContinue_DoesNotAffectBuild()
     {
-        PipelineBuilder.Lineage = new LineageService();
-
-        var b = new PipelineBuilder().WithoutExtendedValidation();
+        var b = new PipelineBuilder(new LineageService()).WithoutExtendedValidation();
         var s = b.AddSource<InMemorySourceNode<int>, int>("s");
         var t = b.AddTransform<OneToManyTransform, int, int>("oom");
         var k = b.AddSink<InMemorySinkNode<int>, int>("k");

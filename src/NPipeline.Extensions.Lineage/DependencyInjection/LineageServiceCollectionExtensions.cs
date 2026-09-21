@@ -134,7 +134,8 @@ public static class LineageServiceCollectionExtensions
         // Register the default pipeline lineage sink provider
         services.TryAddScoped<IPipelineLineageSinkProvider, DefaultPipelineLineageSinkProvider>();
 
-        // Set the static lineage module so PipelineBuilder can construct lineage adapters
-        PipelineBuilder.Lineage = new LineageService();
+        // A builder resolved from the container gets the same scoped module the runner will use, so build-time
+        // lineage adapters and runtime lineage handling always come from one instance.
+        services.AddTransient(sp => new PipelineBuilder(sp.GetRequiredService<ILineage>()));
     }
 }

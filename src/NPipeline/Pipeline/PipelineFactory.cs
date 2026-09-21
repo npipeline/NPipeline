@@ -26,7 +26,9 @@ public sealed class PipelineFactory : IPipelineFactory
         ArgumentNullException.ThrowIfNull(definition);
         ArgumentNullException.ThrowIfNull(context);
 
-        var builder = new PipelineBuilder();
+        // Build with the lineage module the run will actually use, so build-time adapters and runtime lineage
+        // handling cannot come from different instances.
+        var builder = new PipelineBuilder(context.Lineage.Module);
 
         definition.Define(builder, context);
 

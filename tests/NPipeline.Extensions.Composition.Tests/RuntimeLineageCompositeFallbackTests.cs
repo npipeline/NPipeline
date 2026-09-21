@@ -9,93 +9,64 @@ using Xunit;
 
 namespace NPipeline.Extensions.Composition.Tests;
 
-[Collection("CompositionLineageStateful")]
 public sealed class RuntimeLineageCompositeFallbackTests
 {
     [Fact]
     public async Task AddComposite_WithoutServiceProvider_InheritAll_WithRuntimeLineageOverride_ShouldSucceed()
     {
-        var originalLineage = PipelineBuilder.Lineage;
-        PipelineBuilder.Lineage = new LineageService();
+        var runner = new PipelineRunnerBuilder()
+            .WithLineage(new LineageService())
+            .Build();
 
-        try
-        {
-            var runner = new PipelineRunnerBuilder()
-                .WithLineage(PipelineBuilder.Lineage)
-                .Build();
+        var context = new PipelineContext();
+        context.Properties[PipelineContextKeys.ItemLevelLineageEnabledOverride] = true;
 
-            var context = new PipelineContext();
-            context.Properties[PipelineContextKeys.ItemLevelLineageEnabledOverride] = true;
+        await runner.RunAsync<ParentWithFallbackCompositeAndInheritAllPipeline>(context);
 
-            await runner.RunAsync<ParentWithFallbackCompositeAndInheritAllPipeline>(context);
-
-            GetReceivedItems(context).Should().Equal(2, 4, 6);
-        }
-        finally
-        {
-            PipelineBuilder.Lineage = originalLineage;
-        }
+        GetReceivedItems(context).Should().Equal(2, 4, 6);
     }
 
     [Fact]
     public async Task AddComposite_WithServiceProvider_InheritAll_WithRuntimeLineageOverride_ShouldSucceed()
     {
-        var originalLineage = PipelineBuilder.Lineage;
-        PipelineBuilder.Lineage = new LineageService();
+        var lineage = new LineageService();
 
-        try
-        {
-            var parentRunner = new PipelineRunnerBuilder()
-                .WithLineage(PipelineBuilder.Lineage)
-                .Build();
+        var parentRunner = new PipelineRunnerBuilder()
+            .WithLineage(lineage)
+            .Build();
 
-            var childRunner = new PipelineRunnerBuilder()
-                .WithLineage(PipelineBuilder.Lineage)
-                .Build();
+        var childRunner = new PipelineRunnerBuilder()
+            .WithLineage(lineage)
+            .Build();
 
-            var serviceProvider = new DictionaryServiceProvider()
-                .Add(typeof(IPipelineRunner), childRunner)
-                .Add(typeof(ChildDoublePipeline), new ChildDoublePipeline());
+        var serviceProvider = new DictionaryServiceProvider()
+            .Add(typeof(IPipelineRunner), childRunner)
+            .Add(typeof(ChildDoublePipeline), new ChildDoublePipeline());
 
-            var context = new PipelineContext();
-            context.Properties[PipelineContextKeys.ItemLevelLineageEnabledOverride] = true;
+        var context = new PipelineContext();
+        context.Properties[PipelineContextKeys.ItemLevelLineageEnabledOverride] = true;
 
-            await parentRunner.RunAsync(new ParentWithServiceProviderCompositeAndInheritAllPipeline(serviceProvider), context);
+        await parentRunner.RunAsync(new ParentWithServiceProviderCompositeAndInheritAllPipeline(serviceProvider), context);
 
-            GetReceivedItems(context).Should().Equal(2, 4, 6);
-        }
-        finally
-        {
-            PipelineBuilder.Lineage = originalLineage;
-        }
+        GetReceivedItems(context).Should().Equal(2, 4, 6);
     }
 
     [Fact]
     public async Task AddComposite_WithoutServiceProvider_DefaultContextConfig_WithRuntimeLineageOverride_ShouldNotInheritProperties()
     {
-        var originalLineage = PipelineBuilder.Lineage;
-        PipelineBuilder.Lineage = new LineageService();
+        InspectOverrideTransform.SawRuntimeLineageOverrideProperty = false;
 
-        try
-        {
-            InspectOverrideTransform.SawRuntimeLineageOverrideProperty = false;
+        var runner = new PipelineRunnerBuilder()
+            .WithLineage(new LineageService())
+            .Build();
 
-            var runner = new PipelineRunnerBuilder()
-                .WithLineage(PipelineBuilder.Lineage)
-                .Build();
+        var context = new PipelineContext();
+        context.Properties[PipelineContextKeys.ItemLevelLineageEnabledOverride] = true;
 
-            var context = new PipelineContext();
-            context.Properties[PipelineContextKeys.ItemLevelLineageEnabledOverride] = true;
+        await runner.RunAsync<ParentWithFallbackCompositeAndDefaultContextPipeline>(context);
 
-            await runner.RunAsync<ParentWithFallbackCompositeAndDefaultContextPipeline>(context);
-
-            InspectOverrideTransform.SawRuntimeLineageOverrideProperty.Should().BeFalse();
-            GetReceivedItems(context).Should().Equal(2, 4, 6);
-        }
-        finally
-        {
-            PipelineBuilder.Lineage = originalLineage;
-        }
+        InspectOverrideTransform.SawRuntimeLineageOverrideProperty.Should().BeFalse();
+        GetReceivedItems(context).Should().Equal(2, 4, 6);
     }
 
     private static IReadOnlyList<int> GetReceivedItems(PipelineContext context)
@@ -242,6 +213,3 @@ public sealed class RuntimeLineageCompositeFallbackTests
         }
     }
 }
-
-[CollectionDefinition("CompositionLineageStateful", DisableParallelization = true)]
-public sealed class CompositionLineageStatefulCollectionDefinition;

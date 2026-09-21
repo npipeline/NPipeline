@@ -1,5 +1,6 @@
 using NPipeline.Execution;
 using NPipeline.Graph;
+using NPipeline.Lineage;
 using NPipeline.Pipeline;
 
 namespace NPipeline.Extensions.Composition;
@@ -43,8 +44,8 @@ public static class CompositionPipelineBuilderExtensions
         // Record the child definition type on the node
         builder.SetNodeChildDefinitionType(handle.Id, typeof(TDefinition));
 
-        // Resolve runner from DI when available; fall back to static runner
-        var runner = ResolveRunner(serviceProvider);
+        // Resolve runner from DI when available; otherwise build one that shares this builder's lineage module.
+        var runner = ResolveRunner(serviceProvider, builder.Lineage);
 
         // Configure the node with resolved pipeline runner and context configuration
         var node = new CompositeTransformNode<TIn, TOut, TDefinition>(
@@ -123,26 +124,17 @@ public static class CompositionPipelineBuilderExtensions
     }
 
     /// <summary>
-    ///     Resolves an <see cref="IPipelineRunner" /> from the service provider if available,
-    ///     falling back to a lineage-aware runner aligned with <see cref="PipelineBuilder.Lineage" />.
+    ///     Resolves an <see cref="IPipelineRunner" /> from the service provider when one is available, otherwise builds
+    ///     a runner that uses <paramref name="lineage" /> so the child pipeline tracks lineage the same way its parent
+    ///     does.
     /// </summary>
-    private static IPipelineRunner ResolveRunner(IServiceProvider? serviceProvider)
+    private static IPipelineRunner ResolveRunner(IServiceProvider? serviceProvider, ILineage lineage)
     {
-        if (serviceProvider is not null)
-        {
-            var runner = serviceProvider.GetService(typeof(IPipelineRunner)) as IPipelineRunner;
+        if (serviceProvider?.GetService(typeof(IPipelineRunner)) is IPipelineRunner runner)
+            return runner;
 
-            if (runner is not null)
-                return runner;
-        }
-
-        return CreateFallbackRunner();
-    }
-
-    private static IPipelineRunner CreateFallbackRunner()
-    {
         return new PipelineRunnerBuilder()
-            .WithLineage(PipelineBuilder.Lineage)
+            .WithLineage(lineage)
             .Build();
     }
 }

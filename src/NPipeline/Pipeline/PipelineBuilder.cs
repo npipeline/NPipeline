@@ -30,20 +30,50 @@ public sealed partial class PipelineBuilder
     private bool _built;
 
     /// <summary>
-    /// Gets or sets the unified lineage module used by build-time adapter construction and runtime lineage orchestration.
+    ///     Creates a builder that does not track item-level lineage.
     /// </summary>
-    /// <remarks>
-    /// Defaults to <see cref="NullLineage.Instance"/> which does not perform lineage tracking.
-    /// </remarks>
-    public static ILineage Lineage { get; set; } = NullLineage.Instance;
+    public PipelineBuilder()
+        : this(null, null)
+    {
+    }
 
     /// <summary>
-    /// Gets or sets the execution module that prepares registration-time delegates and caches.
+    ///     Creates a builder bound to a specific lineage module and registration planner.
+    /// </summary>
+    /// <param name="lineage">
+    ///     The lineage module used to construct build-time lineage adapters. Pass the same module the pipeline will run
+    ///     with, or null for <see cref="NullLineage.Instance" />, which tracks nothing.
+    /// </param>
+    /// <param name="registrationPlanner">
+    ///     The planner that prepares registration-time delegates and caches, or null for
+    ///     <see cref="DefaultNodeRegistrationPlanner.Instance" />.
+    /// </param>
+    /// <remarks>
+    ///     When a pipeline runs through an <c>IPipelineRunner</c>, the runner's own lineage module is
+    ///     supplied here by <see cref="PipelineFactory" />. Build-time adapters and runtime lineage handling therefore
+    ///     always come from one instance and cannot disagree.
+    /// </remarks>
+    public PipelineBuilder(ILineage? lineage, INodeRegistrationPlanner? registrationPlanner = null)
+    {
+        Lineage = lineage ?? NullLineage.Instance;
+        RegistrationPlanner = registrationPlanner ?? DefaultNodeRegistrationPlanner.Instance;
+    }
+
+    /// <summary>
+    ///     The lineage module this builder constructs build-time lineage adapters with.
     /// </summary>
     /// <remarks>
-    /// Defaults to <see cref="DefaultNodeRegistrationPlanner.Instance"/>.
+    ///     Defaults to <see cref="NullLineage.Instance" />, which does not track lineage.
     /// </remarks>
-    public static INodeRegistrationPlanner ExecutionRegistrationPlanner { get; set; } = DefaultNodeRegistrationPlanner.Instance;
+    public ILineage Lineage { get; }
+
+    /// <summary>
+    ///     The module that prepares registration-time delegates and caches.
+    /// </summary>
+    /// <remarks>
+    ///     Defaults to <see cref="DefaultNodeRegistrationPlanner.Instance" />.
+    /// </remarks>
+    public INodeRegistrationPlanner RegistrationPlanner { get; }
 
     // State objects encapsulating related fields by concern
 
@@ -394,7 +424,7 @@ public sealed partial class PipelineBuilder
         CustomMergeDelegate? customMerge = null;
         var isJoin = kind == NodeKind.Join;
 
-        ExecutionRegistrationPlanner.PrepareNode(kind, nodeType);
+        RegistrationPlanner.PrepareNode(kind, nodeType);
 
         switch (kind)
         {
@@ -427,7 +457,7 @@ public sealed partial class PipelineBuilder
         }
 
         if (meta.HasCustomMerge)
-            customMerge = ExecutionRegistrationPlanner.BuildCustomMergeDelegate(nodeType);
+            customMerge = RegistrationPlanner.BuildCustomMergeDelegate(nodeType);
 
         var def = new NodeDefinition(
             id,
@@ -451,11 +481,11 @@ public sealed partial class PipelineBuilder
         return handleFactory(id, def);
     }
 
-    private static LineageAdapterDelegate? BuildLineageAdapter(Type? inType, Type? outType, Type? lineageMapperType)
-        => PipelineBuilder.Lineage.BuildLineageAdapter(inType, outType, lineageMapperType);
+    private LineageAdapterDelegate? BuildLineageAdapter(Type? inType, Type? outType, Type? lineageMapperType)
+        => Lineage.BuildLineageAdapter(inType, outType, lineageMapperType);
 
-    private static SinkLineageUnwrapDelegate? BuildSinkLineageUnwrap(Type? inType)
-        => PipelineBuilder.Lineage.BuildSinkLineageUnwrap(inType);
+    private SinkLineageUnwrapDelegate? BuildSinkLineageUnwrap(Type? inType)
+        => Lineage.BuildSinkLineageUnwrap(inType);
 
     #endregion
 

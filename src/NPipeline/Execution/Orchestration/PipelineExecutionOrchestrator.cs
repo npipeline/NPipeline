@@ -13,6 +13,7 @@ internal sealed class PipelineExecutionOrchestrator : IPipelineExecutionOrchestr
 {
     private readonly PipelineExecutionCleanupStage _cleanupStage;
     private readonly PipelineExecutionFailureStage _failureStage;
+    private readonly ILineage _lineage;
     private readonly PipelineLineageRecordingStage _lineageRecordingStage;
     private readonly PipelineNodeExecutionStage _nodeExecutionStage;
     private readonly IPipelineFactory _pipelineFactory;
@@ -46,6 +47,7 @@ internal sealed class PipelineExecutionOrchestrator : IPipelineExecutionOrchestr
 
         _pipelineFactory = pipelineFactory;
         _observabilitySurface = observabilitySurface;
+        _lineage = lineage;
 
         _setupStage = new PipelineExecutionSetupStage(
             nodeFactory,
@@ -78,6 +80,10 @@ internal sealed class PipelineExecutionOrchestrator : IPipelineExecutionOrchestr
         using var pipelineActivity = _observabilitySurface.BeginPipeline(definitionType, context);
         PipelineGraph? graph = null;
         InitializeExecutionContext(context);
+
+        // Publish this runner's lineage module so the builder constructs adapters from the same instance that will
+        // handle lineage at runtime.
+        context.Lineage.Module = _lineage;
 
         var nodeOutputs = PipelineObjectPool.RentNodeOutputDictionary();
         Dictionary<string, INode>? nodeInstances = null;

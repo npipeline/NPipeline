@@ -317,7 +317,7 @@ public sealed partial class PipelineBuilder
     ///     Scans for composite nodes with <see cref="NodeDefinition.ChildDefinitionType" /> set,
     ///     builds their child pipeline graphs, and attaches them to the parent graph.
     /// </summary>
-    private static PipelineGraph BuildChildGraphs(PipelineGraph graph)
+    private PipelineGraph BuildChildGraphs(PipelineGraph graph)
     {
         Dictionary<string, PipelineGraph>? childGraphs = null;
 
@@ -329,7 +329,10 @@ public sealed partial class PipelineBuilder
             try
             {
                 var childDef = (IPipelineDefinition)Activator.CreateInstance(node.ChildDefinitionType)!;
-                var childBuilder = new PipelineBuilder();
+
+                // The child graph must be built with the same lineage module as its parent, otherwise its nodes get
+                // adapters from a different module than the one that will run them.
+                var childBuilder = new PipelineBuilder(Lineage, RegistrationPlanner);
 
                 // Child graph extraction is a build-time operation and uses an isolated default context.
                 // Child Define() implementations should remain side-effect free and fast.
