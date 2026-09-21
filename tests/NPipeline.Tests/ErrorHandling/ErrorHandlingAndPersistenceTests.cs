@@ -94,7 +94,7 @@ public sealed class ErrorHandlingAndPersistenceTests
     private sealed class DummyStrategy : IExecutionStrategy
     {
         public Task<IDataStream<TOut>> ExecuteAsync<TIn, TOut>(IDataStream<TIn> input, ITransformNode<TIn, TOut> node, PipelineContext context,
-            CancellationToken cancellationToken)
+            string nodeId, CancellationToken cancellationToken)
         {
             return Task.FromResult<IDataStream<TOut>>(new NPipeline.DataFlow.DataStreams.InMemoryDataStream<TOut>(new List<TOut>(), "empty"));
         }

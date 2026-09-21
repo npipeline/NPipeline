@@ -20,7 +20,7 @@ public sealed class ParallelExecutionStrategyValueTaskTests
 
         using (context.ScopedNode("transform"))
         {
-            await using var output = await strategy.ExecuteAsync(input, transform, context, CancellationToken.None);
+            await using var output = await strategy.ExecuteAsync(input, transform, context, "transform", CancellationToken.None);
 
             await foreach (var value in output.WithCancellation(CancellationToken.None))
             {
@@ -51,7 +51,7 @@ public sealed class ParallelExecutionStrategyValueTaskTests
                 QueuePolicy = BoundedQueuePolicy.DropOldest,
             });
 
-            await using var output = await strategy.ExecuteAsync(input, transform, context, CancellationToken.None);
+            await using var output = await strategy.ExecuteAsync(input, transform, context, "transform", CancellationToken.None);
 
             await foreach (var value in output.WithCancellation(CancellationToken.None))
             {
@@ -83,7 +83,7 @@ public sealed class ParallelExecutionStrategyValueTaskTests
                 QueuePolicy = BoundedQueuePolicy.DropNewest,
             });
 
-            await using var output = await strategy.ExecuteAsync(input, transform, context, CancellationToken.None);
+            await using var output = await strategy.ExecuteAsync(input, transform, context, "transform", CancellationToken.None);
 
             await foreach (var value in output.WithCancellation(CancellationToken.None))
             {
@@ -114,7 +114,7 @@ public sealed class ParallelExecutionStrategyValueTaskTests
         {
             using (context.ScopedNode("transform"))
             {
-                await using var output = await strategy.ExecuteAsync(input, transform, context, CancellationToken.None);
+                await using var output = await strategy.ExecuteAsync(input, transform, context, "transform", CancellationToken.None);
 
                 var threw = false;
 

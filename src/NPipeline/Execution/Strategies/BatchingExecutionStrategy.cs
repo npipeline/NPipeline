@@ -93,6 +93,7 @@ public sealed class BatchingExecutionStrategy : IExecutionStrategy, IStreamExecu
         IDataStream<TIn> input,
         ITransformNode<TIn, TOut> node,
         PipelineContext context,
+        string nodeId,
         CancellationToken cancellationToken)
     {
         // This strategy changes the shape of data from TIn to IReadOnlyCollection<TIn>.
@@ -103,7 +104,6 @@ public sealed class BatchingExecutionStrategy : IExecutionStrategy, IStreamExecu
                 $"The {nameof(BatchingExecutionStrategy)} can only be used with nodes that output a collection. Expected output type: {typeof(IReadOnlyCollection<TIn>).Name}, but found {typeof(TOut).Name}.");
         }
 
-        var nodeId = context.CurrentNodeId;
         var observabilityScope = context.NodeExecutionScopeRegistry.BeginNodeScope(nodeId);
         var timedInput = NPipeline.Execution.NodeTimingDataStreamWrapper.WrapInputWait(input, observabilityScope);
 
@@ -124,6 +124,7 @@ public sealed class BatchingExecutionStrategy : IExecutionStrategy, IStreamExecu
         IDataStream<TIn> input,
         IStreamTransformNode<TIn, TOut> node,
         PipelineContext context,
+        string nodeId,
         CancellationToken cancellationToken)
     {
         // This strategy changes the shape of data from TIn to IReadOnlyCollection<TIn>.
@@ -134,7 +135,6 @@ public sealed class BatchingExecutionStrategy : IExecutionStrategy, IStreamExecu
                 $"The {nameof(BatchingExecutionStrategy)} can only be used with nodes that output a collection. Expected output type: {typeof(IReadOnlyCollection<TIn>).Name}, but found {typeof(TOut).Name}.");
         }
 
-        var nodeId = context.CurrentNodeId;
         var observabilityScope = context.NodeExecutionScopeRegistry.BeginNodeScope(nodeId);
         var timedInput = NPipeline.Execution.NodeTimingDataStreamWrapper.WrapInputWait(input, observabilityScope);
 

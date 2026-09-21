@@ -29,9 +29,9 @@ internal sealed class AIStreamPassthroughExecutionStrategy : IExecutionStrategy,
         IDataStream<TIn> input,
         ITransformNode<TIn, TOut> node,
         PipelineContext context,
+        string nodeId,
         CancellationToken cancellationToken)
     {
-        var nodeId = context.CurrentNodeId;
 
         async IAsyncEnumerable<TOut> Iterate([EnumeratorCancellation] CancellationToken ct)
         {
@@ -88,9 +88,9 @@ internal sealed class AIStreamPassthroughExecutionStrategy : IExecutionStrategy,
         IDataStream<TIn> input,
         IStreamTransformNode<TIn, TOut> node,
         PipelineContext context,
+        string nodeId,
         CancellationToken cancellationToken)
     {
-        var nodeId = context.CurrentNodeId;
 
         async IAsyncEnumerable<TOut> Iterate([EnumeratorCancellation] CancellationToken ct)
         {

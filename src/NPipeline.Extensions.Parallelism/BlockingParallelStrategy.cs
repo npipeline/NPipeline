@@ -36,14 +36,13 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
         IDataStream<TIn> input,
         ITransformNode<TIn, TOut> node,
         PipelineContext context,
+        string nodeId,
         CancellationToken cancellationToken)
     {
         // Set the parallel execution flag to help ErrorHandlingService preserve original exception types
         context.IsParallelExecution = true;
 
         // Capture a stable node id (PipelineRunner sets this prior to invoking the strategy). In parallel execution
-        // relying on context.CurrentNodeId inside worker tasks would be racy if other nodes change it.
-        var nodeId = context.CurrentNodeId;
         var observabilityScope = BeginNodeObservabilityScope(context, nodeId);
 
         // Resolve per-node parallel options if provided

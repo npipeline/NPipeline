@@ -20,7 +20,7 @@ public sealed class SequentialExecutionStrategyValueTaskTests
 
         using (context.ScopedNode("transform"))
         {
-            await using var output = await strategy.ExecuteAsync(input, transform, context, CancellationToken.None);
+            await using var output = await strategy.ExecuteAsync(input, transform, context, "transform", CancellationToken.None);
 
             await foreach (var value in output.WithCancellation(CancellationToken.None))
             {
@@ -50,7 +50,7 @@ public sealed class SequentialExecutionStrategyValueTaskTests
         {
             using (context.ScopedNode("transform"))
             {
-                await using var output = await strategy.ExecuteAsync(input, transform, context, CancellationToken.None);
+                await using var output = await strategy.ExecuteAsync(input, transform, context, "transform", CancellationToken.None);
 
                 var act = async () =>
                 {

@@ -38,9 +38,9 @@ public sealed class SequentialExecutionStrategy : IExecutionStrategy
         IDataStream<TIn> input,
         ITransformNode<TIn, TOut> node,
         PipelineContext context,
+        string nodeId,
         CancellationToken cancellationToken)
     {
-        var nodeId = context.CurrentNodeId; // capture id for this node once
         var valueTaskTransform = node as IValueTaskTransform<TIn, TOut>;
 
         // Create cached execution context once per node (optimization: reduces per-item dictionary lookups)

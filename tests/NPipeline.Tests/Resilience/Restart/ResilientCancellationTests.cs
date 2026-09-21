@@ -30,7 +30,7 @@ public sealed class ResilientCancellationTests
         await cts.CancelAsync();
 
         var (strategy, inner) = CreateStrategy(_ => Produce([1, 2, 3]));
-        var stream = await strategy.ExecuteAsync(Input(), Node, context, cts.Token);
+        var stream = await strategy.ExecuteAsync(Input(), Node, context, "test-node", cts.Token);
 
         var act = () => DrainAsync(stream, cts.Token);
 
@@ -48,7 +48,7 @@ public sealed class ResilientCancellationTests
 
         // Cancel once two items have been delivered. Before the fix the inner loop simply exited here and the iterator
         // completed normally, so the caller saw a clean two-item result for a five-item stream.
-        var stream = await CreateStrategy(_ => Produce([1, 2, 3, 4, 5])).Strategy.ExecuteAsync(Input(), Node, context, cts.Token);
+        var stream = await CreateStrategy(_ => Produce([1, 2, 3, 4, 5])).Strategy.ExecuteAsync(Input(), Node, context, "test-node", cts.Token);
 
         List<int> received = [];
 
@@ -76,7 +76,7 @@ public sealed class ResilientCancellationTests
 
         // The node observes the pipeline token and throws, which is what a well-behaved node does on cancellation.
         var (strategy, inner) = CreateStrategy(ct => ProduceThenCancel([1, 2], cts, ct));
-        var stream = await strategy.ExecuteAsync(Input(), Node, context, cts.Token);
+        var stream = await strategy.ExecuteAsync(Input(), Node, context, "test-node", cts.Token);
 
         var act = () => DrainAsync(stream, cts.Token);
 
@@ -99,7 +99,7 @@ public sealed class ResilientCancellationTests
         policy.CancellationSource = cts;
 
         var (strategy, inner) = CreateStrategy(_ => Fail(new InvalidOperationException("boom")));
-        var stream = await strategy.ExecuteAsync(Input(), Node, context, cts.Token);
+        var stream = await strategy.ExecuteAsync(Input(), Node, context, "test-node", cts.Token);
 
         var act = () => DrainAsync(stream, cts.Token);
 
@@ -121,7 +121,7 @@ public sealed class ResilientCancellationTests
         await unrelated.CancelAsync();
 
         var stream = await CreateStrategy(_ => Fail(new OperationCanceledException(unrelated.Token))).Strategy
-            .ExecuteAsync(Input(), Node, context, cts.Token);
+            .ExecuteAsync(Input(), Node, context, "test-node", cts.Token);
 
         var act = () => DrainAsync(stream, cts.Token);
 
@@ -200,7 +200,7 @@ public sealed class ResilientCancellationTests
         public int Attempts { get; private set; }
 
         public Task<IDataStream<TOut>> ExecuteAsync<TIn, TOut>(IDataStream<TIn> input, ITransformNode<TIn, TOut> node, PipelineContext context,
-            CancellationToken cancellationToken)
+            string nodeId, CancellationToken cancellationToken)
         {
             Attempts++;
             var stream = new DataStream<int>(produce(cancellationToken), "stub");

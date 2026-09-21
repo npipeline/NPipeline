@@ -28,12 +28,12 @@ public sealed class DropNewestParallelStrategy : ParallelExecutionStrategyBase
         IDataStream<TIn> input,
         ITransformNode<TIn, TOut> node,
         PipelineContext context,
+        string nodeId,
         CancellationToken cancellationToken)
     {
         // Set the parallel execution flag to help ErrorHandlingService preserve original exception types
         context.IsParallelExecution = true;
 
-        var nodeId = context.CurrentNodeId;
         var observabilityScope = BeginNodeObservabilityScope(context, nodeId);
         var currentActivity = context.Tracer.CurrentActivity;
         var effectiveRetries = GetRetryOptions(nodeId, context);

@@ -25,7 +25,7 @@ public static class TransformTestHarness
         var list = items.ToList();
         var inputPipe = new HarnessListPipe<TIn>(list, "HarnessInput");
         var strategy = node.ExecutionStrategy;
-        var outputPipe = await strategy.ExecuteAsync<TIn, TOut>(inputPipe, node, context, cancellationToken).ConfigureAwait(false);
+        var outputPipe = await strategy.ExecuteAsync<TIn, TOut>(inputPipe, node, context, context.CurrentNodeId, cancellationToken).ConfigureAwait(false);
         var results = new List<TOut>();
 
         await foreach (var o in outputPipe.WithCancellation(cancellationToken))

@@ -94,6 +94,7 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
     /// <param name="input">The input data pipe.</param>
     /// <param name="node">The transform node to execute.</param>
     /// <param name="context">The pipeline execution context.</param>
+    /// <param name="nodeId">The id of the node being executed, passed explicitly rather than read from the shared context.</param>
     /// <param name="cancellationToken">Cancellation token for the operation.</param>
     /// <returns>A data pipe containing the node's output with resilience capabilities.</returns>
     /// <exception cref="CircuitBreakerOpenException">Thrown when the circuit breaker is open and blocking execution.</exception>
@@ -116,7 +117,7 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
     ///     </para>
     /// </remarks>
     public async Task<IDataStream<TOut>> ExecuteAsync<TIn, TOut>(IDataStream<TIn> input, ITransformNode<TIn, TOut> node, PipelineContext context,
-        CancellationToken cancellationToken)
+        string nodeId, CancellationToken cancellationToken)
     {
         // Create a resilience activity to track and tag resilience-related telemetry
         using var resilientActivity = context.Tracer.StartActivity("Node.Resilience");
@@ -129,16 +130,16 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
         if (context.ResiliencePolicy is DefaultResiliencePolicy)
         {
             throw new InvalidOperationException(
-            $"Node '{context.CurrentNodeId}' is using ResilientExecutionStrategy but no custom IResiliencePolicy is configured. " +
+            $"Node '{nodeId}' is using ResilientExecutionStrategy but no custom IResiliencePolicy is configured. " +
             "Node restarts require a policy that can return RestartNode. Configure: builder.AddResiliencePolicy<T>()");
         }
 
-        var effectiveRetries = RetryOptionsResolver.Resolve(context, context.CurrentNodeId);
+        var effectiveRetries = RetryOptionsResolver.Resolve(context, nodeId);
 
         if (effectiveRetries.MaxNodeRestartAttempts <= 0)
         {
             throw new InvalidOperationException(
-                $"Node '{context.CurrentNodeId}' is using ResilientExecutionStrategy but MaxNodeRestartAttempts is {effectiveRetries.MaxNodeRestartAttempts} (must be > 0). " +
+                $"Node '{nodeId}' is using ResilientExecutionStrategy but MaxNodeRestartAttempts is {effectiveRetries.MaxNodeRestartAttempts} (must be > 0). " +
                 "Restart functionality is disabled. Configure: builder.WithRetryOptions(o => o.WithMaxNodeRestartAttempts(3))");
         }
 
@@ -146,7 +147,7 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
         if (input is IForwardOnlyDataStream && effectiveRetries.MaxMaterializedItems is null or <= 0)
         {
             throw new InvalidOperationException(
-                $"Node '{context.CurrentNodeId}' has streaming inputs but MaxMaterializedItems is {effectiveRetries.MaxMaterializedItems} (must be > 0). " +
+                $"Node '{nodeId}' has streaming inputs but MaxMaterializedItems is {effectiveRetries.MaxMaterializedItems} (must be > 0). " +
                 "Restart functionality is disabled for streaming inputs. Configure: builder.WithRetryOptions(o => o.WithMaxMaterializedItems(1000))");
         }
 
@@ -192,15 +193,13 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
         // This is necessary for RestartNode decision.
         Task<IDataStream<TOut>> StreamFactory()
         {
-            return innerStrategy.ExecuteAsync(input, node, context, cancellationToken);
+            return innerStrategy.ExecuteAsync(input, node, context, nodeId, cancellationToken);
         }
 
-        // Capture retry options & nodeId at creation time so later enumeration (during sink execution) still uses correct values.
-        var creationNodeId = context.CurrentNodeId;
+        // Capture retry options at creation time so later enumeration (during sink execution) still uses correct values.
+        var effectiveAtCreation = RetryOptionsResolver.Resolve(context, nodeId);
 
-        var effectiveAtCreation = RetryOptionsResolver.Resolve(context, creationNodeId);
-
-        var resilientStream = CreateResilientStream<TIn, TOut>(StreamFactory, context, creationNodeId, effectiveAtCreation, cancellationToken);
+        var resilientStream = CreateResilientStream<TIn, TOut>(StreamFactory, context, nodeId, effectiveAtCreation, cancellationToken);
         var pipe = new DataStream<TOut>(resilientStream);
         context.RegisterForDisposal(pipe);
         return pipe;

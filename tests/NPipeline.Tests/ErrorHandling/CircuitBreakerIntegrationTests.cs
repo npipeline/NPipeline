@@ -285,7 +285,7 @@ public class CircuitBreakerIntegrationTests
         // Act
         using (context.ScopedNode("test-node"))
         {
-            await using var result = await resilientStrategy.ExecuteAsync(input, node, context, CancellationToken.None);
+            await using var result = await resilientStrategy.ExecuteAsync(input, node, context, "test-node", CancellationToken.None);
 
             var outputs = new List<string>();
 
@@ -315,7 +315,7 @@ public class CircuitBreakerIntegrationTests
         // Act
         using (context.ScopedNode("test-node"))
         {
-            await using var result = await resilientStrategy.ExecuteAsync(input, node, context, CancellationToken.None);
+            await using var result = await resilientStrategy.ExecuteAsync(input, node, context, "test-node", CancellationToken.None);
 
             var outputs = new List<string>();
 
@@ -347,7 +347,7 @@ public class CircuitBreakerIntegrationTests
         // ExecuteAsync returns a lazy IDataStream, so we need to consume it to trigger circuit breaker
         using (context.ScopedNode("test-node"))
         {
-            await using var result = await resilientStrategy.ExecuteAsync(input, node, context, CancellationToken.None);
+            await using var result = await resilientStrategy.ExecuteAsync(input, node, context, "test-node", CancellationToken.None);
 
             // Try to consume the result - this should trigger the circuit breaker
             var exception = await Assert.ThrowsAsync<NodeExecutionException>(async () =>
@@ -389,7 +389,7 @@ public class CircuitBreakerIntegrationTests
             // Act 1: trigger breaker
             await using (var initialInput = new InMemoryDataStream<int>([1], "first"))
             {
-                await using var result = await resilientStrategy.ExecuteAsync(initialInput, node, context, CancellationToken.None);
+                await using var result = await resilientStrategy.ExecuteAsync(initialInput, node, context, "recovery-node", CancellationToken.None);
 
                 await Assert.ThrowsAsync<NodeExecutionException>(async () =>
                 {
@@ -420,7 +420,7 @@ public class CircuitBreakerIntegrationTests
 
             // Act 2: half-open should permit execution and recover to closed
             await using var recoveryInput = new InMemoryDataStream<int>([2], "second");
-            await using var recoveryResult = await resilientStrategy.ExecuteAsync(recoveryInput, node, context, CancellationToken.None);
+            await using var recoveryResult = await resilientStrategy.ExecuteAsync(recoveryInput, node, context, "recovery-node", CancellationToken.None);
 
             var outputs = new List<string>();
 

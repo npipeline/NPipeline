@@ -41,7 +41,7 @@ public sealed class RetryDelayStrategyIntegrationTests
         // Act
         using (context.ScopedNode("test-node"))
         {
-            await using var result = await resilientStrategy.ExecuteAsync(input, node, context, CancellationToken.None);
+            await using var result = await resilientStrategy.ExecuteAsync(input, node, context, "test-node", CancellationToken.None);
 
             // Consume result to trigger retries
             var outputs = new List<string>();
@@ -83,7 +83,7 @@ public sealed class RetryDelayStrategyIntegrationTests
         // Act
         using (context.ScopedNode("test-node"))
         {
-            await using var result = await resilientStrategy.ExecuteAsync(input, node, context, CancellationToken.None);
+            await using var result = await resilientStrategy.ExecuteAsync(input, node, context, "test-node", CancellationToken.None);
 
             // Consume result to trigger retries
             var outputs = new List<string>();
@@ -122,7 +122,7 @@ public sealed class RetryDelayStrategyIntegrationTests
         // Act
         using (context.ScopedNode("test-node"))
         {
-            await using var result = await resilientStrategy.ExecuteAsync(input, node, context, CancellationToken.None);
+            await using var result = await resilientStrategy.ExecuteAsync(input, node, context, "test-node", CancellationToken.None);
 
             // Consume result to trigger retries
             var outputs = new List<string>();
@@ -164,7 +164,7 @@ public sealed class RetryDelayStrategyIntegrationTests
         // Act
         using (context.ScopedNode("test-node"))
         {
-            await using var result = await resilientStrategy.ExecuteAsync(input, node, context, CancellationToken.None);
+            await using var result = await resilientStrategy.ExecuteAsync(input, node, context, "test-node", CancellationToken.None);
 
             // Consume result to trigger retries
             var outputs = new List<string>();
@@ -208,7 +208,7 @@ public sealed class RetryDelayStrategyIntegrationTests
         // Act & Assert
         using (context.ScopedNode("test-node"))
         {
-            await using var result = await resilientStrategy.ExecuteAsync(input, node, context, cts.Token);
+            await using var result = await resilientStrategy.ExecuteAsync(input, node, context, "test-node", cts.Token);
 
             var executeTask = Task.Run(async () =>
             {
@@ -255,7 +255,7 @@ public sealed class RetryDelayStrategyIntegrationTests
         // Act & Assert
         using (context.ScopedNode("test-node"))
         {
-            await using var result = await resilientStrategy.ExecuteAsync(input, node, context, CancellationToken.None);
+            await using var result = await resilientStrategy.ExecuteAsync(input, node, context, "test-node", CancellationToken.None);
 
             _ = await Assert.ThrowsAsync<RetryExhaustedException>(async () =>
             {
@@ -285,7 +285,7 @@ public sealed class RetryDelayStrategyIntegrationTests
         // Act
         using (context.ScopedNode("test-node"))
         {
-            await using var result = await resilientStrategy.ExecuteAsync(input, node, context, CancellationToken.None);
+            await using var result = await resilientStrategy.ExecuteAsync(input, node, context, "test-node", CancellationToken.None);
 
             // Consume result to trigger retries
             var outputs = new List<string>();

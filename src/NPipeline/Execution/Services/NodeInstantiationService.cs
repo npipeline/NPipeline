@@ -209,7 +209,7 @@ public sealed class NodeInstantiationService : INodeInstantiationService
         var castNode = Expression.Convert(nodeParam, typedNodeInterface);
         var strategyExpr = Expression.Call(strategyResolver, nodeParam, Expression.Constant(nodeId));
 
-        var call = Expression.Call(strategyExpr, closedExec, castInput, castNode, ctxParam, ctParam);
+        var call = Expression.Call(strategyExpr, closedExec, castInput, castNode, ctxParam, Expression.Constant(nodeId), ctParam);
         var upcastCall = Expression.Call(UpcastTaskGenericMethod.MakeGenericMethod(outType), call);
 
         return Expression.Lambda<Func<INode, IDataStream, PipelineContext, CancellationToken, Task<IDataStream>>>(

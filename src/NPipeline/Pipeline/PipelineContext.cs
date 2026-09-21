@@ -682,9 +682,16 @@ public sealed class PipelineContext : IAsyncDisposable
     /// </summary>
     /// <param name="nodeId">The ID of the node to set as current.</param>
     /// <returns>A non-allocating disposable scope that restores the original node ID upon disposal.</returns>
+    /// <remarks>
+    ///     Inert while nodes are running concurrently. <see cref="CurrentNodeId" /> is one field on a shared context,
+    ///     so concurrent scopes would interleave their writes and restores and leave it pointing at whichever node
+    ///     finished last. Freezing it is the honest behaviour: a stale id beats an arbitrary one.
+    /// </remarks>
     public NodeScope ScopedNode(string nodeId)
     {
-        return new NodeScope(this, nodeId);
+        return NodeEnvironment.NodesRunConcurrently
+            ? default
+            : new NodeScope(this, nodeId);
     }
 
     private void ClearOwnedDictionaries()

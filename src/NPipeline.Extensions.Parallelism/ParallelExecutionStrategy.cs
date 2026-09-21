@@ -39,10 +39,10 @@ public sealed class ParallelExecutionStrategy : BlockingParallelStrategy
         IDataStream<TIn> input,
         ITransformNode<TIn, TOut> node,
         PipelineContext context,
+        string nodeId,
         CancellationToken cancellationToken = default)
     {
         // Determine which queue policy to use
-        var nodeId = context.CurrentNodeId;
         var queuePolicy = BoundedQueuePolicy.Block;
 
         if (context.NodeExecutionScopeRegistry.TryGetNodeExecutionAnnotation(nodeId, out var opt) && opt is ParallelOptions po)
@@ -52,12 +52,12 @@ public sealed class ParallelExecutionStrategy : BlockingParallelStrategy
         // to avoid per-call allocations on repeated pipeline runs.
         return queuePolicy switch
         {
-            BoundedQueuePolicy.Block => await base.ExecuteAsync(input, node, context, cancellationToken),
+            BoundedQueuePolicy.Block => await base.ExecuteAsync(input, node, context, nodeId, cancellationToken),
             BoundedQueuePolicy.DropOldest =>
-                await (_dropOldest ??= new DropOldestParallelStrategy(ConfiguredMaxDop)).ExecuteAsync(input, node, context, cancellationToken),
+                await (_dropOldest ??= new DropOldestParallelStrategy(ConfiguredMaxDop)).ExecuteAsync(input, node, context, nodeId, cancellationToken),
             BoundedQueuePolicy.DropNewest =>
-                await (_dropNewest ??= new DropNewestParallelStrategy(ConfiguredMaxDop)).ExecuteAsync(input, node, context, cancellationToken),
-            _ => await base.ExecuteAsync(input, node, context, cancellationToken),
+                await (_dropNewest ??= new DropNewestParallelStrategy(ConfiguredMaxDop)).ExecuteAsync(input, node, context, nodeId, cancellationToken),
+            _ => await base.ExecuteAsync(input, node, context, nodeId, cancellationToken),
         };
     }
 

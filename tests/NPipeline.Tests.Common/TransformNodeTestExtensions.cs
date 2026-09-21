@@ -19,15 +19,17 @@ public static class TransformNodeTestExtensions
     /// <param name="node">The transform node to execute.</param>
     /// <param name="input">The input data pipe.</param>
     /// <param name="context">The pipeline context.</param>
+    /// <param name="nodeId">The id the node is executing under; defaults to the context's current node id.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The output data pipe.</returns>
     public static Task<IDataStream<TOut>> ExecuteWithStrategyAsync<TIn, TOut>(
         this ITransformNode<TIn, TOut> node,
         IDataStream<TIn> input,
         PipelineContext context,
+        string? nodeId = null,
         CancellationToken cancellationToken = default)
     {
-        return node.ExecutionStrategy.ExecuteAsync(input, node, context, cancellationToken);
+        return node.ExecutionStrategy.ExecuteAsync(input, node, context, nodeId ?? context.CurrentNodeId, cancellationToken);
     }
 
     /// <summary>

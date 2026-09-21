@@ -47,10 +47,11 @@ namespace NPipeline.Extensions.Parallelism
         /// <param name="input">The input data pipe.</param>
         /// <param name="node">The transform node to execute.</param>
         /// <param name="context">The pipeline execution context.</param>
+        /// <param name="nodeId">The id of the node being executed, passed explicitly rather than read from the shared context.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns>A task representing the asynchronous operation with the output data pipe.</returns>
         public abstract Task<IDataStream<TOut>> ExecuteAsync<TIn, TOut>(IDataStream<TIn> input, ITransformNode<TIn, TOut> node, PipelineContext context,
-            CancellationToken cancellationToken);
+            string nodeId, CancellationToken cancellationToken);
 
         /// <summary>
         ///     Gets effective retry options for a node, checking per-node, global, and context fallback.
