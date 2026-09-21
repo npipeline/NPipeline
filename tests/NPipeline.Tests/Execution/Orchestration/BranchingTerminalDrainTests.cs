@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using NPipeline.Configuration;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.Branching;
 using NPipeline.DataFlow.DataStreams;
@@ -27,9 +28,9 @@ public sealed class BranchingTerminalDrainTests
     [Fact]
     public async Task BoundedBranchBuffer_CompletesInsteadOfDeadlocking()
     {
-        using var recorder = new DrainRecorder();
+        var (context, recorder) = CreateRun();
 
-        var run = PipelineRunner.Create().RunAsync<BoundedBranchPipeline>(CancellationToken.None);
+        var run = PipelineRunner.Create().RunAsync<BoundedBranchPipeline>(context, CancellationToken.None);
         var finished = await Task.WhenAny(run, Task.Delay(DeadlockTimeout));
 
         _ = finished.Should().BeSameAs(run, "a bounded branch buffer must not stall the multicast pump");
@@ -39,9 +40,9 @@ public sealed class BranchingTerminalDrainTests
     [Fact]
     public async Task BoundedBranchBuffer_DeliversEveryItemToEverySink()
     {
-        using var recorder = new DrainRecorder();
+        var (context, recorder) = CreateRun();
 
-        await PipelineRunner.Create().RunAsync<BoundedBranchPipeline>(CancellationToken.None);
+        await PipelineRunner.Create().RunAsync<BoundedBranchPipeline>(context, CancellationToken.None);
 
         _ = recorder.FirstSinkCount.Should().Be(SourceItemCount);
         _ = recorder.SecondSinkCount.Should().Be(SourceItemCount);
@@ -50,9 +51,9 @@ public sealed class BranchingTerminalDrainTests
     [Fact]
     public async Task BoundedBranchBuffer_AppliesBackpressureToTheSource()
     {
-        using var recorder = new DrainRecorder();
+        var (context, recorder) = CreateRun();
 
-        await PipelineRunner.Create().RunAsync<BoundedBranchPipeline>(CancellationToken.None);
+        await PipelineRunner.Create().RunAsync<BoundedBranchPipeline>(context, CancellationToken.None);
 
         // With real backpressure the source may only run a buffer's worth ahead of the slowest consumer.
         // The bound is deliberately generous: it asserts "bounded", not an exact scheduling outcome.
@@ -63,9 +64,9 @@ public sealed class BranchingTerminalDrainTests
     [Fact]
     public async Task UnboundedBranchBuffer_DoesNotPrebufferTheWholeStream()
     {
-        using var recorder = new DrainRecorder();
+        var (context, recorder) = CreateRun();
 
-        await PipelineRunner.Create().RunAsync<UnboundedBranchPipeline>(CancellationToken.None);
+        await PipelineRunner.Create().RunAsync<UnboundedBranchPipeline>(context, CancellationToken.None);
 
         _ = recorder.FirstSinkCount.Should().Be(SourceItemCount);
         _ = recorder.SecondSinkCount.Should().Be(SourceItemCount);
@@ -77,9 +78,9 @@ public sealed class BranchingTerminalDrainTests
     [Fact]
     public async Task LinearPipeline_StillRunsToCompletion()
     {
-        using var recorder = new DrainRecorder();
+        var (context, recorder) = CreateRun();
 
-        await PipelineRunner.Create().RunAsync<LinearPipeline>(CancellationToken.None);
+        await PipelineRunner.Create().RunAsync<LinearPipeline>(context, CancellationToken.None);
 
         _ = recorder.FirstSinkCount.Should().Be(SourceItemCount, "a graph without a fan-out keeps the sequential path");
     }
@@ -87,29 +88,41 @@ public sealed class BranchingTerminalDrainTests
     [Fact]
     public async Task FailingSinkBelowAFanOut_StillFailsTheRun()
     {
-        using var recorder = new DrainRecorder();
+        var (context, _) = CreateRun();
 
-        var act = async () => await PipelineRunner.Create().RunAsync<FailingBranchPipeline>(CancellationToken.None);
+        var act = async () => await PipelineRunner.Create().RunAsync<FailingBranchPipeline>(context, CancellationToken.None);
 
         _ = await act.Should().ThrowAsync<Exception>("a terminal failure must surface even when terminals run together");
     }
 
     /// <summary>
-    ///     Ambient recorder shared by the nodes, which the pipeline framework instantiates itself.
+    ///     Creates a context carrying its own recorder. The recorder used to be a process-wide static, which let a
+    ///     sink still draining after one test finished record into the next test's counters.
     /// </summary>
-    private sealed class DrainRecorder : IDisposable
+    private static (PipelineContext Context, DrainRecorder Recorder) CreateRun()
     {
+        var context = new PipelineContext(PipelineContextConfiguration.Default);
+        DrainRecorder recorder = new();
+        context.Items[DrainRecorder.ContextKey] = recorder;
+        return (context, recorder);
+    }
+
+    /// <summary>
+    ///     Per-run recorder, reached by the nodes through the pipeline context.
+    /// </summary>
+    private sealed class DrainRecorder
+    {
+        public const string ContextKey = "test.drain.recorder";
+
         private int _firstSinkCount;
         private int _produced;
         private int _producedWhenFirstItemObserved = -1;
         private int _secondSinkCount;
 
-        public DrainRecorder()
+        public static DrainRecorder For(PipelineContext context)
         {
-            Current = this;
+            return (DrainRecorder)context.Items[ContextKey];
         }
-
-        public static DrainRecorder? Current { get; private set; }
 
         public int FirstSinkCount => Volatile.Read(ref _firstSinkCount);
 
@@ -132,27 +145,23 @@ public sealed class BranchingTerminalDrainTests
         {
             _ = Interlocked.Increment(ref _secondSinkCount);
         }
-
-        public void Dispose()
-        {
-            Current = null;
-        }
     }
 
     private sealed class YieldingSource : SourceNode<int>
     {
         public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
-            return new DataStream<int>(Produce(cancellationToken), "yielding-source");
+            return new DataStream<int>(Produce(DrainRecorder.For(context), cancellationToken), "yielding-source");
         }
 
         private static async IAsyncEnumerable<int> Produce(
+            DrainRecorder recorder,
             [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
         {
             for (var i = 0; i < SourceItemCount; i++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                DrainRecorder.Current!.RecordProduced();
+                recorder.RecordProduced();
 
                 // Yield so the source can outrun an unthrottled consumer, making a buffering regression visible.
                 await Task.Yield();
@@ -167,7 +176,7 @@ public sealed class BranchingTerminalDrainTests
         {
             await foreach (var _ in input.WithCancellation(cancellationToken))
             {
-                DrainRecorder.Current!.RecordFirstSinkItem();
+                DrainRecorder.For(context).RecordFirstSinkItem();
             }
         }
     }
@@ -178,7 +187,7 @@ public sealed class BranchingTerminalDrainTests
         {
             await foreach (var _ in input.WithCancellation(cancellationToken))
             {
-                DrainRecorder.Current!.RecordSecondSinkItem();
+                DrainRecorder.For(context).RecordSecondSinkItem();
             }
         }
     }

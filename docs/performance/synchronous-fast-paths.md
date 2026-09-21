@@ -96,10 +96,6 @@ protected internal override ValueTask<Result> ExecuteValueTaskAsync(
 
 The execution engine creates a `CachedNodeExecutionContext` struct once per node, caching the node ID, retry options, and feature flags. This avoids per-item dictionary lookups in `PipelineContext`.
 
-### Object Pooling
-
-`PipelineObjectPool` pools common collection types (`List<string>`, `Dictionary<string, object>`, `HashSet<string>`, etc.) to reduce GC pressure during pipeline orchestration. This is handled automatically by the framework.
-
 ## Next Steps
 
 - [Execution Plan Caching](execution-plan-caching.md) - avoid reflection on repeated runs

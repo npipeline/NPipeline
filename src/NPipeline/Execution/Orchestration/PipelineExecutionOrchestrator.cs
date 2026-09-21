@@ -1,6 +1,6 @@
+using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.Execution.Caching;
-using NPipeline.Execution.Pooling;
 using NPipeline.Graph;
 using NPipeline.Lineage;
 using NPipeline.Nodes;
@@ -85,7 +85,7 @@ internal sealed class PipelineExecutionOrchestrator : IPipelineExecutionOrchestr
         // handle lineage at runtime.
         context.Lineage.Module = _lineage;
 
-        var nodeOutputs = PipelineObjectPool.RentNodeOutputDictionary();
+        Dictionary<string, IDataStream?> nodeOutputs = new();
         Dictionary<string, INode>? nodeInstances = null;
         var pipelineCompleted = false;
 

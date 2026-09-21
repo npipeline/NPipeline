@@ -1,4 +1,3 @@
-using NPipeline.Execution.Pooling;
 using NPipeline.Graph;
 
 namespace NPipeline.Execution.Services;
@@ -13,63 +12,53 @@ public sealed class TopologyService : ITopologyService
     /// </summary>
     public List<string> TopologicalSort(PipelineGraph graph)
     {
-        // Rent pooled collections to reduce allocations
         var sortedOrder = new List<string>(graph.Nodes.Length);
-        var inDegree = PipelineObjectPool.RentStringIntDictionary();
-        var queue = PipelineObjectPool.RentStringQueue();
+        var inDegree = new Dictionary<string, int>(graph.Nodes.Length);
+        Queue<string> queue = new();
 
-        try
+        var edgesByTarget = graph.Edges.ToLookup(edge => edge.TargetNodeId, edge => edge.SourceNodeId);
+        var edgesBySource = graph.Edges.ToLookup(edge => edge.SourceNodeId, edge => edge.TargetNodeId);
+
+        // Initialize in-degrees
+        foreach (var node in graph.Nodes)
         {
-            var edgesByTarget = graph.Edges.ToLookup(edge => edge.TargetNodeId, edge => edge.SourceNodeId);
-            var edgesBySource = graph.Edges.ToLookup(edge => edge.SourceNodeId, edge => edge.TargetNodeId);
-
-            // Initialize in-degrees
-            foreach (var node in graph.Nodes)
-            {
-                inDegree[node.Id] = 0;
-            }
-
-            // Calculate in-degrees
-            foreach (var edge in graph.Edges)
-            {
-                inDegree[edge.TargetNodeId]++;
-            }
-
-            // Find nodes with no incoming edges
-            foreach (var node in graph.Nodes)
-            {
-                if (inDegree[node.Id] == 0)
-                    queue.Enqueue(node.Id);
-            }
-
-            // Process nodes
-            while (queue.Count > 0)
-            {
-                var nodeId = queue.Dequeue();
-                sortedOrder.Add(nodeId);
-
-                // Reduce in-degree of neighbors
-                foreach (var targetNodeId in edgesBySource[nodeId])
-                {
-                    inDegree[targetNodeId]--;
-
-                    if (inDegree[targetNodeId] == 0)
-                        queue.Enqueue(targetNodeId);
-                }
-            }
-
-            // Check for cycles
-            if (sortedOrder.Count != graph.Nodes.Length)
-                throw new InvalidOperationException(ErrorMessages.CyclicDependencyDetected());
-
-            return sortedOrder;
+            inDegree[node.Id] = 0;
         }
-        finally
+
+        // Calculate in-degrees
+        foreach (var edge in graph.Edges)
         {
-            // Always return pooled objects
-            PipelineObjectPool.Return(inDegree);
-            PipelineObjectPool.Return(queue);
+            inDegree[edge.TargetNodeId]++;
         }
+
+        // Find nodes with no incoming edges
+        foreach (var node in graph.Nodes)
+        {
+            if (inDegree[node.Id] == 0)
+                queue.Enqueue(node.Id);
+        }
+
+        // Process nodes
+        while (queue.Count > 0)
+        {
+            var nodeId = queue.Dequeue();
+            sortedOrder.Add(nodeId);
+
+            // Reduce in-degree of neighbors
+            foreach (var targetNodeId in edgesBySource[nodeId])
+            {
+                inDegree[targetNodeId]--;
+
+                if (inDegree[targetNodeId] == 0)
+                    queue.Enqueue(targetNodeId);
+            }
+        }
+
+        // Check for cycles
+        if (sortedOrder.Count != graph.Nodes.Length)
+            throw new InvalidOperationException(ErrorMessages.CyclicDependencyDetected());
+
+        return sortedOrder;
     }
 
     /// <summary>

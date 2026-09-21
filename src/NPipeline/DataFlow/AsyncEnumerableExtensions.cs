@@ -1,6 +1,5 @@
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
-using NPipeline.Execution.Pooling;
 
 namespace NPipeline.DataFlow;
 
@@ -75,69 +74,62 @@ public static class AsyncEnumerableExtensions
 
         while (await channel.Reader.WaitToReadAsync(cancellationToken))
         {
-            var batch = PipelineObjectPool.RentList<T>(batchSize);
+            List<T> batch = new(batchSize);
 
-            try
+            // Acquire first item (blocking until available or cancellation)
+            if (!channel.Reader.TryRead(out var first))
             {
-                // Acquire first item (blocking until available or cancellation)
-                if (!channel.Reader.TryRead(out var first))
-                {
-                    // If WaitToReadAsync returned true but no item (race), continue
-                    continue;
-                }
+                // If WaitToReadAsync returned true but no item (race), continue
+                continue;
+            }
 
-                batch.Add(first);
-                var deadline = DateTime.UtcNow + timespan;
+            batch.Add(first);
+            var deadline = DateTime.UtcNow + timespan;
 
-                // For very small windows (<=100ms) we flush immediately after first item to avoid scheduling variance across runtimes
-                // impacting expected 'first batch single item' semantics in tests.
-                if (timespan <= TimeSpan.FromMilliseconds(100))
-                {
-                    yield return batch.ToArray();
-
-                    continue;
-                }
-
-                // Collect until size limit or deadline reached
-                while (batch.Count < batchSize)
-                {
-                    if (timespan > TimeSpan.Zero)
-                    {
-                        var remaining = deadline - DateTime.UtcNow;
-
-                        if (remaining <= TimeSpan.Zero)
-                            break; // time window elapsed
-
-                        // Wait for either new data or deadline
-                        var waitTask = channel.Reader.WaitToReadAsync(cancellationToken).AsTask();
-                        var delayTask = Task.Delay(remaining, cancellationToken);
-                        var completed = await Task.WhenAny(waitTask, delayTask).ConfigureAwait(false);
-
-                        if (completed == delayTask)
-                            break; // deadline hit
-
-                        // else data available
-                        if (!await waitTask.ConfigureAwait(false))
-                            break; // channel closed
-                    }
-                    else
-                    {
-                        if (!await channel.Reader.WaitToReadAsync(cancellationToken))
-                            break;
-                    }
-
-                    while (batch.Count < batchSize && channel.Reader.TryRead(out var item))
-                    {
-                        batch.Add(item);
-                    }
-                }
-
+            // For very small windows (<=100ms) we flush immediately after first item to avoid scheduling variance across runtimes
+            // impacting expected 'first batch single item' semantics in tests.
+            if (timespan <= TimeSpan.FromMilliseconds(100))
+            {
                 yield return batch.ToArray();
+
+                continue;
             }
-            finally
+
+            // Collect until size limit or deadline reached
+            while (batch.Count < batchSize)
             {
-                PipelineObjectPool.Return(batch);
+                if (timespan > TimeSpan.Zero)
+                {
+                    var remaining = deadline - DateTime.UtcNow;
+
+                    if (remaining <= TimeSpan.Zero)
+                        break; // time window elapsed
+
+                    // Wait for either new data or deadline
+                    var waitTask = channel.Reader.WaitToReadAsync(cancellationToken).AsTask();
+                    var delayTask = Task.Delay(remaining, cancellationToken);
+                    var completed = await Task.WhenAny(waitTask, delayTask).ConfigureAwait(false);
+
+                    if (completed == delayTask)
+                        break; // deadline hit
+
+                    // else data available
+                    if (!await waitTask.ConfigureAwait(false))
+                        break; // channel closed
+                }
+                else
+                {
+                    if (!await channel.Reader.WaitToReadAsync(cancellationToken))
+                        break;
+                }
+
+                while (batch.Count < batchSize && channel.Reader.TryRead(out var item))
+                {
+                    batch.Add(item);
+                }
             }
+
+            yield return batch.ToArray();
         }
 
         await producer; // Ensure producer is finished and exceptions are propagated.

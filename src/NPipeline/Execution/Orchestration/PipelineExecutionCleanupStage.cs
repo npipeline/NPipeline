@@ -1,5 +1,4 @@
 using NPipeline.DataFlow;
-using NPipeline.Execution.Pooling;
 using NPipeline.Graph;
 using NPipeline.Nodes;
 using NPipeline.Observability;
@@ -34,7 +33,6 @@ internal sealed class PipelineExecutionCleanupStage(IObservabilitySurface observ
         }
 
         nodeOutputs.Clear();
-        PipelineObjectPool.Return(nodeOutputs);
 
         if (nodeInstances is null)
             return;
@@ -48,6 +46,5 @@ internal sealed class PipelineExecutionCleanupStage(IObservabilitySurface observ
         }
 
         nodeInstances.Clear();
-        PipelineObjectPool.Return(nodeInstances);
     }
 }

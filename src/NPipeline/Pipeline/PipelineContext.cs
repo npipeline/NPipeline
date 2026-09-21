@@ -6,7 +6,6 @@ using NPipeline.DataFlow.DataStreams;
 using NPipeline.ErrorHandling;
 using NPipeline.Execution;
 using NPipeline.Execution.CircuitBreaking;
-using NPipeline.Execution.Pooling;
 using NPipeline.Lineage;
 using NPipeline.Nodes;
 using NPipeline.Observability;
@@ -77,20 +76,23 @@ namespace NPipeline.Pipeline;
 ///         for existing node and extension code.
 ///     </para>
 /// </remarks>
-public sealed class PipelineContext
+public sealed class PipelineContext : IAsyncDisposable
 {
     private readonly bool _ownsItemsDictionary;
     private readonly bool _ownsParametersDictionary;
     private readonly bool _ownsPropertiesDictionary;
 
-    private readonly bool _parametersIsPooled;
-    private readonly bool _itemsIsPooled;
-    private readonly bool _propertiesIsPooled;
-
     // Composite disposal registry for lifecycle-managed IAsyncDisposable resources (lazy initialized).
     // Guarded by _disposalGate: terminal nodes below a fan-out drain concurrently and may each register a resource.
+    // Typical pipeline runs put a handful of entries in each context dictionary.
+    private const int DefaultContextDictionaryCapacity = 10;
+
     private readonly object _disposalGate = new();
     private List<IAsyncDisposable>? _disposables;
+
+    // Background disposals started for resources registered after disposal completed. Tracked rather than
+    // fire-and-forget so a subsequent DisposeAsync can await them instead of leaving unobserved work behind.
+    private List<Task>? _lateDisposals;
     private volatile bool _disposed;
 
     /// <summary>
@@ -146,10 +148,8 @@ public sealed class PipelineContext
         }
         else
         {
-            var (dictionary, isPooled) = CreateOwnedDictionary(profileBehavior);
-            Parameters = dictionary;
+            Parameters = CreateOwnedDictionary(profileBehavior);
             _ownsParametersDictionary = true;
-            _parametersIsPooled = isPooled;
         }
 
         if (config.Items is not null)
@@ -158,10 +158,8 @@ public sealed class PipelineContext
         }
         else
         {
-            var (dictionary, isPooled) = CreateOwnedDictionary(profileBehavior);
-            Items = dictionary;
+            Items = CreateOwnedDictionary(profileBehavior);
             _ownsItemsDictionary = true;
-            _itemsIsPooled = isPooled;
         }
 
         if (config.Properties is not null)
@@ -170,10 +168,8 @@ public sealed class PipelineContext
         }
         else
         {
-            var (dictionary, isPooled) = CreateOwnedDictionary(profileBehavior);
-            Properties = dictionary;
+            Properties = CreateOwnedDictionary(profileBehavior);
             _ownsPropertiesDictionary = true;
-            _propertiesIsPooled = isPooled;
         }
 
         var loggerFactory = config.LoggerFactory ?? NullLoggerFactory.Instance;
@@ -195,13 +191,11 @@ public sealed class PipelineContext
         Lineage = new PipelineLineageContext(lineageFactory);
     }
 
-    private static (IDictionary<string, object> Dictionary, bool IsPooled) CreateOwnedDictionary(
-        IOptimizationProfileBehavior profileBehavior)
+    private static IDictionary<string, object> CreateOwnedDictionary(IOptimizationProfileBehavior profileBehavior)
     {
-        if (profileBehavior.UsesThreadSafeContextDictionaries)
-            return (new ConcurrentDictionary<string, object>(), false);
-
-        return (PipelineObjectPool.RentStringObjectDictionary(), true);
+        return profileBehavior.UsesThreadSafeContextDictionaries
+            ? new ConcurrentDictionary<string, object>()
+            : new Dictionary<string, object>(DefaultContextDictionaryCapacity);
     }
 
     /// <summary>
@@ -546,20 +540,52 @@ public sealed class PipelineContext
 
     private void DisposeLateRegistration(IAsyncDisposable disposable)
     {
-        // Registered after disposal completed: dispose immediately to avoid leaking the resource.
-        _ = Task.Run(async () =>
+        // Registered after disposal completed: dispose immediately to avoid leaking the resource. Most stream
+        // disposals complete synchronously, so try that first and avoid scheduling any background work at all.
+        ValueTask disposal;
+
+        try
         {
-            try
-            {
-                await disposable.DisposeAsync().ConfigureAwait(false); // CA2012 satisfied by awaiting inside background task
-            }
-            catch (Exception ex)
-            {
-                // Log but don't propagate - we're already past disposal
-                var logger = LoggerFactory.CreateLogger("PipelineContext");
-                PipelineContextLogMessages.LateRegistrationDisposalFailed(logger, ex.Message);
-            }
-        });
+            disposal = disposable.DisposeAsync();
+        }
+        catch (Exception ex)
+        {
+            LogLateRegistrationFailure(ex);
+            return;
+        }
+
+        if (disposal.IsCompletedSuccessfully)
+            return;
+
+        var pending = AwaitLateDisposalAsync(disposal);
+
+        if (pending.IsCompleted)
+            return;
+
+        lock (_disposalGate)
+        {
+            _lateDisposals ??= new List<Task>(1);
+            _lateDisposals.Add(pending);
+        }
+    }
+
+    private async Task AwaitLateDisposalAsync(ValueTask disposal)
+    {
+        try
+        {
+            await disposal.ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            // Log but don't propagate - we're already past disposal.
+            LogLateRegistrationFailure(ex);
+        }
+    }
+
+    private void LogLateRegistrationFailure(Exception ex)
+    {
+        var logger = LoggerFactory.CreateLogger("PipelineContext");
+        PipelineContextLogMessages.LateRegistrationDisposalFailed(logger, ex.Message);
     }
 
     /// <summary>
@@ -568,26 +594,35 @@ public sealed class PipelineContext
     public async ValueTask DisposeAsync()
     {
         List<IAsyncDisposable>? disposables;
+        bool alreadyDisposed;
 
         lock (_disposalGate)
         {
-            if (_disposed)
-                return;
-
+            alreadyDisposed = _disposed;
             _disposed = true;
             disposables = _disposables;
             _disposables = null;
+        }
+
+        if (alreadyDisposed)
+        {
+            // Await anything a late registration started, so a caller who disposes again has a way to observe that
+            // work rather than leaving it running unwatched.
+            await DrainLateDisposalsAsync().ConfigureAwait(false);
+            return;
         }
 
         List<Exception>? errors = null;
 
         if (disposables is not null)
         {
-            foreach (var d in disposables)
+            // Dispose in reverse registration order: decorators are registered after the streams they wrap, so
+            // LIFO tears the outer layer down before the inner one it depends on.
+            for (var i = disposables.Count - 1; i >= 0; i--)
             {
                 try
                 {
-                    await d.DisposeAsync().ConfigureAwait(false);
+                    await disposables[i].DisposeAsync().ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {
@@ -599,10 +634,24 @@ public sealed class PipelineContext
             disposables.Clear();
         }
 
-        ReturnPooledDictionaries();
+        ClearOwnedDictionaries();
 
         if (errors is { Count: > 0 })
             throw new AggregateException("One or more errors occurred disposing pipeline context resources.", errors);
+    }
+
+    private async ValueTask DrainLateDisposalsAsync()
+    {
+        List<Task>? pending;
+
+        lock (_disposalGate)
+        {
+            pending = _lateDisposals;
+            _lateDisposals = null;
+        }
+
+        if (pending is not null)
+            await Task.WhenAll(pending).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -626,34 +675,19 @@ public sealed class PipelineContext
         return new NodeScope(this, nodeId);
     }
 
-    private void ReturnPooledDictionaries()
+    private void ClearOwnedDictionaries()
     {
         NodeRetryOverrides.Clear();
         NodeExecutionScopeRegistry.Clear();
 
         if (_ownsParametersDictionary)
-        {
             Parameters.Clear();
 
-            if (_parametersIsPooled && Parameters is Dictionary<string, object> pooledParams)
-                PipelineObjectPool.Return(pooledParams);
-        }
-
         if (_ownsItemsDictionary)
-        {
             Items.Clear();
 
-            if (_itemsIsPooled && Items is Dictionary<string, object> pooledItems)
-                PipelineObjectPool.Return(pooledItems);
-        }
-
         if (_ownsPropertiesDictionary)
-        {
             Properties.Clear();
-
-            if (_propertiesIsPooled && Properties is Dictionary<string, object> pooledProps)
-                PipelineObjectPool.Return(pooledProps);
-        }
     }
 
     /// <summary>

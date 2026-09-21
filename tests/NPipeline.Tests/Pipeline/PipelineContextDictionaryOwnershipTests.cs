@@ -1,16 +1,15 @@
 using AwesomeAssertions;
 using NPipeline.Configuration;
-using NPipeline.Execution.Pooling;
 using NPipeline.Pipeline;
 
 namespace NPipeline.Tests.Pipeline;
 
-public sealed class PipelineContextPoolingTests
+public sealed class PipelineContextDictionaryOwnershipTests
 {
     [Fact]
     public async Task DisposeAsync_WithOwnedDictionaries_ClearsUserAddedEntries()
     {
-        // Arrange - use HighThroughput to get pooled (non-ConcurrentDictionary) storage
+        // Arrange - use HighThroughput to get plain (non-ConcurrentDictionary) storage
         var context = new PipelineContext(new PipelineContextConfiguration
         {
             OptimizationProfile = PipelineOptimizationProfile.HighThroughput
@@ -26,7 +25,7 @@ public sealed class PipelineContextPoolingTests
         // Act
         await context.DisposeAsync();
 
-        // Assert - user-added entries are cleared before pooling
+        // Assert - user-added entries are cleared on disposal
         // (Framework-managed entries like retry options may still be present)
         _ = parameters.Should().NotContainKey("foo");
         _ = items.Should().NotContainKey("answer");
@@ -55,13 +54,5 @@ public sealed class PipelineContextPoolingTests
         _ = parameters.Should().ContainKey("foo");
         _ = items.Should().ContainKey("answer");
         _ = properties.Should().ContainKey("flag");
-
-        // Pooled dictionary rent should not hand back caller-owned dictionaries
-        var rented = PipelineObjectPool.RentStringObjectDictionary();
-        _ = rented.Should().NotBeSameAs(parameters);
-        _ = rented.Should().NotBeSameAs(items);
-        _ = rented.Should().NotBeSameAs(properties);
-
-        PipelineObjectPool.Return(rented);
     }
 }
