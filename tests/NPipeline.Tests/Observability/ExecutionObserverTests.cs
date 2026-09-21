@@ -314,7 +314,7 @@ public sealed class ExecutionObserverTests
             var sink = b.AddSink<InMemorySinkNode<int>, int>("k");
             b.Connect(t, sink);
             b.AddResiliencePolicy<RetryOnItemFailurePolicy>();
-            b.WithRetryOptions(o => o.With(1));
+            b.WithRetryOptions(o => o with { MaxItemRetries = 1 });
         }
     }
 

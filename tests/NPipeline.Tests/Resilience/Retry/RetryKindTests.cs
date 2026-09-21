@@ -194,7 +194,7 @@ public sealed class RetryKindTests
             _ = builder.Connect(source, transform).Connect(transform, sink);
             builder.AddResiliencePolicy<RestartRecordingPolicy>();
             builder.WithResilience(transform);
-            builder.WithRetryOptions(o => o.With(maxNodeRestartAttempts: 2, maxMaterializedItems: 128));
+            builder.WithRetryOptions(o => o with { MaxNodeRestartAttempts = 2, MaxMaterializedItems = 128 });
         }
     }
 }

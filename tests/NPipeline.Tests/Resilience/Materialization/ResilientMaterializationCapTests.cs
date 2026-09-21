@@ -117,7 +117,7 @@ public sealed class ResilientMaterializationCapTests
             var k = builder.AddInMemorySink<int>("snkMat");
             builder.Connect(s, t).Connect(t, k);
             builder.WithResilience(t);
-            builder.WithRetryOptions(o => o.With(maxNodeRestartAttempts: 1, maxMaterializedItems: 50));
+            builder.WithRetryOptions(o => o with { MaxNodeRestartAttempts = 1, MaxMaterializedItems = 50 });
             builder.AddResiliencePolicy<NoopResiliencePolicy>();
         }
     }
@@ -131,7 +131,7 @@ public sealed class ResilientMaterializationCapTests
             var k = builder.AddInMemorySink<int>("snkMat2");
             builder.Connect(s, t).Connect(t, k);
             builder.WithResilience(t);
-            builder.WithRetryOptions(o => o.With(maxNodeRestartAttempts: 1, maxMaterializedItems: 120));
+            builder.WithRetryOptions(o => o with { MaxNodeRestartAttempts = 1, MaxMaterializedItems = 120 });
             builder.AddResiliencePolicy<NoopResiliencePolicy>();
         }
     }

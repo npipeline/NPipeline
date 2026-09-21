@@ -78,7 +78,7 @@ public sealed class ResilienceConfigurationRuleTests
         builder.Connect(transform, sink);
 
         // Configure retry options with zero restart attempts
-        builder.WithRetryOptions(opts => opts.With(maxNodeRestartAttempts: 0, maxMaterializedItems: 1000));
+        builder.WithRetryOptions(opts => opts with { MaxNodeRestartAttempts = 0, MaxMaterializedItems = 1000 });
         builder.AddResiliencePolicy<DummyResiliencePolicy>();
         builder.WithResilience(transform);
 
@@ -104,7 +104,7 @@ public sealed class ResilienceConfigurationRuleTests
         builder.Connect(transform, sink);
 
         // Configure retry options with null MaxMaterializedItems
-        builder.WithRetryOptions(opts => opts.With(maxNodeRestartAttempts: 3, maxMaterializedItems: null));
+        builder.WithRetryOptions(opts => opts with { MaxNodeRestartAttempts = 3, MaxMaterializedItems = null });
         builder.AddResiliencePolicy<DummyResiliencePolicy>();
         builder.WithResilience(transform);
 
@@ -130,7 +130,7 @@ public sealed class ResilienceConfigurationRuleTests
         builder.Connect(transform, sink);
 
         // Configure retry options with zero MaxMaterializedItems
-        builder.WithRetryOptions(opts => opts.With(maxNodeRestartAttempts: 3, maxMaterializedItems: 0));
+        builder.WithRetryOptions(opts => opts with { MaxNodeRestartAttempts = 3, MaxMaterializedItems = 0 });
         builder.AddResiliencePolicy<DummyResiliencePolicy>();
         builder.WithResilience(transform);
 
@@ -157,7 +157,7 @@ public sealed class ResilienceConfigurationRuleTests
 
         // Configure everything properly
         builder.AddResiliencePolicy<DummyResiliencePolicy>();
-        builder.WithRetryOptions(opts => opts.With(maxNodeRestartAttempts: 3, maxMaterializedItems: 1000));
+        builder.WithRetryOptions(opts => opts with { MaxNodeRestartAttempts = 3, MaxMaterializedItems = 1000 });
         builder.WithResilience(transform);
 
         var ok = builder.TryBuild(out _, out var result);

@@ -180,13 +180,13 @@ The runtime validates at execution time that resilient nodes have proper materia
 ```
 Node 'enrich' has streaming inputs but MaxMaterializedItems is null (must be > 0).
 Restart functionality is disabled for streaming inputs.
-Configure: builder.WithRetryOptions(o => o.WithMaxMaterializedItems(1000))
+Configure: builder.WithRetryOptions(o => o with { MaxMaterializedItems = 1000 })
 ```
 
 ```
 Node 'enrich' is using ResilientExecutionStrategy but MaxNodeRestartAttempts is 0 (must be > 0).
 Restart functionality is disabled.
-Configure: builder.WithRetryOptions(o => o.WithMaxNodeRestartAttempts(3))
+Configure: builder.WithRetryOptions(o => o with { MaxNodeRestartAttempts = 3 })
 ```
 
 ## Next Steps

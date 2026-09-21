@@ -281,7 +281,7 @@ public sealed class ResilientMemoryUsageTests
             var k = builder.AddInMemorySink<int>("testSink");
             builder.Connect(s, t).Connect(t, k);
             builder.WithResilience(t);
-            builder.WithRetryOptions(o => o.With(maxNodeRestartAttempts: 1, maxMaterializedItems: 100));
+            builder.WithRetryOptions(o => o with { MaxNodeRestartAttempts = 1, MaxMaterializedItems = 100 });
             builder.AddResiliencePolicy<MemoryTestResiliencePolicy>();
         }
     }
@@ -295,7 +295,7 @@ public sealed class ResilientMemoryUsageTests
             var k = builder.AddInMemorySink<int>("testSink");
             builder.Connect(s, t).Connect(t, k);
             builder.WithResilience(t);
-            builder.WithRetryOptions(o => o.With(maxNodeRestartAttempts: 1, maxMaterializedItems: 50));
+            builder.WithRetryOptions(o => o with { MaxNodeRestartAttempts = 1, MaxMaterializedItems = 50 });
             builder.AddResiliencePolicy<MemoryTestResiliencePolicy>();
         }
     }
@@ -309,7 +309,7 @@ public sealed class ResilientMemoryUsageTests
             var k = builder.AddInMemorySink<int>("testSink");
             builder.Connect(s, t).Connect(t, k);
             builder.WithResilience(t);
-            builder.WithRetryOptions(o => o.With(maxNodeRestartAttempts: 1, maxMaterializedItems: 500));
+            builder.WithRetryOptions(o => o with { MaxNodeRestartAttempts = 1, MaxMaterializedItems = 500 });
             builder.AddResiliencePolicy<MemoryTestResiliencePolicy>();
         }
     }
@@ -323,7 +323,7 @@ public sealed class ResilientMemoryUsageTests
             var k = builder.AddInMemorySink<int>("testSink");
             builder.Connect(s, t).Connect(t, k);
             builder.WithResilience(t);
-            builder.WithRetryOptions(o => o.With(maxNodeRestartAttempts: 1, maxMaterializedItems: 200));
+            builder.WithRetryOptions(o => o with { MaxNodeRestartAttempts = 1, MaxMaterializedItems = 200 });
             builder.AddResiliencePolicy<MemoryTestResiliencePolicy>();
         }
     }
@@ -337,7 +337,7 @@ public sealed class ResilientMemoryUsageTests
             var k = builder.AddInMemorySink<int>("testSink");
             builder.Connect(s, t).Connect(t, k);
             builder.WithResilience(t);
-            builder.WithRetryOptions(o => o.With(maxNodeRestartAttempts: 1, maxMaterializedItems: 100));
+            builder.WithRetryOptions(o => o with { MaxNodeRestartAttempts = 1, MaxMaterializedItems = 100 });
             builder.AddResiliencePolicy<MemoryTestResiliencePolicy>();
         }
     }

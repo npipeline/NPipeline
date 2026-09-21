@@ -84,10 +84,17 @@ Two built-in presets cover most use cases:
 | `LineageOptions.FastLineage` | Low | Disabled | Disabled | High-volume production |
 | `LineageOptions.CompleteLineage` | 100% | Enabled | Enabled | Debugging, compliance |
 
-Customize with the `.With()` method:
+Customize a preset with a record `with` expression:
 
 ```csharp
-var options = LineageOptions.FastLineage.With(sampleEvery: 100, redactData: true);
+var options = LineageOptions.FastLineage with { SampleEvery = 100, RedactData = true };
+```
+
+Because `LineageOptions` is a record, `with` sets exactly the properties you name and copies the rest — including
+setting a nullable back to `null`:
+
+```csharp
+var unbounded = LineageOptions.CompleteLineage with { MaterializationCap = null, OnMismatch = null };
 ```
 
 ### Sampling
@@ -245,7 +252,7 @@ var options = new LineageOptions(
 
 ### Best Practices
 
-1. **Start with `FastLineage`** in production, customize with `.With()`
+1. **Start with `FastLineage`** in production, customize with a `with` expression
 2. **Use deterministic sampling** for debugging - same items tracked across runs
 3. **Enable redaction** for PII/sensitive data
 4. **Use `Degrade` overflow policy** in production - memory-safe

@@ -140,7 +140,7 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
         {
             throw new InvalidOperationException(
                 $"Node '{nodeId}' is using ResilientExecutionStrategy but MaxNodeRestartAttempts is {effectiveRetries.MaxNodeRestartAttempts} (must be > 0). " +
-                "Restart functionality is disabled. Configure: builder.WithRetryOptions(o => o.WithMaxNodeRestartAttempts(3))");
+                "Restart functionality is disabled. Configure: builder.WithRetryOptions(o => o with { MaxNodeRestartAttempts = 3 })");
         }
 
         // Check for streaming inputs without materialization
@@ -148,7 +148,7 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
         {
             throw new InvalidOperationException(
                 $"Node '{nodeId}' has streaming inputs but MaxMaterializedItems is {effectiveRetries.MaxMaterializedItems} (must be > 0). " +
-                "Restart functionality is disabled for streaming inputs. Configure: builder.WithRetryOptions(o => o.WithMaxMaterializedItems(1000))");
+                "Restart functionality is disabled for streaming inputs. Configure: builder.WithRetryOptions(o => o with { MaxMaterializedItems = 1000 })");
         }
 
         // If the input is a streaming pipe, we must materialize it to support restarts.

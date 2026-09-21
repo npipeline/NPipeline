@@ -122,7 +122,7 @@ public class ParallelRetryTests
 
             _ = builder.WithExecutionStrategy(t, new ParallelExecutionStrategy(2))
                 .SetNodeResiliencePolicy(t, new RetryAllHandler())
-                .WithRetryOptions(o => o.With(1)) // allow only 1 retry => attempt > 1 should throw
+                .WithRetryOptions(o => o with { MaxItemRetries = 1 }) // allow only 1 retry => attempt > 1 should throw
                 .Connect(s, t).Connect(t, k);
         }
     }
@@ -137,8 +137,8 @@ public class ParallelRetryTests
 
             builder.WithExecutionStrategy(t, new ParallelExecutionStrategy(4))
                 .SetNodeResiliencePolicy(t, new RetryAllHandler())
-                .WithRetryOptions(o => o.With(5)) // global high
-                .WithRetryOptions(t, PipelineRetryOptions.Default.With(2)) // node override lower
+                .WithRetryOptions(o => o with { MaxItemRetries = 5 }) // global high
+                .WithRetryOptions(t, PipelineRetryOptions.Default with { MaxItemRetries = 2 }) // node override lower
                 .Connect(s, t).Connect(t, k);
         }
     }

@@ -251,11 +251,11 @@ internal static partial class PipelineRunnerLogMessages
     public static partial void NodeFailed(ILogger logger, string nodeId, string exceptionType, string exceptionMessage);
 
     [LoggerMessage(5, LogLevel.Warning,
-        "Node {NodeId} uses ResilientExecutionStrategy but MaxNodeRestartAttempts is {MaxAttempts} (must be > 0). Restart functionality is disabled. Configure: builder.WithRetryOptions(o => o.WithMaxNodeRestartAttempts(3))")]
+        "Node {NodeId} uses ResilientExecutionStrategy but MaxNodeRestartAttempts is {MaxAttempts} (must be > 0). Restart functionality is disabled. Configure: builder.WithRetryOptions(o => o with {{ MaxNodeRestartAttempts = 3 }})")]
     public static partial void ResilientStrategyWithoutRestartAttempts(ILogger logger, string nodeId, int maxAttempts);
 
     [LoggerMessage(6, LogLevel.Warning,
-        "Node {NodeId} has MaxMaterializedItems set to null. Restart functionality is disabled for streaming inputs. Configure: builder.WithRetryOptions(o => o.WithMaxMaterializedItems(1000))")]
+        "Node {NodeId} has MaxMaterializedItems set to null. Restart functionality is disabled for streaming inputs. Configure: builder.WithRetryOptions(o => o with {{ MaxMaterializedItems = 1000 }})")]
     public static partial void ResilientStrategyWithoutMaterializedItems(ILogger logger, string nodeId);
 
     [LoggerMessage(7, LogLevel.Warning, "Preserving original exception {ExceptionType} for parallel execution of node {NodeId}")]

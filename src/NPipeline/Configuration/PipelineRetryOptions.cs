@@ -5,6 +5,13 @@ namespace NPipeline.Configuration;
 /// <summary>
 ///     Configurable retry / resilience parameters controlling per-item retries and node restarts.
 /// </summary>
+/// <remarks>
+///     Derive one set of options from another with the record <c>with</c> expression, which sets exactly the
+///     properties named and copies the rest — including setting a nullable back to <see langword="null" />:
+///     <code>
+///     var opts = PipelineRetryOptions.Default with { MaxItemRetries = 3, MaxMaterializedItems = null };
+///     </code>
+/// </remarks>
 /// <param name="MaxItemRetries">
 ///     Maximum number of times an individual item will be retried before being sent to dead letter queue.
 ///     Default is 0 (no retries).
@@ -50,29 +57,14 @@ public sealed record PipelineRetryOptions(
     {
         return profile switch
         {
-            PipelineOptimizationProfile.Default => Default
-                .With(delayStrategyConfiguration: RetryDelayConfigurationExtensions.DefaultExponentialBackoffWithJitter)
-                .With(maxItemRetries: 3, maxMaterializedItems: 10_000),
+            PipelineOptimizationProfile.Default => Default with
+            {
+                DelayStrategyConfiguration = RetryDelayConfigurationExtensions.DefaultExponentialBackoffWithJitter,
+                MaxItemRetries = 3,
+                MaxMaterializedItems = 10_000,
+            },
             PipelineOptimizationProfile.HighThroughput => Default,
             _ => Default
         };
-    }
-
-    /// <summary>
-    ///     Creates a new instance with updated options, preserving unspecified values.
-    /// </summary>
-    public PipelineRetryOptions With(
-        int? maxItemRetries = null,
-        int? maxMaterializedItems = null,
-        RetryDelayStrategyConfiguration? delayStrategyConfiguration = null,
-        int? maxNodeRestartAttempts = null,
-        int? maxSequentialNodeAttempts = null)
-    {
-        return new PipelineRetryOptions(
-            maxItemRetries ?? MaxItemRetries,
-            maxMaterializedItems ?? MaxMaterializedItems,
-            delayStrategyConfiguration ?? DelayStrategyConfiguration,
-            maxNodeRestartAttempts ?? MaxNodeRestartAttempts,
-            maxSequentialNodeAttempts ?? MaxSequentialNodeAttempts);
     }
 }

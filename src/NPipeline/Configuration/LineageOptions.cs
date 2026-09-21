@@ -3,6 +3,13 @@ namespace NPipeline.Configuration;
 /// <summary>
 ///     Options controlling lineage behavior.
 /// </summary>
+/// <remarks>
+///     Derive one set of options from another with the record <c>with</c> expression, which sets exactly the
+///     properties named and copies the rest — including setting a nullable back to <see langword="null" />:
+///     <code>
+///     var opts = LineageOptions.Default with { SampleEvery = 1, MaterializationCap = null };
+///     </code>
+/// </remarks>
 /// <param name="Strict">
 ///     When true, any detected One-To-One mismatch throws instead of logging.
 ///     Default is false.
@@ -142,50 +149,6 @@ public sealed record LineageOptions(
             LineageProfile.CompleteLineage => CompleteLineage,
             _ => throw new ArgumentOutOfRangeException(nameof(profile), profile, null),
         };
-    }
-
-    /// <summary>
-    ///     Creates a new instance with updated options, preserving unspecified values.
-    /// </summary>
-    public LineageOptions With(
-        bool? strict = null,
-        bool? warnOnMismatch = null,
-        Action<LineageMismatchContext>? onMismatch = null,
-        int? materializationCap = null,
-        LineageOverflowPolicy? overflowPolicy = null,
-        bool? captureHopTimestamps = null,
-        bool? captureDecisions = null,
-        bool? captureObservedCardinality = null,
-        bool? captureAncestryMapping = null,
-        bool? captureHopSnapshots = null,
-        int? sampleEvery = null,
-        bool? deterministicSampling = null,
-        bool? redactData = null,
-        int? maxHopRecordsPerItem = null,
-        bool? ensurePerInputTerminalRecord = null,
-        bool? emitBackpressureDropRecords = null,
-        bool? includeContributorCorrelationIds = null,
-        bool? emitIntermediateNodeRecords = null)
-    {
-        return new LineageOptions(
-            strict ?? Strict,
-            warnOnMismatch ?? WarnOnMismatch,
-            onMismatch ?? OnMismatch,
-            materializationCap ?? MaterializationCap,
-            overflowPolicy ?? OverflowPolicy,
-            captureHopTimestamps ?? CaptureHopTimestamps,
-            captureDecisions ?? CaptureDecisions,
-            captureObservedCardinality ?? CaptureObservedCardinality,
-            captureAncestryMapping ?? CaptureAncestryMapping,
-            captureHopSnapshots ?? CaptureHopSnapshots,
-            sampleEvery ?? SampleEvery,
-            deterministicSampling ?? DeterministicSampling,
-            redactData ?? RedactData,
-            maxHopRecordsPerItem ?? MaxHopRecordsPerItem,
-            ensurePerInputTerminalRecord ?? EnsurePerInputTerminalRecord,
-            emitBackpressureDropRecords ?? EmitBackpressureDropRecords,
-            includeContributorCorrelationIds ?? IncludeContributorCorrelationIds,
-            emitIntermediateNodeRecords ?? EmitIntermediateNodeRecords);
     }
 }
 

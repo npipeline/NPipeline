@@ -200,8 +200,8 @@ public sealed class PipelineBuilderCharacterizationTests
         var s = b.AddSource<InMemorySourceNode<int>, int>("s");
         var t = b.AddTransform<PassthroughTransform, int, int>("t");
         b.Connect(s, t);
-        b.WithRetryOptions(o => o.With(5));
-        b.WithRetryOptions(t, PipelineRetryOptions.Default.With(2));
+        b.WithRetryOptions(o => o with { MaxItemRetries = 5 });
+        b.WithRetryOptions(t, PipelineRetryOptions.Default with { MaxItemRetries = 2 });
         var p = b.Build();
         p.Graph.ErrorHandling.RetryOptions.Should().NotBeNull();
         p.Graph.ErrorHandling.RetryOptions!.MaxItemRetries.Should().Be(5);

@@ -43,7 +43,7 @@ public static class NodeConfigurationExtensions
         if (maxRetries < 0)
             throw new ArgumentOutOfRangeException(nameof(maxRetries), "Max retries cannot be negative.");
 
-        var retryOptions = PipelineRetryOptions.Default.With(maxRetries);
+        var retryOptions = PipelineRetryOptions.Default with { MaxItemRetries = maxRetries };
         builder.WithRetryOptions(handle, retryOptions);
         return handle;
     }
@@ -71,7 +71,7 @@ public static class NodeConfigurationExtensions
         if (maxRetries < 0)
             throw new ArgumentOutOfRangeException(nameof(maxRetries), "Max retries cannot be negative.");
 
-        var retryOptions = PipelineRetryOptions.Default.With(maxRetries);
+        var retryOptions = PipelineRetryOptions.Default with { MaxItemRetries = maxRetries };
         builder.WithRetryOptions(handle, retryOptions);
         return handle;
     }
@@ -98,7 +98,7 @@ public static class NodeConfigurationExtensions
         if (maxRetries < 0)
             throw new ArgumentOutOfRangeException(nameof(maxRetries), "Max retries cannot be negative.");
 
-        var retryOptions = PipelineRetryOptions.Default.With(maxRetries);
+        var retryOptions = PipelineRetryOptions.Default with { MaxItemRetries = maxRetries };
         builder.WithRetryOptions(handle, retryOptions);
         return handle;
     }
@@ -126,7 +126,7 @@ public static class NodeConfigurationExtensions
         if (maxRetries < 0)
             throw new ArgumentOutOfRangeException(nameof(maxRetries), "Max retries cannot be negative.");
 
-        var retryOptions = PipelineRetryOptions.Default.With(maxRetries);
+        var retryOptions = PipelineRetryOptions.Default with { MaxItemRetries = maxRetries };
         builder.WithRetryOptions(handle, retryOptions);
         return handle;
     }

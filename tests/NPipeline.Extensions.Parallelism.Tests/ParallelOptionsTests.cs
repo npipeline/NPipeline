@@ -227,7 +227,7 @@ public class ParallelOptionsTests
             builder.SetNodeExecutionOption(t.Id, new ParallelExecOptions(2, 4));
 
             // Configure retry options globally
-            builder.WithRetryOptions(o => o.With(2));
+            builder.WithRetryOptions(o => o with { MaxItemRetries = 2 });
 
             // Attach a RetryAllHandler from the retry tests (type may not be visible here, replicate minimal handler)
             builder.SetNodeResiliencePolicy(t, new LocalRetryAllHandler());

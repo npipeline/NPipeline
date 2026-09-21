@@ -95,7 +95,7 @@ public sealed class RetryExhaustedAttributionTests
     public async Task OnlyTheFirstFailingNode_ReportsThePendingRootCause()
     {
         await using var context = new PipelineContext(PipelineContextConfiguration.Default);
-        context.ExecutionConfiguration.GlobalRetryOptions = context.ExecutionConfiguration.GlobalRetryOptions.With(maxSequentialNodeAttempts: 1);
+        context.ExecutionConfiguration.GlobalRetryOptions = context.ExecutionConfiguration.GlobalRetryOptions with { MaxSequentialNodeAttempts = 1 };
 
         var rootCause = new RetryExhaustedException("upstream", 3, new InvalidOperationException("the real problem"));
         context.ExecutionConfiguration.LastRetryExhaustedException = rootCause;

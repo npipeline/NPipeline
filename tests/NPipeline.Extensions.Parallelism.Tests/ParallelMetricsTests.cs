@@ -190,7 +190,7 @@ public class ParallelMetricsTests
 
             // Global retry limit allows two retries (third attempt succeeds)
             _ = builder.SetNodeResiliencePolicy(transform, new RetryAllHandler());
-            _ = builder.WithRetryOptions(o => o.With(2));
+            _ = builder.WithRetryOptions(o => o with { MaxItemRetries = 2 });
 
             context.Items[NodeIdKey] = transform.Id;
 
@@ -222,7 +222,7 @@ public class ParallelMetricsTests
             _ = builder.Connect(source, transform).Connect(transform, sink);
             _ = builder.WithExecutionStrategy(transform, new ParallelExecutionStrategy());
             _ = builder.SetNodeExecutionOption(transform.Id, new ParallelExecOptions(2, 4));
-            _ = builder.WithRetryOptions(o => o.With(2));
+            _ = builder.WithRetryOptions(o => o with { MaxItemRetries = 2 });
             _ = builder.SetNodeResiliencePolicy(transform, new RetryHandler());
 
             // Set the test data

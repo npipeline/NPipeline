@@ -121,7 +121,7 @@ public sealed class GraphLevelErrorHandlingTests
                 .WithResilience(flaky);
 
             builder.AddResiliencePolicy<RestartingResiliencePolicy>();
-            builder.WithRetryOptions(o => o.With(maxNodeRestartAttempts: 3, maxMaterializedItems: 1000));
+            builder.WithRetryOptions(o => o with { MaxNodeRestartAttempts = 3, MaxMaterializedItems = 1000 });
         }
     }
 }

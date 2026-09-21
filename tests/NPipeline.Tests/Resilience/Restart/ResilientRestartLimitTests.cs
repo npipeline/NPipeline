@@ -131,7 +131,7 @@ public sealed class ResilientRestartLimitTests
             _ = builder.Connect(s, t).Connect(t, k);
             builder.AddResiliencePolicy<RestartingPolicy>();
             builder.WithResilience(t);
-            builder.WithRetryOptions(o => o.With(maxNodeRestartAttempts: 2, maxMaterializedItems: 128)); // gate at 2 failures
+            builder.WithRetryOptions(o => o with { MaxNodeRestartAttempts = 2, MaxMaterializedItems = 128 }); // gate at 2 failures
         }
     }
 }

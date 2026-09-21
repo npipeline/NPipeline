@@ -69,7 +69,7 @@ internal sealed class ResilienceConfigurationRule : IGraphRule
                     ValidationSeverity.Warning,
                     $"Node '{node.Name}' uses ResilientExecutionStrategy but retry options are not configured. " +
                     $"Set MaxNodeRestartAttempts > 0 and MaxMaterializedItems to enable restarts. " +
-                    $"Configure: builder.WithRetryOptions(o => o.With(maxNodeRestartAttempts: 3, maxMaterializedItems: 1000))",
+                    "Configure: builder.WithRetryOptions(o => o with { MaxNodeRestartAttempts = 3, MaxMaterializedItems = 1000 })",
                     "Resilience"));
 
                 continue;
@@ -82,7 +82,7 @@ internal sealed class ResilienceConfigurationRule : IGraphRule
                     ValidationSeverity.Warning,
                     $"Node '{node.Name}' uses ResilientExecutionStrategy but MaxNodeRestartAttempts is {retryOptions.MaxNodeRestartAttempts} (not > 0). " +
                     $"The node will not restart on failures. " +
-                    $"Configure: builder.WithRetryOptions(o => o.With(maxNodeRestartAttempts: 3))",
+                    "Configure: builder.WithRetryOptions(o => o with { MaxNodeRestartAttempts = 3 })",
                     "Resilience"));
             }
 
@@ -93,7 +93,7 @@ internal sealed class ResilienceConfigurationRule : IGraphRule
                     ValidationSeverity.Warning,
                     $"Node '{node.Name}' uses ResilientExecutionStrategy but MaxMaterializedItems is null (unbounded). " +
                     $"This disables materialization, preventing node restarts and allowing unlimited memory growth. " +
-                    $"Configure: builder.WithRetryOptions(o => o.With(maxMaterializedItems: 1000))",
+                    "Configure: builder.WithRetryOptions(o => o with { MaxMaterializedItems = 1000 })",
                     "Resilience"));
             }
             else if (retryOptions.MaxMaterializedItems <= 0)
@@ -102,7 +102,7 @@ internal sealed class ResilienceConfigurationRule : IGraphRule
                     ValidationSeverity.Warning,
                     $"Node '{node.Name}' uses ResilientExecutionStrategy but MaxMaterializedItems is {retryOptions.MaxMaterializedItems} (not > 0). " +
                     $"Materialization is disabled, preventing restarts. " +
-                    $"Configure: builder.WithRetryOptions(o => o.With(maxMaterializedItems: 1000))",
+                    "Configure: builder.WithRetryOptions(o => o with { MaxMaterializedItems = 1000 })",
                     "Resilience"));
             }
         }

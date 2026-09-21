@@ -35,7 +35,7 @@ public sealed class PipelineBuilderCharacterizationTests
         b.Connect(s, t).Connect(t, k);
 
         b.EnableItemLevelLineage(o =>
-            o.With(sampleEvery: 1, materializationCap: 10));
+            o with { SampleEvery = 1, MaterializationCap = 10 });
 
         var p = b.Build();
         var def = p.Graph.Nodes.Single(n => n.Id == t.Id);
@@ -53,8 +53,7 @@ public sealed class PipelineBuilderCharacterizationTests
         b.Connect(s, t).Connect(t, k);
 
         b.EnableItemLevelLineage(o =>
-            o.With(sampleEvery: 1, materializationCap: 1,
-                overflowPolicy: LineageOverflowPolicy.Strict));
+            o with { SampleEvery = 1, MaterializationCap = 1, OverflowPolicy = LineageOverflowPolicy.Strict });
 
         var p = b.Build();
         p.Should().NotBeNull();
@@ -70,7 +69,7 @@ public sealed class PipelineBuilderCharacterizationTests
         b.Connect(s, t).Connect(t, k);
 
         b.EnableItemLevelLineage(o =>
-            o.With(sampleEvery: 1, materializationCap: 1, overflowPolicy: LineageOverflowPolicy.WarnContinue));
+            o with { SampleEvery = 1, MaterializationCap = 1, OverflowPolicy = LineageOverflowPolicy.WarnContinue });
 
         var p = b.Build();
         p.Graph.Nodes.Should().ContainSingle(n => n.Id == t.Id);

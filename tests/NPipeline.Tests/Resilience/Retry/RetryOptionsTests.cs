@@ -138,7 +138,7 @@ public sealed class RetryOptionsTests
             var k = builder.AddInMemorySink<int>("k");
             builder.Connect(s, t).Connect(t, k);
             builder.SetNodeResiliencePolicy(t, new FlakyNodeErrorHandler());
-            builder.WithRetryOptions(o => o.With(2));
+            builder.WithRetryOptions(o => o with { MaxItemRetries = 2 });
         }
     }
 
@@ -214,7 +214,7 @@ public sealed class RetryOptionsTests
             builder.Connect(s, t).Connect(t, k);
             builder.AddResiliencePolicy<NodeRestartingErrorHandler>();
             builder.WithResilience(t);
-            builder.WithRetryOptions(o => o.With(maxNodeRestartAttempts: 2, maxMaterializedItems: 128));
+            builder.WithRetryOptions(o => o with { MaxNodeRestartAttempts = 2, MaxMaterializedItems = 128 });
         }
     }
 
@@ -227,8 +227,8 @@ public sealed class RetryOptionsTests
             var k = builder.AddInMemorySink<int>("k3");
             builder.Connect(s, t).Connect(t, k);
             builder.SetNodeResiliencePolicy(t, new FlakyNodeErrorHandler());
-            builder.WithRetryOptions(o => o.With(5)); // global
-            builder.WithRetryOptions(t, PipelineRetryOptions.Default.With(1)); // override
+            builder.WithRetryOptions(o => o with { MaxItemRetries = 5 }); // global
+            builder.WithRetryOptions(t, PipelineRetryOptions.Default with { MaxItemRetries = 1 }); // override
         }
     }
 }

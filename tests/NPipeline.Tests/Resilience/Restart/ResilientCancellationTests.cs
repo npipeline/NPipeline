@@ -134,7 +134,7 @@ public sealed class ResilientCancellationTests
     private static PipelineContext CreateContext(IResiliencePolicy policy)
     {
         return new PipelineContext(new PipelineContextConfiguration(
-            RetryOptions: PipelineRetryOptions.Default.With(maxNodeRestartAttempts: 3, maxMaterializedItems: 128),
+            RetryOptions: PipelineRetryOptions.Default with { MaxNodeRestartAttempts = 3, MaxMaterializedItems = 128 },
             ResiliencePolicy: policy));
     }
 
