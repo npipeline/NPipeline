@@ -1407,9 +1407,9 @@ public sealed class IntegrationTests
 
     private sealed class TestTransformNode<T> : TransformNode<T, T>
     {
-        public override Task<T> TransformAsync(T item, PipelineContext context, CancellationToken cancellationToken)
+        public override ValueTask<T> TransformAsync(T item, PipelineContext context, CancellationToken cancellationToken)
         {
-            return Task.FromResult(item);
+            return ValueTask.FromResult<T>(item);
         }
     }
 
@@ -1417,13 +1417,13 @@ public sealed class IntegrationTests
     {
         private int _count;
 
-        public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             _count++;
 
             // Fail on 4th item
             if (_count != 4)
-                return Task.FromResult(item * 2);
+                return ValueTask.FromResult<int>(item * 2);
 
             throw new InvalidOperationException("Intentional failure on 4th item");
         }
@@ -1431,7 +1431,7 @@ public sealed class IntegrationTests
 
     private sealed class TestDelayedTransformNode : TransformNode<int, int>
     {
-        public override async Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override async ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             await Task.Delay(40, cancellationToken);
             return item * 2;
@@ -1585,15 +1585,15 @@ public sealed class IntegrationTests
 
     private sealed class TestTransformNode : TransformNode<int, int>
     {
-        public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
-            return Task.FromResult(item * 2);
+            return ValueTask.FromResult<int>(item * 2);
         }
     }
 
     private sealed class TestFailingTransformNode : TransformNode<int, int>
     {
-        public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             throw new InvalidOperationException("Intentional failure");
         }

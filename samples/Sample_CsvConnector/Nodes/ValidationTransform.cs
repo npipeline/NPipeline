@@ -27,7 +27,7 @@ public partial class ValidationTransform(bool filterInvalidRecords = true) : Tra
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">A cancellation token to observe.</param>
     /// <returns>A task containing validated customer record or throws an exception if invalid and filtering is enabled.</returns>
-    public override Task<Customer> TransformAsync(
+    public override ValueTask<Customer> TransformAsync(
         Customer input,
         PipelineContext context,
         CancellationToken cancellationToken = default)
@@ -86,7 +86,7 @@ public partial class ValidationTransform(bool filterInvalidRecords = true) : Tra
         // Add validation metadata to the customer
         // We'll use a simple approach by adding a property to indicate validation status
         // In a real-world scenario, you might want to extend the Customer class
-        return Task.FromResult(input);
+        return ValueTask.FromResult<Customer>(input);
     }
 
     /// <summary>

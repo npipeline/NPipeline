@@ -90,18 +90,18 @@ public sealed class RuntimeLineageCompositeFallbackTests
 
     private sealed class DoubleTransform : TransformNode<int, int>
     {
-        public override Task<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
-            => Task.FromResult(input * 2);
+        public override ValueTask<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
+            => ValueTask.FromResult<int>(input * 2);
     }
 
     private sealed class InspectOverrideTransform : TransformNode<int, int>
     {
         public static bool SawRuntimeLineageOverrideProperty { get; set; }
 
-        public override Task<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
+        public override ValueTask<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
         {
             SawRuntimeLineageOverrideProperty = context.Properties.ContainsKey(PipelineContextKeys.ItemLevelLineageEnabledOverride);
-            return Task.FromResult(input * 2);
+            return ValueTask.FromResult<int>(input * 2);
         }
     }
 

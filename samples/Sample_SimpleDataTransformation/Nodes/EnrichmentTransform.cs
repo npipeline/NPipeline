@@ -17,13 +17,13 @@ public class EnrichmentTransform : TransformNode<Person, EnrichedPerson>
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A Task representing the enrichment operation with an EnrichedPerson result.</returns>
-    public override Task<EnrichedPerson> TransformAsync(Person item, PipelineContext context, CancellationToken cancellationToken)
+    public override ValueTask<EnrichedPerson> TransformAsync(Person item, PipelineContext context, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
         // Skip placeholder items (those with ID 0) by returning an empty EnrichedPerson
         if (item.Id == 0)
-            return Task.FromResult(new EnrichedPerson(0, string.Empty, string.Empty, 0, string.Empty, string.Empty, string.Empty, string.Empty, false));
+            return ValueTask.FromResult<EnrichedPerson>(new EnrichedPerson(0, string.Empty, string.Empty, 0, string.Empty, string.Empty, string.Empty, string.Empty, false));
 
         // Simulate external data source for country lookup
         var country = GetCountryFromCity(item.City);
@@ -44,7 +44,7 @@ public class EnrichmentTransform : TransformNode<Person, EnrichedPerson>
             IsValidEmail(item.Email)
         );
 
-        return Task.FromResult(enrichedPerson);
+        return ValueTask.FromResult<EnrichedPerson>(enrichedPerson);
     }
 
     /// <summary>

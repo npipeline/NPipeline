@@ -210,9 +210,9 @@ public sealed class ResilientCancellationTests
 
     private sealed class PassthroughNode : TransformNode<int, int>
     {
-        public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
-            return Task.FromResult(item);
+            return ValueTask.FromResult<int>(item);
         }
     }
 

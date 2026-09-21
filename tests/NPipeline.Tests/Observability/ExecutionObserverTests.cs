@@ -193,14 +193,14 @@ public sealed class ExecutionObserverTests
         private int _count;
         public IExecutionStrategy ExecutionStrategy { get; set; } = new ParallelExecutionStrategy(1);
 
-        public Task<int> TransformAsync(int item, PipelineContext context, CancellationToken ct)
+        public ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken ct)
         {
             _count++;
 
             if (_count == 1)
                 throw new InvalidOperationException("boom");
 
-            return Task.FromResult(item);
+            return ValueTask.FromResult<int>(item);
         }
 
         public ValueTask DisposeAsync()

@@ -13,7 +13,7 @@ public class NumericValidationNodeTests
         node.IsPositive(x => x.IntValue);
 
         var item = new TestObject { IntValue = -5 };
-        var exception = await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        var exception = await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
         Assert.Contains(nameof(TestObject.IntValue), exception.PropertyPath);
     }
 
@@ -46,7 +46,7 @@ public class NumericValidationNodeTests
         node.IsPositive(x => x.IntValue);
 
         var item = new TestObject { IntValue = 0 };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     [Fact]
@@ -67,7 +67,7 @@ public class NumericValidationNodeTests
         node.IsPositive(x => x.DoubleValue);
 
         var item = new TestObject { DoubleValue = 0.0 };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     [Fact]
@@ -103,7 +103,7 @@ public class NumericValidationNodeTests
         node.IsNegative(x => x.IntValue);
 
         var item = new TestObject { IntValue = 0 };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     [Fact]
@@ -139,7 +139,7 @@ public class NumericValidationNodeTests
         node.IsZeroOrPositive(x => x.IntValue);
 
         var item = new TestObject { IntValue = -5 };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     #endregion
@@ -164,7 +164,7 @@ public class NumericValidationNodeTests
         node.IsNonZero(x => x.IntValue);
 
         var item = new TestObject { IntValue = 0 };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     #endregion
@@ -189,7 +189,7 @@ public class NumericValidationNodeTests
         node.IsBetween(x => x.IntValue, 1, 10);
 
         var item = new TestObject { IntValue = 0 };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     [Fact]
@@ -199,7 +199,7 @@ public class NumericValidationNodeTests
         node.IsBetween(x => x.IntValue, 1, 10);
 
         var item = new TestObject { IntValue = 11 };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     #endregion
@@ -224,7 +224,7 @@ public class NumericValidationNodeTests
         node.IsEven(x => x.IntValue);
 
         var item = new TestObject { IntValue = 5 };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     #endregion
@@ -249,7 +249,7 @@ public class NumericValidationNodeTests
         node.IsOdd(x => x.IntValue);
 
         var item = new TestObject { IntValue = 4 };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     #endregion
@@ -274,7 +274,7 @@ public class NumericValidationNodeTests
         node.IsFinite(x => x.DoubleValue);
 
         var item = new TestObject { DoubleValue = double.PositiveInfinity };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     #endregion
@@ -299,7 +299,7 @@ public class NumericValidationNodeTests
         node.IsIntegerValue(x => x.DoubleValue);
 
         var item = new TestObject { DoubleValue = 5.5 };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     #endregion
@@ -324,7 +324,7 @@ public class NumericValidationNodeTests
         node.IsGreaterThan(x => x.IntValue, 5);
 
         var item = new TestObject { IntValue = 5 };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     #endregion
@@ -349,7 +349,7 @@ public class NumericValidationNodeTests
         node.IsLessThan(x => x.IntValue, 10);
 
         var item = new TestObject { IntValue = 10 };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     #endregion
@@ -378,7 +378,7 @@ public class NumericValidationNodeTests
             .IsBetween(x => x.IntValue, 1, 10);
 
         var item = new TestObject { IntValue = -5 };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     #endregion

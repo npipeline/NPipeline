@@ -35,7 +35,7 @@ public class WatermarkAligner : TransformNode<SensorReading, SensorReading>
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The processed sensor reading with aligned watermark information.</returns>
-    public override async Task<SensorReading> TransformAsync(
+    public override async ValueTask<SensorReading> TransformAsync(
         SensorReading reading,
         PipelineContext context,
         CancellationToken cancellationToken)

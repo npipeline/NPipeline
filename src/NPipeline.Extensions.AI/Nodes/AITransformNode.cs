@@ -23,7 +23,7 @@ public sealed class AITransformNode<TIn, TOut> : TransformNode<TIn, TOut>
     public AITransformOptions<TIn, TOut> Options { get; set; } = new();
 
     /// <inheritdoc />
-    public override async Task<TOut> TransformAsync(TIn item, PipelineContext context, CancellationToken cancellationToken)
+    public override async ValueTask<TOut> TransformAsync(TIn item, PipelineContext context, CancellationToken cancellationToken)
     {
         var options = AIOptionGuards.Validate(Options);
 

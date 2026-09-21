@@ -142,7 +142,7 @@ public class EmailNotificationNode : TransformNode<Order, Order>
         _logger = logger;
     }
 
-    protected override async Task<Order> TransformAsync(Order input, PipelineContext ctx, CancellationToken ct)
+    protected override async ValueTask<Order> TransformAsync(Order input, PipelineContext ctx, CancellationToken ct)
     {
         await _emailService.SendAsync(input.CustomerEmail, $"Order {input.Id} received", ct);
         _logger.LogInformation("Sent notification for order {OrderId}", input.Id);

@@ -15,19 +15,19 @@ namespace NPipeline.Extensions.Testing;
 public class PassThroughTransformNode<TIn, TOut> : TransformNode<TIn, TOut>
 {
     /// <inheritdoc />
-    public override Task<TOut> TransformAsync(TIn item, PipelineContext context, CancellationToken cancellationToken)
+    public override ValueTask<TOut> TransformAsync(TIn item, PipelineContext context, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
         // If input is already the desired type, return directly
         if (item is TOut outItem)
-            return Task.FromResult(outItem);
+            return ValueTask.FromResult<TOut>(outItem);
 
         // Handle null input for reference / nullable target types
         if (item == null)
 
             // If TOut is a reference type or nullable, default(TOut) is acceptable
-            return Task.FromResult(default(TOut)!);
+            return ValueTask.FromResult<TOut>(default(TOut)!);
 
         var inputObj = (object)item;
 
@@ -41,7 +41,7 @@ public class PassThroughTransformNode<TIn, TOut> : TransformNode<TIn, TOut>
 
             var converted = Convert.ChangeType(inputObj, underlyingType);
 
-            return Task.FromResult((TOut)converted);
+            return ValueTask.FromResult<TOut>((TOut)converted);
         }
         catch (InvalidCastException)
         {

@@ -40,7 +40,6 @@ The package includes 18 comprehensive analyzers covering different aspects of pi
 1. **AnonymousObjectAllocationAnalyzer** - Detects anonymous object allocations in hot paths that can cause GC pressure
 2. **InefficientStringOperationsAnalyzer** - Identifies inefficient string concatenation and manipulation in performance-critical code
 3. **LinqInHotPathsAnalyzer** - Detects LINQ operations in high-frequency execution paths that cause unnecessary allocations
-4. **ValueTaskOptimizationAnalyzer** - Identifies opportunities to optimize synchronous completions with ValueTask
 
 ### Configuration Analyzers
 
@@ -89,7 +88,6 @@ Each analyzer has a corresponding code fix provider that can automatically resol
 15. **SynchronousOverAsyncCodeFixProvider** - Replaces sync-over-async patterns with proper async
 16. **TimeoutConfigurationCodeFixProvider** - Optimizes timeout values based on workload characteristics
 17. **UnboundedMaterializationConfigurationCodeFixProvider** - Adds bounds to materialization operations
-18. **ValueTaskOptimizationCodeFixProvider** - Converts Task.FromResult patterns to ValueTask
 
 ## Example Diagnostics
 

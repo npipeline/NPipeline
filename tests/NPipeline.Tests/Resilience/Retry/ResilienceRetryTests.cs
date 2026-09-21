@@ -44,7 +44,7 @@ public sealed class ResilienceRetryTests
     {
         private int _attempts;
 
-        public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             _attempts++;
 
@@ -52,7 +52,7 @@ public sealed class ResilienceRetryTests
             if (_attempts <= 2)
                 throw new InvalidOperationException("transient");
 
-            return Task.FromResult(item);
+            return ValueTask.FromResult<int>(item);
         }
     }
 

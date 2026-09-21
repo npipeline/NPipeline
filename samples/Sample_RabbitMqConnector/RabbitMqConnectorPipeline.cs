@@ -27,7 +27,7 @@ public sealed class RabbitMqConnectorPipeline : IPipelineDefinition
 /// </summary>
 public sealed class OrderEnricher : TransformNode<RabbitMqMessage<OrderEvent>, EnrichedOrder>
 {
-    public override Task<EnrichedOrder> TransformAsync(
+    public override ValueTask<EnrichedOrder> TransformAsync(
         RabbitMqMessage<OrderEvent> input,
         PipelineContext context,
         CancellationToken cancellationToken)
@@ -49,6 +49,6 @@ public sealed class OrderEnricher : TransformNode<RabbitMqMessage<OrderEvent>, E
         Console.WriteLine(
             $"  Enriched order {enriched.OrderId}: ${enriched.Amount:F2} from {enriched.CustomerId} ({enriched.Region})");
 
-        return Task.FromResult(enriched);
+        return ValueTask.FromResult<EnrichedOrder>(enriched);
     }
 }

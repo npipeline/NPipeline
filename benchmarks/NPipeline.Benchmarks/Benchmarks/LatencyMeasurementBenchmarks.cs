@@ -358,7 +358,7 @@ public class LatencyMeasurementBenchmarks
     {
         private readonly Random _random = new();
 
-        public override async Task<LatencyMeasuredItem> TransformAsync(LatencyMeasuredItem item, PipelineContext context, CancellationToken cancellationToken)
+        public override async ValueTask<LatencyMeasuredItem> TransformAsync(LatencyMeasuredItem item, PipelineContext context, CancellationToken cancellationToken)
         {
             var delay = context.Parameters.TryGetValue("delay", out var d)
                 ? Convert.ToInt32(d)
@@ -382,7 +382,7 @@ public class LatencyMeasurementBenchmarks
 
     private sealed class BatchLatencyTransform : TransformNode<IReadOnlyCollection<LatencyMeasuredItem>, LatencyMeasuredItem>
     {
-        public override async Task<LatencyMeasuredItem> TransformAsync(IReadOnlyCollection<LatencyMeasuredItem> batch, PipelineContext context,
+        public override async ValueTask<LatencyMeasuredItem> TransformAsync(IReadOnlyCollection<LatencyMeasuredItem> batch, PipelineContext context,
             CancellationToken cancellationToken)
         {
             // Process the batch and return the first item with updated timestamp
@@ -406,12 +406,12 @@ public class LatencyMeasurementBenchmarks
 
     private sealed class SynchronousLatencyTransform : TransformNode<LatencyMeasuredItem, LatencyMeasuredItem>
     {
-        public override Task<LatencyMeasuredItem> TransformAsync(LatencyMeasuredItem item, PipelineContext context, CancellationToken cancellationToken)
+        public override ValueTask<LatencyMeasuredItem> TransformAsync(LatencyMeasuredItem item, PipelineContext context, CancellationToken cancellationToken)
         {
             // Synchronous processing without async delay
             Thread.SpinWait(1000); // Small CPU-bound work
 
-            return Task.FromResult(new LatencyMeasuredItem
+            return ValueTask.FromResult<LatencyMeasuredItem>(new LatencyMeasuredItem
             {
                 Id = item.Id,
                 SourceTimestamp = item.SourceTimestamp,
@@ -423,7 +423,7 @@ public class LatencyMeasurementBenchmarks
 
     private sealed class AsynchronousLatencyTransform : TransformNode<LatencyMeasuredItem, LatencyMeasuredItem>
     {
-        public override async Task<LatencyMeasuredItem> TransformAsync(LatencyMeasuredItem item, PipelineContext context, CancellationToken cancellationToken)
+        public override async ValueTask<LatencyMeasuredItem> TransformAsync(LatencyMeasuredItem item, PipelineContext context, CancellationToken cancellationToken)
         {
             var delay = context.Parameters.TryGetValue("delay", out var d)
                 ? Convert.ToInt32(d)
@@ -446,7 +446,7 @@ public class LatencyMeasurementBenchmarks
     {
         private readonly Random _random = new();
 
-        public override async Task<LatencyMeasuredItem> TransformAsync(LatencyMeasuredItem item, PipelineContext context, CancellationToken cancellationToken)
+        public override async ValueTask<LatencyMeasuredItem> TransformAsync(LatencyMeasuredItem item, PipelineContext context, CancellationToken cancellationToken)
         {
             var delay = context.Parameters.TryGetValue("delay", out var d)
                 ? Convert.ToInt32(d)

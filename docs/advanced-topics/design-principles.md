@@ -54,7 +54,7 @@ The item processing loop - the code path that runs once per item per node - avoi
 
 **Why:** Pipeline throughput is directly limited by GC pressure. At millions of items per second, even one allocation per item causes significant GC overhead.
 
-**Implication for contributors:** Roslyn analyzers (`LinqInHotPathsAnalyzer`, `AnonymousObjectAllocationAnalyzer`, `ValueTaskOptimizationAnalyzer`) enforce this. Profile with BenchmarkDotNet before and after changes to hot paths.
+**Implication for contributors:** Roslyn analyzers (`LinqInHotPathsAnalyzer`, `AnonymousObjectAllocationAnalyzer`) enforce this. Profile with BenchmarkDotNet before and after changes to hot paths.
 
 ## Compiled Factories Over Reflection
 

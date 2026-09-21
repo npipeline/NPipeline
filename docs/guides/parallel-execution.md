@@ -144,28 +144,28 @@ In the `HighThroughput` profile, context dictionaries use pooled `Dictionary<str
 
 ```csharp
 // ✓ Safe: no shared state
-public override Task<Result> TransformAsync(
+public override ValueTask<Result> TransformAsync(
     Input item, PipelineContext context, CancellationToken ct)
 {
-    return Task.FromResult(new Result(item.Value * 2));
+    return ValueTask.FromResult(new Result(item.Value * 2));
 }
 
 // ✓ Safe: atomic operations for simple counters
 private int _count;
-public override Task<Result> TransformAsync(
+public override ValueTask<Result> TransformAsync(
     Input item, PipelineContext context, CancellationToken ct)
 {
     Interlocked.Increment(ref _count);
-    return Task.FromResult(new Result(item.Value));
+    return ValueTask.FromResult(new Result(item.Value));
 }
 
 // ✗ Unsafe: shared mutable state without synchronization
 private int _count;
-public override Task<Result> TransformAsync(
+public override ValueTask<Result> TransformAsync(
     Input item, PipelineContext context, CancellationToken ct)
 {
     _count++; // Race condition!
-    return Task.FromResult(new Result(item.Value));
+    return ValueTask.FromResult(new Result(item.Value));
 }
 ```
 

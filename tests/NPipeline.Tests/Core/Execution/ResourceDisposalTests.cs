@@ -110,9 +110,9 @@ public sealed class ResourceDisposalTests : IAsyncLifetime
             await ValueTask.CompletedTask;
         }
 
-        public override Task<string> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
+        public override ValueTask<string> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
         {
-            return Task.FromResult(item + "_transformed");
+            return ValueTask.FromResult<string>(item + "_transformed");
         }
     }
 
@@ -177,7 +177,7 @@ public sealed class ResourceDisposalTests : IAsyncLifetime
             await ValueTask.CompletedTask;
         }
 
-        public override Task<string> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
+        public override ValueTask<string> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
         {
             throw new InvalidOperationException("Test exception from transform");
         }

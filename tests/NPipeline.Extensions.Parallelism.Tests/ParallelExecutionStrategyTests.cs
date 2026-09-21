@@ -266,7 +266,7 @@ public class ParallelExecutionStrategyTests
 
     public sealed class VariableDelayTransform : TransformNode<int, int>
     {
-        public override async Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override async ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             // Earlier items wait longer so completion order diverges from input order.
             await Task.Delay((3 - (item % 4)) * 3, cancellationToken);
@@ -276,7 +276,7 @@ public class ParallelExecutionStrategyTests
 
     public sealed class FaultingTransform : TransformNode<int, int>
     {
-        public override async Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override async ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             await Task.Delay(1, cancellationToken);
 

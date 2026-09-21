@@ -263,11 +263,11 @@ public sealed class ResilientMemoryUsageTests
 
     private sealed class MemoryIntensiveTransform : TransformNode<int, int>
     {
-        public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             // Simulate some memory-intensive processing
             var data = new byte[1024]; // 1KB per item
-            return Task.FromResult(item);
+            return ValueTask.FromResult<int>(item);
         }
     }
 

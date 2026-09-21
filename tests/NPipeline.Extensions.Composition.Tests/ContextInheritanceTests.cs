@@ -149,11 +149,11 @@ public class ContextInheritanceTests
         public static bool FoundParameter { get; private set; }
         public static string? ParameterValue { get; private set; }
 
-        public override Task<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
+        public override ValueTask<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
         {
             FoundParameter = context.Parameters.TryGetValue("TestParam", out var value);
             ParameterValue = value?.ToString();
-            return Task.FromResult(input);
+            return ValueTask.FromResult<int>(input);
         }
     }
 
@@ -162,11 +162,11 @@ public class ContextInheritanceTests
         public static bool FoundItem { get; private set; }
         public static string? ItemValue { get; private set; }
 
-        public override Task<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
+        public override ValueTask<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
         {
             FoundItem = context.Items.TryGetValue("TestItem", out var value);
             ItemValue = value?.ToString();
-            return Task.FromResult(input);
+            return ValueTask.FromResult<int>(input);
         }
     }
 
@@ -175,11 +175,11 @@ public class ContextInheritanceTests
         public static bool FoundProperty { get; private set; }
         public static string? PropertyValue { get; private set; }
 
-        public override Task<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
+        public override ValueTask<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
         {
             FoundProperty = context.Properties.TryGetValue("TestProperty", out var value);
             PropertyValue = value?.ToString();
-            return Task.FromResult(input);
+            return ValueTask.FromResult<int>(input);
         }
     }
 
@@ -189,12 +189,12 @@ public class ContextInheritanceTests
         public static bool HasItem { get; private set; }
         public static bool HasProperty { get; private set; }
 
-        public override Task<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
+        public override ValueTask<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
         {
             HasParameter = context.Parameters.ContainsKey("Param");
             HasItem = context.Items.ContainsKey("Item");
             HasProperty = context.Properties.ContainsKey("Property");
-            return Task.FromResult(input);
+            return ValueTask.FromResult<int>(input);
         }
     }
 
@@ -203,23 +203,23 @@ public class ContextInheritanceTests
         public static bool HasParameter { get; private set; }
         public static bool HasItem { get; private set; }
 
-        public override Task<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
+        public override ValueTask<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
         {
             HasParameter = context.Parameters.ContainsKey("OnlyParam");
             HasItem = context.Items.ContainsKey("OnlyItem");
-            return Task.FromResult(input);
+            return ValueTask.FromResult<int>(input);
         }
     }
 
     private sealed class ModifyingTransform : TransformNode<int, int>
     {
-        public override Task<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
+        public override ValueTask<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
         {
             // Modify the context within sub-pipeline
             if (context.Parameters.ContainsKey("SharedKey"))
                 context.Parameters["SharedKey"] = "ModifiedInSubPipeline";
 
-            return Task.FromResult(input);
+            return ValueTask.FromResult<int>(input);
         }
     }
 

@@ -164,7 +164,7 @@ public class AIBatchedTransformNodeTests
         var batch = new List<TestDomain.Comment> { new("hello", "alice") };
 
         await Assert.ThrowsAsync<AITransformException>(() =>
-            node.TransformAsync(batch, Context(), CancellationToken.None));
+            node.TransformAsync(batch, Context(), CancellationToken.None).AsTask());
     }
 
     [Fact]
@@ -187,7 +187,7 @@ public class AIBatchedTransformNodeTests
         };
 
         var ex = await Assert.ThrowsAsync<AITransformException>(() =>
-            node.TransformAsync(batch, Context(), CancellationToken.None));
+            node.TransformAsync(batch, Context(), CancellationToken.None).AsTask());
 
         Assert.Contains("count mismatch", ex.Message);
     }

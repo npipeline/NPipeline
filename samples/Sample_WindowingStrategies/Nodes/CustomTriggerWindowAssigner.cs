@@ -56,13 +56,13 @@ public class CustomTriggerWindowAssigner : TransformNode<UserSession, IReadOnlyL
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A collection of sessions forming a custom-triggered window when conditions are met.</returns>
-    public override Task<IReadOnlyList<UserSession>> TransformAsync(
+    public override ValueTask<IReadOnlyList<UserSession>> TransformAsync(
         UserSession session,
         PipelineContext context,
         CancellationToken cancellationToken)
     {
         if (!IsRealSession(session))
-            return Task.FromResult<IReadOnlyList<UserSession>>([]);
+            return ValueTask.FromResult<IReadOnlyList<UserSession>>([]);
 
         _sessionBuffer.Add(session);
 
@@ -85,10 +85,10 @@ public class CustomTriggerWindowAssigner : TransformNode<UserSession, IReadOnlyL
             _logger.Log(LogLevel.Debug, "CustomTriggerWindowAssigner: Triggered window with {Count} sessions due to {TriggerType}",
                 windowSessions.Count, triggerResult.TriggerType);
 
-            return Task.FromResult<IReadOnlyList<UserSession>>(windowSessions);
+            return ValueTask.FromResult<IReadOnlyList<UserSession>>(windowSessions);
         }
 
-        return Task.FromResult<IReadOnlyList<UserSession>>([]);
+        return ValueTask.FromResult<IReadOnlyList<UserSession>>([]);
     }
 
     private TriggerResult EvaluateTriggerConditions()

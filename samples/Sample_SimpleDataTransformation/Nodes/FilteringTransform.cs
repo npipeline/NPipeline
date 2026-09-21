@@ -17,7 +17,7 @@ public class FilteringTransform : TransformNode<Person, Person>
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A Task containing the filtered Person object.</returns>
-    public override async Task<Person> TransformAsync(Person item, PipelineContext context, CancellationToken cancellationToken)
+    public override async ValueTask<Person> TransformAsync(Person item, PipelineContext context, CancellationToken cancellationToken)
     {
         Console.WriteLine($"Filtering Person: {item.FirstName} {item.LastName} (Age: {item.Age}, City: {item.City})");
 
@@ -29,7 +29,7 @@ public class FilteringTransform : TransformNode<Person, Person>
 
             // Return a placeholder Person with ID 0 to indicate filtered out
             var filteredPerson = new Person(0, "Filtered", "Out", 0, "filtered@none.com", "Filtered");
-            return await Task.FromResult(filteredPerson);
+            return await ValueTask.FromResult<Person>(filteredPerson);
         }
 
         // Filter condition 2: Exclude certain cities (demonstrating geographic filtering)
@@ -42,7 +42,7 @@ public class FilteringTransform : TransformNode<Person, Person>
 
             // Return a placeholder Person with ID 0 to indicate filtered out
             var filteredPerson = new Person(0, "Filtered", "Out", 0, "filtered@none.com", "Filtered");
-            return await Task.FromResult(filteredPerson);
+            return await ValueTask.FromResult<Person>(filteredPerson);
         }
 
         // Filter condition 3: Maximum age limit for this specific pipeline
@@ -53,11 +53,11 @@ public class FilteringTransform : TransformNode<Person, Person>
 
             // Return a placeholder Person with ID 0 to indicate filtered out
             var filteredPerson = new Person(0, "Filtered", "Out", 0, "filtered@none.com", "Filtered");
-            return await Task.FromResult(filteredPerson);
+            return await ValueTask.FromResult<Person>(filteredPerson);
         }
 
         Console.WriteLine($"Person passed filtering: {item.FirstName} {item.LastName} (Age: {item.Age}, City: {item.City})");
 
-        return await Task.FromResult(item);
+        return await ValueTask.FromResult<Person>(item);
     }
 }

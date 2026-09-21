@@ -157,9 +157,9 @@ public sealed class ExecutionPlanCacheReuseTests
 
     private sealed class DoublingTransform : TransformNode<int, int>
     {
-        public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
-            return Task.FromResult(item * 2);
+            return ValueTask.FromResult<int>(item * 2);
         }
     }
 

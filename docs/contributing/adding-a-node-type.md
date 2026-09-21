@@ -29,10 +29,10 @@ Always extend the base class rather than implementing the interface directly. Ba
 ```csharp
 public sealed class UpperCaseNode : TransformNode<string, string>
 {
-    public override Task<string> TransformAsync(
+    public override ValueTask<string> TransformAsync(
         string item, PipelineContext context, CancellationToken cancellationToken)
     {
-        return Task.FromResult(item.ToUpperInvariant());
+        return ValueTask.FromResult(item.ToUpperInvariant());
     }
 }
 ```

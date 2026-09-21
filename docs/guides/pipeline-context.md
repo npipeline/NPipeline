@@ -68,12 +68,12 @@ Use `Items` for node-to-node communication:
 
 ```csharp
 // In a transform node: store a computed value
-public override Task<Order> TransformAsync(
+public override ValueTask<Order> TransformAsync(
     Order item, PipelineContext context, CancellationToken ct)
 {
     var count = context.Items.TryGetValue("orderCount", out var c) ? (int)c : 0;
     context.Items["orderCount"] = count + 1;
-    return Task.FromResult(item);
+    return ValueTask.FromResult(item);
 }
 
 // In a later sink: read the value
@@ -102,12 +102,12 @@ sub-context that owns it:
 | `Lineage` | Lineage sinks and collectors | `LineageSink`, `PipelineLineageSink`, `LineageCollector`, `LineageFactory` |
 
 ```csharp
-public override Task<Order> TransformAsync(
+public override ValueTask<Order> TransformAsync(
     Order item, PipelineContext context, CancellationToken ct)
 {
     var logger = context.Observability.LoggerFactory.CreateLogger("OrderTransform");
     logger.LogDebug("Run {RunId} processing order {OrderId}", context.RunIdentity.RunId, item.Id);
-    return Task.FromResult(item);
+    return ValueTask.FromResult(item);
 }
 ```
 

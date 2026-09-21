@@ -540,8 +540,8 @@ namespace NPipeline.Extensions.Composition.Tests
 
         private sealed class DoubleTransform : TransformNode<int, int>
         {
-            public override Task<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
-                => Task.FromResult(input * 2);
+            public override ValueTask<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
+                => ValueTask.FromResult<int>(input * 2);
         }
 
         private sealed class SimpleSubPipeline : IPipelineDefinition
@@ -707,8 +707,8 @@ namespace NPipeline.Extensions.Composition.Tests
 
         private sealed class MultiplyByFactorTransform(int factor) : TransformNode<int, int>
         {
-            public override Task<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
-                => Task.FromResult(input * factor);
+            public override ValueTask<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
+                => ValueTask.FromResult<int>(input * factor);
         }
 
         private sealed class DictionaryServiceProvider : IServiceProvider

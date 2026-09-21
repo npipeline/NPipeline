@@ -17,7 +17,7 @@ public class TextTransform : TransformNode<string, string>
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A Task containing the transformed text.</returns>
-    public override Task<string> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
+    public override ValueTask<string> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
     {
         Console.WriteLine($"Transforming document ({item.Length} chars)");
 
@@ -26,6 +26,6 @@ public class TextTransform : TransformNode<string, string>
 
         Console.WriteLine($"  Transformed to {transformed.Length} chars");
 
-        return Task.FromResult(transformed);
+        return ValueTask.FromResult<string>(transformed);
     }
 }

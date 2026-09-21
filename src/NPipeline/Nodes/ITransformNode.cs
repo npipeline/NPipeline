@@ -28,5 +28,11 @@ public interface ITransformNode<in TIn, TOut> : ITransformNode
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The transformed output item.</returns>
-    Task<TOut> TransformAsync(TIn item, PipelineContext context, CancellationToken cancellationToken);
+    /// <remarks>
+    ///     Returns <see cref="ValueTask{TResult}" /> rather than <see cref="Task{TResult}" /> so a transform that
+    ///     completes synchronously — the common case — allocates nothing per item. An <c>async</c> method returning
+    ///     <see cref="ValueTask{TResult}" /> needs no other change; a synchronous one returns
+    ///     <c>ValueTask.FromResult(...)</c>.
+    /// </remarks>
+    ValueTask<TOut> TransformAsync(TIn item, PipelineContext context, CancellationToken cancellationToken);
 }

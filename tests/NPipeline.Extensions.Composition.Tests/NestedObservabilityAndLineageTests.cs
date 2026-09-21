@@ -401,18 +401,18 @@ public class NestedObservabilityAndLineageTests
 
     private sealed class DoubleTransform : TransformNode<int, int>
     {
-        public override Task<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
-            => Task.FromResult(input * 2);
+        public override ValueTask<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
+            => ValueTask.FromResult<int>(input * 2);
     }
 
     private sealed class RunIdCaptureTransform : TransformNode<int, int>
     {
         public static Guid CapturedRunId { get; set; }
 
-        public override Task<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
+        public override ValueTask<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
         {
             CapturedRunId = context.RunIdentity.RunId;
-            return Task.FromResult(input);
+            return ValueTask.FromResult<int>(input);
         }
     }
 
@@ -420,10 +420,10 @@ public class NestedObservabilityAndLineageTests
     {
         public static Guid CapturedRunId { get; set; }
 
-        public override Task<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
+        public override ValueTask<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
         {
             CapturedRunId = context.RunIdentity.RunId;
-            return Task.FromResult(input);
+            return ValueTask.FromResult<int>(input);
         }
     }
 

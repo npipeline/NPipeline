@@ -18,7 +18,7 @@ public class CalibrationValidationNode : TransformNode<SensorReadingWithMetadata
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A Task containing the validation result.</returns>
-    public override async Task<SensorReadingWithCalibration> TransformAsync(SensorReadingWithMetadata item, PipelineContext context,
+    public override async ValueTask<SensorReadingWithCalibration> TransformAsync(SensorReadingWithMetadata item, PipelineContext context,
         CancellationToken cancellationToken)
     {
         // Simulate processing delay

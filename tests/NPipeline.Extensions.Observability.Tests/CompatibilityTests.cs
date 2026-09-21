@@ -789,9 +789,9 @@ public sealed class CompatibilityTests
 
     private sealed class TestTransformNode : TransformNode<int, int>
     {
-        public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
-            return Task.FromResult(item * 2);
+            return ValueTask.FromResult<int>(item * 2);
         }
     }
 
@@ -799,7 +799,7 @@ public sealed class CompatibilityTests
     {
         private int _count;
 
-        public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             _count++;
 
@@ -807,7 +807,7 @@ public sealed class CompatibilityTests
             if (_count % 3 == 0)
                 throw new InvalidOperationException($"Temporary failure for item {item}");
 
-            return Task.FromResult(item * 2);
+            return ValueTask.FromResult<int>(item * 2);
         }
     }
 
@@ -815,14 +815,14 @@ public sealed class CompatibilityTests
     {
         private int _count;
 
-        public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             _count++;
 
             if (_count == 5)
                 throw new InvalidOperationException("Intentional failure");
 
-            return Task.FromResult(item * 2);
+            return ValueTask.FromResult<int>(item * 2);
         }
     }
 

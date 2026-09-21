@@ -79,21 +79,12 @@ public sealed class FilteringNode<T> : TransformNode<T, T>
         return this;
     }
 
-    /// <summary>
-    ///     Executes filtering on the item.
-    ///     Throws <see cref="FilteringException" /> if any predicate fails.
-    /// </summary>
-    public override Task<T> TransformAsync(T item, PipelineContext context, CancellationToken cancellationToken)
-    {
-        return FromValueTask(ExecuteValueTaskAsync(item, context, cancellationToken));
-    }
-
     /// <inheritdoc />
-    protected override ValueTask<T> ExecuteValueTaskAsync(T item, PipelineContext context, CancellationToken cancellationToken)
+    public override ValueTask<T> TransformAsync(T item, PipelineContext context, CancellationToken cancellationToken)
     {
         // Fast-path: no rules configured means pass-through
         if (_rules.Count == 0)
-            return ValueTask.FromResult(item);
+            return ValueTask.FromResult<T>(item);
 
         foreach (var rule in _rules)
         {
@@ -110,7 +101,7 @@ public sealed class FilteringNode<T> : TransformNode<T, T>
             }
         }
 
-        return ValueTask.FromResult(item);
+        return ValueTask.FromResult<T>(item);
     }
 
     private readonly record struct Rule(Func<T, bool> Predicate, Func<T, string>? Reason);

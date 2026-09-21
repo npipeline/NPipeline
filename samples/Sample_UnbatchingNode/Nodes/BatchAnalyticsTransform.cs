@@ -41,7 +41,7 @@ public class BatchAnalyticsTransform : TransformNode<IReadOnlyCollection<MarketD
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A batch analytics wrapper containing the results and original events.</returns>
-    public override Task<BatchAnalyticsWrapper> TransformAsync(
+    public override ValueTask<BatchAnalyticsWrapper> TransformAsync(
         IReadOnlyCollection<MarketDataEvent> batch,
         PipelineContext context,
         CancellationToken cancellationToken)
@@ -51,7 +51,7 @@ public class BatchAnalyticsTransform : TransformNode<IReadOnlyCollection<MarketD
         if (batch == null || batch.Count == 0)
         {
             Console.WriteLine("Received empty batch, returning null result");
-            return Task.FromResult<BatchAnalyticsWrapper>(null!);
+            return ValueTask.FromResult<BatchAnalyticsWrapper>(null!);
         }
 
         Console.WriteLine($"Processing batch of {batch.Count} market data events for symbol {batch.First().Symbol}");
@@ -112,7 +112,7 @@ public class BatchAnalyticsTransform : TransformNode<IReadOnlyCollection<MarketD
                           $"Avg Price: {analyticsResult.AveragePrice}, Volatility: {analyticsResult.PriceVolatility}%, " +
                           $"Trend: {analyticsResult.PriceTrend}, Anomaly Score: {analyticsResult.AnomalyScore}");
 
-        return Task.FromResult(wrapper);
+        return ValueTask.FromResult<BatchAnalyticsWrapper>(wrapper);
     }
 
     private static string CalculatePriceTrend(IReadOnlyList<decimal> prices)

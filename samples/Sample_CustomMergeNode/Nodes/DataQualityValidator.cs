@@ -33,7 +33,7 @@ public class DataQualityValidator : TransformNode<MarketDataTick, MarketDataTick
     /// <param name="context">The pipeline context</param>
     /// <param name="cancellationToken">The cancellation token</param>
     /// <returns>The validated market data tick with quality score</returns>
-    public override async Task<MarketDataTick> TransformAsync(
+    public override async ValueTask<MarketDataTick> TransformAsync(
         MarketDataTick tick,
         PipelineContext context,
         CancellationToken cancellationToken)

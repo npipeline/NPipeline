@@ -8,13 +8,13 @@ namespace NPipeline.Extensions.Parallelism.Tests;
 
 public sealed class RetryMetricsTransform : TransformNode<int, int>
 {
-    public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+    public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
     {
         var count = SharedTestState.AttemptCounts.AddOrUpdate(item, 1, (_, c) => c + 1);
 
         if (count < 3)
             throw new InvalidOperationException("forced failure for retry");
 
-        return Task.FromResult(item * 2);
+        return ValueTask.FromResult<int>(item * 2);
     }
 }

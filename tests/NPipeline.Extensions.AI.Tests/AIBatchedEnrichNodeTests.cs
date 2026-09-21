@@ -174,7 +174,7 @@ public class AIBatchedEnrichNodeTests
         };
 
         var ex = await Assert.ThrowsAsync<AITransformException>(() =>
-            node.TransformAsync(batch, Context(), CancellationToken.None));
+            node.TransformAsync(batch, Context(), CancellationToken.None).AsTask());
 
         Assert.Contains("count mismatch", ex.Message);
         Assert.Contains("2", ex.Message);
@@ -201,7 +201,7 @@ public class AIBatchedEnrichNodeTests
         };
 
         var ex = await Assert.ThrowsAsync<AITransformException>(() =>
-            node.TransformAsync(batch, Context(), CancellationToken.None));
+            node.TransformAsync(batch, Context(), CancellationToken.None).AsTask());
 
         Assert.Contains("ResultMapper delegate failed", ex.Message);
         Assert.IsType<InvalidOperationException>(ex.InnerException, false);

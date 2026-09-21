@@ -74,7 +74,7 @@ public class AITransformNodeTests
         var node = CreateNode(client);
 
         var ex = await Assert.ThrowsAsync<AITransformException>(() =>
-            node.TransformAsync(new TestDomain.Comment("hello", "alice"), Context(), CancellationToken.None));
+            node.TransformAsync(new TestDomain.Comment("hello", "alice"), Context(), CancellationToken.None).AsTask());
 
         Assert.Contains("Failed to deserialize", ex.Message);
         Assert.NotNull(ex.OriginalItem);
@@ -89,7 +89,7 @@ public class AITransformNodeTests
         var node = CreateNode(client);
 
         var ex = await Assert.ThrowsAsync<AITransformException>(() =>
-            node.TransformAsync(new TestDomain.Comment("hello", "alice"), Context(), CancellationToken.None));
+            node.TransformAsync(new TestDomain.Comment("hello", "alice"), Context(), CancellationToken.None).AsTask());
 
         Assert.Contains("null value", ex.Message);
     }
@@ -115,7 +115,7 @@ public class AITransformNodeTests
         var node = CreateNode(client);
 
         await Assert.ThrowsAsync<HttpRequestException>(() =>
-            node.TransformAsync(new TestDomain.Comment("hello", "alice"), Context(), CancellationToken.None));
+            node.TransformAsync(new TestDomain.Comment("hello", "alice"), Context(), CancellationToken.None).AsTask());
     }
 
     [Fact]
@@ -125,7 +125,7 @@ public class AITransformNodeTests
         var node = CreateNode(client);
 
         await Assert.ThrowsAsync<TimeoutException>(() =>
-            node.TransformAsync(new TestDomain.Comment("hello", "alice"), Context(), CancellationToken.None));
+            node.TransformAsync(new TestDomain.Comment("hello", "alice"), Context(), CancellationToken.None).AsTask());
     }
 
     [Fact]
@@ -141,7 +141,7 @@ public class AITransformNodeTests
         };
 
         var ex = await Assert.ThrowsAsync<AITransformException>(() =>
-            node.TransformAsync(new TestDomain.Comment("hello", "alice"), Context(), CancellationToken.None));
+            node.TransformAsync(new TestDomain.Comment("hello", "alice"), Context(), CancellationToken.None).AsTask());
 
         Assert.Contains("ItemTemplate delegate failed", ex.Message);
         Assert.IsType<InvalidOperationException>(ex.InnerException, false);
@@ -161,7 +161,7 @@ public class AITransformNodeTests
         };
 
         var ex = await Assert.ThrowsAsync<AITransformException>(() =>
-            node.TransformAsync(new TestDomain.Comment("hello", "alice"), Context(), CancellationToken.None));
+            node.TransformAsync(new TestDomain.Comment("hello", "alice"), Context(), CancellationToken.None).AsTask());
 
         Assert.Contains("ConfigureOptions delegate failed", ex.Message);
         Assert.Equal("Classify: hello", ex.PromptSent);
@@ -175,7 +175,7 @@ public class AITransformNodeTests
         var node = new AITransformNode<TestDomain.Comment, TestDomain.ClassificationResult>(client);
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            node.TransformAsync(new TestDomain.Comment("hello", "alice"), Context(), CancellationToken.None));
+            node.TransformAsync(new TestDomain.Comment("hello", "alice"), Context(), CancellationToken.None).AsTask());
 
         Assert.Contains("SystemPrompt", ex.Message);
     }

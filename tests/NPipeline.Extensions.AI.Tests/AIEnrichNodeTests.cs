@@ -41,7 +41,7 @@ public class AIEnrichNodeTests
         };
 
         await Assert.ThrowsAsync<AITransformException>(() =>
-            node.TransformAsync(new TestDomain.Comment("hello", "alice"), Context(), CancellationToken.None));
+            node.TransformAsync(new TestDomain.Comment("hello", "alice"), Context(), CancellationToken.None).AsTask());
     }
 
     [Fact]
@@ -58,7 +58,7 @@ public class AIEnrichNodeTests
         };
 
         var ex = await Assert.ThrowsAsync<AITransformException>(() =>
-            node.TransformAsync(new TestDomain.Comment("hello", "alice"), Context(), CancellationToken.None));
+            node.TransformAsync(new TestDomain.Comment("hello", "alice"), Context(), CancellationToken.None).AsTask());
 
         Assert.Contains("ResultMapper delegate failed", ex.Message);
         Assert.IsType<InvalidOperationException>(ex.InnerException, false);

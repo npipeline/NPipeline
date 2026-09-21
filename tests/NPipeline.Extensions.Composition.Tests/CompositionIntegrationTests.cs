@@ -77,9 +77,9 @@ public class CompositionIntegrationTests
 
     private sealed class SimpleTransform : TransformNode<int, int>
     {
-        public override Task<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
+        public override ValueTask<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
         {
-            return Task.FromResult(input * 2);
+            return ValueTask.FromResult<int>(input * 2);
         }
     }
 
@@ -117,13 +117,13 @@ public class CompositionIntegrationTests
     {
         public static string? ReceivedParameter;
 
-        public override Task<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
+        public override ValueTask<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
         {
             ReceivedParameter = context.Parameters.TryGetValue("TestParam", out var value)
                 ? value?.ToString()
                 : null;
 
-            return Task.FromResult(input);
+            return ValueTask.FromResult<int>(input);
         }
     }
 

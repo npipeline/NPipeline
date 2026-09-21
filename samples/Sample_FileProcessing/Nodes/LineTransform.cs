@@ -37,7 +37,7 @@ public class LineTransform : TransformNode<string, string>
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>A task that represents the asynchronous operation, returning the transformed line.</returns>
-    public override Task<string> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
+    public override ValueTask<string> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
     {
         try
         {
@@ -52,7 +52,7 @@ public class LineTransform : TransformNode<string, string>
 
             Console.WriteLine($"LineTransform: Transformed to: {transformedLine[..Math.Min(50, transformedLine.Length)]}...");
 
-            return Task.FromResult(transformedLine);
+            return ValueTask.FromResult<string>(transformedLine);
         }
         catch (Exception ex)
         {

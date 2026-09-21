@@ -50,7 +50,7 @@ public class PatternDetectionCalculator : TransformNode<IReadOnlyCollection<User
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>The most significant pattern detected in the sessions.</returns>
-    public override Task<PatternMatch> TransformAsync(
+    public override ValueTask<PatternMatch> TransformAsync(
         IReadOnlyCollection<UserSession> sessions,
         PipelineContext context,
         CancellationToken cancellationToken)
@@ -60,7 +60,7 @@ public class PatternDetectionCalculator : TransformNode<IReadOnlyCollection<User
         if (sessions.Count == 0)
         {
             _logger.Log(LogLevel.Debug, "PatternDetectionCalculator: Received empty sessions collection");
-            return Task.FromResult(CreateEmptyPattern(stopwatch.Elapsed));
+            return ValueTask.FromResult<PatternMatch>(CreateEmptyPattern(stopwatch.Elapsed));
         }
 
         _logger.Log(LogLevel.Debug, "PatternDetectionCalculator: Processing {Count} sessions", sessions.Count);
@@ -84,7 +84,7 @@ public class PatternDetectionCalculator : TransformNode<IReadOnlyCollection<User
         if (bestPattern == null)
         {
             _logger.Log(LogLevel.Debug, "PatternDetectionCalculator: No patterns found with confidence >= {Threshold}", _patternConfidenceThreshold);
-            return Task.FromResult(CreateEmptyPattern(stopwatch.Elapsed));
+            return ValueTask.FromResult<PatternMatch>(CreateEmptyPattern(stopwatch.Elapsed));
         }
 
         stopwatch.Stop();
@@ -92,7 +92,7 @@ public class PatternDetectionCalculator : TransformNode<IReadOnlyCollection<User
         _logger.Log(LogLevel.Information, "PatternDetectionCalculator: Detected {PatternType} pattern with confidence {Confidence:F2} in {ElapsedMs}ms",
             bestPattern.PatternType, bestPattern.ConfidenceScore, stopwatch.ElapsedMilliseconds);
 
-        return Task.FromResult(bestPattern);
+        return ValueTask.FromResult<PatternMatch>(bestPattern);
     }
 
     private PatternMatch DetectHighValuePattern(IReadOnlyCollection<UserSession> sessions, TimeSpan processingTime)

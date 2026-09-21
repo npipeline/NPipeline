@@ -89,7 +89,7 @@ public class PassThroughTransformNodeTests
         var item = "not a number";
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidCastException>(() => node.TransformAsync(item, context, CancellationToken.None));
+        await Assert.ThrowsAsync<InvalidCastException>(() => node.TransformAsync(item, context, CancellationToken.None).AsTask());
     }
 
     [Fact]
@@ -101,7 +101,7 @@ public class PassThroughTransformNodeTests
         var item = new List<string> { "test" };
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidCastException>(() => node.TransformAsync(item, context, CancellationToken.None));
+        await Assert.ThrowsAsync<InvalidCastException>(() => node.TransformAsync(item, context, CancellationToken.None).AsTask());
     }
 
     [Fact]
@@ -170,7 +170,7 @@ public class PassThroughTransformNodeTests
         cts.Cancel();
 
         // Act & Assert
-        await Assert.ThrowsAsync<OperationCanceledException>(() => node.TransformAsync(item, context, cts.Token));
+        await Assert.ThrowsAsync<OperationCanceledException>(() => node.TransformAsync(item, context, cts.Token).AsTask());
     }
 
     [Fact]

@@ -42,26 +42,14 @@ public class ValueTaskFastPathBenchmarks
     }
 
     // ------------------------------------------------------------------------ 
-    // 1) ValueTask fast path vs Task-based implementation
+    // 1) Synchronous completion vs async completion
+    //
+    // TransformAsync returns ValueTask<T> for every node, so there is no longer a Task-based path to compare
+    // against. What still matters is whether a transform completes synchronously: that is the case ValueTask
+    // makes allocation-free, and the case a transform that awaits unnecessarily gives up.
     // ------------------------------------------------------------------------
 
-    [Benchmark(Baseline = true, Description = "Task-based transform (cache hit)")]
-    public async Task Task_CacheHit()
-    {
-        await _runner.RunAsync<TaskBasedCachePipeline>(_ctx);
-    }
-
-    [Benchmark(Description = "ValueTask fast path (cache hit)")]
-    public async Task ValueTask_FastPath()
-    {
-        await _runner.RunAsync<ValueTaskCachePipeline>(_ctx);
-    }
-
-    // ------------------------------------------------------------------------ 
-    // 2) Synchronous completion path vs async completion
-    // ------------------------------------------------------------------------
-
-    [Benchmark(Description = "Synchronous ValueTask completion")]
+    [Benchmark(Baseline = true, Description = "Synchronous ValueTask completion")]
     public async Task ValueTask_SyncCompletion()
     {
         await _runner.RunAsync<SyncCompletionPipeline>(_ctx);
@@ -92,31 +80,6 @@ public class ValueTaskFastPathBenchmarks
     // ------------------------------------------------------------------------ 
     // Pipeline definitions
     // ------------------------------------------------------------------------
-
-    private sealed class TaskBasedCachePipeline : IPipelineDefinition
-    {
-        public void Define(PipelineBuilder b, PipelineContext c)
-        {
-            var src = b.AddSource<CacheTestSource, int>("src");
-            var t = b.AddTransform<TaskBasedCacheTransform, int, string>("t");
-            var sink = b.AddSink<BlackHoleSink<string>, string>("sink");
-
-            b.Connect(src, t);
-            b.Connect(t, sink);
-        }
-    }
-
-    private sealed class ValueTaskCachePipeline : IPipelineDefinition
-    {
-        public void Define(PipelineBuilder b, PipelineContext c)
-        {
-            var src = b.AddSource<CacheTestSource, int>("src");
-            var t = b.AddTransform<ValueTaskCacheTransform, int, string>("t");
-            var sink = b.AddSink<BlackHoleSink<string>, string>("sink");
-
-            b.Connect(src, t).Connect(t, sink);
-        }
-    }
 
     private sealed class SyncCompletionPipeline : IPipelineDefinition
     {
@@ -193,53 +156,11 @@ public class ValueTaskFastPathBenchmarks
         }
     }
 
-    private sealed class TaskBasedCacheTransform : TransformNode<int, string>
-    {
-        private readonly Dictionary<int, string> _cache = [];
-
-        public override Task<string> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
-        {
-            // Simulate cache lookup with Task-based approach
-            if (_cache.TryGetValue(item, out var cached))
-                return Task.FromResult(cached);
-
-            // Simulate cache miss and store
-            var result = $"Computed_{item}";
-            _cache[item] = result;
-            return Task.FromResult(result);
-        }
-    }
-
-    private sealed class ValueTaskCacheTransform : TransformNode<int, string>
-    {
-        private readonly Dictionary<int, string> _cache = [];
-
-        protected override ValueTask<string> ExecuteValueTaskAsync(int item, PipelineContext context, CancellationToken cancellationToken)
-        {
-            // Simulate cache lookup with ValueTask fast path
-            if (_cache.TryGetValue(item, out var cached))
-            {
-                // Fast path: synchronous completion without allocation
-                return new ValueTask<string>(cached);
-            }
-
-            // Simulate cache miss and store
-            var result = $"Computed_{item}";
-            _cache[item] = result;
-            return new ValueTask<string>(result);
-        }
-
-        public override Task<string> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
-        {
-            return FromValueTask(ExecuteValueTaskAsync(item, context, cancellationToken));
-        }
-    }
-
     private sealed class SyncCompletionTransform : TransformNode<int, string>
     {
         private readonly Dictionary<int, string> _cache = [];
 
-        protected override ValueTask<string> ExecuteValueTaskAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override ValueTask<string> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             // Always synchronous completion (cache hit scenario)
             if (_cache.TryGetValue(item, out var cached))
@@ -250,17 +171,13 @@ public class ValueTaskFastPathBenchmarks
             return new ValueTask<string>(result);
         }
 
-        public override Task<string> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
-        {
-            return FromValueTask(ExecuteValueTaskAsync(item, context, cancellationToken));
-        }
     }
 
     private sealed class AsyncCompletionTransform : TransformNode<int, string>
     {
         private readonly Dictionary<int, string> _cache = [];
 
-        protected override async ValueTask<string> ExecuteValueTaskAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override async ValueTask<string> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             // Force asynchronous completion even for cache hits
             if (_cache.TryGetValue(item, out var cached))
@@ -276,10 +193,6 @@ public class ValueTaskFastPathBenchmarks
             return result;
         }
 
-        public override Task<string> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
-        {
-            return FromValueTask(ExecuteValueTaskAsync(item, context, cancellationToken));
-        }
     }
 
     private sealed class ZeroAllocationCacheTransform : TransformNode<int, string>
@@ -287,7 +200,7 @@ public class ValueTaskFastPathBenchmarks
         // Pre-allocated cache to minimize allocations
         private readonly Dictionary<int, string> _cache = [];
 
-        protected override ValueTask<string> ExecuteValueTaskAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override ValueTask<string> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             // Optimized cache lookup with zero allocation for cache hits
             if (_cache.TryGetValue(item, out var cached))
@@ -302,17 +215,13 @@ public class ValueTaskFastPathBenchmarks
             return new ValueTask<string>(result);
         }
 
-        public override Task<string> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
-        {
-            return FromValueTask(ExecuteValueTaskAsync(item, context, cancellationToken));
-        }
     }
 
     private sealed class TraditionalCacheTransform : TransformNode<int, string>
     {
         private readonly Dictionary<int, string> _cache = [];
 
-        public override async Task<string> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override async ValueTask<string> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             // Traditional async approach with unnecessary allocations
             if (_cache.TryGetValue(item, out var cached))

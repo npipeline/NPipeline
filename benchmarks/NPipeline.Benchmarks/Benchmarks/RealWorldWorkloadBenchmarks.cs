@@ -203,7 +203,7 @@ public class RealWorldWorkloadBenchmarks
 
     private sealed class CsvParser : TransformNode<CsvRecord, CsvRecord>
     {
-        public override async Task<CsvRecord> TransformAsync(CsvRecord item, PipelineContext context, CancellationToken cancellationToken)
+        public override async ValueTask<CsvRecord> TransformAsync(CsvRecord item, PipelineContext context, CancellationToken cancellationToken)
         {
             // Simulate CSV parsing overhead
             await Task.Delay(2, cancellationToken);
@@ -213,7 +213,7 @@ public class RealWorldWorkloadBenchmarks
 
     private sealed class CsvValidator : TransformNode<CsvRecord, CsvRecord>
     {
-        public override async Task<CsvRecord> TransformAsync(CsvRecord item, PipelineContext context, CancellationToken cancellationToken)
+        public override async ValueTask<CsvRecord> TransformAsync(CsvRecord item, PipelineContext context, CancellationToken cancellationToken)
         {
             // Simulate validation logic
             await Task.Delay(1, cancellationToken);
@@ -223,7 +223,7 @@ public class RealWorldWorkloadBenchmarks
 
     private sealed class CsvEnricher : TransformNode<CsvRecord, ProcessedCsvRecord>
     {
-        public override async Task<ProcessedCsvRecord> TransformAsync(CsvRecord item, PipelineContext context, CancellationToken cancellationToken)
+        public override async ValueTask<ProcessedCsvRecord> TransformAsync(CsvRecord item, PipelineContext context, CancellationToken cancellationToken)
         {
             // Simulate data enrichment
             await Task.Delay(3, cancellationToken);
@@ -272,7 +272,7 @@ public class RealWorldWorkloadBenchmarks
 
     private sealed class JsonParser : TransformNode<JsonRecord, JsonRecord>
     {
-        public override async Task<JsonRecord> TransformAsync(JsonRecord item, PipelineContext context, CancellationToken cancellationToken)
+        public override async ValueTask<JsonRecord> TransformAsync(JsonRecord item, PipelineContext context, CancellationToken cancellationToken)
         {
             // Simulate JSON parsing overhead
             await Task.Delay(2, cancellationToken);
@@ -282,7 +282,7 @@ public class RealWorldWorkloadBenchmarks
 
     private sealed class JsonValidator : TransformNode<JsonRecord, JsonRecord>
     {
-        public override async Task<JsonRecord> TransformAsync(JsonRecord item, PipelineContext context, CancellationToken cancellationToken)
+        public override async ValueTask<JsonRecord> TransformAsync(JsonRecord item, PipelineContext context, CancellationToken cancellationToken)
         {
             // Simulate validation logic
             await Task.Delay(1, cancellationToken);
@@ -292,7 +292,7 @@ public class RealWorldWorkloadBenchmarks
 
     private sealed class JsonTransformer : TransformNode<JsonRecord, ProcessedJsonRecord>
     {
-        public override async Task<ProcessedJsonRecord> TransformAsync(JsonRecord item, PipelineContext context, CancellationToken cancellationToken)
+        public override async ValueTask<ProcessedJsonRecord> TransformAsync(JsonRecord item, PipelineContext context, CancellationToken cancellationToken)
         {
             // Simulate data transformation
             await Task.Delay(3, cancellationToken);
@@ -369,7 +369,7 @@ public class RealWorldWorkloadBenchmarks
 
     private sealed class MixedDataParser : TransformNode<object, object>
     {
-        public override async Task<object> TransformAsync(object item, PipelineContext context, CancellationToken cancellationToken)
+        public override async ValueTask<object> TransformAsync(object item, PipelineContext context, CancellationToken cancellationToken)
         {
             await Task.Delay(2, cancellationToken);
             return item;
@@ -378,7 +378,7 @@ public class RealWorldWorkloadBenchmarks
 
     private sealed class MixedDataValidator : TransformNode<object, object>
     {
-        public override async Task<object> TransformAsync(object item, PipelineContext context, CancellationToken cancellationToken)
+        public override async ValueTask<object> TransformAsync(object item, PipelineContext context, CancellationToken cancellationToken)
         {
             await Task.Delay(1, cancellationToken);
             return item;
@@ -387,7 +387,7 @@ public class RealWorldWorkloadBenchmarks
 
     private sealed class MixedDataEnricher : TransformNode<object, MixedProcessingResult>
     {
-        public override async Task<MixedProcessingResult> TransformAsync(object item, PipelineContext context, CancellationToken cancellationToken)
+        public override async ValueTask<MixedProcessingResult> TransformAsync(object item, PipelineContext context, CancellationToken cancellationToken)
         {
             await Task.Delay(3, cancellationToken);
 

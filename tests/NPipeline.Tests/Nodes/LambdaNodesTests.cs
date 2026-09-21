@@ -62,7 +62,7 @@ public sealed class LambdaNodesTests
 
         // Act & Assert
         cts.CancelAfter(50);
-        _ = await Assert.ThrowsAsync<TaskCanceledException>(() => node.TransformAsync(5, context, cts.Token));
+        _ = await Assert.ThrowsAsync<TaskCanceledException>(() => node.TransformAsync(5, context, cts.Token).AsTask());
     }
 
     [Fact]
@@ -123,7 +123,7 @@ public sealed class LambdaNodesTests
     }
 
     [Fact]
-    public async Task LambdaTransformNode_ExecuteValueTaskAsync_ReturnsSynchronouslyCompletion()
+    public async Task LambdaTransformNode_TransformAsync_ReturnsSynchronouslyCompletion()
     {
         // Arrange
         Func<int, int> addOne = x => x + 1;
@@ -131,7 +131,7 @@ public sealed class LambdaNodesTests
         var context = PipelineContext.CreateDefault();
 
         // Act
-        var valueTask = node.ExecuteValueTaskAsync(5, context, CancellationToken.None);
+        var valueTask = node.TransformAsync(5, context, CancellationToken.None);
 
         // Assert - ValueTask should be synchronously completed
         _ = valueTask.IsCompleted.Should().BeTrue();

@@ -30,7 +30,7 @@ public class BatchEventExtractor : TransformNode<BatchAnalyticsWrapper, IReadOnl
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A collection of market data events to be unbatched.</returns>
-    public override Task<IReadOnlyCollection<MarketDataEvent>> TransformAsync(
+    public override ValueTask<IReadOnlyCollection<MarketDataEvent>> TransformAsync(
         BatchAnalyticsWrapper wrapper,
         PipelineContext context,
         CancellationToken cancellationToken)
@@ -40,7 +40,7 @@ public class BatchEventExtractor : TransformNode<BatchAnalyticsWrapper, IReadOnl
         if (wrapper == null || wrapper.OriginalEvents.Count == 0)
         {
             Console.WriteLine("BatchEventExtractor: Received empty wrapper, returning empty collection");
-            return Task.FromResult<IReadOnlyCollection<MarketDataEvent>>(new List<MarketDataEvent>());
+            return ValueTask.FromResult<IReadOnlyCollection<MarketDataEvent>>(new List<MarketDataEvent>());
         }
 
         Console.WriteLine($"BatchEventExtractor: Extracting {wrapper.OriginalEvents.Count} events from batch {wrapper.AnalyticsResult.BatchId}");
@@ -51,7 +51,7 @@ public class BatchEventExtractor : TransformNode<BatchAnalyticsWrapper, IReadOnl
         stopwatch.Stop();
         Console.WriteLine($"BatchEventExtractor: Completed extraction in {stopwatch.ElapsedMilliseconds}ms");
 
-        return Task.FromResult<IReadOnlyCollection<MarketDataEvent>>(wrapper.OriginalEvents);
+        return ValueTask.FromResult<IReadOnlyCollection<MarketDataEvent>>(wrapper.OriginalEvents);
     }
 }
 
@@ -90,7 +90,7 @@ public class AlertGeneratorTransform : TransformNode<MarketDataEvent, AlertEvent
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>An alert event generated from the market data event.</returns>
-    public override Task<AlertEvent> TransformAsync(
+    public override ValueTask<AlertEvent> TransformAsync(
         MarketDataEvent marketEvent,
         PipelineContext context,
         CancellationToken cancellationToken)
@@ -99,7 +99,7 @@ public class AlertGeneratorTransform : TransformNode<MarketDataEvent, AlertEvent
         var alerts = GenerateAlertsForEvent(marketEvent, context).ToList();
 
         // Return the first alert (or null if no alerts)
-        return Task.FromResult(alerts.Count > 0
+        return ValueTask.FromResult<AlertEvent>(alerts.Count > 0
             ? alerts[0]
             : null!);
     }

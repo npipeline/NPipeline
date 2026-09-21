@@ -37,7 +37,7 @@ public class SessionAnalyticsCalculator : TransformNode<IReadOnlyCollection<User
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>Comprehensive session metrics for the analyzed sessions.</returns>
-    public override Task<SessionMetrics> TransformAsync(
+    public override ValueTask<SessionMetrics> TransformAsync(
         IReadOnlyCollection<UserSession> sessions,
         PipelineContext context,
         CancellationToken cancellationToken)
@@ -47,7 +47,7 @@ public class SessionAnalyticsCalculator : TransformNode<IReadOnlyCollection<User
         if (sessions.Count == 0)
         {
             _logger.Log(LogLevel.Debug, "SessionAnalyticsCalculator: Received empty sessions collection");
-            return Task.FromResult(CreateEmptyMetrics(stopwatch.Elapsed));
+            return ValueTask.FromResult<SessionMetrics>(CreateEmptyMetrics(stopwatch.Elapsed));
         }
 
         _logger.Log(LogLevel.Debug, "SessionAnalyticsCalculator: Processing {Count} sessions", sessions.Count);
@@ -60,7 +60,7 @@ public class SessionAnalyticsCalculator : TransformNode<IReadOnlyCollection<User
         _logger.Log(LogLevel.Information, "SessionAnalyticsCalculator: Processed {Count} sessions in {ElapsedMs}ms",
             sessions.Count, stopwatch.ElapsedMilliseconds);
 
-        return Task.FromResult(metrics);
+        return ValueTask.FromResult<SessionMetrics>(metrics);
     }
 
     private SessionMetrics CalculateBasicMetrics(IReadOnlyCollection<UserSession> sessions, TimeSpan processingTime)

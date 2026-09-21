@@ -41,7 +41,6 @@ public sealed class SequentialExecutionStrategy : IExecutionStrategy
         string nodeId,
         CancellationToken cancellationToken)
     {
-        var valueTaskTransform = node as IValueTaskTransform<TIn, TOut>;
 
         // Create cached execution context once per node (optimization: reduces per-item dictionary lookups)
         var cached = CachedNodeExecutionContext.Create(context, nodeId);
@@ -108,7 +107,6 @@ public sealed class SequentialExecutionStrategy : IExecutionStrategy
                     var executionResult = await _perItemRetryExecutor.ExecuteWithRetryAsync(
                             item,
                             node,
-                            valueTaskTransform,
                             context,
                             nodeId,
                             cached.RetryOptions.MaxItemRetries,

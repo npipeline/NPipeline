@@ -46,7 +46,6 @@ Rules NP9103–NP9107 are **profile-gated**: they only fire when the [optimizati
 | NP9103 | Warning | LINQ operation detected in hot path | **Yes** | Replace LINQ (`Where`, `Select`, `ToList`) in `TransformAsync` with `foreach` loops to avoid allocations. |
 | NP9104 | Warning | Inefficient string operation detected | **Yes** | Replace string concatenation with `+` in loops with `StringBuilder`. |
 | NP9105 | Warning | Anonymous object allocation in hot path | **Yes** | Replace anonymous objects in `TransformAsync` with records or structs. |
-| NP9106 | Info | Consider overriding ExecuteValueTaskAsync for synchronous operations | **Yes** | Override `ExecuteValueTaskAsync` when `TransformAsync` uses `Task.FromResult`. See [Synchronous Fast Paths](../performance/synchronous-fast-paths.md). |
 | NP9107 | Warning | Use streaming patterns in SourceNode implementations | **Yes** | Return `new DataStream<T>(asyncEnumerable)` instead of materializing everything with `.ToList()`. |
 | NP9108 | Info | Add parameterless constructor for better performance | No | Add a parameterless constructor for faster node activation. |
 
@@ -147,7 +146,7 @@ public override async Task ConsumeAsync(IDataStream<Order> input, PipelineContex
 // Before
 public class MyNode : TransformNode<In, Out>
 {
-    public override Task<Out> TransformAsync(In item, PipelineContext ctx, CancellationToken ct)
+    public override ValueTask<Out> TransformAsync(In item, PipelineContext ctx, CancellationToken ct)
     {
         var service = ctx.Properties["ServiceProvider"] as IServiceProvider;
         var dep = service.GetRequiredService<IMyService>();
@@ -162,7 +161,7 @@ public class MyNode : TransformNode<In, Out>
 
     public MyNode(IMyService dep) => _dep = dep;
 
-    public override Task<Out> TransformAsync(In item, PipelineContext ctx, CancellationToken ct)
+    public override ValueTask<Out> TransformAsync(In item, PipelineContext ctx, CancellationToken ct)
     {
         ...
     }
@@ -199,7 +198,6 @@ Or in `.editorconfig`:
 
 ```ini
 [*.cs]
-dotnet_diagnostic.NP9106.severity = none  # disable ValueTask suggestion
 ```
 
 ## Next Steps

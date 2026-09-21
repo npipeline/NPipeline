@@ -18,7 +18,6 @@ internal sealed class PerItemRetryExecutor : IPerItemRetryExecutor
     public async Task<ItemExecutionResult<TOut>> ExecuteWithRetryAsync<TIn, TOut>(
         TIn item,
         ITransformNode<TIn, TOut> node,
-        IValueTaskTransform<TIn, TOut>? valueTaskTransform,
         PipelineContext context,
         string nodeId,
         int maxItemRetries,
@@ -41,10 +40,7 @@ internal sealed class PerItemRetryExecutor : IPerItemRetryExecutor
         {
             try
             {
-                var work = valueTaskTransform?.ExecuteValueTaskAsync(item, context, cancellationToken)
-                           ?? new ValueTask<TOut>(node.TransformAsync(item, context, cancellationToken));
-
-                var output = await work.ConfigureAwait(false);
+                var output = await node.TransformAsync(item, context, cancellationToken).ConfigureAwait(false);
                 RecordLineageOutcome(hasLineageIndex, lineageInputIndex, in lineageOutcomeWriter, context, nodeId, LineageOutcomeReason.Emitted, attempt);
 
                 return ItemExecutionResult<TOut>.Emitted(output, attempt);

@@ -83,10 +83,10 @@ public sealed class ContextPropagationTests
 
     private sealed class IdCapturingTransform(List<string> observedIds) : TransformNode<int, int>
     {
-        public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             observedIds.Add(context.NodeEnvironment.CurrentNodeId);
-            return Task.FromResult(item);
+            return ValueTask.FromResult<int>(item);
         }
     }
 
@@ -185,12 +185,12 @@ public sealed class ContextPropagationTests
 
     private sealed class FailingTransform : TransformNode<int, int>
     {
-        public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             if (item == 42)
                 throw new InvalidOperationException("boom");
 
-            return Task.FromResult(item);
+            return ValueTask.FromResult<int>(item);
         }
     }
 

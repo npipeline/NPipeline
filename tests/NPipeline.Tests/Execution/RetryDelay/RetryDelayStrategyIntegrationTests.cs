@@ -323,7 +323,7 @@ public sealed class RetryDelayStrategyIntegrationTests
 
     private sealed class TestTransformNode : TransformNode<int, string>
     {
-        public override async Task<string> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override async ValueTask<string> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             await Task.Delay(1, cancellationToken).ConfigureAwait(false);
             return $"processed-{item}";
@@ -334,7 +334,7 @@ public sealed class RetryDelayStrategyIntegrationTests
     {
         private int _currentAttempt;
 
-        public override async Task<string> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override async ValueTask<string> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             await Task.Delay(1, cancellationToken).ConfigureAwait(false);
             _currentAttempt++;

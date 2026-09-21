@@ -75,7 +75,7 @@ public class ParallelMetricsTests
 
     private sealed class SlowTransform : TransformNode<int, int>
     {
-        public override async Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override async ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             // Slow transform to force queue pressure and drops
             await Task.Delay(50, cancellationToken); // 50ms to provide pressure
@@ -129,10 +129,10 @@ public class ParallelMetricsTests
 
     private sealed class FlakyTransform : TransformNode<int, int>
     {
-        public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             return AttemptCounts.AddOrUpdate(item, 1, (_, i) => i + 1) >= 3
-                ? Task.FromResult(item * 2)
+                ? ValueTask.FromResult<int>(item * 2)
                 : throw new InvalidOperationException("forced failure");
         }
     }

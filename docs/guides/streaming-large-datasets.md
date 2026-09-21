@@ -61,7 +61,7 @@ Buffering all items in a transform also breaks streaming:
 
 ```csharp
 // ✗ Holds all items in memory
-public override Task<IReadOnlyList<Order>> TransformAsync(
+public override ValueTask<IReadOnlyList<Order>> TransformAsync(
     Order item, PipelineContext context, CancellationToken ct)
 {
     _buffer.Add(item);  // unbounded growth

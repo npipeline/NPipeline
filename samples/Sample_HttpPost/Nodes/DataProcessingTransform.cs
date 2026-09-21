@@ -30,7 +30,7 @@ public class DataProcessingTransform : TransformNode<ValidatedWebhookData, Proce
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A task containing the processed data with summary.</returns>
-    public override async Task<ProcessedData> TransformAsync(
+    public override async ValueTask<ProcessedData> TransformAsync(
         ValidatedWebhookData item,
         PipelineContext context,
         CancellationToken cancellationToken)
@@ -57,7 +57,7 @@ public class DataProcessingTransform : TransformNode<ValidatedWebhookData, Proce
             processedData.Summary
         );
 
-        return await Task.FromResult(processedData);
+        return await ValueTask.FromResult<ProcessedData>(processedData);
     }
 
     /// <summary>

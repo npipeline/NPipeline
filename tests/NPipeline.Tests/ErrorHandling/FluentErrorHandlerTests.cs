@@ -348,9 +348,9 @@ public sealed class FluentErrorHandlerTests
     /// </summary>
     private sealed class TestTransformNode : TransformNode<string, string>
     {
-        public override Task<string> TransformAsync(string input, PipelineContext context, CancellationToken cancellationToken)
+        public override ValueTask<string> TransformAsync(string input, PipelineContext context, CancellationToken cancellationToken)
         {
-            return Task.FromResult(input);
+            return ValueTask.FromResult<string>(input);
         }
     }
 }

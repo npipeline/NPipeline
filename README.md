@@ -123,11 +123,11 @@ public class OrderSource : SourceNode<Order>
 
 public class TaxCalculator : TransformNode<Order, ProcessedOrder>
 {
-    public override Task<ProcessedOrder> TransformAsync(Order order, PipelineContext context, CancellationToken cancellationToken)
+    public override ValueTask<ProcessedOrder> TransformAsync(Order order, PipelineContext context, CancellationToken cancellationToken)
     {
         var tax = order.Amount * 0.08m;
         var total = order.Amount + tax;
-        return Task.FromResult(new ProcessedOrder(order.Id, order.Customer, order.Amount, tax, total));
+        return ValueTask.FromResult(new ProcessedOrder(order.Id, order.Customer, order.Amount, tax, total));
     }
 }
 

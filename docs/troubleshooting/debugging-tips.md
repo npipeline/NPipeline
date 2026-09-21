@@ -94,7 +94,7 @@ Access runtime state through `PipelineContext`:
 
 ```csharp
 // In a node
-public override async Task<Out> TransformAsync(In item, PipelineContext ctx, CancellationToken ct)
+public override async ValueTask<Out> TransformAsync(In item, PipelineContext ctx, CancellationToken ct)
 {
     // Check parameters
     var param = ctx.Parameters["key"];

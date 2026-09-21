@@ -275,31 +275,31 @@ public sealed class LineageContinuityIntegrationTests
 
     private sealed class IncrementTransformNode : TransformNode<int, int>
     {
-        public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
-            return Task.FromResult(item + 1);
+            return ValueTask.FromResult<int>(item + 1);
         }
     }
 
     private sealed class LeftTransformNode : TransformNode<int, int>
     {
-        public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
-            return Task.FromResult(item * 2);
+            return ValueTask.FromResult<int>(item * 2);
         }
     }
 
     private sealed class RightTransformNode : TransformNode<long, long>
     {
-        public override Task<long> TransformAsync(long item, PipelineContext context, CancellationToken cancellationToken)
+        public override ValueTask<long> TransformAsync(long item, PipelineContext context, CancellationToken cancellationToken)
         {
-            return Task.FromResult(item + 100);
+            return ValueTask.FromResult<long>(item + 100);
         }
     }
 
     private sealed class ParallelTransformNode : TransformNode<int, int>
     {
-        public override async Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override async ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             await Task.Delay(1, cancellationToken);
             return item * 3;
@@ -318,7 +318,7 @@ public sealed class LineageContinuityIntegrationTests
     {
         private int _attempt;
 
-        public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             if (_attempt < 2)
             {
@@ -326,7 +326,7 @@ public sealed class LineageContinuityIntegrationTests
                 throw new InvalidOperationException("transient");
             }
 
-            return Task.FromResult(item + 1);
+            return ValueTask.FromResult<int>(item + 1);
         }
     }
 

@@ -48,7 +48,7 @@ public class EnrichOrder : TransformNode<Order, EnrichedOrder>
 
     public EnrichOrder(HttpClient http) => _http = http;
 
-    public override async Task<EnrichedOrder> TransformAsync(
+    public override async ValueTask<EnrichedOrder> TransformAsync(
         Order item, PipelineContext context, CancellationToken cancellationToken)
     {
         var details = await _http.GetFromJsonAsync<Details>(
@@ -58,24 +58,20 @@ public class EnrichOrder : TransformNode<Order, EnrichedOrder>
 }
 ```
 
-### ValueTask Optimization
+### Synchronous Transforms Allocate Nothing
 
-For synchronous transforms, override `ExecuteValueTaskAsync` to avoid `Task` allocations on every item:
+`TransformAsync` returns `ValueTask<T>`, so a transform that completes synchronously costs no allocation per item:
 
 ```csharp
 public class UpperCase : TransformNode<string, string>
 {
-    public override Task<string> TransformAsync(
+    public override ValueTask<string> TransformAsync(
         string item, PipelineContext context, CancellationToken ct)
-        => Task.FromResult(item.ToUpperInvariant());
-
-    protected internal override ValueTask<string> ExecuteValueTaskAsync(
-        string item, PipelineContext context, CancellationToken ct)
-        => new(item.ToUpperInvariant());
+        => ValueTask.FromResult(item.ToUpperInvariant());
 }
 ```
 
-The execution engine calls `ExecuteValueTaskAsync` when available, falling back to `TransformAsync` otherwise.
+There is no separate fast path to opt into. See [Synchronous Fast Paths](../performance/synchronous-fast-paths.md).
 
 ## Stream Transform Nodes
 

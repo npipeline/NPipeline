@@ -106,7 +106,7 @@ The dead letter queue is full. Process or drain the dead letter queue, or increa
 
 - Check for blocking calls - analyzer NP9101 detects `.Result`, `.Wait()`
 - Check for LINQ in hot paths - analyzer NP9103
-- Override `ExecuteValueTaskAsync` for synchronous transforms - analyzer NP9106
+- Return `ValueTask.FromResult(...)` from `TransformAsync` for synchronous transforms so no `Task` is allocated per item
 - Use parallel execution for CPU-bound transforms
 
 ## Next Steps

@@ -65,20 +65,8 @@ public abstract class ValidationNode<T> : TransformNode<T, T>
         return this;
     }
 
-    /// <summary>
-    ///     Executes all validation rules on the item asynchronously.
-    ///     Throws <see cref="ValidationException" /> if any rule fails.
-    /// </summary>
-    public override Task<T> TransformAsync(
-        T item,
-        PipelineContext context,
-        CancellationToken cancellationToken)
-    {
-        return FromValueTask(ExecuteValueTaskAsync(item, context, cancellationToken));
-    }
-
     /// <inheritdoc />
-    protected override ValueTask<T> ExecuteValueTaskAsync(
+    public override ValueTask<T> TransformAsync(
         T item,
         PipelineContext context,
         CancellationToken cancellationToken)
@@ -89,7 +77,7 @@ public abstract class ValidationNode<T> : TransformNode<T, T>
             rule.Validate(item, context);
         }
 
-        return ValueTask.FromResult(item);
+        return ValueTask.FromResult<T>(item);
     }
 
     private interface IRule<in TItem>

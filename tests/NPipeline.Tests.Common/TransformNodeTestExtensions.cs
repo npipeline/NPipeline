@@ -42,7 +42,7 @@ public static class TransformNodeTestExtensions
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The transformed output item.</returns>
-    public static Task<TOut> TransformAsync<TIn, TOut>(
+    public static ValueTask<TOut> TransformAsync<TIn, TOut>(
         this ITransformNode<TIn, TOut> node,
         TIn item,
         PipelineContext context,

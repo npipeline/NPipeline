@@ -34,12 +34,12 @@ public class NotificationProcessor : TransformNode<OrderEvent, NotificationEvent
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>A notification event.</returns>
-    public override async Task<NotificationEvent> TransformAsync(
+    public override async ValueTask<NotificationEvent> TransformAsync(
         OrderEvent orderEvent,
         PipelineContext context,
         CancellationToken cancellationToken)
     {
-        await Task.CompletedTask; // Simulate async processing
+        await ValueTask.CompletedTask; // Simulate async processing
 
         _totalNotificationsGenerated++;
 

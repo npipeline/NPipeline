@@ -100,7 +100,7 @@ public sealed class KafkaConnectorPipeline : IPipelineDefinition
 public sealed class MessageEnricher : TransformNode<KafkaMessage<SampleMessage>, SampleMessage>
 {
     /// <inheritdoc />
-    public override Task<SampleMessage> TransformAsync(
+    public override ValueTask<SampleMessage> TransformAsync(
         KafkaMessage<SampleMessage> input,
         PipelineContext context,
         CancellationToken cancellationToken)
@@ -120,7 +120,7 @@ public sealed class MessageEnricher : TransformNode<KafkaMessage<SampleMessage>,
 
         Console.WriteLine($"Processed {enriched.Id} from {input.Topic}/{input.Partition} - {enriched.EventType}");
 
-        return Task.FromResult(enriched);
+        return ValueTask.FromResult<SampleMessage>(enriched);
     }
 }
 

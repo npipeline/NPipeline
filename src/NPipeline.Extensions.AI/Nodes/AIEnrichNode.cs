@@ -24,7 +24,7 @@ public sealed class AIEnrichNode<TIn, TField> : TransformNode<TIn, TIn>
     public AIEnrichOptions<TIn, TField> Options { get; set; } = new();
 
     /// <inheritdoc />
-    public override async Task<TIn> TransformAsync(TIn item, PipelineContext context, CancellationToken cancellationToken)
+    public override async ValueTask<TIn> TransformAsync(TIn item, PipelineContext context, CancellationToken cancellationToken)
     {
         var options = AIOptionGuards.Validate(Options);
 

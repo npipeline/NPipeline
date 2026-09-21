@@ -111,9 +111,9 @@ public class NestedCompositionTests
 
     private sealed class DoubleTransform : TransformNode<int, int>
     {
-        public override Task<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
+        public override ValueTask<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
         {
-            return Task.FromResult(input * 2);
+            return ValueTask.FromResult<int>(input * 2);
         }
     }
 
@@ -245,13 +245,13 @@ public class NestedCompositionTests
     {
         public static string? CapturedValue { get; private set; }
 
-        public override Task<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
+        public override ValueTask<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
         {
             CapturedValue = context.Parameters.TryGetValue("NestedValue", out var value)
                 ? value?.ToString()
                 : null;
 
-            return Task.FromResult(input);
+            return ValueTask.FromResult<int>(input);
         }
     }
 

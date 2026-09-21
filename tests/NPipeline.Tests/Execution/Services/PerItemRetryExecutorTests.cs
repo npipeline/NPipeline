@@ -36,7 +36,6 @@ public sealed class PerItemRetryExecutorTests
             var result = await executor.ExecuteWithRetryAsync(
                 item: 7,
                 node: transform,
-                valueTaskTransform: null,
                 context,
                 NodeId,
                 maxItemRetries: 3,
@@ -82,7 +81,6 @@ public sealed class PerItemRetryExecutorTests
             var result = await executor.ExecuteWithRetryAsync(
                 item: 42,
                 node: transform,
-                valueTaskTransform: null,
                 context,
                 NodeId,
                 maxItemRetries: 2,
@@ -126,7 +124,6 @@ public sealed class PerItemRetryExecutorTests
             var result = await executor.ExecuteWithRetryAsync(
                 item: 10,
                 node: transform,
-                valueTaskTransform: null,
                 context,
                 NodeId,
                 maxItemRetries: 3,
@@ -176,7 +173,6 @@ public sealed class PerItemRetryExecutorTests
             var act = async () => await executor.ExecuteWithRetryAsync(
                 item: 11,
                 node: transform,
-                valueTaskTransform: null,
                 context,
                 NodeId,
                 maxItemRetries: 0,
@@ -222,7 +218,6 @@ public sealed class PerItemRetryExecutorTests
             var act = async () => await executor.ExecuteWithRetryAsync(
                 item: 18,
                 node: transform,
-                valueTaskTransform: null,
                 context,
                 NodeId,
                 maxItemRetries: 1,
@@ -269,19 +264,19 @@ public sealed class PerItemRetryExecutorTests
 
         public int InvocationCount { get; private set; }
 
-        public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             InvocationCount++;
 
             if (_outcomes.Count == 0)
-                return Task.FromResult(item);
+                return ValueTask.FromResult<int>(item);
 
             var outcome = _outcomes.Dequeue();
 
             if (outcome is Exception exception)
                 throw exception;
 
-            return Task.FromResult((int)outcome);
+            return ValueTask.FromResult<int>((int)outcome);
         }
     }
 

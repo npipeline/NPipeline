@@ -48,16 +48,8 @@ public sealed class LambdaTransformNode<TIn, TOut>(Func<TIn, TOut> transform) : 
     /// <param name="input">The input item to transform.</param>
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
-    /// <returns>A task containing the transformed item.</returns>
-    public override Task<TOut> TransformAsync(TIn input, PipelineContext context, CancellationToken cancellationToken)
-    {
-        return Task.FromResult(_transform(input));
-    }
-
-    /// <summary>
-    ///     Provides a ValueTask-based execution for optimized performance.
-    /// </summary>
-    protected internal override ValueTask<TOut> ExecuteValueTaskAsync(TIn input, PipelineContext context, CancellationToken cancellationToken)
+    /// <returns>The transformed item, completed synchronously.</returns>
+    public override ValueTask<TOut> TransformAsync(TIn input, PipelineContext context, CancellationToken cancellationToken)
     {
         return new ValueTask<TOut>(_transform(input));
     }
@@ -113,18 +105,7 @@ public sealed class AsyncLambdaTransformNode<TIn, TOut>(
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A task representing the asynchronous transformation.</returns>
-    public override async Task<TOut> TransformAsync(TIn input, PipelineContext context, CancellationToken cancellationToken)
-    {
-        return await _transform(input, cancellationToken);
-    }
-
-    /// <summary>
-    ///     Provides a ValueTask-based execution for optimized performance.
-    /// </summary>
-    protected internal override async ValueTask<TOut> ExecuteValueTaskAsync(
-        TIn input,
-        PipelineContext context,
-        CancellationToken cancellationToken)
+    public override async ValueTask<TOut> TransformAsync(TIn input, PipelineContext context, CancellationToken cancellationToken)
     {
         return await _transform(input, cancellationToken);
     }

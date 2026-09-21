@@ -19,7 +19,7 @@ public class LineageTrackingNode : TransformNode<object, LineageTrackedItem<obje
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A LineageTrackedItem containing the original item and lineage information.</returns>
-    public override Task<LineageTrackedItem<object>> TransformAsync(object item, PipelineContext context, CancellationToken cancellationToken)
+    public override ValueTask<LineageTrackedItem<object>> TransformAsync(object item, PipelineContext context, CancellationToken cancellationToken)
     {
         _processedCount++;
 
@@ -38,6 +38,6 @@ public class LineageTrackingNode : TransformNode<object, LineageTrackedItem<obje
         Console.WriteLine($"  Operation: {enrichedLineageItem.Lineage.Last().Operation}");
         Console.WriteLine($"  Timestamp: {enrichedLineageItem.Lineage.Last().TransformationTime:O}");
 
-        return Task.FromResult(enrichedLineageItem);
+        return ValueTask.FromResult<LineageTrackedItem<object>>(enrichedLineageItem);
     }
 }

@@ -424,19 +424,19 @@ public class PipelineExecutionBenchmarks : IDisposable
 
     private sealed class PassThroughTransform : TransformNode<int, int>
     {
-        public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
-            return Task.FromResult(item);
+            return ValueTask.FromResult<int>(item);
         }
     }
 
     private sealed class ComplexTransform : TransformNode<int, string>
     {
-        public override Task<string> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override ValueTask<string> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             // Simulate some processing
             var result = $"Processed_{item:D6}";
-            return Task.FromResult(result);
+            return ValueTask.FromResult<string>(result);
         }
     }
 
@@ -444,7 +444,7 @@ public class PipelineExecutionBenchmarks : IDisposable
     {
         private readonly Random _random = new();
 
-        public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             var errorRate = context.Parameters.TryGetValue("errorRate", out var v)
                 ? Convert.ToDouble(v)
@@ -453,13 +453,13 @@ public class PipelineExecutionBenchmarks : IDisposable
             if (_random.NextDouble() < errorRate)
                 throw new InvalidOperationException($"Simulated error processing item {item}");
 
-            return Task.FromResult(item);
+            return ValueTask.FromResult<int>(item);
         }
     }
 
     private sealed class ValidationTransform : TransformNode<int, int>
     {
-        public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             // Simulate validation overhead
             if (item < 0)
@@ -468,7 +468,7 @@ public class PipelineExecutionBenchmarks : IDisposable
             // Simulate complex validation
             var isValid = item % 2 == 0 || item % 3 == 0 || item % 5 == 0;
 
-            return Task.FromResult(isValid
+            return ValueTask.FromResult<int>(isValid
                 ? item
                 : -1);
         }
@@ -572,7 +572,7 @@ public class PipelineExecutionBenchmarks : IDisposable
 
     private sealed class SlowTransform : TransformNode<int, int>
     {
-        public override async Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override async ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             // Add small delay to make cancellation more noticeable
             await Task.Delay(1, cancellationToken);

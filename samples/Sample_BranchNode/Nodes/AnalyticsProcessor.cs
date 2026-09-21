@@ -37,12 +37,12 @@ public class AnalyticsProcessor : TransformNode<OrderEvent, AnalyticsEvent>
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>An analytics event.</returns>
-    public override async Task<AnalyticsEvent> TransformAsync(
+    public override async ValueTask<AnalyticsEvent> TransformAsync(
         OrderEvent orderEvent,
         PipelineContext context,
         CancellationToken cancellationToken)
     {
-        await Task.CompletedTask; // Simulate async processing
+        await ValueTask.CompletedTask; // Simulate async processing
 
         _totalAnalyticsEventsGenerated++;
 

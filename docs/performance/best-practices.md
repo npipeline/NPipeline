@@ -12,21 +12,17 @@ NPipeline includes [analyzers](../analyzers/index.md) that detect many of these 
 
 ## Do's
 
-### Use ValueTask Fast Paths for Synchronous Transforms
+### Return Synchronously When You Can
 
-If your transform completes synchronously (e.g., mapping, filtering, simple calculations), override `ExecuteValueTaskAsync` to avoid `Task` allocations:
+`TransformAsync` returns `ValueTask<T>`, so a transform that completes synchronously allocates nothing per item. Return
+the value directly rather than awaiting something already available:
 
 ```csharp
 public class ToUpper : TransformNode<string, string>
 {
-    public override Task<string> TransformAsync(
+    public override ValueTask<string> TransformAsync(
         string item, PipelineContext ctx, CancellationToken ct)
-        => Task.FromResult(item.ToUpperInvariant());
-
-    // Fast path - avoids Task allocation
-    protected internal override ValueTask<string> ExecuteValueTaskAsync(
-        string item, PipelineContext ctx, CancellationToken ct)
-        => new(item.ToUpperInvariant());
+        => ValueTask.FromResult(item.ToUpperInvariant());   // no allocation
 }
 ```
 
@@ -117,7 +113,6 @@ NPipeline's Roslyn analyzers enforce these practices at build time:
 | NP9103 | Warning | LINQ in TransformAsync hot paths |
 | NP9104 | Warning | String concatenation in loops |
 | NP9105 | Warning | Anonymous object allocations in hot paths |
-| NP9106 | Info | Missing ValueTask fast path override |
 
 See [Build-Time Analyzers](../analyzers/index.md) for the complete list.
 
@@ -150,7 +145,7 @@ For a 1 million row CSV at 500 bytes per row: streaming uses ~1–2 MB; `.ToList
 | Optimization | Impact | Configuration |
 |-------------|--------|---------------|
 | **Context caching** | ~150–250μs saved per 1K items by caching retry options, tracer, and logger at node scope | Automatic |
-| **ValueTask fast path** | Up to 90% reduction in GC pressure for synchronous transforms | Override `ExecuteValueTaskAsync` |
+| **Synchronous completion** | Up to 90% reduction in GC pressure for synchronous transforms | Return `ValueTask.FromResult(...)` from `TransformAsync` |
 | **Compiled expression factories** | Node instantiation as fast as `new()` after first call | Automatic |
 | **Execution plan caching** | Skips type inspection on repeated pipeline runs | Automatic (disable with `WithoutExecutionPlanCache()`) |
 | **Object pooling** | Reuses common collection types during orchestration | Automatic |

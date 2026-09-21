@@ -56,7 +56,7 @@ public sealed class ErrorAndContextTests
 
     private sealed class CrashingNode : TransformNode<int, int>
     {
-        public override async Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override async ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             await Task.Yield(); // Ensure asynchronicity
 

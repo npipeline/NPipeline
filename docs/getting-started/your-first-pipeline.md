@@ -58,10 +58,10 @@ public class GreetingSource : SourceNode<string>
 // A transform node receives one item at a time and returns a transformed item.
 public class UppercaseTransform : TransformNode<string, string>
 {
-    public override Task<string> TransformAsync(
+    public override ValueTask<string> TransformAsync(
         string item, PipelineContext context, CancellationToken cancellationToken)
     {
-        return Task.FromResult(item.ToUpperInvariant());
+        return ValueTask.FromResult(item.ToUpperInvariant());
     }
 }
 

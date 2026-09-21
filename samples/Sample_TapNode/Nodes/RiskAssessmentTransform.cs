@@ -28,7 +28,7 @@ public sealed class RiskAssessmentTransform : TransformNode<ValidatedTransaction
     }
 
     /// <inheritdoc />
-    public override async Task<ProcessedTransaction> TransformAsync(ValidatedTransaction validatedTransaction, PipelineContext context,
+    public override async ValueTask<ProcessedTransaction> TransformAsync(ValidatedTransaction validatedTransaction, PipelineContext context,
         CancellationToken cancellationToken)
     {
         var transaction = validatedTransaction.OriginalTransaction;

@@ -30,7 +30,7 @@ public class ValidationTransform : TransformNode<WebhookData, ValidatedWebhookDa
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A task containing the validated webhook data.</returns>
     /// <exception cref="ArgumentException">Thrown when validation fails.</exception>
-    public override async Task<ValidatedWebhookData> TransformAsync(
+    public override async ValueTask<ValidatedWebhookData> TransformAsync(
         WebhookData item,
         PipelineContext context,
         CancellationToken cancellationToken)
@@ -92,6 +92,6 @@ public class ValidationTransform : TransformNode<WebhookData, ValidatedWebhookDa
             validatedData.EventType
         );
 
-        return await Task.FromResult(validatedData);
+        return await ValueTask.FromResult<ValidatedWebhookData>(validatedData);
     }
 }

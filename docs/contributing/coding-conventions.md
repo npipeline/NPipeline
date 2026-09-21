@@ -71,7 +71,6 @@ NPipeline ships 20+ Roslyn analyzers in `NPipeline.Analyzers`. They run during e
 | NP9103 | Warning | LINQ allocations in hot-path methods (`TransformAsync`, `ConsumeAsync`, `OpenStream`) |
 | NP9104 | Warning | String concatenation with `+` in loops |
 | NP9105 | Warning | Anonymous object allocations in hot paths |
-| NP9106 | Info | `TransformNode` uses `Task.FromResult` but could override `ExecuteValueTaskAsync` for zero-allocation |
 | NP9107 | Warning | `SourceNode.OpenStream` materializes data into `List`/`Array` instead of streaming |
 | NP9108 | Info | Node could benefit from a parameterless constructor for compiled-expression instantiation |
 

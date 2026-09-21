@@ -192,9 +192,9 @@ public sealed class ResilienceConfigurationRuleTests
     {
         public IExecutionStrategy ExecutionStrategy { get; set; } = new ResilientExecutionStrategy(new SequentialExecutionStrategy());
 
-        public Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
-            return Task.FromResult(item);
+            return ValueTask.FromResult<int>(item);
         }
 
         public ValueTask DisposeAsync()
@@ -207,9 +207,9 @@ public sealed class ResilienceConfigurationRuleTests
     {
         public IExecutionStrategy ExecutionStrategy { get; set; } = new SequentialExecutionStrategy();
 
-        public Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
-            return Task.FromResult(item);
+            return ValueTask.FromResult<int>(item);
         }
 
         public ValueTask DisposeAsync()
@@ -433,9 +433,9 @@ public sealed class ParallelConfigurationRuleTests
     {
         public IExecutionStrategy ExecutionStrategy { get; set; } = new SequentialExecutionStrategy();
 
-        public Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
-            return Task.FromResult(item);
+            return ValueTask.FromResult<int>(item);
         }
 
         public ValueTask DisposeAsync()

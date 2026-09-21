@@ -475,7 +475,7 @@ public class CircuitBreakerIntegrationTests
 
     private sealed class TestTransformNode : TransformNode<int, string>
     {
-        public override async Task<string> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override async ValueTask<string> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             await Task.Delay(1, cancellationToken).ConfigureAwait(false);
             return $"processed-{item}";
@@ -486,7 +486,7 @@ public class CircuitBreakerIntegrationTests
     {
         private int _currentAttempt;
 
-        public override async Task<string> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override async ValueTask<string> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             await Task.Delay(1, cancellationToken).ConfigureAwait(false);
             _currentAttempt++;
@@ -501,12 +501,12 @@ public class CircuitBreakerIntegrationTests
     {
         private int _attempts;
 
-        public override Task<string> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override ValueTask<string> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             _attempts++;
 
             return _attempts > failuresBeforeSuccess
-                ? Task.FromResult($"processed-{item}")
+                ? ValueTask.FromResult<string>($"processed-{item}")
                 : throw new InvalidOperationException($"Simulated failure {_attempts}");
         }
     }

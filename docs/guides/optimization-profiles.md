@@ -102,11 +102,11 @@ In the `Default` profile, `PipelineContext.Parameters`, `.Items`, and `.Properti
 
 ```csharp
 // Safe in Default profile - ConcurrentDictionary handles concurrent writes
-public override Task<Order> TransformAsync(
+public override ValueTask<Order> TransformAsync(
     Order item, PipelineContext context, CancellationToken ct)
 {
     context.Items["lastProcessed"] = item.Id;  // thread-safe write
-    return Task.FromResult(item);
+    return ValueTask.FromResult(item);
 }
 ```
 
@@ -121,7 +121,6 @@ The following analyzers are inactive in the `Default` profile because their rule
 | NP9103 | LINQ in hot paths | LINQ allocations are negligible below millions of items/sec |
 | NP9104 | Inefficient string operations | String concatenation overhead is irrelevant at moderate scale |
 | NP9105 | Anonymous object allocation | Object allocation cost is insignificant for most workloads |
-| NP9106 | ValueTask optimization | `Task.FromResult` vs `ValueTask` matters only at extreme throughput |
 | NP9107 | Source node streaming | Materializing moderate datasets is acceptable for convenience |
 
 All other analyzers (configuration, reliability, data integrity, design) remain active regardless of profile.

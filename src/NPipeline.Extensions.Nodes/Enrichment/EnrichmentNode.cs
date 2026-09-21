@@ -15,7 +15,7 @@ public sealed class EnrichmentNode<T> : PropertyTransformationNode<T>
     private readonly List<Action<T>> _enrichmentActions = [];
 
     /// <inheritdoc />
-    protected override ValueTask<T> ExecuteValueTaskAsync(
+    public override ValueTask<T> TransformAsync(
         T item,
         PipelineContext context,
         CancellationToken cancellationToken)
@@ -28,7 +28,7 @@ public sealed class EnrichmentNode<T> : PropertyTransformationNode<T>
             action(item);
         }
 
-        return ValueTask.FromResult(item);
+        return ValueTask.FromResult<T>(item);
     }
 
     #region Computed Properties

@@ -49,7 +49,7 @@ public class AIInvokerErrorPathTests
         var node = CreateTransformNode(client);
 
         var ex = await Assert.ThrowsAsync<AITransformException>(() =>
-            node.TransformAsync(new TestDomain.Comment("hello", "alice"), new PipelineContext(), CancellationToken.None));
+            node.TransformAsync(new TestDomain.Comment("hello", "alice"), new PipelineContext(), CancellationToken.None).AsTask());
 
         Assert.Contains("deserialize", ex.Message);
     }
@@ -61,7 +61,7 @@ public class AIInvokerErrorPathTests
         var node = CreateTransformNode(client);
 
         await Assert.ThrowsAsync<TimeoutException>(() =>
-            node.TransformAsync(new TestDomain.Comment("hello", "alice"), new PipelineContext(), CancellationToken.None));
+            node.TransformAsync(new TestDomain.Comment("hello", "alice"), new PipelineContext(), CancellationToken.None).AsTask());
     }
 
     [Fact]
@@ -71,7 +71,7 @@ public class AIInvokerErrorPathTests
         var node = CreateTransformNode(client);
 
         await Assert.ThrowsAsync<OperationCanceledException>(() =>
-            node.TransformAsync(new TestDomain.Comment("hello", "alice"), new PipelineContext(), CancellationToken.None));
+            node.TransformAsync(new TestDomain.Comment("hello", "alice"), new PipelineContext(), CancellationToken.None).AsTask());
     }
 
     private static AITransformNode<TestDomain.Comment, TestDomain.ClassificationResult> CreateTransformNode(IChatClient client)

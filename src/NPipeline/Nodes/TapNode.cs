@@ -15,7 +15,7 @@ public sealed class TapNode<T>(ISinkNode<T> sink) : TransformNode<T, T>
     private readonly ISinkNode<T> _sink = sink;
 
     /// <inheritdoc />
-    public override async Task<T> TransformAsync(T item, PipelineContext context, CancellationToken cancellationToken)
+    public override async ValueTask<T> TransformAsync(T item, PipelineContext context, CancellationToken cancellationToken)
     {
         // Send a copy to the sink
         await using (var singlePipe = new InMemoryDataStream<T>([item]))

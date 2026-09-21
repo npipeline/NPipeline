@@ -46,9 +46,9 @@ public sealed class ParallelNodeConfigurationExtensionsTests
 
     private sealed class TestTransformNode : TransformNode<int, string>
     {
-        public override Task<string> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override ValueTask<string> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
-            return Task.FromResult(item.ToString());
+            return ValueTask.FromResult<string>(item.ToString());
         }
     }
 

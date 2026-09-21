@@ -60,13 +60,13 @@ public class DynamicWindowAssigner : TransformNode<UserSession, IReadOnlyList<Us
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A collection of sessions forming a dynamic window when conditions are met.</returns>
-    public override Task<IReadOnlyList<UserSession>> TransformAsync(
+    public override ValueTask<IReadOnlyList<UserSession>> TransformAsync(
         UserSession session,
         PipelineContext context,
         CancellationToken cancellationToken)
     {
         if (!IsRealSession(session))
-            return Task.FromResult<IReadOnlyList<UserSession>>([]);
+            return ValueTask.FromResult<IReadOnlyList<UserSession>>([]);
 
         _sessionBuffer.Add(session);
         _totalEventsInWindow += session.EventCount;
@@ -79,10 +79,10 @@ public class DynamicWindowAssigner : TransformNode<UserSession, IReadOnlyList<Us
             _totalEventsInWindow = 0;
 
             _logger.Log(LogLevel.Debug, "DynamicWindowAssigner: Emitting window with {Count} sessions", windowSessions.Count);
-            return Task.FromResult<IReadOnlyList<UserSession>>(windowSessions);
+            return ValueTask.FromResult<IReadOnlyList<UserSession>>(windowSessions);
         }
 
-        return Task.FromResult<IReadOnlyList<UserSession>>([]);
+        return ValueTask.FromResult<IReadOnlyList<UserSession>>([]);
     }
 
     private bool ShouldEmitWindow()

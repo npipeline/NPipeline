@@ -30,7 +30,7 @@ public class DateTimeValidationNodeTests
         node.IsInFuture(x => x.DateTime);
 
         var item = new TestObject { DateTime = DateTime.UtcNow.AddDays(-1) };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     [Fact]
@@ -66,7 +66,7 @@ public class DateTimeValidationNodeTests
         node.IsInPast(x => x.DateTime);
 
         var item = new TestObject { DateTime = DateTime.UtcNow.AddDays(1) };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     #endregion
@@ -91,7 +91,7 @@ public class DateTimeValidationNodeTests
         node.IsToday(x => x.DateTime);
 
         var item = new TestObject { DateTime = DateTime.Today.AddDays(-1) };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     #endregion
@@ -132,7 +132,7 @@ public class DateTimeValidationNodeTests
         }
 
         var item = new TestObject { DateTime = sunday };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     #endregion
@@ -173,7 +173,7 @@ public class DateTimeValidationNodeTests
         }
 
         var item = new TestObject { DateTime = monday };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     #endregion
@@ -198,7 +198,7 @@ public class DateTimeValidationNodeTests
         node.IsUtc(x => x.DateTime);
 
         var item = new TestObject { DateTime = new DateTime(2025, 1, 1, 12, 0, 0, DateTimeKind.Local) };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     #endregion
@@ -223,7 +223,7 @@ public class DateTimeValidationNodeTests
         node.IsLocal(x => x.DateTime);
 
         var item = new TestObject { DateTime = new DateTime(2025, 1, 1, 12, 0, 0, DateTimeKind.Utc) };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     #endregion
@@ -248,7 +248,7 @@ public class DateTimeValidationNodeTests
         node.IsNotMinValue(x => x.DateTime);
 
         var item = new TestObject { DateTime = DateTime.MinValue };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     #endregion
@@ -273,7 +273,7 @@ public class DateTimeValidationNodeTests
         node.IsNotMaxValue(x => x.DateTime);
 
         var item = new TestObject { DateTime = DateTime.MaxValue };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     #endregion
@@ -300,7 +300,7 @@ public class DateTimeValidationNodeTests
         node.IsBefore(x => x.DateTime, cutoff);
 
         var item = new TestObject { DateTime = new DateTime(2025, 12, 1) };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     #endregion
@@ -327,7 +327,7 @@ public class DateTimeValidationNodeTests
         node.IsAfter(x => x.DateTime, cutoff);
 
         var item = new TestObject { DateTime = new DateTime(2025, 1, 1) };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     #endregion
@@ -356,7 +356,7 @@ public class DateTimeValidationNodeTests
         node.IsBetween(x => x.DateTime, from, to);
 
         var item = new TestObject { DateTime = new DateTime(2024, 6, 1) };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     #endregion
@@ -397,7 +397,7 @@ public class DateTimeValidationNodeTests
 
         node.IsDayOfWeek(x => x.DateTime, DayOfWeek.Tuesday);
         var item = new TestObject { DateTime = monday };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     #endregion
@@ -422,7 +422,7 @@ public class DateTimeValidationNodeTests
         node.IsInYear(x => x.DateTime, 2025);
 
         var item = new TestObject { DateTime = new DateTime(2024, 6, 1) };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     #endregion
@@ -447,7 +447,7 @@ public class DateTimeValidationNodeTests
         node.IsInMonth(x => x.DateTime, 6);
 
         var item = new TestObject { DateTime = new DateTime(2025, 5, 1) };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     #endregion
@@ -476,7 +476,7 @@ public class DateTimeValidationNodeTests
             .IsUtc(x => x.DateTime);
 
         var item = new TestObject { DateTime = new DateTime(2100, 1, 1, 0, 0, 0, DateTimeKind.Utc) };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     #endregion

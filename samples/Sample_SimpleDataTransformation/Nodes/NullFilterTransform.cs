@@ -18,7 +18,7 @@ public class NullFilterTransform : TransformNode<Person, Person>
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A Task representing the filter operation with a Person result.</returns>
-    public override Task<Person> TransformAsync(Person item, PipelineContext context, CancellationToken cancellationToken)
+    public override ValueTask<Person> TransformAsync(Person item, PipelineContext context, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -27,10 +27,10 @@ public class NullFilterTransform : TransformNode<Person, Person>
         {
             // Return a placeholder Person with ID 0 to indicate filtered item
             // This will be handled by the next transform in the pipeline
-            return Task.FromResult(new Person(0, string.Empty, string.Empty, 0, string.Empty, string.Empty));
+            return ValueTask.FromResult<Person>(new Person(0, string.Empty, string.Empty, 0, string.Empty, string.Empty));
         }
 
         // Return the original item if it's valid
-        return Task.FromResult(item);
+        return ValueTask.FromResult<Person>(item);
     }
 }

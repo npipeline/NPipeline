@@ -16,7 +16,7 @@ public class EnrichmentTransform : TransformNode<OrderEvent, EnrichedOrder>
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>An enriched order with customer data and calculated fields.</returns>
-    public override Task<EnrichedOrder> TransformAsync(OrderEvent order, PipelineContext context, CancellationToken cancellationToken)
+    public override ValueTask<EnrichedOrder> TransformAsync(OrderEvent order, PipelineContext context, CancellationToken cancellationToken)
     {
         // Generate customer data based on customer ID
         var customer = GenerateCustomerData(order.CustomerId);
@@ -33,7 +33,7 @@ public class EnrichmentTransform : TransformNode<OrderEvent, EnrichedOrder>
             discount,
             priority);
 
-        return Task.FromResult(enrichedOrder);
+        return ValueTask.FromResult<EnrichedOrder>(enrichedOrder);
     }
 
     /// <summary>

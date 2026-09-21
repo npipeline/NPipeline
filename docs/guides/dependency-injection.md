@@ -127,7 +127,7 @@ public class EnrichOrder : TransformNode<Order, EnrichedOrder>
         _logger = logger;
     }
 
-    public override async Task<EnrichedOrder> TransformAsync(
+    public override async ValueTask<EnrichedOrder> TransformAsync(
         Order item, PipelineContext context, CancellationToken ct)
     {
         var client = _httpFactory.CreateClient();

@@ -243,7 +243,7 @@ public sealed class BranchNodeIntegrationTests
 
     private sealed class SlowPassThrough : TransformNode<int, int>
     {
-        public override async Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override async ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             await Task.Delay(2, cancellationToken);
             return item;

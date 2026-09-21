@@ -18,15 +18,15 @@ namespace Sample_WindowingStrategies;
 /// </summary>
 public class SessionToCollectionNode : TransformNode<UserSession, IReadOnlyCollection<UserSession>>
 {
-    public override Task<IReadOnlyCollection<UserSession>> TransformAsync(
+    public override ValueTask<IReadOnlyCollection<UserSession>> TransformAsync(
         UserSession session,
         PipelineContext context,
         CancellationToken cancellationToken)
     {
         if (session is null || !IsRealSession(session))
-            return Task.FromResult<IReadOnlyCollection<UserSession>>([]);
+            return ValueTask.FromResult<IReadOnlyCollection<UserSession>>([]);
 
-        return Task.FromResult<IReadOnlyCollection<UserSession>>([session]);
+        return ValueTask.FromResult<IReadOnlyCollection<UserSession>>([session]);
     }
 
     private static bool IsRealSession(UserSession session)
@@ -47,19 +47,19 @@ public class SessionToCollectionNode : TransformNode<UserSession, IReadOnlyColle
 /// </summary>
 public class DynamicListToCollectionNode : TransformNode<IReadOnlyList<UserSession>, IReadOnlyCollection<UserSession>>
 {
-    public override Task<IReadOnlyCollection<UserSession>> TransformAsync(
+    public override ValueTask<IReadOnlyCollection<UserSession>> TransformAsync(
         IReadOnlyList<UserSession> sessions,
         PipelineContext context,
         CancellationToken cancellationToken)
     {
         if (sessions is null || sessions.Count == 0)
-            return Task.FromResult<IReadOnlyCollection<UserSession>>([]);
+            return ValueTask.FromResult<IReadOnlyCollection<UserSession>>([]);
 
         var filteredSessions = sessions
             .Where(s => s is not null && s.EventCount > 0 && !s.SessionId.StartsWith("dummy", StringComparison.OrdinalIgnoreCase))
             .ToList();
 
-        return Task.FromResult<IReadOnlyCollection<UserSession>>(filteredSessions);
+        return ValueTask.FromResult<IReadOnlyCollection<UserSession>>(filteredSessions);
     }
 }
 
@@ -73,19 +73,19 @@ public class DynamicListToCollectionNode : TransformNode<IReadOnlyList<UserSessi
 /// </summary>
 public class CustomTriggerListToCollectionNode : TransformNode<IReadOnlyList<UserSession>, IReadOnlyCollection<UserSession>>
 {
-    public override Task<IReadOnlyCollection<UserSession>> TransformAsync(
+    public override ValueTask<IReadOnlyCollection<UserSession>> TransformAsync(
         IReadOnlyList<UserSession> sessions,
         PipelineContext context,
         CancellationToken cancellationToken)
     {
         if (sessions is null || sessions.Count == 0)
-            return Task.FromResult<IReadOnlyCollection<UserSession>>([]);
+            return ValueTask.FromResult<IReadOnlyCollection<UserSession>>([]);
 
         var filteredSessions = sessions
             .Where(s => s is not null && s.EventCount > 0 && !s.SessionId.StartsWith("dummy", StringComparison.OrdinalIgnoreCase))
             .ToList();
 
-        return Task.FromResult<IReadOnlyCollection<UserSession>>(filteredSessions);
+        return ValueTask.FromResult<IReadOnlyCollection<UserSession>>(filteredSessions);
     }
 }
 

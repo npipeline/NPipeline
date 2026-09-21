@@ -98,7 +98,7 @@ public sealed class TapNodeTests
 
         // Act & Assert
         // Even if sink fails, TapNode should propagate the exception
-        _ = await tapNode.Invoking(tn => tn.TransformAsync(testItem, context, CancellationToken.None))
+        _ = await tapNode.Invoking(tn => tn.TransformAsync(testItem, context, CancellationToken.None).AsTask())
             .Should().ThrowAsync<InvalidOperationException>();
     }
 
@@ -220,7 +220,7 @@ public sealed class TapNodeTests
         cts.Cancel();
 
         // Act & Assert - should throw OperationCanceledException
-        _ = await tapNode.Invoking(tn => tn.TransformAsync(123, context, cts.Token))
+        _ = await tapNode.Invoking(tn => tn.TransformAsync(123, context, cts.Token).AsTask())
             .Should().ThrowAsync<OperationCanceledException>();
     }
 

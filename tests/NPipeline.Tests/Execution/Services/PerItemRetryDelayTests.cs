@@ -153,7 +153,6 @@ public sealed class PerItemRetryDelayTests
         return PerItemRetryExecutor.Instance.ExecuteWithRetryAsync(
             item: 7,
             node: new FlakyTransform(failures),
-            valueTaskTransform: null,
             context,
             NodeId,
             maxItemRetries,
@@ -177,12 +176,12 @@ public sealed class PerItemRetryDelayTests
     {
         private int _attempts;
 
-        public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             if (_attempts++ < failuresBeforeSuccess)
                 throw new InvalidOperationException("transient");
 
-            return Task.FromResult(item);
+            return ValueTask.FromResult<int>(item);
         }
     }
 

@@ -63,9 +63,6 @@ public static class ErrorCodes
     /// <summary>Detects unnecessary object allocations.</summary>
     public const string AnonymousObjectAllocation = "NP9105";
 
-    /// <summary>Detects ValueTask operations that could be optimized by using Task instead.</summary>
-    public const string MissingValueTaskOptimization = "NP9106";
-
     /// <summary>Source node is not streaming data properly.</summary>
     public const string SourceNodeNotStreamingData = "NP9107";
 

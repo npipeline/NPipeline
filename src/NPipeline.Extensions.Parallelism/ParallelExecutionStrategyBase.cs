@@ -180,9 +180,7 @@ namespace NPipeline.Extensions.Parallelism
         private static ValueTask<TOut> ExecuteNodeAsync<TIn, TOut>(ITransformNode<TIn, TOut> node, TIn item, PipelineContext context,
             CancellationToken cancellationToken)
         {
-            return node is IValueTaskTransform<TIn, TOut> fastPath
-                ? fastPath.ExecuteValueTaskAsync(item, context, cancellationToken)
-                : new ValueTask<TOut>(node.TransformAsync(item, context, cancellationToken));
+            return node.TransformAsync(item, context, cancellationToken);
         }
 
         private static void PublishRetryInstrumentation(ParallelExecutionMetrics? metrics, IExecutionObserver? observer, PipelineContext context,

@@ -121,9 +121,9 @@ public sealed class BuiltInRulesTests
     {
         public IExecutionStrategy ExecutionStrategy { get; set; } = new SequentialExecutionStrategy();
 
-        public Task<string> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public ValueTask<string> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
-            return Task.FromResult(item.ToString());
+            return ValueTask.FromResult<string>(item.ToString());
         }
 
         public ValueTask DisposeAsync()

@@ -32,7 +32,7 @@ public class ProductLookupNode : TransformNode<OrderCustomerJoin, EnrichedOrder>
     }
 
     /// <inheritdoc />
-    public override Task<EnrichedOrder> TransformAsync(OrderCustomerJoin item, PipelineContext context, CancellationToken cancellationToken)
+    public override ValueTask<EnrichedOrder> TransformAsync(OrderCustomerJoin item, PipelineContext context, CancellationToken cancellationToken)
     {
         _logger?.LogDebug("ProductLookupNode: Processing OrderCustomerJoin for Order {OrderId}", item.Order.OrderId);
 
@@ -47,7 +47,7 @@ public class ProductLookupNode : TransformNode<OrderCustomerJoin, EnrichedOrder>
 
             Console.WriteLine($"📦 Enriched Order {item.Order.OrderId} with Product: {product.ProductName} ({product.Category}) - {item.Order.TotalPrice:C}");
 
-            return Task.FromResult(enrichedOrder);
+            return ValueTask.FromResult<EnrichedOrder>(enrichedOrder);
         }
 
         _logger?.LogWarning("ProductLookupNode: Product {ProductCode} not found for Order {OrderId}",
@@ -63,7 +63,7 @@ public class ProductLookupNode : TransformNode<OrderCustomerJoin, EnrichedOrder>
             0m
         );
 
-        return Task.FromResult(new EnrichedOrder(item, unknownProduct));
+        return ValueTask.FromResult<EnrichedOrder>(new EnrichedOrder(item, unknownProduct));
     }
 
     /// <summary>

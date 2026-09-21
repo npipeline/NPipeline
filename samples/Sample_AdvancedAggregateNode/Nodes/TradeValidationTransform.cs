@@ -33,7 +33,7 @@ public class TradeValidationTransform : TransformNode<FinancialTrade, ValidatedT
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">Cancellation token for async operation.</param>
     /// <returns>A validated and enriched trade.</returns>
-    public override Task<ValidatedTrade> TransformAsync(
+    public override ValueTask<ValidatedTrade> TransformAsync(
         FinancialTrade item,
         PipelineContext context,
         CancellationToken cancellationToken)
@@ -55,7 +55,7 @@ public class TradeValidationTransform : TransformNode<FinancialTrade, ValidatedT
                               $"{validationRate:F1}% valid, {_invalidTrades} filtered");
         }
 
-        return Task.FromResult(validationResult);
+        return ValueTask.FromResult<ValidatedTrade>(validationResult);
     }
 
     /// <summary>

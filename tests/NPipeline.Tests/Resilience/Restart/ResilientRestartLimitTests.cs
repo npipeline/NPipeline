@@ -43,7 +43,7 @@ public sealed class ResilientRestartLimitTests
         private readonly object _lock = new();
         private int _attempt;
 
-        public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             lock (_lock)
             {
@@ -65,7 +65,7 @@ public sealed class ResilientRestartLimitTests
             if (_attempt <= 3)
                 throw new InvalidOperationException("boom");
 
-            return Task.FromResult(item);
+            return ValueTask.FromResult<int>(item);
         }
     }
 

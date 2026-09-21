@@ -66,20 +66,8 @@ public abstract class PropertyTransformationNode<T> : TransformNode<T, T>
         return this;
     }
 
-    /// <summary>
-    ///     Executes transformations on the item asynchronously.
-    ///     Applies all registered rules in order.
-    /// </summary>
-    public override Task<T> TransformAsync(
-        T item,
-        PipelineContext context,
-        CancellationToken cancellationToken)
-    {
-        return FromValueTask(ExecuteValueTaskAsync(item, context, cancellationToken));
-    }
-
     /// <inheritdoc />
-    protected override ValueTask<T> ExecuteValueTaskAsync(
+    public override ValueTask<T> TransformAsync(
         T item,
         PipelineContext context,
         CancellationToken cancellationToken)
@@ -90,7 +78,7 @@ public abstract class PropertyTransformationNode<T> : TransformNode<T, T>
             rule.Apply(item);
         }
 
-        return ValueTask.FromResult(item);
+        return ValueTask.FromResult<T>(item);
     }
 
     private interface ICompiledRule<in TItem>

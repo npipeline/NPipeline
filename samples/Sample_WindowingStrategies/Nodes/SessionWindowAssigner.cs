@@ -48,7 +48,7 @@ public class SessionWindowAssigner : TransformNode<UserEvent, UserSession>
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A user session when timeout is reached, null otherwise.</returns>
-    public override Task<UserSession> TransformAsync(
+    public override ValueTask<UserSession> TransformAsync(
         UserEvent userEvent,
         PipelineContext context,
         CancellationToken cancellationToken)
@@ -61,7 +61,7 @@ public class SessionWindowAssigner : TransformNode<UserEvent, UserSession>
             _logger.Log(LogLevel.Debug, "SessionWindowAssigner: Returning queued session {SessionId} with {EventCount} events",
                 session.SessionId, session.Events.Count);
 
-            return Task.FromResult(session);
+            return ValueTask.FromResult<UserSession>(session);
         }
 
         if (userEvent == null)
@@ -77,10 +77,10 @@ public class SessionWindowAssigner : TransformNode<UserEvent, UserSession>
                 _logger.Log(LogLevel.Debug, "SessionWindowAssigner: Returning completed session {SessionId} with {EventCount} events",
                     session.SessionId, session.Events.Count);
 
-                return Task.FromResult(session);
+                return ValueTask.FromResult<UserSession>(session);
             }
 
-            return Task.FromResult(CreateDummySession()); // Return dummy session to maintain flow
+            return ValueTask.FromResult<UserSession>(CreateDummySession()); // Return dummy session to maintain flow
         }
 
         var sessionKey = $"{userEvent.UserId}_{userEvent.SessionId}";
@@ -122,7 +122,7 @@ public class SessionWindowAssigner : TransformNode<UserEvent, UserSession>
                 _logger.Log(LogLevel.Debug, "SessionWindowAssigner: Created session {SessionId} with {EventCount} events",
                     completedSession.SessionId, completedSession.Events.Count);
 
-                return Task.FromResult(completedSession);
+                return ValueTask.FromResult<UserSession>(completedSession);
             }
             else
             {
@@ -134,7 +134,7 @@ public class SessionWindowAssigner : TransformNode<UserEvent, UserSession>
                 if (decimal.TryParse(userEvent.PropertyValue, out var value))
                     existingSession.ConversionValue += value;
 
-                return Task.FromResult(CreateDummySession()); // Return dummy session to maintain flow
+                return ValueTask.FromResult<UserSession>(CreateDummySession()); // Return dummy session to maintain flow
             }
         }
 
@@ -162,7 +162,7 @@ public class SessionWindowAssigner : TransformNode<UserEvent, UserSession>
 
             _sessionStates[sessionKey] = newSession;
 
-            return Task.FromResult(CreateDummySession()); // Return dummy session to maintain flow
+            return ValueTask.FromResult<UserSession>(CreateDummySession()); // Return dummy session to maintain flow
         }
     }
 

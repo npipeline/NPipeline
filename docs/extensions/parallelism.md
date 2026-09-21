@@ -154,7 +154,7 @@ builder.WithParallelOptions(transform, new ParallelOptions
 
 ```csharp
 // ❌ WRONG - data race across worker threads
-public override async Task<int> TransformAsync(int input, PipelineContext context, CancellationToken ct)
+public override async ValueTask<int> TransformAsync(int input, PipelineContext context, CancellationToken ct)
 {
     var count = context.Items.GetValueOrDefault("processed", 0);
     context.Items["processed"] = count + 1;  // ← DATA RACE
@@ -172,7 +172,7 @@ public class SafeTransform : TransformNode<int, int>
 {
     private long _processedCount = 0;
 
-    public override async Task<int> TransformAsync(int input, PipelineContext context, CancellationToken ct)
+    public override async ValueTask<int> TransformAsync(int input, PipelineContext context, CancellationToken ct)
     {
         Interlocked.Increment(ref _processedCount);
         return input * 2;

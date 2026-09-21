@@ -141,7 +141,7 @@ All paths converge to a **Performance Measurement Sink** that collects metrics a
 ### ValueTask Implementation
 
 ```csharp
-protected internal override ValueTask<TOut> ExecuteValueTaskAsync(TIn item, PipelineContext context, CancellationToken cancellationToken)
+public override ValueTask<TOut> TransformAsync(TIn item, PipelineContext context, CancellationToken cancellationToken)
 {
     if (CanCompleteSynchronously(item))
     {

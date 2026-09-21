@@ -225,7 +225,7 @@ public sealed class PipelineBuilderTests(ITestOutputHelper output)
 
     private sealed class TestTransformNode : TransformNode<string, int>
     {
-        public override Task<int> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
+        public override ValueTask<int> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
         {
             throw new NotImplementedException();
         }
@@ -294,9 +294,9 @@ public sealed class PipelineBuilderTests(ITestOutputHelper output)
 
     private sealed class AutoTransformNode : TransformNode<int, int>
     {
-        public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
-            return Task.FromResult(item);
+            return ValueTask.FromResult<int>(item);
         }
     }
 

@@ -24,7 +24,7 @@ public sealed class AIBatchedEnrichNode<TIn, TField> : TransformNode<IReadOnlyCo
     public AIBatchedEnrichOptions<TIn, TField> Options { get; set; } = new();
 
     /// <inheritdoc />
-    public override async Task<IReadOnlyCollection<TIn>> TransformAsync(IReadOnlyCollection<TIn> item, PipelineContext context,
+    public override async ValueTask<IReadOnlyCollection<TIn>> TransformAsync(IReadOnlyCollection<TIn> item, PipelineContext context,
         CancellationToken cancellationToken)
     {
         var options = AIOptionGuards.Validate(Options);

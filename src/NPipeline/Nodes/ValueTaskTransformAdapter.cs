@@ -11,7 +11,7 @@ namespace NPipeline.Nodes;
 /// </summary>
 /// <typeparam name="TIn">Input type.</typeparam>
 /// <typeparam name="TOut">Output type.</typeparam>
-internal sealed class ValueTaskTransformAdapter<TIn, TOut> : ITransformNode<TIn, TOut>, IValueTaskTransform<TIn, TOut>
+internal sealed class ValueTaskTransformAdapter<TIn, TOut> : ITransformNode<TIn, TOut>
 {
     private readonly Func<TIn, PipelineContext, CancellationToken, ValueTask<TOut>> _producer;
 
@@ -29,18 +29,13 @@ internal sealed class ValueTaskTransformAdapter<TIn, TOut> : ITransformNode<TIn,
 
     public IExecutionStrategy ExecutionStrategy { get; set; } = new SequentialExecutionStrategy();
 
-    public Task<TOut> TransformAsync(TIn item, PipelineContext context, CancellationToken cancellationToken)
+    public ValueTask<TOut> TransformAsync(TIn item, PipelineContext context, CancellationToken cancellationToken)
     {
-        return ValueTaskHelpers.ToTask(_producer(item, context, cancellationToken));
+        return _producer(item, context, cancellationToken);
     }
 
     public ValueTask DisposeAsync()
     {
         return ValueTask.CompletedTask;
-    }
-
-    public ValueTask<TOut> ExecuteValueTaskAsync(TIn item, PipelineContext context, CancellationToken cancellationToken)
-    {
-        return _producer(item, context, cancellationToken);
     }
 }

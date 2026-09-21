@@ -11,7 +11,7 @@ namespace NPipeline.Nodes;
 /// <typeparam name="TIn">The input item type.</typeparam>
 /// <typeparam name="TOut">The output item type.</typeparam>
 public abstract class TransformNode<TIn, TOut>
-    : ITransformNode<TIn, TOut>, INodeTypeMetadata, IValueTaskTransform<TIn, TOut>
+    : ITransformNode<TIn, TOut>, INodeTypeMetadata
 {
     /// <summary>
     ///     Gets the input type of the transform node.
@@ -34,7 +34,7 @@ public abstract class TransformNode<TIn, TOut>
     public IExecutionStrategy ExecutionStrategy { get; set; } = new SequentialExecutionStrategy();
 
     /// <inheritdoc />
-    public abstract Task<TOut> TransformAsync(TIn item, PipelineContext context, CancellationToken cancellationToken);
+    public abstract ValueTask<TOut> TransformAsync(TIn item, PipelineContext context, CancellationToken cancellationToken);
 
     /// <summary>
     ///     Asynchronously disposes of the node. This can be overridden by derived classes to release resources.
@@ -44,36 +44,5 @@ public abstract class TransformNode<TIn, TOut>
     {
         GC.SuppressFinalize(this);
         return ValueTask.CompletedTask; // base holds no resources
-    }
-
-    ValueTask<TOut> IValueTaskTransform<TIn, TOut>.ExecuteValueTaskAsync(TIn item, PipelineContext context, CancellationToken cancellationToken)
-    {
-        return ExecuteValueTaskAsync(item, context, cancellationToken);
-    }
-
-    /// <summary>
-    ///     Provides a ValueTask-based execution hook for execution strategies that can take advantage of synchronous completions.
-    ///     <para>
-    ///         By default this wraps <see cref="TransformAsync" /> so existing Task-based implementations continue working.
-    ///         Derived nodes can override to return a naturally produced <see cref="ValueTask{TOut}" /> to avoid per-item allocations.
-    ///     </para>
-    /// </summary>
-    /// <param name="item">The input item.</param>
-    /// <param name="context">The pipeline context.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>A <see cref="ValueTask{TOut}" /> representing the transformation.</returns>
-    protected internal virtual ValueTask<TOut> ExecuteValueTaskAsync(TIn item, PipelineContext context, CancellationToken cancellationToken)
-    {
-        return new ValueTask<TOut>(TransformAsync(item, context, cancellationToken));
-    }
-
-    /// <summary>
-    ///     Helper for converting a <see cref="ValueTask{TOut}" /> to a <see cref="Task{TOut}" /> for the <see cref="TransformAsync" /> method.
-    /// </summary>
-    /// <param name="work">The ValueTask to convert.</param>
-    /// <returns>A <see cref="Task{TOut}" /> representing the same asynchronous operation.</returns>
-    protected Task<TOut> FromValueTask(ValueTask<TOut> work)
-    {
-        return ValueTaskHelpers.ToTask(work);
     }
 }

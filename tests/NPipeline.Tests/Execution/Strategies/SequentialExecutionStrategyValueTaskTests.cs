@@ -80,22 +80,16 @@ public sealed class SequentialExecutionStrategyValueTaskTests
 
         public int ExecuteValueTaskCallCount { get; private set; }
 
-        public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
-        {
-            ExecuteAsyncCallCount++;
-            return FromValueTask(ExecuteValueTaskAsync(item, context, cancellationToken));
-        }
-
-        protected internal override ValueTask<int> ExecuteValueTaskAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             ExecuteValueTaskCallCount++;
-            return ValueTask.FromResult(item + 1);
+            return ValueTask.FromResult<int>(item + 1);
         }
     }
 
     private sealed class ThrowingTransform : TransformNode<int, int>
     {
-        public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             throw new InvalidOperationException("sequential boom");
         }

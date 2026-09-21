@@ -52,9 +52,9 @@ public sealed class PipelineGraphExporterTests
 
     private sealed class Inc : TransformNode<int, int>
     {
-        public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
-            return Task.FromResult(item + 1);
+            return ValueTask.FromResult<int>(item + 1);
         }
     }
 }

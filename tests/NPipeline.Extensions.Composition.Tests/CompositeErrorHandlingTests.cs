@@ -91,7 +91,7 @@ public class CompositeErrorHandlingTests
 
     private sealed class ErrorTransform : TransformNode<int, int>
     {
-        public override Task<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
+        public override ValueTask<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
         {
             throw new InvalidOperationException("Test error in sub-pipeline");
         }
@@ -146,7 +146,7 @@ public class CompositeErrorHandlingTests
 
     private sealed class SlowTransform : TransformNode<int, int>
     {
-        public override async Task<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
+        public override async ValueTask<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
         {
             await Task.Delay(TimeSpan.FromSeconds(10), cancellationToken);
             return input;
@@ -243,9 +243,9 @@ public class CompositeErrorHandlingTests
 
     private sealed class NullReturningTransform : TransformNode<string?, string?>
     {
-        public override Task<string?> TransformAsync(string? input, PipelineContext context, CancellationToken cancellationToken)
+        public override ValueTask<string?> TransformAsync(string? input, PipelineContext context, CancellationToken cancellationToken)
         {
-            return Task.FromResult<string?>(null);
+            return ValueTask.FromResult<string?>(null);
         }
     }
 
@@ -315,9 +315,9 @@ public class CompositeErrorHandlingTests
 
     private sealed class ToStringTransform : TransformNode<int, string>
     {
-        public override Task<string> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
+        public override ValueTask<string> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
         {
-            return Task.FromResult(input.ToString());
+            return ValueTask.FromResult<string>(input.ToString());
         }
     }
 

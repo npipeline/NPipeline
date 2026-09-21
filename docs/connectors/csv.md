@@ -254,11 +254,11 @@ public sealed record UserSummary(string Name, string Domain);
 
 public sealed class Summarizer : TransformNode<User, UserSummary>
 {
-    public override Task<UserSummary> TransformAsync(
+    public override ValueTask<UserSummary> TransformAsync(
         User item, PipelineContext context, CancellationToken cancellationToken)
     {
         var domain = item.Email.Split('@')[1];
-        return Task.FromResult(new UserSummary(item.Name, domain));
+        return ValueTask.FromResult(new UserSummary(item.Name, domain));
     }
 }
 

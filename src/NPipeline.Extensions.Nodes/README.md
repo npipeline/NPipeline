@@ -117,10 +117,10 @@ builder.AddTransform(new CustomerNormalizer(), "normalize-customer");
 
 ### Zero-Allocation Hot Paths
 
-All nodes override `ExecuteValueTaskAsync` to return `ValueTask<T>` directly, avoiding `Task<T>` allocations on successful synchronous execution:
+`TransformAsync` returns `ValueTask<T>`, so these nodes allocate nothing per item when they complete synchronously:
 
 ```csharp
-protected internal override ValueTask<T> ExecuteValueTaskAsync(T item, PipelineContext context, CancellationToken cancellationToken)
+public override ValueTask<T> TransformAsync(T item, PipelineContext context, CancellationToken cancellationToken)
 {
     // Process item
     return new ValueTask<T>(item);  // No Task allocation!

@@ -113,7 +113,7 @@ Use a flat pipeline when:
 1. **Profile first** - enable [observability](observability/metrics-and-monitoring.md) to find the bottleneck
 2. **Use parallel execution** for CPU-bound transforms - see [Parallel Execution](guides/parallel-execution.md)
 3. **Stream data** - use `DataStream<T>` instead of materializing entire datasets
-4. **Override `ExecuteValueTaskAsync`** - avoid Task allocations for synchronous transforms (see [Synchronous Fast Paths](performance/synchronous-fast-paths.md))
+4. **Return synchronously when you can** - `TransformAsync` returns `ValueTask<T>`, so a synchronous transform allocates nothing (see [Synchronous Fast Paths](performance/synchronous-fast-paths.md))
 5. **Batch I/O operations** - use [batching](guides/batching-and-windowing.md) for database writes and API calls
 6. **Avoid LINQ in hot paths** - analyzer NP9103 catches this
 

@@ -32,7 +32,7 @@ public class FraudDetectionBranch : TransformNode<EnrichedOrder, EnrichedOrder>
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The original enriched order (passes through to main pipeline).</returns>
-    public override Task<EnrichedOrder> TransformAsync(EnrichedOrder enrichedOrder, PipelineContext context, CancellationToken cancellationToken)
+    public override ValueTask<EnrichedOrder> TransformAsync(EnrichedOrder enrichedOrder, PipelineContext context, CancellationToken cancellationToken)
     {
         var isFraud = DetectFraud(enrichedOrder);
 
@@ -45,7 +45,7 @@ public class FraudDetectionBranch : TransformNode<EnrichedOrder, EnrichedOrder>
             _onNormalOrder?.Invoke(enrichedOrder);
 
         // Return the original order unchanged to continue in the main pipeline
-        return Task.FromResult(enrichedOrder);
+        return ValueTask.FromResult<EnrichedOrder>(enrichedOrder);
     }
 
     /// <summary>

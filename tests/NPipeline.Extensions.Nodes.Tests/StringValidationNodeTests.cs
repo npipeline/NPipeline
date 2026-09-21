@@ -29,7 +29,7 @@ public class StringValidationNodeTests
         node.IsNotEmpty(x => x.StringValue);
 
         var item = new TestObject { StringValue = "" };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     [Fact]
@@ -39,7 +39,7 @@ public class StringValidationNodeTests
         node.IsNotEmpty(x => x.StringValue);
 
         var item = new TestObject { StringValue = null };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     #endregion
@@ -64,7 +64,7 @@ public class StringValidationNodeTests
         node.IsNotWhitespace(x => x.StringValue);
 
         var item = new TestObject { StringValue = "   " };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     [Fact]
@@ -74,7 +74,7 @@ public class StringValidationNodeTests
         node.IsNotWhitespace(x => x.StringValue);
 
         var item = new TestObject { StringValue = null };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     #endregion
@@ -99,7 +99,7 @@ public class StringValidationNodeTests
         node.HasMinLength(x => x.StringValue, 5);
 
         var item = new TestObject { StringValue = "test" };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     [Fact]
@@ -135,7 +135,7 @@ public class StringValidationNodeTests
         node.HasMaxLength(x => x.StringValue, 3);
 
         var item = new TestObject { StringValue = "test" };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     [Fact]
@@ -171,7 +171,7 @@ public class StringValidationNodeTests
         node.HasLengthBetween(x => x.StringValue, 5, 10);
 
         var item = new TestObject { StringValue = "test" };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     [Fact]
@@ -181,7 +181,7 @@ public class StringValidationNodeTests
         node.HasLengthBetween(x => x.StringValue, 1, 3);
 
         var item = new TestObject { StringValue = "test" };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     #endregion
@@ -206,7 +206,7 @@ public class StringValidationNodeTests
         node.IsEmail(x => x.StringValue);
 
         var item = new TestObject { StringValue = "notanemail" };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     [Fact]
@@ -242,7 +242,7 @@ public class StringValidationNodeTests
         node.IsAlphanumeric(x => x.StringValue);
 
         var item = new TestObject { StringValue = "test@123" };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     #endregion
@@ -267,7 +267,7 @@ public class StringValidationNodeTests
         node.IsAlphabetic(x => x.StringValue);
 
         var item = new TestObject { StringValue = "test123" };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     #endregion
@@ -292,7 +292,7 @@ public class StringValidationNodeTests
         node.IsDigitsOnly(x => x.StringValue);
 
         var item = new TestObject { StringValue = "123a45" };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     #endregion
@@ -317,7 +317,7 @@ public class StringValidationNodeTests
         node.IsNumeric(x => x.StringValue);
 
         var item = new TestObject { StringValue = "abc" };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     #endregion
@@ -342,7 +342,7 @@ public class StringValidationNodeTests
         node.Contains(x => x.StringValue, "xyz");
 
         var item = new TestObject { StringValue = "test" };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     #endregion
@@ -367,7 +367,7 @@ public class StringValidationNodeTests
         node.StartsWith(x => x.StringValue, "ab");
 
         var item = new TestObject { StringValue = "test" };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     #endregion
@@ -392,7 +392,7 @@ public class StringValidationNodeTests
         node.EndsWith(x => x.StringValue, "xy");
 
         var item = new TestObject { StringValue = "test" };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     #endregion
@@ -417,7 +417,7 @@ public class StringValidationNodeTests
         node.IsInList(x => x.StringValue, ["test", "demo", "sample"]);
 
         var item = new TestObject { StringValue = "other" };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     [Fact]

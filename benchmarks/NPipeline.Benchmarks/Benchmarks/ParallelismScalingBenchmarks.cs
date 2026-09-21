@@ -381,7 +381,7 @@ public class ParallelismScalingBenchmarks
 
     private sealed class ProcessingTransform : TransformNode<int, ProcessedResult>
     {
-        public override Task<ProcessedResult> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override ValueTask<ProcessedResult> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             // Simulate moderate CPU-bound processing work. A fixed spin (rather than Task.Delay) keeps the
             // per-item cost deterministic and proportional to CPU time, so the benchmark measures parallel
@@ -394,7 +394,7 @@ public class ParallelismScalingBenchmarks
                 result += (long)Math.Sqrt((item + 1) * (i + 1));
             }
 
-            return Task.FromResult(new ProcessedResult
+            return ValueTask.FromResult<ProcessedResult>(new ProcessedResult
             {
                 InputValue = item,
                 OutputValue = (int)result,
@@ -406,7 +406,7 @@ public class ParallelismScalingBenchmarks
 
     private sealed class CPUBoundTransform : TransformNode<int, ProcessedResult>
     {
-        public override Task<ProcessedResult> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override ValueTask<ProcessedResult> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             // Simulate CPU-bound work
             var result = 0;
@@ -416,7 +416,7 @@ public class ParallelismScalingBenchmarks
                 result += (int)Math.Sqrt(item * i);
             }
 
-            return Task.FromResult(new ProcessedResult
+            return ValueTask.FromResult<ProcessedResult>(new ProcessedResult
             {
                 InputValue = item,
                 OutputValue = result,
@@ -428,7 +428,7 @@ public class ParallelismScalingBenchmarks
 
     private sealed class IOBoundTransform : TransformNode<int, ProcessedResult>
     {
-        public override async Task<ProcessedResult> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override async ValueTask<ProcessedResult> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             // Simulate IO-bound work
             await Task.Delay(10, cancellationToken);
@@ -447,7 +447,7 @@ public class ParallelismScalingBenchmarks
     {
         private readonly Random _random = new();
 
-        public override async Task<ProcessedResult> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override async ValueTask<ProcessedResult> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             // Randomly choose between CPU-bound and IO-bound work
             if (_random.NextDouble() < 0.5)
@@ -484,7 +484,7 @@ public class ParallelismScalingBenchmarks
 
     private sealed class BatchProcessingTransform : TransformNode<IReadOnlyCollection<int>, ProcessedResult>
     {
-        public override async Task<ProcessedResult> TransformAsync(IReadOnlyCollection<int> batch, PipelineContext context, CancellationToken cancellationToken)
+        public override async ValueTask<ProcessedResult> TransformAsync(IReadOnlyCollection<int> batch, PipelineContext context, CancellationToken cancellationToken)
         {
             // Process entire batch
             var sum = 0;

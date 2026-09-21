@@ -17,7 +17,7 @@ public class UppercaseTransform : TransformNode<string, string>
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A Task containing the uppercase string.</returns>
-    public override async Task<string> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
+    public override async ValueTask<string> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
     {
         Console.WriteLine($"Transforming message: {item}");
 
@@ -26,6 +26,6 @@ public class UppercaseTransform : TransformNode<string, string>
 
         Console.WriteLine($"Transformed to: {transformedMessage}");
 
-        return await Task.FromResult(transformedMessage);
+        return await ValueTask.FromResult<string>(transformedMessage);
     }
 }

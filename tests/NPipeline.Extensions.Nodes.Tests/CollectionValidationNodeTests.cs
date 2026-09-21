@@ -13,7 +13,7 @@ public class CollectionValidationNodeTests
         node.HasMinCount(x => x.Items, 5);
 
         var item = new TestObject { Items = ["a", "b", "c"] };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     #endregion
@@ -44,7 +44,7 @@ public class CollectionValidationNodeTests
         node.HasMaxCount(x => x.Items, 2);
 
         var item = new TestObject { Items = ["a", "b", "c"] };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     #endregion
@@ -69,7 +69,7 @@ public class CollectionValidationNodeTests
         node.HasCountBetween(x => x.Items, 5, 10);
 
         var item = new TestObject { Items = ["a", "b", "c"] };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     [Fact]
@@ -79,7 +79,7 @@ public class CollectionValidationNodeTests
         node.HasCountBetween(x => x.Items, 1, 2);
 
         var item = new TestObject { Items = ["a", "b", "c"] };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     #endregion
@@ -104,7 +104,7 @@ public class CollectionValidationNodeTests
         node.IsNotEmpty(x => x.Items);
 
         var item = new TestObject { Items = [] };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     [Fact]
@@ -114,7 +114,7 @@ public class CollectionValidationNodeTests
         node.IsNotEmpty(x => x.Items);
 
         var item = new TestObject { Items = null };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     #endregion
@@ -139,7 +139,7 @@ public class CollectionValidationNodeTests
         node.AllMatch(x => x.Numbers, n => n > 2);
 
         var item = new TestObject { Numbers = [1, 2, 3] };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     #endregion
@@ -164,7 +164,7 @@ public class CollectionValidationNodeTests
         node.AnyMatch(x => x.Numbers, n => n > 10);
 
         var item = new TestObject { Numbers = [1, 2, 3] };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     #endregion
@@ -189,7 +189,7 @@ public class CollectionValidationNodeTests
         node.NoneMatch(x => x.Numbers, n => n > 2);
 
         var item = new TestObject { Numbers = [1, 2, 3] };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     #endregion
@@ -214,7 +214,7 @@ public class CollectionValidationNodeTests
         node.Contains(x => x.Items, "z");
 
         var item = new TestObject { Items = ["a", "b", "c"] };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     [Fact]
@@ -224,7 +224,7 @@ public class CollectionValidationNodeTests
         node.Contains(x => x.Items, "a");
 
         var item = new TestObject { Items = null };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     #endregion
@@ -249,7 +249,7 @@ public class CollectionValidationNodeTests
         node.DoesNotContain(x => x.Items, "b");
 
         var item = new TestObject { Items = ["a", "b", "c"] };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     [Fact]
@@ -285,7 +285,7 @@ public class CollectionValidationNodeTests
         node.AllUnique(x => x.Items);
 
         var item = new TestObject { Items = ["a", "b", "a"] };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     #endregion
@@ -310,7 +310,7 @@ public class CollectionValidationNodeTests
         node.IsSubsetOf(x => x.Items, ["a", "b", "c"]);
 
         var item = new TestObject { Items = ["a", "b", "z"] };
-        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None));
+        await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     [Fact]

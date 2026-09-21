@@ -33,39 +33,9 @@ public sealed class TypeConversionNode<TIn, TOut> : TransformNode<TIn, TOut>
     }
 
     /// <summary>
-    ///     Executes the conversion asynchronously.
-    /// </summary>
-    public override Task<TOut> TransformAsync(TIn item, PipelineContext context, CancellationToken cancellationToken)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-
-        if (_converter == null)
-            throw new InvalidOperationException("No converter has been configured. Use WithConverter() to set a conversion function.");
-
-        try
-        {
-            var result = _converter(item);
-            return Task.FromResult(result);
-        }
-        catch (TypeConversionException)
-        {
-            throw;
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            throw new TypeConversionException(typeof(TIn), typeof(TOut), item,
-                $"An error occurred during conversion: {ex.Message}", ex);
-        }
-    }
-
-    /// <summary>
     ///     Executes the conversion synchronously (ValueTask override).
     /// </summary>
-    protected override ValueTask<TOut> ExecuteValueTaskAsync(TIn item, PipelineContext context, CancellationToken cancellationToken)
+    public override ValueTask<TOut> TransformAsync(TIn item, PipelineContext context, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 

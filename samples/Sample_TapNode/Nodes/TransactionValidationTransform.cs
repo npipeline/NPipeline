@@ -26,7 +26,7 @@ public sealed class TransactionValidationTransform : TransformNode<Transaction, 
     }
 
     /// <inheritdoc />
-    public override Task<ValidatedTransaction> TransformAsync(Transaction transaction, PipelineContext context, CancellationToken cancellationToken)
+    public override ValueTask<ValidatedTransaction> TransformAsync(Transaction transaction, PipelineContext context, CancellationToken cancellationToken)
     {
         _logger.LogDebug("Validating transaction {TransactionId}", transaction.TransactionId);
 
@@ -47,7 +47,7 @@ public sealed class TransactionValidationTransform : TransformNode<Transaction, 
             validationResult.IsValid,
             validatedTransaction.ProcessingStatus);
 
-        return Task.FromResult(validatedTransaction);
+        return ValueTask.FromResult<ValidatedTransaction>(validatedTransaction);
     }
 
     /// <summary>

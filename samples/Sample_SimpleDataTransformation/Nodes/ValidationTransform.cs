@@ -21,7 +21,7 @@ public class ValidationTransform : TransformNode<Person, Person>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A Task containing the validated Person object.</returns>
     /// <exception cref="ArgumentException">Thrown when validation fails.</exception>
-    public override async Task<Person> TransformAsync(Person item, PipelineContext context, CancellationToken cancellationToken)
+    public override async ValueTask<Person> TransformAsync(Person item, PipelineContext context, CancellationToken cancellationToken)
     {
         Console.WriteLine($"Validating Person: {item.FirstName} {item.LastName} (ID: {item.Id})");
 
@@ -61,6 +61,6 @@ public class ValidationTransform : TransformNode<Person, Person>
 
         Console.WriteLine($"Validation passed for Person: {item.FirstName} {item.LastName} (ID: {item.Id})");
 
-        return await Task.FromResult(item);
+        return await ValueTask.FromResult<Person>(item);
     }
 }

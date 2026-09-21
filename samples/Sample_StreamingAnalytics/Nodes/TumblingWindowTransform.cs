@@ -32,7 +32,7 @@ public class TumblingWindowTransform : TransformNode<TimeSeriesData, WindowedRes
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A task containing the windowed result when a window is complete.</returns>
-    public override async Task<WindowedResult> TransformAsync(TimeSeriesData item, PipelineContext context, CancellationToken cancellationToken)
+    public override async ValueTask<WindowedResult> TransformAsync(TimeSeriesData item, PipelineContext context, CancellationToken cancellationToken)
     {
         // Initialize the first window
         if (_isFirstWindow)
@@ -84,7 +84,7 @@ public class TumblingWindowTransform : TransformNode<TimeSeriesData, WindowedRes
             _currentWindow.Clear();
             _currentWindow.Add(item);
 
-            return await Task.FromResult(result);
+            return await ValueTask.FromResult<WindowedResult>(result);
         }
 
         // Add the item to the current window if it belongs here
@@ -92,7 +92,7 @@ public class TumblingWindowTransform : TransformNode<TimeSeriesData, WindowedRes
         {
             _currentWindow.Add(item);
 
-            return await Task.FromResult(new WindowedResult
+            return await ValueTask.FromResult<WindowedResult>(new WindowedResult
             {
                 WindowStart = _windowStart,
                 WindowEnd = _lastWindowEnd,
@@ -112,7 +112,7 @@ public class TumblingWindowTransform : TransformNode<TimeSeriesData, WindowedRes
         {
             Console.WriteLine($"Dropping late data point: {item.Id} (too late for window {_windowStart:O})");
 
-            return await Task.FromResult(new WindowedResult
+            return await ValueTask.FromResult<WindowedResult>(new WindowedResult
             {
                 WindowStart = _windowStart,
                 WindowEnd = _lastWindowEnd,
@@ -127,7 +127,7 @@ public class TumblingWindowTransform : TransformNode<TimeSeriesData, WindowedRes
             });
         }
 
-        return await Task.FromResult(new WindowedResult
+        return await ValueTask.FromResult<WindowedResult>(new WindowedResult
         {
             WindowStart = _windowStart,
             WindowEnd = _lastWindowEnd,

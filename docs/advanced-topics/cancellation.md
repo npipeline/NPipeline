@@ -61,7 +61,7 @@ Every async method that accepts a `CancellationToken` must forward it to child o
 
 ```csharp
 // ✓ Correct: token forwarded
-public async Task<Order> TransformAsync(
+public async ValueTask<Order> TransformAsync(
     RawOrder item, PipelineContext context, CancellationToken ct)
 {
     var enriched = await _httpClient.GetAsync(item.Url, ct);
@@ -69,7 +69,7 @@ public async Task<Order> TransformAsync(
 }
 
 // ✗ Wrong: token dropped
-public async Task<Order> TransformAsync(
+public async ValueTask<Order> TransformAsync(
     RawOrder item, PipelineContext context, CancellationToken ct)
 {
     var enriched = await _httpClient.GetAsync(item.Url); // missing ct!
@@ -97,7 +97,7 @@ Without `.WithCancellation()`, the enumeration ignores cancellation requests and
 For CPU-bound transforms that process items in a tight loop, periodically check the token:
 
 ```csharp
-public async Task<Batch<T>> TransformAsync(
+public async ValueTask<Batch<T>> TransformAsync(
     Batch<T> batch, PipelineContext context, CancellationToken ct)
 {
     var results = new List<T>(batch.Items.Count);

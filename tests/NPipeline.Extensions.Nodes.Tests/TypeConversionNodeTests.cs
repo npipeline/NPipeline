@@ -15,7 +15,7 @@ public sealed class TypeConversionNodeTests
         cts.Cancel();
 
         await Assert.ThrowsAsync<OperationCanceledException>(() =>
-            node.TransformAsync("42", PipelineContext.CreateDefault(), cts.Token));
+            node.TransformAsync("42", PipelineContext.CreateDefault(), cts.Token).AsTask());
     }
 
     #endregion
@@ -59,7 +59,7 @@ public sealed class TypeConversionNodeTests
         var node = TypeConversions.StringToInt();
 
         await Assert.ThrowsAsync<TypeConversionException>(() =>
-            node.TransformAsync(input, PipelineContext.CreateDefault(), CancellationToken.None));
+            node.TransformAsync(input, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     [Theory]
@@ -71,7 +71,7 @@ public sealed class TypeConversionNodeTests
         var node = TypeConversions.StringToInt();
 
         await Assert.ThrowsAsync<TypeConversionException>(() =>
-            node.TransformAsync(input, PipelineContext.CreateDefault(), CancellationToken.None));
+            node.TransformAsync(input, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     #endregion
@@ -105,7 +105,7 @@ public sealed class TypeConversionNodeTests
         var node = TypeConversions.StringToLong();
 
         await Assert.ThrowsAsync<TypeConversionException>(() =>
-            node.TransformAsync(input, PipelineContext.CreateDefault(), CancellationToken.None));
+            node.TransformAsync(input, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     #endregion
@@ -144,7 +144,7 @@ public sealed class TypeConversionNodeTests
         var node = TypeConversions.StringToDouble();
 
         await Assert.ThrowsAsync<TypeConversionException>(() =>
-            node.TransformAsync(input, PipelineContext.CreateDefault(), CancellationToken.None));
+            node.TransformAsync(input, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     #endregion
@@ -182,7 +182,7 @@ public sealed class TypeConversionNodeTests
         var node = TypeConversions.StringToDecimal();
 
         await Assert.ThrowsAsync<TypeConversionException>(() =>
-            node.TransformAsync(input, PipelineContext.CreateDefault(), CancellationToken.None));
+            node.TransformAsync(input, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     #endregion
@@ -221,7 +221,7 @@ public sealed class TypeConversionNodeTests
         var node = TypeConversions.StringToBool();
 
         await Assert.ThrowsAsync<TypeConversionException>(() =>
-            node.TransformAsync(input, PipelineContext.CreateDefault(), CancellationToken.None));
+            node.TransformAsync(input, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     #endregion
@@ -264,7 +264,7 @@ public sealed class TypeConversionNodeTests
         var node = TypeConversions.StringToDateTime();
 
         await Assert.ThrowsAsync<TypeConversionException>(() =>
-            node.TransformAsync(input, PipelineContext.CreateDefault(), CancellationToken.None));
+            node.TransformAsync(input, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     #endregion
@@ -455,7 +455,7 @@ public sealed class TypeConversionNodeTests
         var node = TypeConversions.StringToEnum<TestValues>(false);
 
         await Assert.ThrowsAsync<TypeConversionException>(() =>
-            node.TransformAsync("value1", PipelineContext.CreateDefault(), CancellationToken.None));
+            node.TransformAsync("value1", PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     [Theory]
@@ -467,7 +467,7 @@ public sealed class TypeConversionNodeTests
         var node = TypeConversions.StringToEnum<TestValues>();
 
         await Assert.ThrowsAsync<TypeConversionException>(() =>
-            node.TransformAsync(input, PipelineContext.CreateDefault(), CancellationToken.None));
+            node.TransformAsync(input, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     #endregion
@@ -490,7 +490,7 @@ public sealed class TypeConversionNodeTests
         var node = new TypeConversionNode<string, int>();
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            node.TransformAsync("test", PipelineContext.CreateDefault(), CancellationToken.None));
+            node.TransformAsync("test", PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
     }
 
     #endregion
@@ -498,20 +498,20 @@ public sealed class TypeConversionNodeTests
     #region ValueTask Tests
 
     [Fact]
-    public async Task ExecuteValueTaskAsync_WithStringToInt_ReturnsValue()
+    public async Task TransformAsync_WithStringToInt_ReturnsValue()
     {
         var node = TypeConversions.StringToInt();
-        var result = await node.ExecuteValueTaskAsync("42", PipelineContext.CreateDefault(), CancellationToken.None);
+        var result = await node.TransformAsync("42", PipelineContext.CreateDefault(), CancellationToken.None);
         Assert.Equal(42, result);
     }
 
     [Fact]
-    public async Task ExecuteValueTaskAsync_WithInvalidInput_Throws()
+    public async Task TransformAsync_WithInvalidInput_Throws()
     {
         var node = TypeConversions.StringToInt();
 
         await Assert.ThrowsAsync<TypeConversionException>(async () =>
-            await node.ExecuteValueTaskAsync("not a number", PipelineContext.CreateDefault(), CancellationToken.None));
+            await node.TransformAsync("not a number", PipelineContext.CreateDefault(), CancellationToken.None));
     }
 
     #endregion
@@ -524,7 +524,7 @@ public sealed class TypeConversionNodeTests
         var node = TypeConversions.StringToInt();
 
         var ex = await Assert.ThrowsAsync<TypeConversionException>(() =>
-            node.TransformAsync("not a number", PipelineContext.CreateDefault(), CancellationToken.None));
+            node.TransformAsync("not a number", PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
 
         Assert.Equal(typeof(string), ex.SourceType);
         Assert.Equal(typeof(int), ex.TargetType);
@@ -537,7 +537,7 @@ public sealed class TypeConversionNodeTests
         var node = TypeConversions.StringToInt();
 
         var ex = await Assert.ThrowsAsync<TypeConversionException>(() =>
-            node.TransformAsync("not a number", PipelineContext.CreateDefault(), CancellationToken.None));
+            node.TransformAsync("not a number", PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
 
         Assert.Equal("not a number", ex.Value);
     }

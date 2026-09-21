@@ -29,7 +29,7 @@ public class AggregationTransform : TransformNode<WindowedResult, WindowedResult
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A task containing the enriched windowed result.</returns>
-    public override async Task<WindowedResult> TransformAsync(WindowedResult item, PipelineContext context, CancellationToken cancellationToken)
+    public override async ValueTask<WindowedResult> TransformAsync(WindowedResult item, PipelineContext context, CancellationToken cancellationToken)
     {
         Console.WriteLine($"Aggregating windowed result: {item.WindowType} window {item.WindowStart:O} - {item.WindowEnd:O}");
 
@@ -43,7 +43,7 @@ public class AggregationTransform : TransformNode<WindowedResult, WindowedResult
         // Calculate additional statistics based on historical data
         var enrichedResult = await CalculateAdditionalStatistics(item, cancellationToken);
 
-        return await Task.FromResult(enrichedResult);
+        return await ValueTask.FromResult<WindowedResult>(enrichedResult);
     }
 
     /// <summary>

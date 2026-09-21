@@ -23,7 +23,7 @@ public sealed class AIBatchedTransformNode<TIn, TOut> : TransformNode<IReadOnlyC
     public AIBatchedTransformOptions<TIn, TOut> Options { get; set; } = new();
 
     /// <inheritdoc />
-    public override async Task<IReadOnlyCollection<TOut>> TransformAsync(IReadOnlyCollection<TIn> item, PipelineContext context,
+    public override async ValueTask<IReadOnlyCollection<TOut>> TransformAsync(IReadOnlyCollection<TIn> item, PipelineContext context,
         CancellationToken cancellationToken)
     {
         var options = AIOptionGuards.Validate(Options);

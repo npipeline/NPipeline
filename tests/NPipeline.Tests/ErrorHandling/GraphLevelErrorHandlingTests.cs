@@ -50,14 +50,14 @@ public sealed class GraphLevelErrorHandlingTests
     {
         private int _callCount;
 
-        public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             _callCount++;
 
             if (_callCount <= failCount)
                 throw new InvalidOperationException($"FlakyNode failed on call {_callCount}");
 
-            return Task.FromResult(item);
+            return ValueTask.FromResult<int>(item);
         }
     }
 
