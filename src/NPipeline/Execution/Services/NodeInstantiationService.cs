@@ -22,6 +22,12 @@ public sealed class NodeInstantiationService : INodeInstantiationService
     private static readonly MethodInfo UpcastTaskGenericMethod = typeof(NodeInstantiationService)
         .GetMethod(nameof(UpcastTask), BindingFlags.NonPublic | BindingFlags.Static)!;
 
+    private static readonly MethodInfo ResolveExecutionStrategyMethod = typeof(NodeInstantiationService)
+        .GetMethod(nameof(ResolveExecutionStrategy), BindingFlags.NonPublic | BindingFlags.Static)!;
+
+    private static readonly MethodInfo ResolveStreamExecutionStrategyMethod = typeof(NodeInstantiationService)
+        .GetMethod(nameof(ResolveStreamExecutionStrategy), BindingFlags.NonPublic | BindingFlags.Static)!;
+
     /// <inheritdoc />
     public Dictionary<string, INode> InstantiateNodes(PipelineGraph graph, INodeFactory nodeFactory)
     {
@@ -75,6 +81,12 @@ public sealed class NodeInstantiationService : INodeInstantiationService
     /// <summary>
     ///     Builds per-node execution plans binding generic strategies to non-generic delegates.
     /// </summary>
+    /// <remarks>
+    ///     The resulting plans are instance-independent: node instances are passed to the compiled delegates at
+    ///     invocation time rather than captured, so a plan may be cached and reused by later runs that create their
+    ///     own node instances. <paramref name="nodeInstances" /> is used only to select and validate the delegate
+    ///     shape for each node; no instance is retained by the returned plans.
+    /// </remarks>
     public Dictionary<string, NodeExecutionPlan> BuildPlans(PipelineGraph graph, IReadOnlyDictionary<string, INode> nodeInstances)
     {
         var plans = new Dictionary<string, NodeExecutionPlan>(graph.NodeDefinitionMap.Count);
@@ -85,114 +97,46 @@ public sealed class NodeInstantiationService : INodeInstantiationService
 
             plans[nodeId] = def.Kind switch
             {
-                NodeKind.Source => new NodeExecutionPlan(
+                NodeKind.Source or NodeKind.CompositeInput => new NodeExecutionPlan(
                     def.Id,
                     def.Kind,
                     def.InputType,
                     def.OutputType,
                     BuildSourceDelegate(def, instance)),
 
-                NodeKind.Transform when instance is ITransformNode transformNode => new NodeExecutionPlan(
+                NodeKind.Transform or NodeKind.Tap or NodeKind.Branch or NodeKind.Route or NodeKind.Lookup or NodeKind.Composite
+                    when instance is ITransformNode => new NodeExecutionPlan(
                     def.Id,
                     def.Kind,
                     def.InputType,
                     def.OutputType,
-                    ExecuteTransform: BuildTransformDelegate(def, transformNode)),
+                    ExecuteTransform: BuildTransformDelegate(def)),
 
-                NodeKind.Transform when instance is IStreamTransformNode streamTransformNode => new NodeExecutionPlan(
-                    def.Id,
-                    def.Kind,
-                    def.InputType,
-                    def.OutputType,
-                    ExecuteTransform: BuildStreamTransformDelegate(def, streamTransformNode)),
-
-                NodeKind.Tap when instance is ITransformNode tapNode => new NodeExecutionPlan(
-                    def.Id,
-                    def.Kind,
-                    def.InputType,
-                    def.OutputType,
-                    ExecuteTransform: BuildTransformDelegate(def, tapNode)),
-
-                NodeKind.Branch when instance is ITransformNode branchNode => new NodeExecutionPlan(
-                    def.Id,
-                    def.Kind,
-                    def.InputType,
-                    def.OutputType,
-                    ExecuteTransform: BuildTransformDelegate(def, branchNode)),
-
-                NodeKind.Route when instance is ITransformNode routeNode => new NodeExecutionPlan(
-                    def.Id,
-                    def.Kind,
-                    def.InputType,
-                    def.OutputType,
-                    ExecuteTransform: BuildTransformDelegate(def, routeNode)),
-
-                NodeKind.Route when instance is IStreamTransformNode routeStreamNode => new NodeExecutionPlan(
-                    def.Id,
-                    def.Kind,
-                    def.InputType,
-                    def.OutputType,
-                    ExecuteTransform: BuildStreamTransformDelegate(def, routeStreamNode)),
-
-                NodeKind.Lookup when instance is ITransformNode lookupNode => new NodeExecutionPlan(
-                    def.Id,
-                    def.Kind,
-                    def.InputType,
-                    def.OutputType,
-                    ExecuteTransform: BuildTransformDelegate(def, lookupNode)),
-
-                NodeKind.Composite when instance is ITransformNode compositeNode => new NodeExecutionPlan(
-                    def.Id,
-                    def.Kind,
-                    def.InputType,
-                    def.OutputType,
-                    ExecuteTransform: BuildTransformDelegate(def, compositeNode)),
-
-                NodeKind.StreamTransform when instance is IStreamTransformNode streamTransformNode => new NodeExecutionPlan(
+                NodeKind.Transform or NodeKind.Route or NodeKind.StreamTransform or NodeKind.Batch
+                    when instance is IStreamTransformNode streamTransformNode => new NodeExecutionPlan(
                     def.Id,
                     def.Kind,
                     def.InputType,
                     def.OutputType,
                     ExecuteTransform: BuildStreamTransformDelegate(def, streamTransformNode)),
 
-                NodeKind.Batch when instance is IStreamTransformNode batchNode => new NodeExecutionPlan(
+                NodeKind.Join when instance is IJoinNode => new NodeExecutionPlan(
                     def.Id,
                     def.Kind,
                     def.InputType,
                     def.OutputType,
-                    ExecuteTransform: BuildStreamTransformDelegate(def, batchNode)),
-
-                NodeKind.Join when instance is IJoinNode joinNode => new NodeExecutionPlan(
-                    def.Id,
-                    def.Kind,
-                    def.InputType,
-                    def.OutputType,
-                    ExecuteJoin: BuildJoinDelegate(def, joinNode),
+                    ExecuteJoin: BuildJoinDelegate(def),
                     AdaptOutput: BuildOutputAdapter(def.OutputType)),
 
-                NodeKind.Aggregate when instance is IAggregateNode aggregateNode => new NodeExecutionPlan(
+                NodeKind.Aggregate when instance is IAggregateNode => new NodeExecutionPlan(
                     def.Id,
                     def.Kind,
                     def.InputType,
                     def.OutputType,
-                    ExecuteAggregate: BuildAggregateDelegate(def, aggregateNode),
+                    ExecuteAggregate: BuildAggregateDelegate(def),
                     AdaptOutput: BuildOutputAdapter(def.OutputType)),
 
-                NodeKind.Sink => new NodeExecutionPlan(
-                    def.Id,
-                    def.Kind,
-                    def.InputType,
-                    def.OutputType,
-                    ExecuteSink: BuildSinkDelegate(def, instance)),
-
-                NodeKind.CompositeInput => new NodeExecutionPlan(
-                    def.Id,
-                    def.Kind,
-                    def.InputType,
-                    def.OutputType,
-                    BuildSourceDelegate(def, instance)),
-
-                NodeKind.CompositeOutput => new NodeExecutionPlan(
+                NodeKind.Sink or NodeKind.CompositeOutput => new NodeExecutionPlan(
                     def.Id,
                     def.Kind,
                     def.InputType,
@@ -206,60 +150,56 @@ public sealed class NodeInstantiationService : INodeInstantiationService
         return plans;
     }
 
-    private static Func<IDataStream, PipelineContext, CancellationToken, Task<IDataStream>> BuildTransformDelegate(
-        NodeDefinition def,
-        ITransformNode transformNode)
+    private static Func<INode, IDataStream, PipelineContext, CancellationToken, Task<IDataStream>> BuildTransformDelegate(NodeDefinition def)
     {
         var inType = def.InputType ?? throw new InvalidOperationException($"Missing InputType for transform node '{def.Id}'.");
         var outType = def.OutputType ?? throw new InvalidOperationException($"Missing OutputType for transform node '{def.Id}'.");
-        var strategy = def.ExecutionStrategy ?? transformNode.ExecutionStrategy;
 
         return BuildStrategyDelegate(
+            def.Id,
             inType,
             outType,
-            strategy,
             typeof(IExecutionStrategy),
             nameof(IExecutionStrategy.ExecuteAsync),
-            transformNode,
+            ResolveExecutionStrategyMethod,
             typeof(ITransformNode<,>));
     }
 
-    private static Func<IDataStream, PipelineContext, CancellationToken, Task<IDataStream>> BuildStreamTransformDelegate(
+    private static Func<INode, IDataStream, PipelineContext, CancellationToken, Task<IDataStream>> BuildStreamTransformDelegate(
         NodeDefinition def,
         IStreamTransformNode streamTransformNode)
     {
         var inType = def.InputType ?? throw new InvalidOperationException($"Missing InputType for stream transform node '{def.Id}'.");
         var outType = def.OutputType ?? throw new InvalidOperationException($"Missing OutputType for stream transform node '{def.Id}'.");
-        var strategy = def.ExecutionStrategy ?? streamTransformNode.ExecutionStrategy;
 
-        if (strategy is not IStreamExecutionStrategy streamStrategy)
-        {
-            var strategyType = strategy?.GetType().FullName ?? "<null>";
+        // Validate eagerly so a misconfigured strategy is reported at build time with the node type in hand,
+        // rather than on first enumeration. The strategy is still resolved per-run from the executing instance.
+        _ = ResolveStreamExecutionStrategy(streamTransformNode, def.Id);
 
-            throw new InvalidOperationException(
-                $"Stream transform node '{def.Id}' is configured with execution strategy '{strategyType}', " +
-                $"which does not implement {nameof(IStreamExecutionStrategy)}. " +
-                $"Configure a stream-capable strategy for node type '{streamTransformNode.GetType().FullName}'.");
-        }
-
-        // Use the stream execution strategy when supported.
         return BuildStrategyDelegate(
+            def.Id,
             inType,
             outType,
-            streamStrategy,
             typeof(IStreamExecutionStrategy),
             nameof(IStreamExecutionStrategy.ExecuteAsync),
-            streamTransformNode,
+            ResolveStreamExecutionStrategyMethod,
             typeof(IStreamTransformNode<,>));
     }
 
-    private static Func<IDataStream, PipelineContext, CancellationToken, Task<IDataStream>> BuildStrategyDelegate(
+    /// <summary>
+    ///     Compiles a delegate that resolves the execution strategy from the supplied node instance and invokes it.
+    /// </summary>
+    /// <remarks>
+    ///     Neither the node nor its strategy is captured: both are reached through the <c>node</c> parameter on each
+    ///     call, which is what makes the compiled delegate safe to cache across runs.
+    /// </remarks>
+    private static Func<INode, IDataStream, PipelineContext, CancellationToken, Task<IDataStream>> BuildStrategyDelegate(
+        string nodeId,
         Type inType,
         Type outType,
-        object strategy,
         Type strategyInterface,
         string executeMethodName,
-        INode nodeInstance,
+        MethodInfo strategyResolver,
         Type nodeInterfaceDefinition)
     {
         var execMethod = strategyInterface.GetMethod(executeMethodName) ??
@@ -267,6 +207,7 @@ public sealed class NodeInstantiationService : INodeInstantiationService
 
         var closedExec = execMethod.MakeGenericMethod(inType, outType);
 
+        var nodeParam = Expression.Parameter(typeof(INode), "node");
         var pipeParam = Expression.Parameter(typeof(IDataStream), "pipe");
         var ctxParam = Expression.Parameter(typeof(PipelineContext), "ctx");
         var ctParam = Expression.Parameter(typeof(CancellationToken), "ct");
@@ -274,17 +215,46 @@ public sealed class NodeInstantiationService : INodeInstantiationService
         var typedInputInterface = typeof(IDataStream<>).MakeGenericType(inType);
         var castInput = Expression.Convert(pipeParam, typedInputInterface);
         var typedNodeInterface = nodeInterfaceDefinition.MakeGenericType(inType, outType);
-        var castNode = Expression.Convert(Expression.Constant(nodeInstance), typedNodeInterface);
-        var strategyConst = Expression.Constant(strategy);
+        var castNode = Expression.Convert(nodeParam, typedNodeInterface);
+        var strategyExpr = Expression.Call(strategyResolver, nodeParam, Expression.Constant(nodeId));
 
-        var call = Expression.Call(strategyConst, closedExec, castInput, castNode, ctxParam, ctParam);
+        var call = Expression.Call(strategyExpr, closedExec, castInput, castNode, ctxParam, ctParam);
         var upcastCall = Expression.Call(UpcastTaskGenericMethod.MakeGenericMethod(outType), call);
 
-        return Expression.Lambda<Func<IDataStream, PipelineContext, CancellationToken, Task<IDataStream>>>(
+        return Expression.Lambda<Func<INode, IDataStream, PipelineContext, CancellationToken, Task<IDataStream>>>(
             upcastCall,
+            nodeParam,
             pipeParam,
             ctxParam,
             ctParam).Compile();
+    }
+
+    private static IExecutionStrategy ResolveExecutionStrategy(INode node, string nodeId)
+    {
+        if (node is ITransformNode transformNode)
+            return transformNode.ExecutionStrategy;
+
+        throw new InvalidOperationException(
+            $"Node '{nodeId}' of type '{node.GetType().FullName}' does not implement {nameof(ITransformNode)} and cannot supply an execution strategy.");
+    }
+
+    private static IStreamExecutionStrategy ResolveStreamExecutionStrategy(INode node, string nodeId)
+    {
+        var strategy = node switch
+        {
+            IStreamTransformNode streamTransformNode => streamTransformNode.ExecutionStrategy,
+            ITransformNode transformNode => transformNode.ExecutionStrategy,
+            _ => throw new InvalidOperationException(
+                $"Node '{nodeId}' of type '{node.GetType().FullName}' does not implement {nameof(IStreamTransformNode)} and cannot supply an execution strategy."),
+        };
+
+        if (strategy is IStreamExecutionStrategy streamStrategy)
+            return streamStrategy;
+
+        throw new InvalidOperationException(
+            $"Stream transform node '{nodeId}' is configured with execution strategy '{strategy?.GetType().FullName ?? "<null>"}', " +
+            $"which does not implement {nameof(IStreamExecutionStrategy)}. " +
+            $"Configure a stream-capable strategy for node type '{node.GetType().FullName}'.");
     }
 
     // Helper used by expression tree to upcast Task<IDataStream<T>> to Task<IDataStream>
@@ -294,7 +264,7 @@ public sealed class NodeInstantiationService : INodeInstantiationService
         return result;
     }
 
-    private static Func<PipelineContext, CancellationToken, Task<IDataStream>> BuildSourceDelegate(
+    private static Func<INode, PipelineContext, CancellationToken, Task<IDataStream>> BuildSourceDelegate(
         NodeDefinition def,
         INode instance)
     {
@@ -318,12 +288,12 @@ public sealed class NodeInstantiationService : INodeInstantiationService
             null) ?? throw new InvalidOperationException(
             $"Could not find OpenStream method on {sourceInterface.Name}.");
 
-        // Build a delegate that calls the method and upcasts the result
+        // Build a delegate that calls the method on the supplied node and upcasts the result
+        var nodeParam = Expression.Parameter(typeof(INode), "node");
         var ctxParam = Expression.Parameter(typeof(PipelineContext), "ctx");
         var ctParam = Expression.Parameter(typeof(CancellationToken), "ct");
 
-        var instanceExpr = Expression.Constant(instance);
-        var typedInstanceExpr = Expression.Convert(instanceExpr, sourceInterface);
+        var typedInstanceExpr = Expression.Convert(nodeParam, sourceInterface);
 
         var callExpr = Expression.Call(typedInstanceExpr, executeMethod, ctxParam, ctParam); // IDataStream<TOut>
 
@@ -336,13 +306,13 @@ public sealed class NodeInstantiationService : INodeInstantiationService
 
         var wrappedCall = Expression.Call(fromResultMethod, castExpr); // Task<IDataStream>
 
-        var lambda = Expression.Lambda<Func<PipelineContext, CancellationToken, Task<IDataStream>>>(
-            wrappedCall, ctxParam, ctParam);
+        var lambda = Expression.Lambda<Func<INode, PipelineContext, CancellationToken, Task<IDataStream>>>(
+            wrappedCall, nodeParam, ctxParam, ctParam);
 
         return lambda.Compile();
     }
 
-    private static Func<IDataStream, PipelineContext, CancellationToken, Task> BuildSinkDelegate(
+    private static Func<INode, IDataStream, PipelineContext, CancellationToken, Task> BuildSinkDelegate(
         NodeDefinition def,
         INode instance)
     {
@@ -366,7 +336,8 @@ public sealed class NodeInstantiationService : INodeInstantiationService
             null) ?? throw new InvalidOperationException(
             $"Could not find ConsumeAsync method on {sinkInterface.Name}.");
 
-        // Build a delegate that casts input and calls the method
+        // Build a delegate that casts input and calls the method on the supplied node
+        var nodeParam = Expression.Parameter(typeof(INode), "node");
         var inputParam = Expression.Parameter(typeof(IDataStream), "input");
         var ctxParam = Expression.Parameter(typeof(PipelineContext), "ctx");
         var ctParam = Expression.Parameter(typeof(CancellationToken), "ct");
@@ -374,50 +345,58 @@ public sealed class NodeInstantiationService : INodeInstantiationService
         var typedInputInterface = typeof(IDataStream<>).MakeGenericType(inputType);
         var castInputExpr = Expression.Convert(inputParam, typedInputInterface);
 
-        var instanceExpr = Expression.Constant(instance);
-        var typedInstanceExpr = Expression.Convert(instanceExpr, sinkInterface);
+        var typedInstanceExpr = Expression.Convert(nodeParam, sinkInterface);
 
         var callExpr = Expression.Call(typedInstanceExpr, executeMethod, castInputExpr, ctxParam, ctParam);
 
-        var lambda = Expression.Lambda<Func<IDataStream, PipelineContext, CancellationToken, Task>>(
-            callExpr, inputParam, ctxParam, ctParam);
+        var lambda = Expression.Lambda<Func<INode, IDataStream, PipelineContext, CancellationToken, Task>>(
+            callExpr, nodeParam, inputParam, ctxParam, ctParam);
 
         return lambda.Compile();
     }
 
-    private static Func<IEnumerable<IDataStream>, PipelineContext, CancellationToken, Task<IDataStream>> BuildJoinDelegate(
-        NodeDefinition def,
-        IJoinNode joinNode)
+    private static Func<INode, IEnumerable<IDataStream>, PipelineContext, CancellationToken, Task<IDataStream>> BuildJoinDelegate(
+        NodeDefinition def)
     {
-        return async (inputs, ctx, ct) =>
+        var streamName = $"JoinResult_{def.Id}";
+        var nodeId = def.Id;
+
+        return async (node, inputs, ctx, ct) =>
         {
+            var joinNode = node as IJoinNode
+                           ?? throw new InvalidOperationException(
+                               $"Join node '{nodeId}' of type '{node.GetType().FullName}' does not implement {nameof(IJoinNode)}.");
+
             var merged = inputs.First(); // merge already performed upstream
             var stream = merged.ToAsyncEnumerable(ct);
             var joined = await joinNode.ExecuteAsync(stream, ctx, ct).ConfigureAwait(false);
-            return new DataStream<object?>(joined, $"JoinResult_{def.Id}");
+            return new DataStream<object?>(joined, streamName);
         };
     }
 
-    private static Func<IDataStream, PipelineContext, CancellationToken, Task<IDataStream>> BuildAggregateDelegate(
-        NodeDefinition def,
-        IAggregateNode aggregateNode)
+    private static Func<INode, IDataStream, PipelineContext, CancellationToken, Task<IDataStream>> BuildAggregateDelegate(
+        NodeDefinition def)
     {
-        return async (input, ctx, ct) =>
+        var streamName = $"AggregateResult_{def.Id}";
+        var nodeId = def.Id;
+
+        return async (node, input, ctx, ct) =>
         {
+            var aggregateNode = node as IAggregateNode
+                                ?? throw new InvalidOperationException(
+                                    $"Aggregate node '{nodeId}' of type '{node.GetType().FullName}' does not implement {nameof(IAggregateNode)}.");
+
             var stream = input.ToAsyncEnumerable(ct);
-            var result = await aggregateNode.ExecuteAsync(stream, ct);
+            var result = await aggregateNode.ExecuteAsync(stream, ct).ConfigureAwait(false);
 
             if (result is IAsyncEnumerable<object?> asyncEnum)
-                return new DataStream<object?>(asyncEnum, $"AggregateResult_{def.Id}");
+                return new DataStream<object?>(asyncEnum, streamName);
 
-            List<object?> list;
+            List<object?> list = result is not null
+                ? [result]
+                : [];
 
-            if (result is not null)
-                list = [result];
-            else
-                list = [];
-
-            return new DataStream<object?>(list.ToAsyncEnumerable(), $"AggregateResult_{def.Id}");
+            return new DataStream<object?>(list.ToAsyncEnumerable(), streamName);
         };
     }
 

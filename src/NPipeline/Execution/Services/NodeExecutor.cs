@@ -39,34 +39,22 @@ public sealed class NodeExecutor(
 
         return plan.Kind switch
         {
-            NodeKind.Source when plan.ExecuteSource is not null =>
-                ExecuteSourcePlanAsync(plan, graph, context, nodeOutputs),
-            NodeKind.Transform when plan.ExecuteTransform is not null =>
+            NodeKind.Source or NodeKind.CompositeInput when plan.ExecuteSource is not null =>
+                ExecuteSourcePlanAsync(plan, graph, context, nodeOutputs, instance),
+
+            NodeKind.Transform or NodeKind.StreamTransform or NodeKind.Tap or NodeKind.Branch or NodeKind.Route
+                or NodeKind.Lookup or NodeKind.Composite or NodeKind.Batch when plan.ExecuteTransform is not null =>
                 ExecuteTransformPlanAsync(plan, graph, context, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, nodeDef, instance),
-            NodeKind.StreamTransform when plan.ExecuteTransform is not null =>
-                ExecuteTransformPlanAsync(plan, graph, context, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, nodeDef, instance),
-            NodeKind.Tap when plan.ExecuteTransform is not null =>
-                ExecuteTransformPlanAsync(plan, graph, context, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, nodeDef, instance),
-            NodeKind.Branch when plan.ExecuteTransform is not null =>
-                ExecuteTransformPlanAsync(plan, graph, context, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, nodeDef, instance),
-            NodeKind.Route when plan.ExecuteTransform is not null =>
-                ExecuteTransformPlanAsync(plan, graph, context, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, nodeDef, instance),
-            NodeKind.Lookup when plan.ExecuteTransform is not null =>
-                ExecuteTransformPlanAsync(plan, graph, context, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, nodeDef, instance),
-            NodeKind.Composite when plan.ExecuteTransform is not null =>
-                ExecuteTransformPlanAsync(plan, graph, context, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, nodeDef, instance),
-            NodeKind.Batch when plan.ExecuteTransform is not null =>
-                ExecuteTransformPlanAsync(plan, graph, context, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, nodeDef, instance),
+
             NodeKind.Join when plan.ExecuteJoin is not null =>
                 ExecuteJoinPlanAsync(plan, graph, context, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, nodeDef, instance),
+
             NodeKind.Aggregate when plan.ExecuteAggregate is not null =>
-                ExecuteAggregatePlanAsync(plan, graph, context, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, nodeDef),
-            NodeKind.Sink when plan.ExecuteSink is not null =>
-                ExecuteSinkPlanAsync(plan, graph, context, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, nodeDef),
-            NodeKind.CompositeInput when plan.ExecuteSource is not null =>
-                ExecuteSourcePlanAsync(plan, graph, context, nodeOutputs),
-            NodeKind.CompositeOutput when plan.ExecuteSink is not null =>
-                ExecuteSinkPlanAsync(plan, graph, context, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, nodeDef),
+                ExecuteAggregatePlanAsync(plan, graph, context, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, nodeDef, instance),
+
+            NodeKind.Sink or NodeKind.CompositeOutput when plan.ExecuteSink is not null =>
+                ExecuteSinkPlanAsync(plan, graph, context, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, nodeDef, instance),
+
             _ => throw new NotSupportedException(ErrorMessages.NodeKindNotSupported(plan.Kind.ToString())),
         };
     }
@@ -74,9 +62,10 @@ public sealed class NodeExecutor(
     private async Task ExecuteSourcePlanAsync(NodeExecutionPlan plan,
         PipelineGraph graph,
         PipelineContext context,
-        IDictionary<string, IDataStream?> nodeOutputs)
+        IDictionary<string, IDataStream?> nodeOutputs,
+        INode instance)
     {
-        var output = await plan.ExecuteSource!(context, context.CancellationToken);
+        var output = await plan.ExecuteSource!(instance, context, context.CancellationToken).ConfigureAwait(false);
 
         if (graph.Lineage.ItemLevelLineageEnabled)
             output = lineage.WrapSourceStream(output, plan.NodeId, context.PipelineId, context.PipelineName, graph.Lineage.LineageOptions);
@@ -107,7 +96,7 @@ public sealed class NodeExecutor(
             var (unwrapped, rewrap) = adapter(input, plan.NodeId, context.PipelineId, context.PipelineName,
                 nodeDef.DeclaredCardinality ?? TransformCardinality.OneToOne, graph.Lineage.LineageOptions, context.CancellationToken);
 
-            var transformTask = plan.ExecuteTransform!(unwrapped, context, context.CancellationToken);
+            var transformTask = plan.ExecuteTransform!(instance, unwrapped, context, context.CancellationToken);
 
             var raw = transformTask.IsCompletedSuccessfully
                 ? transformTask.Result
@@ -117,7 +106,7 @@ public sealed class NodeExecutor(
         }
         else
         {
-            var transformTask = plan.ExecuteTransform!(input, context, context.CancellationToken);
+            var transformTask = plan.ExecuteTransform!(instance, input, context, context.CancellationToken);
 
             transformed = transformTask.IsCompletedSuccessfully
                 ? transformTask.Result
@@ -156,7 +145,7 @@ public sealed class NodeExecutor(
             var (unwrappedInput, inputLineageContext) = lineage.PrepareInputWithLineageContext(merged, context.CancellationToken);
             context.RegisterForDisposal(unwrappedInput as IAsyncDisposable ?? merged);
 
-            var rawOutput = await plan.ExecuteJoin!([unwrappedInput], context, context.CancellationToken);
+            var rawOutput = await plan.ExecuteJoin!(instance, [unwrappedInput], context, context.CancellationToken).ConfigureAwait(false);
             var expectedOut = nodeDef.OutputType ?? rawOutput.GetDataType();
 
             if (rawOutput.GetDataType() != expectedOut)
@@ -175,7 +164,7 @@ public sealed class NodeExecutor(
         }
         else
         {
-            output = await plan.ExecuteJoin!([merged], context, context.CancellationToken);
+            output = await plan.ExecuteJoin!(instance, [merged], context, context.CancellationToken).ConfigureAwait(false);
 
             // Ensure typed output if delegate returned an untyped/object pipe
             if (nodeDef.OutputType is not null && output.GetDataType() != nodeDef.OutputType)
@@ -209,9 +198,12 @@ public sealed class NodeExecutor(
         IDictionary<string, IDataStream?> nodeOutputs,
         IReadOnlyDictionary<string, INode> nodeInstances,
         IReadOnlyDictionary<string, NodeDefinition> nodeDefinitionMap,
-        NodeDefinition nodeDef)
+        NodeDefinition nodeDef,
+        INode instance)
     {
-        var input = await GetNodeInputAsync(plan.NodeId, graph, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, context.CancellationToken);
+        var input = await GetNodeInputAsync(plan.NodeId, graph, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, context.CancellationToken)
+            .ConfigureAwait(false);
+
         IDataStream output;
 
         if (graph.Lineage.ItemLevelLineageEnabled)
@@ -219,7 +211,7 @@ public sealed class NodeExecutor(
             var (unwrappedInput, inputLineageContext) = lineage.PrepareInputWithLineageContext(input, context.CancellationToken);
             context.RegisterForDisposal(unwrappedInput as IAsyncDisposable ?? input);
 
-            output = await plan.ExecuteAggregate!(unwrappedInput, context, context.CancellationToken);
+            output = await plan.ExecuteAggregate!(instance, unwrappedInput, context, context.CancellationToken).ConfigureAwait(false);
 
             // Adapt aggregate output to declared OutputType prior to lineage wrapping so sinks get strongly typed pipes.
             if (nodeDef.OutputType is not null && output.GetDataType() != nodeDef.OutputType)
@@ -238,7 +230,7 @@ public sealed class NodeExecutor(
         }
         else
         {
-            output = await plan.ExecuteAggregate!(input, context, context.CancellationToken);
+            output = await plan.ExecuteAggregate!(instance, input, context, context.CancellationToken).ConfigureAwait(false);
 
             // Ensure output pipe matches declared result type for downstream strict casting (e.g., SinkNode<T>).
             if (nodeDef.OutputType is not null && output.GetDataType() != nodeDef.OutputType)
@@ -270,9 +262,12 @@ public sealed class NodeExecutor(
         IDictionary<string, IDataStream?> nodeOutputs,
         IReadOnlyDictionary<string, INode> nodeInstances,
         IReadOnlyDictionary<string, NodeDefinition> nodeDefinitionMap,
-        NodeDefinition nodeDef)
+        NodeDefinition nodeDef,
+        INode instance)
     {
-        var input = await GetNodeInputAsync(plan.NodeId, graph, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, context.CancellationToken);
+        var input = await GetNodeInputAsync(plan.NodeId, graph, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, context.CancellationToken)
+            .ConfigureAwait(false);
+
         var effectiveInput = input;
 
         if (graph.Lineage.ItemLevelLineageEnabled)
@@ -291,7 +286,7 @@ public sealed class NodeExecutor(
         var sinkStart = Stopwatch.GetTimestamp();
         try
         {
-            await plan.ExecuteSink!(effectiveInput, context, context.CancellationToken).ConfigureAwait(false);
+            await plan.ExecuteSink!(instance, effectiveInput, context, context.CancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
