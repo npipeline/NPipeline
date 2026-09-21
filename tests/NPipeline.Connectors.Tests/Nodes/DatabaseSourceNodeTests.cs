@@ -51,10 +51,9 @@ public class DatabaseSourceNodeTests
     public async Task Initialize_WithInMemoryCheckpoint_SkipsAlreadyProcessedRows()
     {
         // Arrange - pre-seed checkpoint: 2 rows already processed.
-        // PipelineContext.CurrentNodeId defaults to string.Empty (not null),
-        // so DatabaseSourceNode uses "" as pipelineId (not "default").
+        // A node outside a pipeline cannot resolve a node id, so the checkpoint is keyed on PipelineId.
         const string checkpointId = "TestCheckpoint";
-        const string pipelineId = "";
+        const string pipelineId = "default";
         var storage = new InMemoryCheckpointStorage();
         await storage.SaveAsync(pipelineId, checkpointId, Checkpoint.Create("2"));
 
@@ -76,6 +75,30 @@ public class DatabaseSourceNodeTests
         var finalCheckpoint = await storage.LoadAsync(pipelineId, checkpointId);
         finalCheckpoint.Should().NotBeNull();
         finalCheckpoint!.GetAsOffset().Should().Be(4);
+    }
+
+    [Fact]
+    public async Task Initialize_WithinAPipeline_KeysTheCheckpointOnTheNodeId()
+    {
+        const string checkpointId = "TestCheckpoint";
+        var storage = new InMemoryCheckpointStorage();
+        await storage.SaveAsync("reader-node", checkpointId, Checkpoint.Create("2"));
+
+        var node = new TestDatabaseSourceNode(
+            new[] { 1, 2, 3, 4 },
+            false,
+            CheckpointStrategy.InMemory,
+            checkpointId: checkpointId,
+            checkpointStorage: storage);
+
+        var context = new PipelineContext();
+        context.NodeEnvironment.RegisterNode("reader-node", node);
+
+        var result = node.OpenStream(context, CancellationToken.None);
+
+        // The node resolves its own id, so it resumes from the checkpoint saved under that id.
+        var dataStream = result.Should().BeOfType<InMemoryDataStream<int>>().Subject;
+        dataStream.Items.Should().Equal(3, 4);
     }
 
     private sealed class TestDatabaseSourceNode : DatabaseSourceNode<FakeDatabaseReader, int>

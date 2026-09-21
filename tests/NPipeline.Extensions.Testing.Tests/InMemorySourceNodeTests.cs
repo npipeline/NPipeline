@@ -89,10 +89,8 @@ public class InMemorySourceNodeTests
         var items = new[] { 1, 2, 3 };
         context.SetSourceData(items, "testNode");
 
-        // Set CurrentNodeId through reflection since it's an internal setter
-        context.NodeEnvironment.GetType().GetProperty(nameof(PipelineNodeEnvironmentContext.CurrentNodeId))
-            ?.SetValue(context.NodeEnvironment, "testNode");
         var node = new InMemorySourceNode<int>();
+        context.NodeEnvironment.RegisterNode("testNode", node);
 
         // Act
         var result = node.OpenStream(context, CancellationToken.None);
@@ -117,10 +115,8 @@ public class InMemorySourceNodeTests
         var items = new[] { 1, 2, 3 };
         context.SetSourceData(items);
 
-        // Set CurrentNodeId through reflection since it's an internal setter
-        context.NodeEnvironment.GetType().GetProperty(nameof(PipelineNodeEnvironmentContext.CurrentNodeId))
-            ?.SetValue(context.NodeEnvironment, "testNode");
         var node = new InMemorySourceNode<int>();
+        context.NodeEnvironment.RegisterNode("testNode", node);
 
         // Act
         var result = node.OpenStream(context, CancellationToken.None);
@@ -148,10 +144,8 @@ public class InMemorySourceNodeTests
         var context = PipelineContext.CreateDefault();
         context.Items[PipelineContextKeys.TestingParentContext] = parentContext;
 
-        // Set CurrentNodeId through reflection since it's an internal setter
-        context.NodeEnvironment.GetType().GetProperty(nameof(PipelineNodeEnvironmentContext.CurrentNodeId))
-            ?.SetValue(context.NodeEnvironment, "testNode");
         var node = new InMemorySourceNode<int>();
+        context.NodeEnvironment.RegisterNode("testNode", node);
 
         // Act
         var result = node.OpenStream(context, CancellationToken.None);
@@ -174,10 +168,8 @@ public class InMemorySourceNodeTests
         // Arrange
         var context = PipelineContext.CreateDefault();
 
-        // Set CurrentNodeId through reflection since it's an internal setter
-        context.NodeEnvironment.GetType().GetProperty(nameof(PipelineNodeEnvironmentContext.CurrentNodeId))
-            ?.SetValue(context.NodeEnvironment, "testNode");
         var node = new InMemorySourceNode<int>();
+        context.NodeEnvironment.RegisterNode("testNode", node);
 
         // Act & Assert
         var exception = Assert.Throws<InvalidOperationException>(() => node.OpenStream(context, CancellationToken.None));

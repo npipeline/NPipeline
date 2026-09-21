@@ -39,6 +39,7 @@ public interface IResiliencePolicy
 
     ValueTask<TimeSpan> GetRetryDelayAsync(
         PipelineContext context,
+        RetryKind retryKind,
         int attemptNumber,
         CancellationToken cancellationToken);
 

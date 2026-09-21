@@ -39,7 +39,7 @@ public sealed class InMemorySourceNode<T> : SourceNode<T>
     /// <summary>
     ///     Initializes a new instance of the <see cref="InMemorySourceNode{T}" /> class that resolves items from PipelineContext.
     ///     Context resolution order:
-    ///     - Node-scoped: "NPipeline.Testing.SourceData::{context.NodeEnvironment.CurrentNodeId}"
+    ///     - Node-scoped: "NPipeline.Testing.SourceData::{nodeId}"
     ///     - Type-scoped: "NPipeline.Testing.SourceData::{typeof(T).FullName}"
     /// </summary>
     /// <param name="context">The pipeline context to resolve items from.</param>
@@ -55,7 +55,7 @@ public sealed class InMemorySourceNode<T> : SourceNode<T>
     /// <summary>
     ///     Initializes a new instance of the <see cref="InMemorySourceNode{T}" /> class that resolves items from PipelineContext.
     ///     Context resolution order:
-    ///     - Node-scoped: "NPipeline.Testing.SourceData::{context.NodeEnvironment.CurrentNodeId}"
+    ///     - Node-scoped: "NPipeline.Testing.SourceData::{nodeId}"
     ///     - Type-scoped: "NPipeline.Testing.SourceData::{typeof(T).FullName}"
     /// </summary>
     /// <param name="context">The pipeline context to resolve items from.</param>
@@ -73,9 +73,11 @@ public sealed class InMemorySourceNode<T> : SourceNode<T>
         if (!_useContext)
             return new InMemoryDataStream<T>(_items!);
 
-        var items = ResolveFromContext(context, context.NodeEnvironment.CurrentNodeId)
+        var nodeId = context.NodeEnvironment.TryGetNodeId(this, out var resolved) ? resolved : string.Empty;
+
+        var items = ResolveFromContext(context, nodeId)
                     ?? throw new InvalidOperationException(
-                        $"No source data configured for node '{context.NodeEnvironment.CurrentNodeId}' of type '{typeof(T).Name}'. " +
+                        $"No source data configured for node '{nodeId}' of type '{typeof(T).Name}'. " +
                         $"Set data via context.SetSourceData<{typeof(T).Name}>(...) before running, or use InMemorySourceNode<T>(IEnumerable<T>) constructor.");
 
         return new InMemoryDataStream<T>(items);

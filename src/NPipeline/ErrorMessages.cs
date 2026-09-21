@@ -354,6 +354,18 @@ internal static class ErrorMessages
                $"See: {DocsBaseUrl}#{ErrorCodes.NodeCannotSupplyExecutionStrategy}";
     }
 
+    public static string NodeIdNotResolvable(string nodeTypeName, bool noRunInProgress)
+    {
+        var cause = noRunInProgress
+            ? "No pipeline run owns this context, so there is no graph to resolve the id against — this happens when a node is exercised directly in a test."
+            : "The instance is not one of this run's nodes, or the same instance is wired into the graph under more than one id, so the question has no single answer.";
+
+        return $"[{ErrorCodes.NodeIdNotResolvable}] Node of type '{nodeTypeName}' asked for its own id but it could not be resolved. " +
+               $"{cause} " +
+               $"Use TryGetNodeId where a node may legitimately run outside a pipeline, or give each graph position its own instance. " +
+               $"See: {DocsBaseUrl}#{ErrorCodes.NodeIdNotResolvable}";
+    }
+
     public static string LineageAdapterMissing(string nodeId)
     {
         return $"[{ErrorCodes.LineageAdapterMissing}] Lineage adapter missing for node '{nodeId}'. " +

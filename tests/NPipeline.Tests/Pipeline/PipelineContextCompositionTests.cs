@@ -44,12 +44,6 @@ public sealed class PipelineContextCompositionTests
         context.Observability.ExecutionObserver = null!;
         context.ExecutionConfiguration.GlobalRetryOptions = effectiveRetryOptions;
 
-        using (context.ScopedNode("node-a"))
-        {
-            _ = context.NodeEnvironment.CurrentNodeId.Should().Be("node-a");
-            _ = context.NodeEnvironment.CurrentNodeId.Should().Be("node-a");
-        }
-
         context.RunIdentity.PipelineName = "Invoices";
 
         // Assert
@@ -60,6 +54,5 @@ public sealed class PipelineContextCompositionTests
         _ = context.Observability.ExecutionObserver.Should().BeSameAs(NullExecutionObserver.Instance);
         _ = context.ExecutionConfiguration.GlobalRetryOptions.Should().BeSameAs(context.ExecutionConfiguration.GlobalRetryOptions);
         _ = context.ExecutionConfiguration.GlobalRetryOptions.Should().Be(effectiveRetryOptions);
-        _ = context.NodeEnvironment.CurrentNodeId.Should().BeEmpty();
     }
 }

@@ -256,6 +256,9 @@ public static class ErrorCodes
     /// <summary>A node was reached on an execution path that requires an execution strategy it cannot supply.</summary>
     public const string NodeCannotSupplyExecutionStrategy = "NP0422";
 
+    /// <summary>A node asked for its own id but is not resolvable in the current run.</summary>
+    public const string NodeIdNotResolvable = "NP0423";
+
     #endregion
 
     #region Resource Management Errors (NP05xx)

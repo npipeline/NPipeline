@@ -1,3 +1,4 @@
+using NPipeline.Execution;
 using NPipeline.Graph;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
@@ -41,10 +42,19 @@ public interface IResiliencePolicy
         CancellationToken cancellationToken);
 
     /// <summary>
-    ///     Resolves retry delay for the given attempt.
+    ///     Resolves the backoff to wait before the given retry attempt.
     /// </summary>
+    /// <param name="context">The pipeline context.</param>
+    /// <param name="retryKind">
+    ///     Whether a single item is being retried or the whole node is being restarted. The two have very different
+    ///     costs — an item retry is cheap and typically wants a short backoff, a node restart replays the node's
+    ///     entire input — so a policy will usually want to answer them differently.
+    /// </param>
+    /// <param name="attemptNumber">The 1-based number of the attempt about to be made.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
     ValueTask<TimeSpan> GetRetryDelayAsync(
         PipelineContext context,
+        RetryKind retryKind,
         int attemptNumber,
         CancellationToken cancellationToken);
 

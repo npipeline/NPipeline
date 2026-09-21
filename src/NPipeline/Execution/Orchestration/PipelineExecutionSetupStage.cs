@@ -36,6 +36,7 @@ internal sealed class PipelineExecutionSetupStage(
         ConfigureCircuitBreaker(graph, context);
 
         var nodeInstances = nodeInstantiationService.InstantiateNodes(graph, nodeFactory);
+        context.NodeEnvironment.RegisterNodes(nodeInstances);
         ApplyGlobalExecutionAnnotations(graph, context);
         ApplyGlobalServicesFromProperties(context);
 

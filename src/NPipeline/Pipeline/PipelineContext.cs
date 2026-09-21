@@ -461,23 +461,6 @@ public sealed class PipelineContext : IAsyncDisposable
         return registry is not null;
     }
 
-    /// <summary>
-    ///     Sets the CurrentNodeId for the duration of the returned disposable scope.
-    /// </summary>
-    /// <param name="nodeId">The ID of the node to set as current.</param>
-    /// <returns>A non-allocating disposable scope that restores the original node ID upon disposal.</returns>
-    /// <remarks>
-    ///     Inert while nodes are running concurrently. <see cref="PipelineNodeEnvironmentContext.CurrentNodeId" /> is one field on a shared context,
-    ///     so concurrent scopes would interleave their writes and restores and leave it pointing at whichever node
-    ///     finished last. Freezing it is the honest behaviour: a stale id beats an arbitrary one.
-    /// </remarks>
-    public NodeScope ScopedNode(string nodeId)
-    {
-        return NodeEnvironment.NodesRunConcurrently
-            ? default
-            : new NodeScope(this, nodeId);
-    }
-
     private void ClearOwnedDictionaries()
     {
         ExecutionConfiguration.NodeRetryOverrides.Clear();
@@ -491,31 +474,5 @@ public sealed class PipelineContext : IAsyncDisposable
 
         if (_ownsPropertiesDictionary)
             Properties.Clear();
-    }
-
-    /// <summary>
-    ///     Allocation-free disposable scope that sets <see cref="PipelineNodeEnvironmentContext.CurrentNodeId" /> for its lifetime
-    ///     and restores the previous node id on disposal.
-    /// </summary>
-    public readonly struct NodeScope : IDisposable
-    {
-        private readonly PipelineContext? _context;
-        private readonly string _previousNodeId;
-
-        internal NodeScope(PipelineContext context, string newNodeId)
-        {
-            _context = context;
-            _previousNodeId = context.NodeEnvironment.CurrentNodeId;
-            context.NodeEnvironment.CurrentNodeId = newNodeId;
-        }
-
-        /// <summary>
-        ///     Restores the previous node id. A default-constructed scope tracks no context and does nothing.
-        /// </summary>
-        public void Dispose()
-        {
-            if (_context is not null)
-                _context.NodeEnvironment.CurrentNodeId = _previousNodeId;
-        }
     }
 }

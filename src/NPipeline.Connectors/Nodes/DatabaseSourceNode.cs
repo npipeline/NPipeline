@@ -189,7 +189,8 @@ public abstract class DatabaseSourceNode<TReader, T> : SourceNode<T>, IAsyncDisp
             return;
 
         var storage = ResolveCheckpointStorage();
-        var pipelineId = context.NodeEnvironment.CurrentNodeId ?? PipelineId;
+        // Checkpoints are per graph position, so the node's own id is the right key when it has one.
+        var pipelineId = context.NodeEnvironment.TryGetNodeId(this, out var nodeId) ? nodeId : PipelineId;
 
         _checkpointManager = new CheckpointManager(
             storage,

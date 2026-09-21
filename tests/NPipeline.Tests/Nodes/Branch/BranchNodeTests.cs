@@ -1,3 +1,4 @@
+using NPipeline.Execution;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using AwesomeAssertions;
@@ -90,7 +91,7 @@ public sealed class BranchNodeTests
             return Task.FromResult(ResilienceDecision.Fail);
         }
 
-        public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, int attemptNumber, CancellationToken cancellationToken)
+        public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, RetryKind retryKind, int attemptNumber, CancellationToken cancellationToken)
         {
             return context.GetRetryDelayStrategy().GetDelayAsync(attemptNumber, cancellationToken);
         }
@@ -135,7 +136,7 @@ public sealed class BranchNodeTests
             return Task.FromResult(ResilienceDecision.Fail);
         }
 
-        public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, int attemptNumber, CancellationToken cancellationToken)
+        public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, RetryKind retryKind, int attemptNumber, CancellationToken cancellationToken)
         {
             return context.GetRetryDelayStrategy().GetDelayAsync(attemptNumber, cancellationToken);
         }

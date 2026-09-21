@@ -1,5 +1,6 @@
 // ReSharper disable ClassNeverInstantiated.Local
 
+using NPipeline.Execution;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using AwesomeAssertions;
@@ -193,7 +194,7 @@ public sealed class ResilientMemoryUsageTests
             return Task.FromResult(ResilienceDecision.Fail);
         }
 
-        public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, int attemptNumber, CancellationToken cancellationToken)
+        public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, RetryKind retryKind, int attemptNumber, CancellationToken cancellationToken)
         {
             return context.GetRetryDelayStrategy().GetDelayAsync(attemptNumber, cancellationToken);
         }

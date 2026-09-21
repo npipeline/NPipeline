@@ -1,3 +1,6 @@
+using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 using NPipeline.Execution;
 using NPipeline.Nodes;
 
@@ -8,40 +11,87 @@ namespace NPipeline.Pipeline;
 /// </summary>
 public sealed class PipelineNodeEnvironmentContext
 {
-    private string _currentNodeId = string.Empty;
-    private volatile bool _nodesRunConcurrently;
+    private readonly ConcurrentDictionary<INode, string> _nodeIdsByInstance =
+        new(ReferenceEqualityComparer.Instance as IEqualityComparer<INode>);
 
     /// <summary>
-    ///     The ID of the node currently being executed.
+    ///     Gets the id under which <paramref name="node" /> is running in this pipeline.
     /// </summary>
+    /// <param name="node">The node asking, normally <c>this</c>.</param>
+    /// <returns>The node's id in the graph.</returns>
     /// <remarks>
-    ///     <para>
-    ///         A single field on a context shared by every node in the run, so it is only meaningful while nodes run
-    ///         one at a time. It is maintained for node authors who want to know which node they are running as; no
-    ///         framework decision depends on it. Framework code receives the node id explicitly — see the
-    ///         <c>nodeId</c> parameter on <see cref="Execution.IExecutionStrategy" />.
-    ///     </para>
-    ///     <para>
-    ///         While terminal nodes drain concurrently, the field is frozen rather than written by each of them: see
-    ///         <see cref="NodesRunConcurrently" />. A node running in that phase therefore sees a stale id rather than
-    ///         another node's, and the field is never left pointing somewhere arbitrary afterwards.
-    ///     </para>
+    ///     A node's id belongs to the graph, not to the node object and not to the run as a whole, so it is looked up
+    ///     by the instance's reference identity. The answer is exact no matter how many nodes are running at once,
+    ///     and it costs one dictionary lookup only when a node asks.
     /// </remarks>
-    public string CurrentNodeId
+    /// <exception cref="InvalidOperationException">
+    ///     The node is not part of this run, or the same instance was registered under more than one id. Use
+    ///     <see cref="TryGetNodeId" /> where a node may legitimately run outside a pipeline, such as in a unit test.
+    /// </exception>
+    public string GetNodeId(INode node)
     {
-        get => _currentNodeId;
-        internal set => _currentNodeId = value ?? string.Empty;
+        ArgumentNullException.ThrowIfNull(node);
+
+        if (TryGetNodeId(node, out var nodeId))
+            return nodeId;
+
+        throw new InvalidOperationException(ErrorMessages.NodeIdNotResolvable(
+            node.GetType().FullName ?? node.GetType().Name,
+            _nodeIdsByInstance.IsEmpty));
     }
 
     /// <summary>
-    ///     Set while more than one node is executing at once, which is the case only when terminal nodes below a
-    ///     fan-out are drained together. <see cref="PipelineContext.ScopedNode" /> is inert while this is set, so
-    ///     concurrent workers cannot interleave writes to <see cref="PipelineNodeEnvironmentContext.CurrentNodeId" />.
+    ///     Gets the id under which <paramref name="node" /> is running, if it can be resolved.
     /// </summary>
-    internal bool NodesRunConcurrently
+    /// <param name="node">The node asking, normally <c>this</c>.</param>
+    /// <param name="nodeId">The node's id in the graph, or <see cref="string.Empty" /> when it cannot be resolved.</param>
+    /// <returns>
+    ///     <see langword="false" /> when the node is not part of this run — it was constructed outside a pipeline, or
+    ///     the same instance is registered under more than one id and the question has no single answer.
+    /// </returns>
+    public bool TryGetNodeId(INode node, [NotNullWhen(true)] out string? nodeId)
     {
-        get => _nodesRunConcurrently;
-        set => _nodesRunConcurrently = value;
+        ArgumentNullException.ThrowIfNull(node);
+
+        if (_nodeIdsByInstance.TryGetValue(node, out var found) && found.Length > 0)
+        {
+            nodeId = found;
+            return true;
+        }
+
+        nodeId = null;
+        return false;
+    }
+
+    /// <summary>
+    ///     Associates a node instance with the id it runs as, so the node can ask for it with
+    ///     <see cref="GetNodeId" />.
+    /// </summary>
+    /// <param name="nodeId">The node's id in the graph.</param>
+    /// <param name="node">The instance occupying that graph position.</param>
+    /// <remarks>
+    ///     A pipeline run registers its nodes during setup. Call it directly when driving a node outside a run — a
+    ///     unit test exercising a node that wants to know its id. Registering the same instance under a second id
+    ///     records the ambiguity instead of choosing between them, so asking then reports it rather than answering
+    ///     with whichever registration happened to be last.
+    /// </remarks>
+    public void RegisterNode(string nodeId, INode node)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(nodeId);
+        ArgumentNullException.ThrowIfNull(node);
+
+        _ = _nodeIdsByInstance.AddOrUpdate(
+            node,
+            nodeId,
+            (_, existing) => existing == nodeId ? existing : string.Empty);
+    }
+
+    internal void RegisterNodes(IReadOnlyDictionary<string, INode> nodeInstances)
+    {
+        foreach (var (nodeId, instance) in nodeInstances)
+        {
+            RegisterNode(nodeId, instance);
+        }
     }
 
     /// <summary>

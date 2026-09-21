@@ -18,14 +18,11 @@ public sealed class ParallelExecutionStrategyValueTaskTests
         var context = new PipelineContext();
         List<int> results = [];
 
-        using (context.ScopedNode("transform"))
-        {
-            await using var output = await strategy.ExecuteAsync(input, transform, context, "transform", CancellationToken.None);
+        await using var output = await strategy.ExecuteAsync(input, transform, context, "transform", CancellationToken.None);
 
-            await foreach (var value in output.WithCancellation(CancellationToken.None))
-            {
-                results.Add(value);
-            }
+        await foreach (var value in output.WithCancellation(CancellationToken.None))
+        {
+            results.Add(value);
         }
 
         _ = results.Should().BeEquivalentTo([2, 3, 4]);
@@ -42,21 +39,18 @@ public sealed class ParallelExecutionStrategyValueTaskTests
         var context = new PipelineContext();
         List<int> results = [];
 
-        using (context.ScopedNode("transform"))
+        context.NodeEnvironment.NodeExecutionScopeRegistry.SetNodeExecutionAnnotation("transform", new ParallelOptions
         {
-            context.NodeEnvironment.NodeExecutionScopeRegistry.SetNodeExecutionAnnotation("transform", new ParallelOptions
-            {
-                MaxDegreeOfParallelism = 1,
-                MaxQueueLength = 4,
-                QueuePolicy = BoundedQueuePolicy.DropOldest,
-            });
+            MaxDegreeOfParallelism = 1,
+            MaxQueueLength = 4,
+            QueuePolicy = BoundedQueuePolicy.DropOldest,
+        });
 
-            await using var output = await strategy.ExecuteAsync(input, transform, context, "transform", CancellationToken.None);
+        await using var output = await strategy.ExecuteAsync(input, transform, context, "transform", CancellationToken.None);
 
-            await foreach (var value in output.WithCancellation(CancellationToken.None))
-            {
-                results.Add(value);
-            }
+        await foreach (var value in output.WithCancellation(CancellationToken.None))
+        {
+            results.Add(value);
         }
 
         int[] expected = [11, 21, 31];
@@ -74,21 +68,18 @@ public sealed class ParallelExecutionStrategyValueTaskTests
         var context = new PipelineContext();
         List<int> results = [];
 
-        using (context.ScopedNode("transform"))
+        context.NodeEnvironment.NodeExecutionScopeRegistry.SetNodeExecutionAnnotation("transform", new ParallelOptions
         {
-            context.NodeEnvironment.NodeExecutionScopeRegistry.SetNodeExecutionAnnotation("transform", new ParallelOptions
-            {
-                MaxDegreeOfParallelism = 1,
-                MaxQueueLength = 4,
-                QueuePolicy = BoundedQueuePolicy.DropNewest,
-            });
+            MaxDegreeOfParallelism = 1,
+            MaxQueueLength = 4,
+            QueuePolicy = BoundedQueuePolicy.DropNewest,
+        });
 
-            await using var output = await strategy.ExecuteAsync(input, transform, context, "transform", CancellationToken.None);
+        await using var output = await strategy.ExecuteAsync(input, transform, context, "transform", CancellationToken.None);
 
-            await foreach (var value in output.WithCancellation(CancellationToken.None))
-            {
-                results.Add(value);
-            }
+        await foreach (var value in output.WithCancellation(CancellationToken.None))
+        {
+            results.Add(value);
         }
 
         int[] expected = [8, 9, 10];
@@ -112,25 +103,22 @@ public sealed class ParallelExecutionStrategyValueTaskTests
 
         try
         {
-            using (context.ScopedNode("transform"))
+            await using var output = await strategy.ExecuteAsync(input, transform, context, "transform", CancellationToken.None);
+
+            var threw = false;
+
+            try
             {
-                await using var output = await strategy.ExecuteAsync(input, transform, context, "transform", CancellationToken.None);
-
-                var threw = false;
-
-                try
+                await foreach (var _ in output.WithCancellation(CancellationToken.None))
                 {
-                    await foreach (var _ in output.WithCancellation(CancellationToken.None))
-                    {
-                    }
                 }
-                catch
-                {
-                    threw = true;
-                }
-
-                _ = threw.Should().BeTrue();
             }
+            catch
+            {
+                threw = true;
+            }
+
+            _ = threw.Should().BeTrue();
         }
         finally
         {

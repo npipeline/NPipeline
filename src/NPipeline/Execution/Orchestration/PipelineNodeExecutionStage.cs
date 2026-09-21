@@ -87,41 +87,30 @@ internal sealed class PipelineNodeExecutionStage(
         var synchronizedOutputs = new SynchronizedNodeOutputs(nodeOutputs, gate);
         var tasks = new List<Task>(terminals.Count);
 
-        // Freeze CurrentNodeId for the duration: it is one field on the shared context, and these terminals would
-        // otherwise interleave their per-item scopes and leave it pointing at whichever finished last.
-        context.NodeEnvironment.NodesRunConcurrently = true;
-
-        try
+        foreach (var nodeDef in terminals)
         {
-            foreach (var nodeDef in terminals)
-            {
-                tasks.Add(Task.Run(
-                    () => ExecuteNodeAsync(nodeDef, setup, context, inputLookup, synchronizedOutputs, gate),
-                    context.CancellationToken));
-            }
-
-            // Surface the first failure without waiting on the siblings. A terminal that throws before it starts
-            // reading never drains its branch, so the multicast pump blocks on that branch and its siblings stop
-            // making progress. Cleanup disposes the streams, which cancels the pump and releases them.
-            var pending = new List<Task>(tasks);
-
-            while (pending.Count > 0)
-            {
-                var finished = await Task.WhenAny(pending).ConfigureAwait(false);
-                _ = pending.Remove(finished);
-
-                if (finished.IsCompletedSuccessfully)
-                    continue;
-
-                // Cleanup is about to iterate and dispose the node outputs; stragglers must stop touching them.
-                synchronizedOutputs.DetachFromInner();
-                ObserveInBackground(pending);
-                await finished.ConfigureAwait(false); // rethrows with the original stack
-            }
+            tasks.Add(Task.Run(
+                () => ExecuteNodeAsync(nodeDef, setup, context, inputLookup, synchronizedOutputs, gate),
+                context.CancellationToken));
         }
-        finally
+
+        // Surface the first failure without waiting on the siblings. A terminal that throws before it starts
+        // reading never drains its branch, so the multicast pump blocks on that branch and its siblings stop
+        // making progress. Cleanup disposes the streams, which cancels the pump and releases them.
+        var pending = new List<Task>(tasks);
+
+        while (pending.Count > 0)
         {
-            context.NodeEnvironment.NodesRunConcurrently = false;
+            var finished = await Task.WhenAny(pending).ConfigureAwait(false);
+            _ = pending.Remove(finished);
+
+            if (finished.IsCompletedSuccessfully)
+                continue;
+
+            // Cleanup is about to iterate and dispose the node outputs; stragglers must stop touching them.
+            synchronizedOutputs.DetachFromInner();
+            ObserveInBackground(pending);
+            await finished.ConfigureAwait(false); // rethrows with the original stack
         }
     }
 
@@ -149,12 +138,6 @@ internal sealed class PipelineNodeExecutionStage(
         object? gate)
     {
         context.CancellationToken.ThrowIfCancellationRequested();
-
-        // CurrentNodeId is a single field on the shared context, so it is only meaningful while nodes run one at a
-        // time. Concurrent terminals address themselves by node id explicitly instead.
-        using var nodeScopeHandle = gate is null
-            ? context.ScopedNode(nodeDef.Id)
-            : default;
 
         ApplyPerNodeExecutionAnnotation(setup.Graph, context, nodeDef.Id);
 

@@ -662,7 +662,7 @@ public class PipelineExecutionBenchmarks : IDisposable
             return Task.FromResult(ResilienceDecision.Skip); // Skip the error item and continue
         }
 
-        public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, int attemptNumber, CancellationToken cancellationToken)
+        public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, RetryKind retryKind, int attemptNumber, CancellationToken cancellationToken)
         {
             return context.GetRetryDelayStrategy().GetDelayAsync(attemptNumber, cancellationToken);
         }

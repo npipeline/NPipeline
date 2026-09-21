@@ -1,5 +1,6 @@
 // ReSharper disable ClassNeverInstantiated.Local
 
+using NPipeline.Execution;
 using System.Reflection;
 using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
@@ -85,7 +86,7 @@ public sealed class ContextPropagationTests
     {
         public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
-            observedIds.Add(context.NodeEnvironment.CurrentNodeId);
+            observedIds.Add(context.NodeEnvironment.GetNodeId(this));
             return ValueTask.FromResult<int>(item);
         }
     }
@@ -128,7 +129,7 @@ public sealed class ContextPropagationTests
             return Task.FromResult(ResilienceDecision.Fail);
         }
 
-        public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, int attemptNumber, CancellationToken cancellationToken)
+        public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, RetryKind retryKind, int attemptNumber, CancellationToken cancellationToken)
         {
             return context.GetRetryDelayStrategy().GetDelayAsync(attemptNumber, cancellationToken);
         }
@@ -172,7 +173,7 @@ public sealed class ContextPropagationTests
             return Task.FromResult(ResilienceDecision.DeadLetter);
         }
 
-        public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, int attemptNumber, CancellationToken cancellationToken)
+        public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, RetryKind retryKind, int attemptNumber, CancellationToken cancellationToken)
         {
             return context.GetRetryDelayStrategy().GetDelayAsync(attemptNumber, cancellationToken);
         }

@@ -112,7 +112,7 @@ internal sealed class PerItemRetryExecutor : IPerItemRetryExecutor
 
         try
         {
-            delay = await policy.GetRetryDelayAsync(context, attempt, cancellationToken).ConfigureAwait(false);
+            delay = await policy.GetRetryDelayAsync(context, RetryKind.ItemRetry, attempt, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
         {

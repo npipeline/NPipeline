@@ -21,7 +21,7 @@ public static class TransformNodeTestExtensions
     /// <param name="node">The transform node to execute.</param>
     /// <param name="input">The input data pipe.</param>
     /// <param name="context">The pipeline context.</param>
-    /// <param name="nodeId">The id the node is executing under; defaults to the context's current node id.</param>
+    /// <param name="nodeId">The id the node is executing under; defaults to the node's type name.</param>
     /// <param name="strategy">The strategy to run the node under; defaults to sequential execution, as the pipeline does.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The output data pipe.</returns>
@@ -37,7 +37,7 @@ public static class TransformNodeTestExtensions
                                 ?? (node as IExecutionStrategyProvider)?.DefaultExecutionStrategy
                                 ?? new SequentialExecutionStrategy();
 
-        return effectiveStrategy.ExecuteAsync(input, node, context, nodeId ?? context.NodeEnvironment.CurrentNodeId, cancellationToken);
+        return effectiveStrategy.ExecuteAsync(input, node, context, nodeId ?? node.GetType().Name, cancellationToken);
     }
 
     /// <summary>

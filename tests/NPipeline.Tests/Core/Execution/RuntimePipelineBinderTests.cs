@@ -402,7 +402,7 @@ public sealed class RuntimePipelineBinderTests
             return Task.FromResult(ResilienceDecision.Fail);
         }
 
-        public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, int attemptNumber, CancellationToken cancellationToken)
+        public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, RetryKind retryKind, int attemptNumber, CancellationToken cancellationToken)
         {
             return context.GetRetryDelayStrategy().GetDelayAsync(attemptNumber, cancellationToken);
         }

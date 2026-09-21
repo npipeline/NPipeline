@@ -239,7 +239,8 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
     {
         var logger = context.Observability.LoggerFactory.CreateLogger(nameof(ResilientExecutionStrategy));
 
-        // Use captured nodeId & retry options; don't rely on context.NodeEnvironment.CurrentNodeId which may change during sink enumeration.
+        // Use the captured nodeId and retry options: this stream is enumerated by a downstream consumer, long after
+        // the call that created it returned.
         var nodeId = creationNodeId;
         var effectiveRetries = capturedRetryOptions;
 
@@ -301,13 +302,10 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
 
                 try
                 {
-                    using (context.ScopedNode(nodeId))
-                    {
-                        if (!await enumerator.MoveNextAsync().ConfigureAwait(false))
-                            yield break; // completed successfully
+                    if (!await enumerator.MoveNextAsync().ConfigureAwait(false))
+                        yield break; // completed successfully
 
-                        current = enumerator.Current;
-                    }
+                    current = enumerator.Current;
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                 {
@@ -383,7 +381,7 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
                         // Apply retry delay before restarting the node
                         try
                         {
-                            var delay = await context.ExecutionConfiguration.ResiliencePolicy.GetRetryDelayAsync(context, failures, cancellationToken)
+                            var delay = await context.ExecutionConfiguration.ResiliencePolicy.GetRetryDelayAsync(context, RetryKind.NodeRestart, failures, cancellationToken)
                                 .ConfigureAwait(false);
 
                             if (delay > TimeSpan.Zero)

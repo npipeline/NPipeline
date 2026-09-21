@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using NPipeline.Execution;
 using NPipeline.Execution.CircuitBreaking;
 using NPipeline.Graph;
 using NPipeline.Nodes;
@@ -19,6 +20,7 @@ public sealed class DefaultResiliencePolicy : IResiliencePolicy
     /// <inheritdoc />
     public ValueTask<TimeSpan> GetRetryDelayAsync(
         PipelineContext context,
+        RetryKind retryKind,
         int attemptNumber,
         CancellationToken cancellationToken)
     {

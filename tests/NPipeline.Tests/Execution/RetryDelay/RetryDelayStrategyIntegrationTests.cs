@@ -1,3 +1,4 @@
+using NPipeline.Execution;
 using System.Diagnostics;
 using AwesomeAssertions;
 using NPipeline.Configuration;
@@ -39,25 +40,22 @@ public sealed class RetryDelayStrategyIntegrationTests
         var stopwatch = Stopwatch.StartNew();
 
         // Act
-        using (context.ScopedNode("test-node"))
+        await using var result = await resilientStrategy.ExecuteAsync(input, node, context, "test-node", CancellationToken.None);
+
+        // Consume result to trigger retries
+        var outputs = new List<string>();
+
+        await foreach (var item in result.WithCancellation(CancellationToken.None))
         {
-            await using var result = await resilientStrategy.ExecuteAsync(input, node, context, "test-node", CancellationToken.None);
-
-            // Consume result to trigger retries
-            var outputs = new List<string>();
-
-            await foreach (var item in result.WithCancellation(CancellationToken.None))
-            {
-                outputs.Add(item);
-            }
-
-            stopwatch.Stop();
-
-            // Assert
-            _ = outputs.Should().HaveCount(3);
-            _ = stopwatch.ElapsedMilliseconds.Should().BeGreaterThanOrEqualTo(30); // 10ms + 20ms minimum delays
-            _ = stopwatch.ElapsedMilliseconds.Should().BeLessThan(5000);
+            outputs.Add(item);
         }
+
+        stopwatch.Stop();
+
+        // Assert
+        _ = outputs.Should().HaveCount(3);
+        _ = stopwatch.ElapsedMilliseconds.Should().BeGreaterThanOrEqualTo(30); // 10ms + 20ms minimum delays
+        _ = stopwatch.ElapsedMilliseconds.Should().BeLessThan(5000);
     }
 
     [Fact]
@@ -81,25 +79,22 @@ public sealed class RetryDelayStrategyIntegrationTests
         var stopwatch = Stopwatch.StartNew();
 
         // Act
-        using (context.ScopedNode("test-node"))
+        await using var result = await resilientStrategy.ExecuteAsync(input, node, context, "test-node", CancellationToken.None);
+
+        // Consume result to trigger retries
+        var outputs = new List<string>();
+
+        await foreach (var item in result.WithCancellation(CancellationToken.None))
         {
-            await using var result = await resilientStrategy.ExecuteAsync(input, node, context, "test-node", CancellationToken.None);
-
-            // Consume result to trigger retries
-            var outputs = new List<string>();
-
-            await foreach (var item in result.WithCancellation(CancellationToken.None))
-            {
-                outputs.Add(item);
-            }
-
-            stopwatch.Stop();
-
-            // Assert
-            _ = outputs.Should().HaveCount(3);
-            _ = stopwatch.ElapsedMilliseconds.Should().BeGreaterThanOrEqualTo(30); // 10ms + 15ms minimum delays
-            _ = stopwatch.ElapsedMilliseconds.Should().BeLessThan(5000);
+            outputs.Add(item);
         }
+
+        stopwatch.Stop();
+
+        // Assert
+        _ = outputs.Should().HaveCount(3);
+        _ = stopwatch.ElapsedMilliseconds.Should().BeGreaterThanOrEqualTo(30); // 10ms + 15ms minimum delays
+        _ = stopwatch.ElapsedMilliseconds.Should().BeLessThan(5000);
     }
 
     [Fact]
@@ -120,25 +115,22 @@ public sealed class RetryDelayStrategyIntegrationTests
         var stopwatch = Stopwatch.StartNew();
 
         // Act
-        using (context.ScopedNode("test-node"))
+        await using var result = await resilientStrategy.ExecuteAsync(input, node, context, "test-node", CancellationToken.None);
+
+        // Consume result to trigger retries
+        var outputs = new List<string>();
+
+        await foreach (var item in result.WithCancellation(CancellationToken.None))
         {
-            await using var result = await resilientStrategy.ExecuteAsync(input, node, context, "test-node", CancellationToken.None);
-
-            // Consume result to trigger retries
-            var outputs = new List<string>();
-
-            await foreach (var item in result.WithCancellation(CancellationToken.None))
-            {
-                outputs.Add(item);
-            }
-
-            stopwatch.Stop();
-
-            // Assert
-            _ = outputs.Should().HaveCount(3);
-            _ = stopwatch.ElapsedMilliseconds.Should().BeGreaterThanOrEqualTo(30); // At least some retry delays should occur
-            _ = stopwatch.ElapsedMilliseconds.Should().BeLessThan(5000);
+            outputs.Add(item);
         }
+
+        stopwatch.Stop();
+
+        // Assert
+        _ = outputs.Should().HaveCount(3);
+        _ = stopwatch.ElapsedMilliseconds.Should().BeGreaterThanOrEqualTo(30); // At least some retry delays should occur
+        _ = stopwatch.ElapsedMilliseconds.Should().BeLessThan(5000);
     }
 
     [Fact]
@@ -162,25 +154,22 @@ public sealed class RetryDelayStrategyIntegrationTests
         var stopwatch = Stopwatch.StartNew();
 
         // Act
-        using (context.ScopedNode("test-node"))
+        await using var result = await resilientStrategy.ExecuteAsync(input, node, context, "test-node", CancellationToken.None);
+
+        // Consume result to trigger retries
+        var outputs = new List<string>();
+
+        await foreach (var item in result.WithCancellation(CancellationToken.None))
         {
-            await using var result = await resilientStrategy.ExecuteAsync(input, node, context, "test-node", CancellationToken.None);
-
-            // Consume result to trigger retries
-            var outputs = new List<string>();
-
-            await foreach (var item in result.WithCancellation(CancellationToken.None))
-            {
-                outputs.Add(item);
-            }
-
-            stopwatch.Stop();
-
-            // Assert
-            _ = outputs.Should().HaveCount(3);
-            _ = stopwatch.ElapsedMilliseconds.Should().BeGreaterThan(0);
-            _ = stopwatch.ElapsedMilliseconds.Should().BeLessThan(3000);
+            outputs.Add(item);
         }
+
+        stopwatch.Stop();
+
+        // Assert
+        _ = outputs.Should().HaveCount(3);
+        _ = stopwatch.ElapsedMilliseconds.Should().BeGreaterThan(0);
+        _ = stopwatch.ElapsedMilliseconds.Should().BeLessThan(3000);
     }
 
     // Note: This test has been adjusted because cancellation during async enumeration
@@ -206,32 +195,29 @@ public sealed class RetryDelayStrategyIntegrationTests
         using var cts = new CancellationTokenSource();
 
         // Act & Assert
-        using (context.ScopedNode("test-node"))
+        await using var result = await resilientStrategy.ExecuteAsync(input, node, context, "test-node", cts.Token);
+
+        var executeTask = Task.Run(async () =>
         {
-            await using var result = await resilientStrategy.ExecuteAsync(input, node, context, "test-node", cts.Token);
+            var outputs = new List<string>();
 
-            var executeTask = Task.Run(async () =>
+            await foreach (var item in result.WithCancellation(cts.Token))
             {
-                var outputs = new List<string>();
+                outputs.Add(item);
+            }
+        });
 
-                await foreach (var item in result.WithCancellation(cts.Token))
-                {
-                    outputs.Add(item);
-                }
-            });
+        // Wait longer to ensure we're actually processing, then cancel
+        await Task.Delay(500);
+        cts.Cancel();
 
-            // Wait longer to ensure we're actually processing, then cancel
-            await Task.Delay(500);
-            cts.Cancel();
+        // Wait for task to complete or timeout
+        var completedTask = Task.WhenAny(executeTask, Task.Delay(2000));
+        _ = await completedTask;
 
-            // Wait for task to complete or timeout
-            var completedTask = Task.WhenAny(executeTask, Task.Delay(2000));
-            _ = await completedTask;
-
-            // Either task completed (with or without exception) or we timed out
-            // Both are acceptable - important thing is we didn't wait forever
-            Assert.True(true);
-        }
+        // Either task completed (with or without exception) or we timed out
+        // Both are acceptable - important thing is we didn't wait forever
+        Assert.True(true);
     }
 
     [Fact]
@@ -253,20 +239,17 @@ public sealed class RetryDelayStrategyIntegrationTests
         var node = new FailingTransformNode(10); // Always fail
 
         // Act & Assert
-        using (context.ScopedNode("test-node"))
+        await using var result = await resilientStrategy.ExecuteAsync(input, node, context, "test-node", CancellationToken.None);
+
+        _ = await Assert.ThrowsAsync<RetryExhaustedException>(async () =>
         {
-            await using var result = await resilientStrategy.ExecuteAsync(input, node, context, "test-node", CancellationToken.None);
+            var outputs = new List<string>();
 
-            _ = await Assert.ThrowsAsync<RetryExhaustedException>(async () =>
+            await foreach (var item in result.WithCancellation(CancellationToken.None))
             {
-                var outputs = new List<string>();
-
-                await foreach (var item in result.WithCancellation(CancellationToken.None))
-                {
-                    outputs.Add(item);
-                }
-            });
-        }
+                outputs.Add(item);
+            }
+        });
     }
 
     [Fact]
@@ -283,24 +266,21 @@ public sealed class RetryDelayStrategyIntegrationTests
         var stopwatch = Stopwatch.StartNew();
 
         // Act
-        using (context.ScopedNode("test-node"))
+        await using var result = await resilientStrategy.ExecuteAsync(input, node, context, "test-node", CancellationToken.None);
+
+        // Consume result to trigger retries
+        var outputs = new List<string>();
+
+        await foreach (var item in result.WithCancellation(CancellationToken.None))
         {
-            await using var result = await resilientStrategy.ExecuteAsync(input, node, context, "test-node", CancellationToken.None);
-
-            // Consume result to trigger retries
-            var outputs = new List<string>();
-
-            await foreach (var item in result.WithCancellation(CancellationToken.None))
-            {
-                outputs.Add(item);
-            }
-
-            stopwatch.Stop();
-
-            // Assert
-            _ = outputs.Should().HaveCount(3);
-            _ = stopwatch.ElapsedMilliseconds.Should().BeLessThan(5000);
+            outputs.Add(item);
         }
+
+        stopwatch.Stop();
+
+        // Assert
+        _ = outputs.Should().HaveCount(3);
+        _ = stopwatch.ElapsedMilliseconds.Should().BeLessThan(5000);
     }
 
     private static PipelineContext CreatePipelineContextWithRetryDelay(
@@ -378,7 +358,7 @@ public sealed class RetryDelayStrategyIntegrationTests
             return Task.FromResult(ResilienceDecision.Fail);
         }
 
-        public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, int attemptNumber, CancellationToken cancellationToken)
+        public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, RetryKind retryKind, int attemptNumber, CancellationToken cancellationToken)
         {
             return context.GetRetryDelayStrategy().GetDelayAsync(attemptNumber, cancellationToken);
         }

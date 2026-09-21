@@ -98,7 +98,7 @@ sub-context that owns it:
 | `RunIdentity` | Who this run is | `PipelineId`, `RunId`, `PipelineName`, `PipelineStartTimeUtc` |
 | `Observability` | Logging, tracing, metrics | `LoggerFactory`, `Tracer`, `ExecutionObserver`, `ObservabilityFactory` |
 | `ExecutionConfiguration` | Retry and resilience | `RetryOptions`, `GlobalRetryOptions`, `NodeRetryOverrides`, `ResiliencePolicy`, `CircuitBreakerOptions` |
-| `NodeEnvironment` | Per-node execution state | `CurrentNodeId`, `NodeExecutionScopeRegistry`, `DiOwnedNodes` |
+| `NodeEnvironment` | Per-node execution state | `GetNodeId(node)`, `TryGetNodeId(node, out id)`, `NodeExecutionScopeRegistry`, `DiOwnedNodes` |
 | `Lineage` | Lineage sinks and collectors | `LineageSink`, `PipelineLineageSink`, `LineageCollector`, `LineageFactory` |
 
 ```csharp
@@ -109,6 +109,30 @@ public override ValueTask<Order> TransformAsync(
     logger.LogDebug("Run {RunId} processing order {OrderId}", context.RunIdentity.RunId, item.Id);
     return ValueTask.FromResult(item);
 }
+```
+
+### Get the node ID
+
+To key state, name an activity, or build an error message, a node can retrieve its ID from the node environment:
+
+```csharp
+public override ValueTask<Order> TransformAsync(
+    Order item, PipelineContext context, CancellationToken ct)
+{
+    var nodeId = context.NodeEnvironment.GetNodeId(this);
+    ...
+}
+```
+
+The ID is resolved from the instance, so the answer is exact no matter how many nodes are running at once. It costs a
+dictionary lookup only when a node asks.
+
+`GetNodeId` throws an exception if the instance is not part of the run. This occurs if a node is tested in isolation or if a single instance is mapped to multiple positions in the graph. Use `TryGetNodeId` where that is a legitimate case, and `RegisterNode(nodeId, node)` to give a node an ID when
+driving it outside a pipeline:
+
+```csharp
+var node = new MyTransform();
+context.NodeEnvironment.RegisterNode("my-node", node);
 ```
 
 A few members sit directly on the context because they belong to no single concern:

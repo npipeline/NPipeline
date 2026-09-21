@@ -31,7 +31,7 @@ public static class TransformTestHarness
         var strategy = executionStrategy
                        ?? (node as IExecutionStrategyProvider)?.DefaultExecutionStrategy
                        ?? new SequentialExecutionStrategy();
-        var outputPipe = await strategy.ExecuteAsync<TIn, TOut>(inputPipe, node, context, context.NodeEnvironment.CurrentNodeId, cancellationToken).ConfigureAwait(false);
+        var outputPipe = await strategy.ExecuteAsync<TIn, TOut>(inputPipe, node, context, node.GetType().Name, cancellationToken).ConfigureAwait(false);
         var results = new List<TOut>();
 
         await foreach (var o in outputPipe.WithCancellation(cancellationToken))

@@ -59,7 +59,6 @@ internal sealed class AIStreamPassthroughExecutionStrategy : IExecutionStrategy,
                     throw;
                 }
 
-                using var _ = context.ScopedNode(nodeId);
                 observabilityScope.IncrementProcessed();
 
                 TOut output;
@@ -102,7 +101,6 @@ internal sealed class AIStreamPassthroughExecutionStrategy : IExecutionStrategy,
             {
                 await foreach (var item in timedInput.WithCancellation(innerCt).ConfigureAwait(false))
                 {
-                    using var _ = context.ScopedNode(nodeId);
                     observabilityScope.IncrementProcessed();
                     yield return item;
                 }
@@ -129,7 +127,6 @@ internal sealed class AIStreamPassthroughExecutionStrategy : IExecutionStrategy,
                     throw;
                 }
 
-                using var _ = context.ScopedNode(nodeId);
                 observabilityScope.IncrementEmitted();
                 yield return output;
             }

@@ -1,3 +1,4 @@
+using NPipeline.Execution;
 using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NPipeline.Extensions.DependencyInjection;
@@ -81,7 +82,7 @@ public sealed class ErrorHandlingTests(ITestOutputHelper output)
             return Task.FromResult(ResilienceDecision.Skip);
         }
 
-        public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, int attemptNumber, CancellationToken cancellationToken)
+        public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, RetryKind retryKind, int attemptNumber, CancellationToken cancellationToken)
         {
             return context.GetRetryDelayStrategy().GetDelayAsync(attemptNumber, cancellationToken);
         }

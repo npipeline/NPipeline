@@ -1,3 +1,4 @@
+using NPipeline.Execution;
 using NPipeline.Graph;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
@@ -68,9 +69,13 @@ public abstract class ResiliencePolicyBase : IResiliencePolicy
     }
 
     /// <inheritdoc />
-    /// <remarks>Default: delegates to the pipeline's configured retry delay strategy.</remarks>
+    /// <remarks>
+    ///     Default: delegates to the pipeline's configured retry delay strategy, which does not distinguish the two
+    ///     retry kinds. Override to back off differently for item retries and node restarts.
+    /// </remarks>
     public virtual ValueTask<TimeSpan> GetRetryDelayAsync(
         PipelineContext context,
+        RetryKind retryKind,
         int attemptNumber,
         CancellationToken cancellationToken)
     {

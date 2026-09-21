@@ -1,3 +1,4 @@
+using NPipeline.Execution;
 using AwesomeAssertions;
 using FakeItEasy;
 using Microsoft.Extensions.Logging;
@@ -283,23 +284,20 @@ public class CircuitBreakerIntegrationTests
         var node = new TestTransformNode();
 
         // Act
-        using (context.ScopedNode("test-node"))
+        await using var result = await resilientStrategy.ExecuteAsync(input, node, context, "test-node", CancellationToken.None);
+
+        var outputs = new List<string>();
+
+        await foreach (var item in result.WithCancellation(CancellationToken.None))
         {
-            await using var result = await resilientStrategy.ExecuteAsync(input, node, context, "test-node", CancellationToken.None);
-
-            var outputs = new List<string>();
-
-            await foreach (var item in result.WithCancellation(CancellationToken.None))
-            {
-                outputs.Add(item);
-            }
-
-            // Assert
-            result.Should().NotBeNull();
-            outputs.Should().HaveCount(3);
-            context.ExecutionConfiguration.CircuitBreakerManager.Should().NotBeNull();
-            context.ExecutionConfiguration.CircuitBreakerManager.Should().BeAssignableTo<ICircuitBreakerManager>();
+            outputs.Add(item);
         }
+
+        // Assert
+        result.Should().NotBeNull();
+        outputs.Should().HaveCount(3);
+        context.ExecutionConfiguration.CircuitBreakerManager.Should().NotBeNull();
+        context.ExecutionConfiguration.CircuitBreakerManager.Should().BeAssignableTo<ICircuitBreakerManager>();
     }
 
     [Fact]
@@ -313,22 +311,19 @@ public class CircuitBreakerIntegrationTests
         var node = new TestTransformNode();
 
         // Act
-        using (context.ScopedNode("test-node"))
+        await using var result = await resilientStrategy.ExecuteAsync(input, node, context, "test-node", CancellationToken.None);
+
+        var outputs = new List<string>();
+
+        await foreach (var item in result.WithCancellation(CancellationToken.None))
         {
-            await using var result = await resilientStrategy.ExecuteAsync(input, node, context, "test-node", CancellationToken.None);
-
-            var outputs = new List<string>();
-
-            await foreach (var item in result.WithCancellation(CancellationToken.None))
-            {
-                outputs.Add(item);
-            }
-
-            // Assert
-            result.Should().NotBeNull();
-            outputs.Should().HaveCount(3);
-            context.ExecutionConfiguration.CircuitBreakerManager.Should().BeNull();
+            outputs.Add(item);
         }
+
+        // Assert
+        result.Should().NotBeNull();
+        outputs.Should().HaveCount(3);
+        context.ExecutionConfiguration.CircuitBreakerManager.Should().BeNull();
     }
 
     [Fact]
@@ -345,24 +340,21 @@ public class CircuitBreakerIntegrationTests
 
         // Act & Assert
         // ExecuteAsync returns a lazy IDataStream, so we need to consume it to trigger circuit breaker
-        using (context.ScopedNode("test-node"))
+        await using var result = await resilientStrategy.ExecuteAsync(input, node, context, "test-node", CancellationToken.None);
+
+        // Try to consume the result - this should trigger the circuit breaker
+        var exception = await Assert.ThrowsAsync<NodeExecutionException>(async () =>
         {
-            await using var result = await resilientStrategy.ExecuteAsync(input, node, context, "test-node", CancellationToken.None);
+            var output = new List<string>();
 
-            // Try to consume the result - this should trigger the circuit breaker
-            var exception = await Assert.ThrowsAsync<NodeExecutionException>(async () =>
+            await foreach (var item in result.WithCancellation(CancellationToken.None))
             {
-                var output = new List<string>();
+                output.Add(item);
+            }
+        });
 
-                await foreach (var item in result.WithCancellation(CancellationToken.None))
-                {
-                    output.Add(item);
-                }
-            });
-
-            // Verify the inner exception is CircuitBreakerOpenException
-            exception.InnerException.Should().BeOfType<CircuitBreakerOpenException>();
-        }
+        // Verify the inner exception is CircuitBreakerOpenException
+        exception.InnerException.Should().BeOfType<CircuitBreakerOpenException>();
     }
 
     [Fact]
@@ -384,55 +376,52 @@ public class CircuitBreakerIntegrationTests
         var resilientStrategy = new ResilientExecutionStrategy(innerStrategy);
         var node = new RecoveringTransformNode(1);
 
-        using (context.ScopedNode("recovery-node"))
+        // Act 1: trigger breaker
+        await using (var initialInput = new InMemoryDataStream<int>([1], "first"))
         {
-            // Act 1: trigger breaker
-            await using (var initialInput = new InMemoryDataStream<int>([1], "first"))
-            {
-                await using var result = await resilientStrategy.ExecuteAsync(initialInput, node, context, "recovery-node", CancellationToken.None);
+            await using var result = await resilientStrategy.ExecuteAsync(initialInput, node, context, "recovery-node", CancellationToken.None);
 
-                await Assert.ThrowsAsync<NodeExecutionException>(async () =>
+            await Assert.ThrowsAsync<NodeExecutionException>(async () =>
+            {
+                await foreach (var _ in result.WithCancellation(CancellationToken.None))
                 {
-                    await foreach (var _ in result.WithCancellation(CancellationToken.None))
-                    {
-                        // exhaust
-                    }
-                });
-            }
-
-            // Allow the breaker to transition to half-open by polling its state
-            // Wait for initial delay plus additional buffer for timer callback execution
-            await Task.Delay(options.OpenDuration + TimeSpan.FromMilliseconds(500));
-
-            // Poll to ensure the circuit breaker has transitioned to HalfOpen
-            var manager = context.ExecutionConfiguration.CircuitBreakerManager;
-            var circuitBreaker = manager?.GetCircuitBreaker("recovery-node", options);
-
-            // Add a small retry loop to account for timing variations
-            var maxRetries = 5;
-            var retryCount = 0;
-
-            while (retryCount < maxRetries && circuitBreaker?.State != CircuitBreakerState.HalfOpen)
-            {
-                await Task.Delay(50);
-                retryCount++;
-            }
-
-            // Act 2: half-open should permit execution and recover to closed
-            await using var recoveryInput = new InMemoryDataStream<int>([2], "second");
-            await using var recoveryResult = await resilientStrategy.ExecuteAsync(recoveryInput, node, context, "recovery-node", CancellationToken.None);
-
-            var outputs = new List<string>();
-
-            await foreach (var item in recoveryResult.WithCancellation(CancellationToken.None))
-            {
-                outputs.Add(item);
-            }
-
-            // Assert
-            outputs.Should().HaveCount(1);
-            outputs[0].Should().Be("processed-2");
+                    // exhaust
+                }
+            });
         }
+
+        // Allow the breaker to transition to half-open by polling its state
+        // Wait for initial delay plus additional buffer for timer callback execution
+        await Task.Delay(options.OpenDuration + TimeSpan.FromMilliseconds(500));
+
+        // Poll to ensure the circuit breaker has transitioned to HalfOpen
+        var manager = context.ExecutionConfiguration.CircuitBreakerManager;
+        var circuitBreaker = manager?.GetCircuitBreaker("recovery-node", options);
+
+        // Add a small retry loop to account for timing variations
+        var maxRetries = 5;
+        var retryCount = 0;
+
+        while (retryCount < maxRetries && circuitBreaker?.State != CircuitBreakerState.HalfOpen)
+        {
+            await Task.Delay(50);
+            retryCount++;
+        }
+
+        // Act 2: half-open should permit execution and recover to closed
+        await using var recoveryInput = new InMemoryDataStream<int>([2], "second");
+        await using var recoveryResult = await resilientStrategy.ExecuteAsync(recoveryInput, node, context, "recovery-node", CancellationToken.None);
+
+        var outputs = new List<string>();
+
+        await foreach (var item in recoveryResult.WithCancellation(CancellationToken.None))
+        {
+            outputs.Add(item);
+        }
+
+        // Assert
+        outputs.Should().HaveCount(1);
+        outputs[0].Should().Be("processed-2");
     }
 
     #endregion
@@ -544,7 +533,7 @@ public class CircuitBreakerIntegrationTests
             return Task.FromResult(ResilienceDecision.Fail);
         }
 
-        public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, int attemptNumber, CancellationToken cancellationToken)
+        public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, RetryKind retryKind, int attemptNumber, CancellationToken cancellationToken)
         {
             return context.GetRetryDelayStrategy().GetDelayAsync(attemptNumber, cancellationToken);
         }

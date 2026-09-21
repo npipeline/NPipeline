@@ -13,9 +13,7 @@ using NPipeline.Pipeline;
 namespace NPipeline.Execution.Strategies;
 
 /// <summary>
-///     Sequential single-threaded execution strategy.
-///     Ensures PipelineContext.CurrentNodeId is set to a transform node id while processing each item
-///     and restored afterward so downstream nodes (e.g. sinks) don't overwrite attribution for the transform stage.
+///     Sequential single-threaded execution strategy: one item at a time, in order.
 /// </summary>
 public sealed class SequentialExecutionStrategy : IExecutionStrategy
 {
@@ -109,7 +107,6 @@ public sealed class SequentialExecutionStrategy : IExecutionStrategy
                 try
                 {
                     var workStart = Stopwatch.GetTimestamp();
-                    using var _ = context.ScopedNode(cached.NodeId);
                     var executionResult = await _perItemRetryExecutor.ExecuteWithRetryAsync(
                             item,
                             node,

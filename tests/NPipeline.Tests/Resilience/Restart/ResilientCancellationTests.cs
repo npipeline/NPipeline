@@ -243,7 +243,7 @@ public sealed class ResilientCancellationTests
             return Task.FromResult(ResilienceDecision.Fail);
         }
 
-        public async ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, int attemptNumber, CancellationToken cancellationToken)
+        public async ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, RetryKind retryKind, int attemptNumber, CancellationToken cancellationToken)
         {
             if (CancelDuringRetryDelay && CancellationSource is not null)
                 await CancellationSource.CancelAsync();

@@ -159,12 +159,33 @@ builder.WithRetryOptions(options => options.WithCustomStrategy(backoff, jitter))
 ## How It Works Internally
 
 1. Your resilience policy returns `ResilienceDecision.Retry`.
-2. The runtime calls `IResiliencePolicy.GetRetryDelayAsync(context, attemptNumber)`.
+2. The runtime calls `IResiliencePolicy.GetRetryDelayAsync(context, retryKind, attemptNumber)`.
 3. The default implementation (`ResiliencePolicyBase`) delegates to `context.GetRetryDelayStrategy()`.
 4. The strategy is a `CompositeRetryDelayStrategy` that applies the backoff delegate, then the jitter delegate.
 5. The runtime waits the resulting `TimeSpan`, then retries.
 
-The `attemptNumber` is 0-based: attempt 0 is the first retry after the initial failure.
+The `attemptNumber` is 1-based: attempt 1 is the first retry after the initial failure.
+
+`retryKind` specifies the type of retry being backed off:
+
+| Kind | Meaning | Cost |
+|------|---------|------|
+| `RetryKind.ItemRetry` | One item failed and is being retried | Cheap — only the item is reprocessed |
+| `RetryKind.NodeRestart` | The node failed and is being restarted | Expensive — the node replays its entire input |
+
+The default implementation ignores the kind and applies the same strategy to both. Override `GetRetryDelayAsync` to implement different backoff strategies. For example, use a short delay for item retries and a longer delay for node restarts:
+
+```csharp
+public override ValueTask<TimeSpan> GetRetryDelayAsync(
+    PipelineContext context, RetryKind retryKind, int attemptNumber, CancellationToken cancellationToken)
+{
+    return retryKind switch
+    {
+        RetryKind.ItemRetry => ValueTask.FromResult(TimeSpan.FromMilliseconds(50 * attemptNumber)),
+        _ => base.GetRetryDelayAsync(context, retryKind, attemptNumber, cancellationToken),
+    };
+}
+```
 
 ## Choosing a Strategy
 

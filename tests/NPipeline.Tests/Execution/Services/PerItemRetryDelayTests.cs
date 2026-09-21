@@ -193,7 +193,7 @@ public sealed class PerItemRetryDelayTests
 
         public CancellationTokenSource? CancellationSource { get; init; }
 
-        public async ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, int attemptNumber, CancellationToken cancellationToken)
+        public async ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, RetryKind retryKind, int attemptNumber, CancellationToken cancellationToken)
         {
             RequestedAttempts.Add(attemptNumber);
 

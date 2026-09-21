@@ -245,7 +245,7 @@ public sealed class ErrorHandlingService : IErrorHandlingService
             // Apply retry delay before retry attempt
             try
             {
-                var delay = await context.ExecutionConfiguration.ResiliencePolicy.GetRetryDelayAsync(context, retryCount, cancellationToken).ConfigureAwait(false);
+                var delay = await context.ExecutionConfiguration.ResiliencePolicy.GetRetryDelayAsync(context, RetryKind.NodeRestart, retryCount, cancellationToken).ConfigureAwait(false);
 
                 if (delay > TimeSpan.Zero)
                 {

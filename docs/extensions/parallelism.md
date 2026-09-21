@@ -198,7 +198,7 @@ lock (_syncLock) { _total += input; }
 
 // State manager for coordination
 var stateManager = context.StateManager;
-stateManager?.MarkNodeCompleted(context.NodeEnvironment.CurrentNodeId, context);
+stateManager?.MarkNodeCompleted(context.NodeEnvironment.GetNodeId(this), context);
 ```
 
 ### Thread Safety Rules

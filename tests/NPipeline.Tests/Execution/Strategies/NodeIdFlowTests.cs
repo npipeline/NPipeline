@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using AwesomeAssertions;
 using NPipeline.Configuration;
 using NPipeline.DataFlow;
@@ -10,99 +11,93 @@ using NPipeline.Pipeline;
 namespace NPipeline.Tests.Execution.Strategies;
 
 /// <summary>
-///     The node id used to reach execution strategies through <see cref="PipelineContext.CurrentNodeId" />, one mutable
-///     field on a context shared by every node in the run. Concurrent workers interleaved their writes to it, so retry
-///     options, error attribution and diagnostics could all be resolved against another node's id. It is now a
-///     parameter on <see cref="IExecutionStrategy" />, and the field is frozen while nodes run concurrently.
+///     The node id used to reach both execution strategies and node authors through one mutable field on the shared
+///     context, so concurrent workers interleaved their writes to it and retry options, error attribution and
+///     diagnostics could all be resolved against another node's id.
+///     <para>
+///         Strategies now take the id as a parameter, and a node asks for its own with
+///         <see cref="PipelineNodeEnvironmentContext.GetNodeId" />, which resolves it from the instance rather than
+///         from a field that only one node at a time can be right about.
+///     </para>
 /// </summary>
 public sealed class NodeIdFlowTests
 {
     [Fact]
-    public async Task Strategy_ReceivesItsOwnNodeId_NotWhateverTheSharedFieldHolds()
+    public async Task AStrategy_ReceivesItsOwnNodeId()
     {
         var recorder = new RecordingStrategy();
         var node = new PassthroughNode();
         await using var context = new PipelineContext(PipelineContextConfiguration.Default);
 
-        // Whatever is in the shared field must not reach the strategy.
-        using (context.ScopedNode("some-other-node"))
-        {
-            await using var input = new NPipeline.DataFlow.DataStreams.InMemoryDataStream<int>([1, 2, 3], "input");
-            await using var output = await recorder.ExecuteAsync(input, node, context, "my-node", CancellationToken.None);
+        await using var input = new DataStream<int>(new[] { 1, 2, 3 }.ToAsyncEnumerable(), "input");
+        await using var output = await recorder.ExecuteAsync(input, node, context, "my-node", CancellationToken.None);
 
-            recorder.ObservedNodeId.Should().Be("my-node");
-        }
+        recorder.ObservedNodeId.Should().Be("my-node");
     }
 
     [Fact]
-    public async Task ScopedNode_IsInertWhileNodesRunConcurrently()
+    public async Task ANodeAsksForItsOwnId_AndGetsIt()
     {
         await using var context = new PipelineContext(PipelineContextConfiguration.Default);
+        var node = new PassthroughNode();
 
-        using (context.ScopedNode("sequential-node"))
-        {
-            context.NodeEnvironment.CurrentNodeId.Should().Be("sequential-node");
+        context.NodeEnvironment.RegisterNode("my-node", node);
 
-            context.NodeEnvironment.NodesRunConcurrently = true;
+        context.NodeEnvironment.GetNodeId(node).Should().Be("my-node");
+        context.NodeEnvironment.TryGetNodeId(node, out var resolved).Should().BeTrue();
+        resolved.Should().Be("my-node");
+    }
 
-            using (context.ScopedNode("concurrent-node"))
-            {
-                context.NodeEnvironment.CurrentNodeId.Should().Be("sequential-node", "a frozen field shows a stale id, never another node's");
-            }
+    [Fact]
+    public async Task ANodeThatIsNotPartOfTheRun_IsToldSo_RatherThanGivenSomeoneElsesId()
+    {
+        await using var context = new PipelineContext(PipelineContextConfiguration.Default);
+        context.NodeEnvironment.RegisterNode("some-other-node", new PassthroughNode());
 
-            context.NodeEnvironment.CurrentNodeId.Should().Be("sequential-node", "an inert scope must not clobber the field on disposal either");
+        var stranger = new PassthroughNode();
 
-            context.NodeEnvironment.NodesRunConcurrently = false;
-        }
+        context.NodeEnvironment.TryGetNodeId(stranger, out _).Should().BeFalse();
+
+        var act = () => context.NodeEnvironment.GetNodeId(stranger);
+        act.Should().Throw<InvalidOperationException>().WithMessage("*NP0423*");
+    }
+
+    [Fact]
+    public async Task OneInstanceWiredInTwice_ReportsTheAmbiguity_RatherThanPickingOne()
+    {
+        await using var context = new PipelineContext(PipelineContextConfiguration.Default);
+        var shared = new PassthroughNode();
+
+        context.NodeEnvironment.RegisterNode("first", shared);
+        context.NodeEnvironment.RegisterNode("second", shared);
+
+        context.NodeEnvironment.TryGetNodeId(shared, out _).Should().BeFalse("neither id is the answer");
     }
 
     /// <summary>
-    ///     The failure the freeze prevents: without it, two workers entering and leaving overlapping scopes leave the
-    ///     field pointing at whichever finished last, and every later read is wrong.
+    ///     The case the old shared field could not serve: two sinks draining at the same time, each needing its own id.
     /// </summary>
     [Fact]
-    public async Task ConcurrentScopes_DoNotCorruptTheSharedField()
+    public async Task TerminalsDrainingConcurrently_EachResolveTheirOwnId()
     {
+        IdRecorder.Reset();
+
         await using var context = new PipelineContext(PipelineContextConfiguration.Default);
+        await PipelineRunner.Create().RunAsync(new FanOutPipeline(), context, CancellationToken.None);
 
-        using (context.ScopedNode("owner"))
-        {
-            context.NodeEnvironment.NodesRunConcurrently = true;
-
-            using Barrier gate = new(4);
-
-            await Task.WhenAll(Enumerable.Range(0, 4).Select(worker => Task.Run(() =>
-            {
-                gate.SignalAndWait();
-
-                for (var i = 0; i < 200; i++)
-                {
-                    using var scope = context.ScopedNode($"worker-{worker}");
-                    context.NodeEnvironment.CurrentNodeId.Should().Be("owner");
-                }
-            })));
-
-            context.NodeEnvironment.NodesRunConcurrently = false;
-            context.NodeEnvironment.CurrentNodeId.Should().Be("owner");
-        }
+        IdRecorder.Observed.Should().NotBeEmpty();
+        IdRecorder.Observed.Should().OnlyContain(pair => pair.Expected == pair.Actual,
+            "a sink asking for its own id must never be answered with a sibling's");
     }
 
-    /// <summary>
-    ///     End to end: two sinks below a fan-out drain concurrently, and neither leaves the shared field pointing at
-    ///     itself afterwards.
-    /// </summary>
-    [Fact]
-    public async Task ConcurrentTerminalDrain_LeavesTheSharedFieldUncorrupted()
+    private static class IdRecorder
     {
-        var context = new PipelineContext(PipelineContextConfiguration.Default);
+        public static ConcurrentBag<(string Expected, string Actual)> Observed { get; private set; } = [];
 
-        await PipelineRunner.Create().RunAsync<FanOutPipeline>(context, CancellationToken.None);
-
-        context.NodeEnvironment.NodesRunConcurrently.Should().BeFalse("the freeze must be lifted once the drain completes");
-        context.NodeEnvironment.CurrentNodeId.Should().NotBe("first", "a terminal must not leave its own id behind");
-        context.NodeEnvironment.CurrentNodeId.Should().NotBe("second");
-
-        await context.DisposeAsync();
+        public static void Reset()
+        {
+            Observed = [];
+        }
     }
 
     private sealed class RecordingStrategy : IExecutionStrategy
@@ -113,7 +108,7 @@ public sealed class NodeIdFlowTests
             string nodeId, CancellationToken cancellationToken)
         {
             ObservedNodeId = nodeId;
-            return Task.FromResult<IDataStream<TOut>>(new NPipeline.DataFlow.DataStreams.InMemoryDataStream<TOut>([], "empty"));
+            return Task.FromResult<IDataStream<TOut>>(new DataStream<TOut>(Array.Empty<TOut>().ToAsyncEnumerable(), "empty"));
         }
     }
 
@@ -121,7 +116,7 @@ public sealed class NodeIdFlowTests
     {
         public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
-            return ValueTask.FromResult<int>(item);
+            return ValueTask.FromResult(item);
         }
     }
 
@@ -144,14 +139,17 @@ public sealed class NodeIdFlowTests
         }
     }
 
-    private sealed class DrainingSink : SinkNode<int>
+    /// <summary>
+    ///     A sink that knows which id it was built for and checks the runtime agrees, on every item, while its sibling
+    ///     drains alongside it.
+    /// </summary>
+    private sealed class DrainingSink(string expectedNodeId) : SinkNode<int>
     {
         public override async Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken cancellationToken)
         {
             await foreach (var _ in input.WithCancellation(cancellationToken))
             {
-                // The shared field must never name a sibling terminal while both are draining.
-                context.NodeEnvironment.CurrentNodeId.Should().NotBe("first").And.NotBe("second");
+                IdRecorder.Observed.Add((expectedNodeId, context.NodeEnvironment.GetNodeId(this)));
             }
         }
     }
@@ -161,8 +159,15 @@ public sealed class NodeIdFlowTests
         public void Define(PipelineBuilder builder, PipelineContext context)
         {
             var source = builder.AddSource<CountingSource, int>("source");
-            _ = builder.Connect(source, builder.AddSink<DrainingSink, int>("first"));
-            _ = builder.Connect(source, builder.AddSink<DrainingSink, int>("second"));
+
+            var first = builder.AddSink<DrainingSink, int>("first");
+            _ = builder.AddPreconfiguredNodeInstance(first.Id, new DrainingSink(first.Id));
+
+            var second = builder.AddSink<DrainingSink, int>("second");
+            _ = builder.AddPreconfiguredNodeInstance(second.Id, new DrainingSink(second.Id));
+
+            _ = builder.Connect(source, first);
+            _ = builder.Connect(source, second);
             _ = builder.WithBranchOptions("source", new BranchOptions(16));
         }
     }

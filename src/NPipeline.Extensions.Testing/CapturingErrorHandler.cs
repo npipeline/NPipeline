@@ -1,3 +1,4 @@
+using NPipeline.Execution;
 using NPipeline.Graph;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
@@ -63,9 +64,9 @@ internal sealed class CapturingResiliencePolicy(
         return decisionOnError;
     }
 
-    public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, int attemptNumber, CancellationToken cancellationToken)
+    public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, RetryKind retryKind, int attemptNumber, CancellationToken cancellationToken)
     {
-        return originalPolicy.GetRetryDelayAsync(context, attemptNumber, cancellationToken);
+        return originalPolicy.GetRetryDelayAsync(context, retryKind, attemptNumber, cancellationToken);
     }
 
     public IResilienceCircuitBreaker? GetCircuitBreaker(PipelineContext context, string nodeId)

@@ -18,14 +18,11 @@ public sealed class SequentialExecutionStrategyValueTaskTests
         var context = new PipelineContext();
         var results = new List<int>();
 
-        using (context.ScopedNode("transform"))
-        {
-            await using var output = await strategy.ExecuteAsync(input, transform, context, "transform", CancellationToken.None);
+        await using var output = await strategy.ExecuteAsync(input, transform, context, "transform", CancellationToken.None);
 
-            await foreach (var value in output.WithCancellation(CancellationToken.None))
-            {
-                results.Add(value);
-            }
+        await foreach (var value in output.WithCancellation(CancellationToken.None))
+        {
+            results.Add(value);
         }
 
         _ = results.Should().BeEquivalentTo([2, 3, 4]);
@@ -48,19 +45,16 @@ public sealed class SequentialExecutionStrategyValueTaskTests
 
         try
         {
-            using (context.ScopedNode("transform"))
+            await using var output = await strategy.ExecuteAsync(input, transform, context, "transform", CancellationToken.None);
+
+            var act = async () =>
             {
-                await using var output = await strategy.ExecuteAsync(input, transform, context, "transform", CancellationToken.None);
-
-                var act = async () =>
+                await foreach (var _ in output.WithCancellation(CancellationToken.None))
                 {
-                    await foreach (var _ in output.WithCancellation(CancellationToken.None))
-                    {
-                    }
-                };
+                }
+            };
 
-                _ = await act.Should().ThrowAsync<InvalidOperationException>();
-            }
+            _ = await act.Should().ThrowAsync<InvalidOperationException>();
         }
         finally
         {
