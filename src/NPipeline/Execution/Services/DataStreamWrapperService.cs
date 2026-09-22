@@ -79,11 +79,6 @@ public sealed class DataStreamWrapperService
             : null;
     }
 
-    private static string GetAssemblyQualifiedTypeName(Type type)
-    {
-        return type.AssemblyQualifiedName ?? type.FullName ?? type.Name;
-    }
-
     // Internal wrapper abstraction avoids per-call reflection.
     private interface IOptimizedWrapper
     {
@@ -134,7 +129,7 @@ public sealed class DataStreamWrapperService
             {
                 throw new InvalidOperationException(
                     $"Route options type mismatch for routed stream '{typed.StreamName}'. " +
-                    $"Expected {GetAssemblyQualifiedTypeName(typeof(RouteOptions<T>))} but got {GetAssemblyQualifiedTypeName(routeOptions.GetType())}. " +
+                    $"Expected {TypeNameFormatter.GetAssemblyQualifiedName(typeof(RouteOptions<T>))} but got {TypeNameFormatter.GetAssemblyQualifiedName(routeOptions.GetType())}. " +
                     "Route options must be normalized to runtime stream item type by RuntimePipelineBinder.");
             }
 

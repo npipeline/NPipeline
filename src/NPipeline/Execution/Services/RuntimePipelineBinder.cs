@@ -253,8 +253,8 @@ public sealed class RuntimePipelineBinder : IRuntimePipelineBinder
                 {
                     throw new InvalidOperationException(
                         $"Route options normalization mismatch for node '{nodeDef.Id}'. " +
-                        $"Expected runtime route item type '{GetAssemblyQualifiedTypeName(expectedLineageItemType)}' " +
-                        $"but resolved '{GetAssemblyQualifiedTypeName(expectedItemType)}'.");
+                        $"Expected runtime route item type '{TypeNameFormatter.GetAssemblyQualifiedName(expectedLineageItemType)}' " +
+                        $"but resolved '{TypeNameFormatter.GetAssemblyQualifiedName(expectedItemType)}'.");
                 }
 
                 return AdaptLineageRouteOptions(payloadType, routeOptions);
@@ -263,8 +263,8 @@ public sealed class RuntimePipelineBinder : IRuntimePipelineBinder
 
         throw new InvalidOperationException(
             $"Route options type mismatch for route node '{nodeDef.Id}'. " +
-            $"Expected '{GetAssemblyQualifiedTypeName(expectedRouteOptionsType)}' " +
-            $"but got '{GetAssemblyQualifiedTypeName(actualRouteOptionsType)}'.");
+            $"Expected '{TypeNameFormatter.GetAssemblyQualifiedName(expectedRouteOptionsType)}' " +
+            $"but got '{TypeNameFormatter.GetAssemblyQualifiedName(actualRouteOptionsType)}'.");
     }
 
     private static object AdaptLineageRouteOptions(Type payloadType, object routeOptions)
@@ -291,9 +291,6 @@ public sealed class RuntimePipelineBinder : IRuntimePipelineBinder
 
         return adapted;
     }
-
-    private static string GetAssemblyQualifiedTypeName(Type type)
-        => type.AssemblyQualifiedName ?? type.FullName ?? type.Name;
 
     private static IDeadLetterSink? ApplyDeadLetterSinkDecorator(PipelineContext context, IDeadLetterSink? deadLetterSink)
     {

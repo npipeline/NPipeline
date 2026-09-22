@@ -74,7 +74,7 @@ public sealed class PipeMergeService(IMergeStrategySelector strategySelector) : 
 
         if (distinctRuntimeTypes.Length != 1)
         {
-            var formattedTypes = string.Join(", ", distinctRuntimeTypes.Select(GetAssemblyQualifiedTypeName));
+            var formattedTypes = string.Join(", ", distinctRuntimeTypes.Select(TypeNameFormatter.GetAssemblyQualifiedName));
 
             throw new InvalidOperationException(
                 $"Node '{nodeDef.Id}' received multiple runtime input stream types for merge: {formattedTypes}. " +
@@ -83,9 +83,6 @@ public sealed class PipeMergeService(IMergeStrategySelector strategySelector) : 
 
         return distinctRuntimeTypes[0];
     }
-
-    private static string GetAssemblyQualifiedTypeName(Type type)
-        => type.AssemblyQualifiedName ?? type.FullName ?? type.Name;
 
     /// <summary>
     ///     Builds a compiled delegate that merges data pipes of the specified type using the given merge strategy.

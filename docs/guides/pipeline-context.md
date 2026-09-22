@@ -158,7 +158,29 @@ A few members sit directly on the context because they belong to no single conce
 | `Parameters`, `Items`, `Properties` | `IDictionary<string, object>` | The three dictionaries above |
 | `DeadLetterSink` | `IDeadLetterSink?` | For routing failed items |
 | `ErrorHandlerFactory` | `IErrorHandlerFactory` | Creates error handlers |
-| `StateManager`, `StatefulRegistry` | `IPipelineStateManager?`, `IStatefulRegistry?` | Stateful execution services. Assign them here, or supply one for every run with the `ExecutionAnnotationKeys.GlobalStateManager` / `GlobalStatefulRegistry` builder annotation |
+| `StateManager`, `StatefulRegistry` | `IPipelineStateManager?`, `IStatefulRegistry?` | Stateful execution services. Assign them here, or supply one for every run with the `ExecutionAnnotationKeys.GlobalStateManager` / `GlobalStatefulRegistry` builder annotation. |
+
+### Stateful node registration
+
+When `StatefulRegistry` is configured, NPipeline registers each node that implements `IStatefulNode` during pipeline setup:
+
+```csharp
+public sealed class RunningTotalNode : TransformNode<int, int>, IStatefulNode
+{
+    private int _total;
+
+    public override ValueTask<int> TransformAsync(
+        int item,
+        PipelineContext context,
+        CancellationToken cancellationToken)
+    {
+        _total += item;
+        return ValueTask.FromResult(_total);
+    }
+}
+```
+
+Implement the marker explicitly. NPipeline doesn't infer stateful behavior from an interface or type name. If the registry rejects a node or otherwise fails during registration, pipeline setup fails with that exception.
 
 > **Note:** Earlier versions also exposed every one of these as a flat property on `PipelineContext` itself, so
 > `context.LoggerFactory` and `context.Observability.LoggerFactory` both worked. The flat forwarders are gone: there is

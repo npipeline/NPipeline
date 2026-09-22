@@ -80,8 +80,6 @@ public sealed class ErrorHandlingService : IErrorHandlingService
         Func<Task> executeBody,
         CancellationToken cancellationToken)
     {
-        var logger = context.Observability.LoggerFactory.CreateLogger(nameof(ErrorHandlingService));
-
         try
         {
             await ExecuteWithRetriesInternalAsync(
@@ -187,30 +185,26 @@ public sealed class ErrorHandlingService : IErrorHandlingService
         var maxRetries = effectiveRetryOptions.MaxNodeRestartAttempts;
         Exception? lastException = null;
 
-        // First attempt
-        try
+        while (true)
         {
-            await executeAsync().ConfigureAwait(false);
-            return; // Success
-        }
-        catch (Exception ex)
-        {
-            // If the node execution was canceled, preserve and rethrow immediately so that cancellation
-            // is not wrapped by the retry/error handling logic.
-            if (ex is OperationCanceledException)
+            try
+            {
+                await executeAsync().ConfigureAwait(false);
+                return;
+            }
+            catch (OperationCanceledException)
+            {
                 throw;
+            }
+            catch (Exception ex)
+            {
+                lastException = ex;
 
-            lastException = ex;
+                // Check whether a node exhausted its retries and left the root cause for us to report.
+                if (context.ExecutionConfiguration.TakeLastRetryExhaustedException() is { } contextRetryEx)
+                    throw new NodeExecutionException(nodeDefinition.Id, contextRetryEx.Message, contextRetryEx);
+            }
 
-            // Check whether a node exhausted its retries and left the root cause for us to report.
-            if (context.ExecutionConfiguration.TakeLastRetryExhaustedException() is { } contextRetryEx)
-                throw new NodeExecutionException(nodeDefinition.Id, contextRetryEx.Message, contextRetryEx);
-        }
-
-        // Retry attempts
-        while (retryCount < maxRetries)
-        {
-            // Check if we should retry before calling the error handler
             if (retryCount >= maxRetries)
                 break;
 
@@ -258,28 +252,10 @@ public sealed class ErrorHandlingService : IErrorHandlingService
                 // Log delay strategy failure but continue with retry
                 ErrorHandlingServiceLogMessages.RetryDelayFailed(logger, delayEx, nodeDefinition.Id);
             }
-
-            try
-            {
-                await executeAsync().ConfigureAwait(false);
-                return; // Success
-            }
-            catch (Exception ex)
-            {
-                // Preserve cancellations immediately
-                if (ex is OperationCanceledException)
-                    throw;
-
-                lastException = ex;
-
-                // Check whether a node exhausted its retries and left the root cause for us to report.
-                if (context.ExecutionConfiguration.TakeLastRetryExhaustedException() is { } contextRetryEx)
-                    throw new NodeExecutionException(nodeDefinition.Id, contextRetryEx.Message, contextRetryEx);
-            }
         }
 
-        // At this point lastException must be non-null (first attempt captured it and subsequent attempts only reassign on failure).
-        var failureException = lastException; // Documented invariant: failures have occurred so lastException is set.
+        // The execution loop exits only after capturing a failure.
+        var failureException = lastException!;
 
         // If failure was caused by cancellation, preserve the original OperationCanceledException
         // instead of wrapping it in a NodeExecutionException. This ensures cancellation propagates
@@ -300,10 +276,6 @@ public sealed class ErrorHandlingService : IErrorHandlingService
 
         if (failureException is PipelineException)
             throw failureException;
-
-        // If the last exception is a RetryExhaustedException, wrap it in NodeExecutionException with RetryExhaustedException as inner exception
-        if (failureException is RetryExhaustedException retryEx)
-            throw new NodeExecutionException(nodeDefinition.Id, retryEx.Message, retryEx);
 
         // Create a RetryExhaustedException when retries are exhausted
         var retryExhaustedException = new RetryExhaustedException(nodeDefinition.Id, retryCount + 1, failureException);

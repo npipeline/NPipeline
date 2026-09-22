@@ -123,8 +123,6 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
         using var resilientActivity = context.Observability.Tracer.StartActivity("Node.Resilience");
         resilientActivity.SetTag("resilience.enabled", true);
 
-        var logger = context.Observability.LoggerFactory.CreateLogger(nameof(ResilientExecutionStrategy));
-
         // Runtime validation: Check for missing prerequisites
         // This provides a safety net for issues that analyzers might miss
         if (context.ExecutionConfiguration.ResiliencePolicy is DefaultResiliencePolicy)
@@ -177,13 +175,7 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
 
                     if (count > cap)
                         break; // enforcement done by pipe; break early once exceeded triggers exception.
-
-                    // Reset enumerator by creating a new replay pipe over the same underlying source buffer.
-                    // Since CappedReplayableDataStream stores buffered items internally, we can reuse it directly (subsequent enumeration will replay buffer).
                 }
-
-                // Reset enumerator by creating a new replay pipe over the same underlying source buffer.
-                // Since CappedReplayableDataStream stores buffered items internally, we can reuse it directly (subsequent enumeration will replay buffer).
             }
 
             input = replay;

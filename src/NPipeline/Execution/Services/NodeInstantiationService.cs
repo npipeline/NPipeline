@@ -7,6 +7,7 @@ using NPipeline.Execution.Plans;
 using NPipeline.Graph;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
+using NPipeline.State;
 
 namespace NPipeline.Execution.Services;
 
@@ -50,22 +51,8 @@ public sealed class NodeInstantiationService : INodeInstantiationService
 
         foreach (var (nodeId, nodeInstance) in nodeInstances)
         {
-            var instType = nodeInstance.GetType();
-
-            // Detect IStatefulNode (generic or non-generic) by interface name to avoid direct reference
-            var isStateful = instType.GetInterfaces().Any(i => i.Name.StartsWith("IStatefulNode", StringComparison.Ordinal));
-
-            if (isStateful)
-            {
-                try
-                {
-                    registry.Register(nodeId, nodeInstance);
-                }
-                catch
-                {
-                    // Swallow registration failures - non-fatal
-                }
-            }
+            if (nodeInstance is IStatefulNode)
+                registry.Register(nodeId, nodeInstance);
         }
     }
 

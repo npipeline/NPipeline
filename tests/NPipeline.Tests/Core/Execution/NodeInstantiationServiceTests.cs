@@ -7,11 +7,54 @@ using NPipeline.Execution.Services;
 using NPipeline.Execution.Strategies;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
+using NPipeline.State;
 
 namespace NPipeline.Tests.Core.Execution;
 
 public sealed class NodeInstantiationServiceTests
 {
+    [Fact]
+    public async Task RegisterStatefulNodes_StatefulNode_RegistersNode()
+    {
+        await using var context = PipelineContext.CreateDefault();
+        var registry = new RecordingStatefulRegistry();
+        var node = new StatefulNode();
+        context.StatefulRegistry = registry;
+
+        new NodeInstantiationService().RegisterStatefulNodes(new Dictionary<string, INode> { ["stateful"] = node }, context);
+
+        Assert.True(registry.TryGetNode("stateful", out var registered));
+        Assert.Same(node, registered);
+    }
+
+    [Fact]
+    public async Task RegisterStatefulNodes_SimilarlyNamedInterface_DoesNotRegisterNode()
+    {
+        await using var context = PipelineContext.CreateDefault();
+        var registry = new RecordingStatefulRegistry();
+        context.StatefulRegistry = registry;
+
+        new NodeInstantiationService().RegisterStatefulNodes(
+            new Dictionary<string, INode> { ["impostor"] = new SimilarlyNamedStatefulNode() },
+            context);
+
+        Assert.Empty(registry.GetRegisteredNodes());
+    }
+
+    [Fact]
+    public async Task RegisterStatefulNodes_RegistryFailure_Propagates()
+    {
+        await using var context = PipelineContext.CreateDefault();
+        context.StatefulRegistry = new RecordingStatefulRegistry { ThrowOnRegister = true };
+
+        var action = () => new NodeInstantiationService().RegisterStatefulNodes(
+            new Dictionary<string, INode> { ["stateful"] = new StatefulNode() },
+            context);
+
+        var exception = Assert.Throws<InvalidOperationException>(action);
+        Assert.Equal("Registration failed.", exception.Message);
+    }
+
     [Fact]
     public void BuildPlans_StreamTransformWithNonStreamStrategy_ThrowsClearError()
     {
@@ -66,6 +109,42 @@ public sealed class NodeInstantiationServiceTests
         public override Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken cancellationToken)
         {
             return Task.CompletedTask;
+        }
+    }
+
+    private sealed class StatefulNode : IStatefulNode;
+
+    private interface IStatefulNodeLookalike : INode;
+
+    private sealed class SimilarlyNamedStatefulNode : IStatefulNodeLookalike;
+
+    private sealed class RecordingStatefulRegistry : IStatefulRegistry
+    {
+        private readonly Dictionary<string, object> _nodes = [];
+
+        public bool ThrowOnRegister { get; init; }
+
+        public void Register(string nodeId, object nodeInstance)
+        {
+            if (ThrowOnRegister)
+                throw new InvalidOperationException("Registration failed.");
+
+            _nodes.Add(nodeId, nodeInstance);
+        }
+
+        public void Unregister(string nodeId)
+        {
+            _nodes.Remove(nodeId);
+        }
+
+        public IReadOnlyDictionary<string, object> GetRegisteredNodes()
+        {
+            return _nodes;
+        }
+
+        public bool TryGetNode(string nodeId, out object? nodeInstance)
+        {
+            return _nodes.TryGetValue(nodeId, out nodeInstance);
         }
     }
 }
