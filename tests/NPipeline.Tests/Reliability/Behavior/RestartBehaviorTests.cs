@@ -18,7 +18,7 @@ public sealed class RestartBehaviorTests
         using var cts = new CancellationTokenSource();
 
         var run = BehaviorPipeline.RunAsync(b => WireResilient(b, StreamingSource<int>.Unbounded([1, 2, 3]), sink, maxMaterializedItems: 100),
-            cts.Token);
+            cancellationToken: cts.Token);
 
         try
         {

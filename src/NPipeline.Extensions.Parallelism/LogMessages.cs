@@ -23,4 +23,10 @@ internal static partial class ParallelExecutionStrategyLogMessages
 
     [LoggerMessage(6, LogLevel.Debug, "Node {NodeId} failed on attempt {Attempt}.")]
     public static partial void NodeFailure(ILogger logger, Exception exception, string nodeId, int attempt);
+
+    [LoggerMessage(7, LogLevel.Debug, "Applying retry delay of {Delay}ms for item on node {NodeId} before attempt {Attempt}")]
+    public static partial void ApplyingRetryDelay(ILogger logger, double delay, string nodeId, int attempt);
+
+    [LoggerMessage(8, LogLevel.Warning, "Failed to apply item retry delay for node {NodeId}. Continuing with retry without delay.")]
+    public static partial void RetryDelayFailed(ILogger logger, Exception exception, string nodeId);
 }

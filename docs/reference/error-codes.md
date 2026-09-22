@@ -75,6 +75,7 @@ NPipeline error codes follow the pattern `NPxxxx` where the first two digits ind
 | NP0420 | TimeWindowAssignerCannotBeNull | The time window assigner cannot be null for time-windowed operations. |
 | NP0421 | StreamTransformNodeRequiresStreamStrategy | A stream transform node was configured with a strategy that cannot execute streams. |
 | NP0422 | NodeCannotSupplyExecutionStrategy | A node scheduled as a transform does not implement the transform interface. |
+| NP0424 | DeadLetterSinkNotConfigured | A resilience policy dead-lettered an item, but the pipeline has no dead-letter sink. Add one with `AddDeadLetterSink`, or have the policy return `Skip` or `Fail`. |
 
 ## NP05xx - Resource Management Errors
 

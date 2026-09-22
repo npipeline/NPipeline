@@ -18,6 +18,7 @@ internal sealed class CircuitBreaker : ICircuitBreaker, IDisposable
     private bool _disposed;
     private int _halfOpenAttempts;
     private int _halfOpenSuccesses;
+    private long _lastActivityTicks = DateTime.UtcNow.Ticks;
     private CircuitBreakerState _state = CircuitBreakerState.Closed;
 
     /// <summary>
@@ -59,6 +60,15 @@ internal sealed class CircuitBreaker : ICircuitBreaker, IDisposable
     public PipelineCircuitBreakerOptions Options { get; }
 
     /// <summary>
+    ///     Gets the UTC time the breaker was last consulted or had an outcome recorded.
+    /// </summary>
+    /// <remarks>
+    ///     The manager's inactivity cleanup reads this. A stream looks its breaker up once and then only records
+    ///     outcomes, so the lookup time alone would make a busy breaker look idle.
+    /// </remarks>
+    public DateTime LastActivityUtc => new(Volatile.Read(ref _lastActivityTicks), DateTimeKind.Utc);
+
+    /// <summary>
     ///     Gets current statistics from circuit breaker.
     /// </summary>
     /// <returns>The current window statistics.</returns>
@@ -76,6 +86,7 @@ internal sealed class CircuitBreaker : ICircuitBreaker, IDisposable
         lock (_gate)
         {
             ThrowIfDisposed();
+            MarkActivity();
 
             return _state switch
             {
@@ -96,6 +107,7 @@ internal sealed class CircuitBreaker : ICircuitBreaker, IDisposable
         lock (_gate)
         {
             ThrowIfDisposed();
+            MarkActivity();
             TrackOutcome(OperationOutcome.Success);
             _consecutiveFailures = 0;
 
@@ -120,6 +132,7 @@ internal sealed class CircuitBreaker : ICircuitBreaker, IDisposable
         lock (_gate)
         {
             ThrowIfDisposed();
+            MarkActivity();
             TrackOutcome(OperationOutcome.Failure);
             _consecutiveFailures++;
 
@@ -245,6 +258,11 @@ internal sealed class CircuitBreaker : ICircuitBreaker, IDisposable
             if (_state == CircuitBreakerState.Open)
                 _ = TransitionToHalfOpen("Recovery timer elapsed");
         }
+    }
+
+    private void MarkActivity()
+    {
+        Volatile.Write(ref _lastActivityTicks, DateTime.UtcNow.Ticks);
     }
 
     private void TrackOutcome(OperationOutcome outcome)

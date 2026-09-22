@@ -167,6 +167,19 @@ internal sealed class CircuitBreakerManager : ICircuitBreakerManager, IDisposabl
     }
 
     /// <summary>
+    ///     Brings each tracked access time up to the breaker's own last activity, so a breaker that is recording
+    ///     outcomes is never judged idle because it was only looked up once.
+    /// </summary>
+    private void RefreshAccessTimesFromBreakerActivity()
+    {
+        foreach (var (nodeId, circuitBreaker) in _circuitBreakers)
+        {
+            if (circuitBreaker is CircuitBreaker concrete)
+                _tracker.RecordAccessTime(nodeId, concrete.LastActivityUtc);
+        }
+    }
+
+    /// <summary>
     ///     Performs the actual cleanup of inactive circuit breakers.
     /// </summary>
     /// <returns>The number of circuit breakers that were removed.</returns>
@@ -181,6 +194,8 @@ internal sealed class CircuitBreakerManager : ICircuitBreakerManager, IDisposabl
 
         try
         {
+            RefreshAccessTimesFromBreakerActivity();
+
             var inactiveCircuitBreakers = _tracker.GetInactiveCircuitBreakers(_memoryOptions.EffectiveInactivityThreshold);
             var removedCount = 0;
 
@@ -188,9 +203,9 @@ internal sealed class CircuitBreakerManager : ICircuitBreakerManager, IDisposabl
             {
                 var removedBreaker = false;
 
-                if (_circuitBreakers.TryRemove(nodeId, out var circuitBreaker))
+                // Evicted breakers are not disposed: a stream that went quiet may still hold one and record on it later.
+                if (_circuitBreakers.TryRemove(nodeId, out _))
                 {
-                    (circuitBreaker as IDisposable)?.Dispose();
                     removedBreaker = true;
                     removedCount++;
                     CircuitBreakerManagerLogMessages.InactiveCircuitBreakerRemoved(_logger, nodeId);
@@ -208,9 +223,8 @@ internal sealed class CircuitBreakerManager : ICircuitBreakerManager, IDisposabl
                 {
                     var removedBreaker = false;
 
-                    if (_circuitBreakers.TryRemove(victimNodeId, out var victimCircuitBreaker))
+                    if (_circuitBreakers.TryRemove(victimNodeId, out _))
                     {
-                        (victimCircuitBreaker as IDisposable)?.Dispose();
                         removedBreaker = true;
                         removedCount++;
 

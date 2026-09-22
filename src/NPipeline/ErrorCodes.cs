@@ -271,6 +271,9 @@ public static class ErrorCodes
     /// <summary>A node asked for its own id but is not resolvable in the current run.</summary>
     public const string NodeIdNotResolvable = "NP0423";
 
+    /// <summary>A resilience policy dead-lettered an item but the pipeline has no dead-letter sink.</summary>
+    public const string DeadLetterSinkNotConfigured = "NP0424";
+
     #endregion
 
     #region Resource Management Errors (NP05xx)

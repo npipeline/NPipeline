@@ -57,23 +57,24 @@ The `Default` profile is designed for the 90% case: developers who want a workin
 
 ### Automatic Retry Configuration
 
-When no explicit retry options are configured, the `Default` profile applies:
+When no explicit retry options are configured, the `Default` profile fills in these retry limits. The limits apply only to failures that your [resilience policy](../error-handling/resilience-policies.md) answers with `Retry`. Without a policy, `DefaultResiliencePolicy` fails every item, and nothing is retried.
 
 | Setting | Value | Effect |
 |---------|-------|--------|
-| `MaxItemRetries` | 3 | Each failed item is retried up to 3 times before failing |
+| `MaxItemRetries` | 3 | An item your policy retries is retried up to 3 times before failing |
 | `MaxMaterializedItems` | 10,000 | Buffers up to 10K items for node restart replay |
 | `DelayStrategy` | Exponential backoff + full jitter | 1s base, 2× multiplier, 1min cap |
 | `MaxNodeRestartAttempts` | 3 | Nodes can restart up to 3 times |
 | `MaxSequentialNodeAttempts` | 5 | Sequential execution attempts capped at 5 |
 
-These defaults activate automatically - no configuration needed:
+The limits need no configuration, but you still choose what to retry with a policy:
 
 ```csharp
 public void Define(PipelineBuilder builder, PipelineContext context)
 {
-    // Retry is already configured with sensible defaults.
-    // Just define your pipeline graph:
+    // The retry limits and backoff come from the profile. The policy decides what is retried.
+    builder.AddResiliencePolicy(ResiliencePolicyBuilder.RetryOn<ProcessOrder, Order, TimeoutException>(maxRetries: 3));
+
     var source = builder.AddSource<OrderSource, Order>("orders");
     var transform = builder.AddTransform<ProcessOrder, Order, Result>("process");
     var sink = builder.AddSink<ResultSink, Result>("save");
@@ -194,7 +195,7 @@ This produces a stricter build experience that surfaces every potential allocati
 
 ## Retry Shorthand APIs
 
-`WithRetry()` applies retry defaults for the currently selected runtime profile:
+`WithRetry()` applies the retry limits for the currently selected runtime profile. As with any retry option, they take effect only for failures your policy answers with `Retry`:
 
 - `Default` runtime profile: 3 retries, exponential backoff + full jitter, 10,000-item materialization cap.
 - `HighThroughput` runtime profile: strict baseline defaults (no retries unless explicitly configured).

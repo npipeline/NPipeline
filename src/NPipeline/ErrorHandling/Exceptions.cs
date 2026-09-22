@@ -289,6 +289,37 @@ public sealed class CircuitBreakerOpenException : PipelineException
 }
 
 /// <summary>
+///     Exception thrown when a resilience policy dead-letters an item but the pipeline has no dead-letter sink.
+/// </summary>
+/// <remarks>
+///     Dropping the item instead would lose data silently, so the node fails. The exception that caused the item to
+///     be dead-lettered is the <see cref="Exception.InnerException" />.
+/// </remarks>
+public sealed class DeadLetterSinkNotConfiguredException : PipelineException
+{
+    /// <summary>
+    ///     Initializes a new instance of the <see cref="DeadLetterSinkNotConfiguredException" /> class.
+    /// </summary>
+    /// <param name="nodeId">The ID of the node whose item was dead-lettered.</param>
+    /// <param name="itemException">The exception that caused the item to be dead-lettered.</param>
+    public DeadLetterSinkNotConfiguredException(string nodeId, Exception itemException)
+        : base(ErrorMessages.DeadLetterSinkNotConfigured(nodeId), itemException)
+    {
+        NodeId = nodeId;
+    }
+
+    /// <summary>
+    ///     Gets the ID of the node whose item was dead-lettered.
+    /// </summary>
+    public string NodeId { get; }
+
+    /// <summary>
+    ///     Gets the error code associated with this exception.
+    /// </summary>
+    public string ErrorCode => ErrorCodes.DeadLetterSinkNotConfigured;
+}
+
+/// <summary>
 ///     Exception thrown when a node restart is requested.
 ///     See <see href="~/docs/reference/api/exceptions.md#noderestartexception" /> for detailed documentation.
 /// </summary>

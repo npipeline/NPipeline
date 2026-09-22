@@ -38,7 +38,7 @@ public sealed class ItemRetryBehaviorTests
         transform.AttemptsFor(1).Should().Be(2);
     }
 
-    [Theory(Skip = Defects.C2)]
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task DeadLetter_WithoutADeadLetterSink_FailsLoudly(bool parallel)
@@ -56,7 +56,9 @@ public sealed class ItemRetryBehaviorTests
         });
 
         // Silent data loss is worse than a loud failure: with nowhere to dead-letter to, the item must not vanish.
-        _ = await act.Should().ThrowAsync<Exception>();
+        var thrown = await act.Should().ThrowAsync<Exception>();
+        thrown.Which.GetBaseException().Should().BeOfType<TimeoutException>();
+        FindInChain<DeadLetterSinkNotConfiguredException>(thrown.Which).Should().NotBeNull();
         sink.Items.Should().BeEmpty();
     }
 
@@ -101,7 +103,7 @@ public sealed class ItemRetryBehaviorTests
         policy.DelayRequests.Should().Equal([1, 2]);
     }
 
-    [Fact(Skip = Defects.C5)]
+    [Fact]
     public async Task ParallelItemRetries_AskForABackoffBeforeEachRetry()
     {
         var policy = new FixedDecisionPolicy(ResilienceDecision.Retry);
@@ -149,6 +151,17 @@ public sealed class ItemRetryBehaviorTests
 
         // Two retries at 150ms each. Asserting a lower bound only keeps this robust on a loaded machine.
         stopwatch.Elapsed.Should().BeGreaterThan(TimeSpan.FromMilliseconds(250), "the node's own backoff must be applied");
+    }
+
+    private static T? FindInChain<T>(Exception? exception) where T : Exception
+    {
+        for (; exception is not null; exception = exception.InnerException)
+        {
+            if (exception is T match)
+                return match;
+        }
+
+        return null;
     }
 
     private static TransformNodeHandle<int, int> Wire(PipelineBuilder builder, StreamingSource<int> source, FlakyTransform transform,

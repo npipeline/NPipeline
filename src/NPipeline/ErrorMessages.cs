@@ -446,6 +446,14 @@ internal static class ErrorMessages
                $"See: {DocsBaseUrl}#{ErrorCodes.TimeWindowAssignerCannotBeNull}";
     }
 
+    public static string DeadLetterSinkNotConfigured(string nodeId)
+    {
+        return $"[{ErrorCodes.DeadLetterSinkNotConfigured}] Node '{nodeId}': the resilience policy dead-lettered an item, but no dead-letter sink is configured. " +
+               $"The item cannot be dropped silently, so the node fails instead. " +
+               $"Configure one with builder.AddDeadLetterSink(...), or have the policy return Skip or Fail. " +
+               $"See: {DocsBaseUrl}#{ErrorCodes.DeadLetterSinkNotConfigured}";
+    }
+
     #endregion
 
     #region Resource and Capacity Errors (NP05xx)

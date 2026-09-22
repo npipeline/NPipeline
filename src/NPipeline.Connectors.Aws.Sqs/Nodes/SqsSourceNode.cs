@@ -59,8 +59,11 @@ public sealed class SqsSourceNode<T> : SourceNode<SqsMessage<T>>
     {
         var attempt = 0;
 
-        while (!cancellationToken.IsCancellationRequested)
+        while (true)
         {
+            // Cancellation surfaces as OperationCanceledException rather than ending the stream as if it had drained.
+            cancellationToken.ThrowIfCancellationRequested();
+
             List<SqsMessage<T>>? messagesToYield = null;
 
             try
@@ -99,10 +102,6 @@ public sealed class SqsSourceNode<T> : SourceNode<SqsMessage<T>>
                     if (sqsMessage != null)
                         messagesToYield.Add(sqsMessage);
                 }
-            }
-            catch (OperationCanceledException)
-            {
-                break;
             }
             catch (AmazonSQSException ex) when (IsTransientError(ex))
             {

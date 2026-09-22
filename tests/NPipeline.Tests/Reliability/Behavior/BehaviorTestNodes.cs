@@ -18,13 +18,10 @@ namespace NPipeline.Tests.Reliability.Behavior;
 internal static class Defects
 {
     public const string C1 = "C1 (Phase 2): the Default profile never retries item failures";
-    public const string C2 = "C2 (Phase 1): DeadLetter without a dead-letter sink silently drops the item";
     public const string C3 = "C3 (Phase 2): MaxItemRetries caps a policy's own retry rule";
-    public const string C5 = "C5 (Phase 1): the Parallelism item-retry loop applies no backoff";
     public const string C6 = "C6 (Phase 2): per-node delay configuration is ignored";
     public const string R1 = "R1 (Phase 5): a resilient node buffers its whole streaming input before processing";
     public const string R2 = "R2 (Phase 5): a resilient node fails with zero errors once its input exceeds MaxMaterializedItems";
-    public const string B1 = "B1 (Phase 1): an in-use circuit breaker is evicted and disposed after the inactivity threshold";
 }
 
 /// <summary>
@@ -38,12 +35,17 @@ internal sealed class BehaviorPipeline(Action<PipelineBuilder> define) : IPipeli
         define(builder);
     }
 
-    public static async Task RunAsync(Action<PipelineBuilder> define, CancellationToken cancellationToken = default)
+    public static async Task RunAsync(Action<PipelineBuilder> define, IExecutionObserver? observer = null,
+        CancellationToken cancellationToken = default)
     {
         var runner = PipelineRunner.Create();
 
         // The token goes on the context: node execution observes the context's token, not the one RunAsync takes.
         await using var context = new PipelineContext(PipelineContextConfiguration.WithCancellation(cancellationToken));
+
+        if (observer is not null)
+            context.Observability.ExecutionObserver = observer;
+
         await runner.RunAsync(new BehaviorPipeline(define), context, cancellationToken).ConfigureAwait(false);
     }
 }
@@ -91,6 +93,55 @@ internal sealed class StreamingSource<T>(Func<CancellationToken, IAsyncEnumerabl
         }
 
         await Task.Delay(Timeout.Infinite, cancellationToken).ConfigureAwait(false);
+    }
+}
+
+/// <summary>
+///     A source whose first <see cref="OpenStream" /> fails, which makes the node-retry layer (L3) run it again.
+/// </summary>
+internal sealed class FailsToOpenOnceSource(IEnumerable<int> items) : SourceNode<int>
+{
+    private int _opens;
+
+    public int Opens => _opens;
+
+    public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
+    {
+        if (Interlocked.Increment(ref _opens) == 1)
+            throw new TimeoutException("transient failure opening the source");
+
+        return StreamingSource<int>.Of(items).OpenStream(context, cancellationToken);
+    }
+}
+
+/// <summary>
+///     Records the retry events raised to <see cref="IExecutionObserver.OnRetry" />.
+/// </summary>
+internal sealed class RecordingObserver : IExecutionObserver
+{
+    private readonly ConcurrentQueue<NodeRetryEvent> _retries = new();
+
+    public IReadOnlyList<NodeRetryEvent> Retries => [.. _retries];
+
+    public void OnRetry(NodeRetryEvent e)
+    {
+        _retries.Enqueue(e);
+    }
+
+    public void OnNodeStarted(NodeExecutionStarted e)
+    {
+    }
+
+    public void OnNodeCompleted(NodeExecutionCompleted e)
+    {
+    }
+
+    public void OnDrop(QueueDropEvent e)
+    {
+    }
+
+    public void OnQueueMetrics(QueueMetricsEvent e)
+    {
     }
 }
 

@@ -8,8 +8,6 @@ namespace NPipeline.Connectors.Http.Retry;
 /// </summary>
 public sealed class ExponentialBackoffHttpRetryStrategy : IHttpRetryStrategy
 {
-    private TimeSpan _accumulatedDelay = TimeSpan.Zero;
-
     /// <summary>Maximum number of retry attempts. Defaults to <c>3</c>.</summary>
     public int MaxRetries { get; init; } = 3;
 
@@ -23,8 +21,9 @@ public sealed class ExponentialBackoffHttpRetryStrategy : IHttpRetryStrategy
     public double JitterFactor { get; init; } = 0.2;
 
     /// <summary>
-    ///     Maximum total delay accumulated across all retries.
-    ///     When reached, further retries are refused regardless of <see cref="MaxRetries" />.
+    ///     Maximum total delay one request may spend across its retries. The budget applies to each request
+    ///     separately. When a request reaches it, its further retries are refused regardless of
+    ///     <see cref="MaxRetries" />.
     /// </summary>
     public TimeSpan? MaxTotalRetryDelay { get; init; }
 
@@ -99,18 +98,7 @@ public sealed class ExponentialBackoffHttpRetryStrategy : IHttpRetryStrategy
         else
             delay = ComputeExponentialDelay(attempt);
 
-        if (MaxTotalRetryDelay.HasValue)
-        {
-            var remainingBudget = MaxTotalRetryDelay.Value - _accumulatedDelay;
-
-            if (remainingBudget <= TimeSpan.Zero)
-                return TimeSpan.Zero;
-
-            if (delay > remainingBudget)
-                delay = remainingBudget;
-        }
-
-        TrackDelay(delay);
+        // MaxTotalRetryDelay is enforced per request by the node, which owns the request's retry loop.
         return delay;
     }
 
@@ -123,10 +111,5 @@ public sealed class ExponentialBackoffHttpRetryStrategy : IHttpRetryStrategy
             capped += capped * JitterFactor * Random.Shared.NextDouble();
 
         return TimeSpan.FromMilliseconds(capped);
-    }
-
-    private void TrackDelay(TimeSpan delay)
-    {
-        _accumulatedDelay += delay;
     }
 }

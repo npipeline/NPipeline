@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
+using Microsoft.Extensions.Logging;
 using NPipeline.Configuration;
 using NPipeline.DataFlow;
 using NPipeline.ErrorHandling;
@@ -147,7 +148,16 @@ namespace NPipeline.Extensions.Parallelism
                             RecordLineageOutcome(lineageInputIndex, context, in cached, LineageOutcomeReason.FilteredOut, attempt);
                             return default;
                         case ResilienceDecision.DeadLetter:
-                            await TryDispatchDeadLetterAsync(item, ex, context, cached.NodeId, attempt, cached.CancellationToken)
+                            if (context.DeadLetterSink is null)
+                            {
+                                // Dropping the item here would lose it silently while lineage claimed it was dead-lettered.
+                                var noSink = new DeadLetterSinkNotConfiguredException(cached.NodeId, ex);
+                                PipelineSampleErrorReporter.TryRecordError(context, cached.NodeId, item, noSink, attempt, correlationId, ancestryInputIndices);
+                                RecordLineageOutcome(lineageInputIndex, context, in cached, LineageOutcomeReason.Error, attempt);
+                                throw noSink;
+                            }
+
+                            await DispatchDeadLetterAsync(context.DeadLetterSink, item, ex, context, cached.NodeId, attempt, cached.CancellationToken)
                                 .ConfigureAwait(false);
                             RecordLineageOutcome(lineageInputIndex, context, in cached, LineageOutcomeReason.DeadLettered,
                                 attempt);
@@ -165,6 +175,12 @@ namespace NPipeline.Extensions.Parallelism
                             attempt++;
                             itemActivity?.SetTag("retry.attempt", attempt.ToString());
                             PublishRetryInstrumentation(metrics, observer, context, cached.NodeId, attempt, ex);
+
+                            // Back off before retrying, as the sequential path does. Without it the workers spin against
+                            // an already-struggling dependency as fast as the CPU allows.
+                            await ApplyRetryDelayAsync(policy, context, cached.NodeId, attempt, logger, cached.CancellationToken)
+                                .ConfigureAwait(false);
+
                             continue;
                         case ResilienceDecision.Fail:
                             PipelineSampleErrorReporter.TryRecordError(context, cached.NodeId, item, ex, attempt, correlationId, ancestryInputIndices);
@@ -175,6 +191,45 @@ namespace NPipeline.Extensions.Parallelism
                     }
                 }
             }
+        }
+
+        private static async Task ApplyRetryDelayAsync(
+            IResiliencePolicy policy,
+            PipelineContext context,
+            string nodeId,
+            int attempt,
+            ILogger? logger,
+            CancellationToken cancellationToken)
+        {
+            TimeSpan delay;
+
+            try
+            {
+                delay = await policy.GetRetryDelayAsync(context, RetryKind.ItemRetry, attempt, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+            {
+                // A broken delay strategy must not break the retry itself. Cancellation of the pipeline's own token is
+                // excluded by the filter so it propagates rather than being swallowed here.
+                if (logger is not null)
+                {
+                    ParallelExecutionStrategyLogMessages.RetryDelayFailed(logger, ex, nodeId);
+                }
+
+                return;
+            }
+
+            if (delay <= TimeSpan.Zero)
+            {
+                return;
+            }
+
+            if (logger is not null)
+            {
+                ParallelExecutionStrategyLogMessages.ApplyingRetryDelay(logger, delay.TotalMilliseconds, nodeId, attempt);
+            }
+
+            await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
         }
 
         private static ValueTask<TOut> ExecuteNodeAsync<TIn, TOut>(ITransformNode<TIn, TOut> node, TIn item, PipelineContext context,
@@ -223,7 +278,8 @@ namespace NPipeline.Extensions.Parallelism
             LineageNodeOutcomeRegistry.Record(context.RunIdentity.PipelineId, cached.NodeId, lineageInputIndex.Value, outcomeReason, retryCount);
         }
 
-        private static async Task TryDispatchDeadLetterAsync<TIn>(
+        private static async Task DispatchDeadLetterAsync<TIn>(
+            IDeadLetterSink deadLetterSink,
             TIn failedItem,
             Exception exception,
             PipelineContext context,
@@ -231,14 +287,9 @@ namespace NPipeline.Extensions.Parallelism
             int retryAttempt,
             CancellationToken cancellationToken)
         {
-            if (context.DeadLetterSink is null)
-            {
-                return;
-            }
-
             var attribution = FailureAttributionResolver.Resolve(exception, context, nodeId, retryAttempt);
             var envelope = new DeadLetterEnvelope(failedItem!, exception, attribution);
-            await context.DeadLetterSink.HandleAsync(envelope, context, cancellationToken).ConfigureAwait(false);
+            await deadLetterSink.HandleAsync(envelope, context, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>

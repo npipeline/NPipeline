@@ -209,7 +209,7 @@ public override ValueTask<TimeSpan> GetRetryDelayAsync(
 | `MaxMaterializedItems` | null | 10,000 | Item buffer cap for node restart (see [Materialization](materialization.md)) |
 | `DelayStrategyConfiguration` | null | Exponential + full jitter | Backoff + jitter configuration |
 
-In the `Default` [optimization profile](../guides/optimization-profiles.md), the "Default Profile" column values are applied automatically when no explicit retry configuration is provided. In `HighThroughput` mode, the "Baseline Default" values apply and you must configure everything explicitly.
+In the `Default` [optimization profile](../guides/optimization-profiles.md), the "Default Profile" column values are applied automatically when no explicit retry configuration is provided. In `HighThroughput` mode, the "Baseline Default" values apply and you must configure everything explicitly. In both profiles, these are limits: an item is retried only when your [resilience policy](resilience-policies.md) returns `Retry`, and never more than `MaxItemRetries` times, even if the policy's own rule allows more.
 
 ```csharp
 builder.WithRetryOptions(options => options with

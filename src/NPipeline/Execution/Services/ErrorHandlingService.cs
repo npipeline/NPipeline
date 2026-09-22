@@ -236,6 +236,11 @@ public sealed class ErrorHandlingService : IErrorHandlingService
 
             retryCount++;
 
+            // Phase 3 of the resilience plan gives node retries their own RetryKind; until then they share the kind
+            // their delay already uses.
+            context.Observability.ExecutionObserver.OnRetry(new NodeRetryEvent(nodeDefinition.Id, RetryKind.NodeRestart, retryCount, lastException,
+                context.RunIdentity.PipelineId, context.RunIdentity.PipelineName));
+
             // Apply retry delay before retry attempt
             try
             {
@@ -247,9 +252,10 @@ public sealed class ErrorHandlingService : IErrorHandlingService
                     await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
                 }
             }
-            catch (Exception delayEx)
+            catch (Exception delayEx) when (delayEx is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
             {
-                // Log delay strategy failure but continue with retry
+                // Log delay strategy failure but continue with retry. A cancellation of the pipeline's own token is
+                // excluded by the filter so it propagates instead of being logged and followed by one more attempt.
                 ErrorHandlingServiceLogMessages.RetryDelayFailed(logger, delayEx, nodeDefinition.Id);
             }
         }

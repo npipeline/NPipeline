@@ -121,9 +121,10 @@ public class ExponentialBackoffHttpRetryStrategyTests
     }
 
     [Fact]
-    public void GetDelay_WhenMaxTotalRetryDelayWouldBeExceeded_ClampsDelayToRemainingBudget()
+    public void GetDelay_IsTheSameForEveryRequest_SoOneRequestCannotSpendAnother_sBudget()
     {
-        var strategy = new ExponentialBackoffHttpRetryStrategy
+        // The budget is enforced per request by the nodes (see HttpRetryBudgetBehaviorTests); the strategy is shared.
+        IHttpRetryStrategy strategy = new ExponentialBackoffHttpRetryStrategy
         {
             BaseDelayMs = 100,
             MaxDelayMs = 10_000,
@@ -131,11 +132,10 @@ public class ExponentialBackoffHttpRetryStrategyTests
             MaxTotalRetryDelay = TimeSpan.FromMilliseconds(150),
         };
 
-        var first = strategy.GetDelay(null, 1);
-        var second = strategy.GetDelay(null, 2);
+        var delays = Enumerable.Range(0, 5).Select(_ => strategy.GetDelay(null, 2)).ToList();
 
-        first.TotalMilliseconds.Should().Be(100);
-        second.TotalMilliseconds.Should().Be(50);
+        delays.Should().AllSatisfy(d => d.TotalMilliseconds.Should().Be(200));
+        strategy.MaxTotalRetryDelay.Should().Be(TimeSpan.FromMilliseconds(150));
     }
 
     [Fact]

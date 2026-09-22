@@ -31,6 +31,17 @@ internal sealed class CircuitBreakerTracker : IDisposable
     }
 
     /// <summary>
+    ///     Records an access time for the node if it is later than the access time already tracked.
+    /// </summary>
+    /// <param name="nodeId">The unique identifier for the node.</param>
+    /// <param name="accessTime">The UTC time of the access.</param>
+    public void RecordAccessTime(string nodeId, DateTime accessTime)
+    {
+        ArgumentNullException.ThrowIfNull(nodeId);
+        _ = _lastAccessTimes.AddOrUpdate(nodeId, accessTime, (_, existing) => accessTime > existing ? accessTime : existing);
+    }
+
+    /// <summary>
     ///     Gets the last access time for the specified circuit breaker.
     /// </summary>
     /// <param name="nodeId">The unique identifier for the node.</param>

@@ -243,14 +243,7 @@ public sealed class RabbitMqSinkNode<T> : SinkNode<T>
                 _metrics.RecordPublishLatency(_options.ExchangeName, sw.Elapsed.TotalMilliseconds);
 
                 LogMessages.MessagePublished(_logger, _options.ExchangeName, routingKey);
-
-                // Acknowledge source message
-                var sourceMsg = ExtractSourceMessage(item);
-
-                if (sourceMsg is not null)
-                    await AcknowledgeSourceMessageAsync(sourceMsg, cancellationToken).ConfigureAwait(false);
-
-                return;
+                break;
             }
             catch (Exception) when (attempt < _options.MaxRetries)
             {
@@ -272,6 +265,13 @@ public sealed class RabbitMqSinkNode<T> : SinkNode<T>
                 return;
             }
         }
+
+        // Acknowledge the source message only once the publish has succeeded, and outside the retried block: a failed
+        // acknowledgement must not publish the message again, because it has already reached the exchange.
+        var sourceMsg = ExtractSourceMessage(item);
+
+        if (sourceMsg is not null)
+            await AcknowledgeSourceMessageAsync(sourceMsg, cancellationToken).ConfigureAwait(false);
     }
 
     private ReadOnlyMemory<byte> SerializeItem(T item)

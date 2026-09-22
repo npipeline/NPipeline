@@ -173,8 +173,10 @@ public class MongoChangeStreamSourceNode<T> : SourceNode<T>, IAsyncDisposable
         var attempt = 0;
         var maxAttempts = _configuration.MaxRetryAttempts + 1;
 
-        while (attempt < maxAttempts && !cancellationToken.IsCancellationRequested)
+        while (attempt < maxAttempts)
         {
+            // Cancellation surfaces as OperationCanceledException rather than ending the stream as if it had drained.
+            cancellationToken.ThrowIfCancellationRequested();
             attempt++;
 
             try
@@ -194,7 +196,7 @@ public class MongoChangeStreamSourceNode<T> : SourceNode<T>, IAsyncDisposable
             {
                 await Task.Delay(_configuration.RetryDelay, cancellationToken).ConfigureAwait(false);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
             {
                 if (_configuration.ContinueOnError)
                 {

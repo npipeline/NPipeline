@@ -8,20 +8,15 @@ using NPipeline.DataFlow.DataStreams;
 using NPipeline.Pipeline;
 using RabbitMQ.Client;
 
-// Tests skipped with a defect ID pin known bugs; the phase that fixes each one removes its skip.
-#pragma warning disable xUnit1004
-
 namespace NPipeline.Connectors.RabbitMQ.Tests.Reliability.Behavior;
 
 /// <summary>
-///     Behavior tests for the RabbitMQ sink's publish retry loop. IDs refer to the defect register in
-///     <c>plans/resilience-improvements.md</c>.
+///     Behavior tests for the RabbitMQ sink's publish retry loop (Q1 in
+///     <c>plans/resilience-improvements.md</c>).
 /// </summary>
 public sealed class RabbitMqSinkRetryBehaviorTests
 {
-    private const string Q1 = "Q1 (Phase 1): an acknowledgement failure re-publishes the message";
-
-    [Fact(Skip = Q1)]
+    [Fact]
     public async Task AcknowledgementFailure_AfterASuccessfulPublish_DoesNotRepublish()
     {
         var channel = A.Fake<IChannel>();

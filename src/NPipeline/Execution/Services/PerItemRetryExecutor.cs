@@ -62,7 +62,16 @@ internal sealed class PerItemRetryExecutor : IPerItemRetryExecutor
                         return ItemExecutionResult<TOut>.Skipped(attempt);
 
                     case ResilienceDecision.DeadLetter:
-                        await TryDispatchDeadLetterAsync(item, ex, context, nodeId, attempt, cancellationToken).ConfigureAwait(false);
+                        if (context.DeadLetterSink is null)
+                        {
+                            // Dropping the item here would lose it silently while lineage claimed it was dead-lettered.
+                            var noSink = new DeadLetterSinkNotConfiguredException(nodeId, ex);
+                            PipelineSampleErrorReporter.TryRecordError(context, nodeId, item, noSink, attempt);
+                            RecordLineageOutcome(hasLineageIndex, lineageInputIndex, in lineageOutcomeWriter, context, nodeId, LineageOutcomeReason.Error, attempt);
+                            throw noSink;
+                        }
+
+                        await DispatchDeadLetterAsync(context.DeadLetterSink, item, ex, context, nodeId, attempt, cancellationToken).ConfigureAwait(false);
                         RecordLineageOutcome(hasLineageIndex, lineageInputIndex, in lineageOutcomeWriter, context, nodeId, LineageOutcomeReason.DeadLettered, attempt);
                         return ItemExecutionResult<TOut>.DeadLettered(attempt);
 
@@ -81,6 +90,9 @@ internal sealed class PerItemRetryExecutor : IPerItemRetryExecutor
                         }
 
                         itemActivity?.SetTag("retry.attempt", attempt.ToString());
+
+                        context.Observability.ExecutionObserver.OnRetry(new NodeRetryEvent(nodeId, RetryKind.ItemRetry, attempt, ex,
+                            context.RunIdentity.PipelineId, context.RunIdentity.PipelineName));
 
                         // Back off before retrying. Without this the configured delay strategy - exponential
                         // backoff, jitter, the composite - is inert for item-level retries and the pipeline spins
@@ -164,7 +176,8 @@ internal sealed class PerItemRetryExecutor : IPerItemRetryExecutor
         LineageNodeOutcomeRegistry.Record(context.RunIdentity.PipelineId, nodeId, lineageInputIndex, outcomeReason, retryCount);
     }
 
-    private static async Task TryDispatchDeadLetterAsync<TIn>(
+    private static async Task DispatchDeadLetterAsync<TIn>(
+        IDeadLetterSink deadLetterSink,
         TIn failedItem,
         Exception exception,
         PipelineContext context,
@@ -172,11 +185,8 @@ internal sealed class PerItemRetryExecutor : IPerItemRetryExecutor
         int retryAttempt,
         CancellationToken cancellationToken)
     {
-        if (context.DeadLetterSink is null)
-            return;
-
         var attribution = FailureAttributionResolver.Resolve(exception, context, nodeId, retryAttempt);
         var envelope = new DeadLetterEnvelope(failedItem!, exception, attribution);
-        await context.DeadLetterSink.HandleAsync(envelope, context, cancellationToken).ConfigureAwait(false);
+        await deadLetterSink.HandleAsync(envelope, context, cancellationToken).ConfigureAwait(false);
     }
 }

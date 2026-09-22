@@ -105,6 +105,7 @@ public sealed class KafkaSourceNode<T> : SourceNode<KafkaMessage<T>>
         while (!cancellationToken.IsCancellationRequested)
         {
             List<KafkaMessage<T>>? messagesToYield = null;
+            var batchHadError = false;
 
             try
             {
@@ -132,6 +133,7 @@ public sealed class KafkaSourceNode<T> : SourceNode<KafkaMessage<T>>
                     catch (ConsumeException ex)
                     {
                         // Handle consume errors within the batch
+                        batchHadError = true;
                         attempt++;
 
                         if (!_retryStrategy.ShouldRetry(ex, attempt))
@@ -152,9 +154,12 @@ public sealed class KafkaSourceNode<T> : SourceNode<KafkaMessage<T>>
                 if (messagesToYield.Count > 0)
                     _metrics.RecordConsumed(_configuration.SourceTopic, messagesToYield.Count);
 
-                attempt = 0; // Reset attempt counter on successful batch
+                // Only an error-free batch proves the error cleared. Resetting after a batch cut short by a consume
+                // error would restart the count on every failure, so a persistent error would retry forever.
+                if (!batchHadError)
+                    attempt = 0;
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
                 // Graceful shutdown - commit offsets and close consumer
                 await ShutdownAsync().ConfigureAwait(false);

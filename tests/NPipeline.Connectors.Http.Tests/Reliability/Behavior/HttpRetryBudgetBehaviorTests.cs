@@ -6,23 +6,18 @@ using NPipeline.Connectors.Http.Tests.Helpers;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.Pipeline;
 
-// Tests skipped with a defect ID pin known bugs; the phase that fixes each one removes its skip.
-#pragma warning disable xUnit1004
-
 namespace NPipeline.Connectors.Http.Tests.Reliability.Behavior;
 
 /// <summary>
-///     Behavior tests for the Http retry-delay budget (<c>MaxTotalRetryDelay</c>). IDs refer to the defect register in
+///     Behavior tests for the Http retry-delay budget (<c>MaxTotalRetryDelay</c>), H1 in
 ///     <c>plans/resilience-improvements.md</c>. The sink uses PUT so the tests stay valid once non-idempotent writes
 ///     without a key stop being retried (D-6).
 /// </summary>
 public sealed class HttpRetryBudgetBehaviorTests
 {
-    private const string H1 = "H1 (Phase 1): the retry-delay budget is shared by every request and, once spent, retries run with zero delay";
-
     private static readonly TimeSpan BaseDelay = TimeSpan.FromMilliseconds(20);
 
-    [Fact(Skip = H1)]
+    [Fact]
     public async Task ManyRequests_DoNotExhaustASharedDelayBudget()
     {
         const int requests = 10;
@@ -43,7 +38,7 @@ public sealed class HttpRetryBudgetBehaviorTests
             .And.OnlyContain(d => d == BaseDelay, "each request's first retry gets the full backoff, however many requests came before it");
     }
 
-    [Fact(Skip = H1)]
+    [Fact]
     public async Task SpentBudget_StopsRetryingInsteadOfRetryingWithoutDelay()
     {
         var handler = new MockHttpMessageHandler();
@@ -59,7 +54,10 @@ public sealed class HttpRetryBudgetBehaviorTests
         var act = () => RunSinkAsync(handler, strategy, items: 1);
 
         _ = await act.Should().ThrowAsync<HttpRequestException>();
-        strategy.Delays.Should().OnlyContain(d => d > TimeSpan.Zero, "a retry with no delay hammers a server that is already failing");
+
+        // A 20ms wait, then the 10ms left in the budget, then stop. Before the fix the spent budget produced zero-delay
+        // retries until MaxRetries ran out, hammering a server that was already failing.
+        handler.Requests.Should().HaveCount(3, "once the budget is spent the request stops retrying");
     }
 
     private static ExponentialBackoffHttpRetryStrategy BudgetedStrategy(int maxRetries, TimeSpan budget)
@@ -99,6 +97,8 @@ public sealed class HttpRetryBudgetBehaviorTests
         {
             return inner.ShouldRetry(response, exception, attempt);
         }
+
+        public TimeSpan? MaxTotalRetryDelay => inner.MaxTotalRetryDelay;
 
         public TimeSpan GetDelay(HttpResponseMessage? response, int attempt)
         {

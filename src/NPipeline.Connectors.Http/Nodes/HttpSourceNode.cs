@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NPipeline.Connectors.Http.Configuration;
 using NPipeline.Connectors.Http.Metrics;
+using NPipeline.Connectors.Http.Retry;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
@@ -172,6 +173,7 @@ public sealed partial class HttpSourceNode<T> : SourceNode<T>, IAsyncDisposable
     private async Task<HttpResponseMessage> SendWithRetryAsync(Uri uri, CancellationToken cancellationToken)
     {
         var attempt = 0;
+        var delayBudget = new RetryDelayBudget(_configuration.RetryStrategy.MaxTotalRetryDelay);
 
         while (true)
         {
@@ -231,7 +233,7 @@ public sealed partial class HttpSourceNode<T> : SourceNode<T>, IAsyncDisposable
                 if (response.IsSuccessStatusCode)
                     return response;
 
-                if (!_configuration.RetryStrategy.ShouldRetry(response, null, attempt))
+                if (delayBudget.IsSpent || !_configuration.RetryStrategy.ShouldRetry(response, null, attempt))
                 {
                     var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
                     response.Dispose();
@@ -245,14 +247,14 @@ public sealed partial class HttpSourceNode<T> : SourceNode<T>, IAsyncDisposable
             {
                 _metrics.RecordError(uri.ToString(), _configuration.RequestMethod.Method, lastException!);
 
-                if (!_configuration.RetryStrategy.ShouldRetry(null, lastException, attempt))
+                if (delayBudget.IsSpent || !_configuration.RetryStrategy.ShouldRetry(null, lastException, attempt))
                     throw lastException!;
             }
 
             _metrics.RecordRetry(uri.ToString(), _configuration.RequestMethod.Method, attempt);
             LogRetrying(_logger, typeof(T).Name, attempt, uri);
 
-            var delay = _configuration.RetryStrategy.GetDelay(response, attempt);
+            var delay = delayBudget.Spend(_configuration.RetryStrategy.GetDelay(response, attempt));
             response?.Dispose();
             await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
         }

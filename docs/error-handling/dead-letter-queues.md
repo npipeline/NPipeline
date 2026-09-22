@@ -23,6 +23,8 @@ ResiliencePolicyBuilder
     .Build();
 ```
 
+If no dead-letter sink is configured when an item is dead-lettered, the node fails with `DeadLetterSinkNotConfiguredException` ([NP0424](../reference/error-codes.md)), and the original failure is its inner exception. NPipeline never drops the item silently. Add a sink with `builder.AddDeadLetterSink(...)`, or have the policy return `Skip` to discard the item.
+
 ## The DeadLetterEnvelope
 
 Every dead-lettered item is wrapped in a `DeadLetterEnvelope` that captures full failure context:

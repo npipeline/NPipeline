@@ -53,14 +53,20 @@ These decisions are defined in the `ResilienceDecision` enum (`NPipeline.Resilie
 
 The default error handling behavior depends on the [optimization profile](../guides/optimization-profiles.md):
 
-**Default profile:** NPipeline auto-configures item-level retries (3 attempts, exponential backoff with full jitter, 10,000-item materialization cap). Failed items are retried automatically before the pipeline fails. No explicit configuration is required.
+Without a resilience policy, NPipeline uses `DefaultResiliencePolicy`, which returns `Fail` for every failure. In both profiles, a failed item fails the pipeline unless you add a policy with `AddResiliencePolicy()`. Nothing is retried, skipped, or dead-lettered automatically.
 
-**HighThroughput profile:** NPipeline uses `DefaultResiliencePolicy` which returns `Fail` for all failure types. Any unhandled exception fails the pipeline immediately - no items are retried or skipped automatically. You opt into recovery behaviors explicitly.
+The profiles differ in the retry *limits* they fill in, which only matter once your policy returns `Retry`:
+
+**Default profile:** sets `MaxItemRetries` to 3, exponential backoff with full jitter, and a 10,000-item materialization cap. When your policy returns `Retry` for an item, NPipeline retries it up to 3 times with that backoff.
+
+**HighThroughput profile:** leaves `MaxItemRetries` at 0. A policy that returns `Retry` for an item fails it on the first retry unless you raise `MaxItemRetries` with `WithRetryOptions()`.
+
+> [!NOTE]
+> `MaxItemRetries` caps a policy's own retry rules. A rule such as `On<TimeoutException>().Retry(5)` gets at most `MaxItemRetries` retries, and when that limit is lower the item fails instead of reaching the rule's dead-letter fallback.
 
 In both profiles:
 
-- No dead-letter routing occurs unless you configure a dead-letter sink.
-- No resilience policy is active unless you add one via `AddResiliencePolicy()`.
+- If a policy returns `DeadLetter` and no dead-letter sink is configured, the node fails with `DeadLetterSinkNotConfiguredException` ([NP0424](../reference/error-codes.md)). The item is never dropped silently.
 - The fail-fast behavior for *unhandled* failures (those exceeding retry limits or not covered by a policy) is intentional - silent data loss is worse than a loud failure.
 
 ## Configuring Error Handling
@@ -97,10 +103,10 @@ public class MyPipeline : IPipelineDefinition
 }
 ```
 
-Or use the `WithRetry()` shorthand for sensible defaults without specifying individual values:
+Or use the `WithRetry()` shorthand to set the profile's retry limits without specifying individual values. Like any retry option, the limits take effect only for failures your policy answers with `Retry`:
 
 ```csharp
-builder.WithRetry();  // Applies retry defaults for the active optimization profile
+builder.WithRetry();  // Applies the retry limits for the active optimization profile
 ```
 
 ## How Failures Flow

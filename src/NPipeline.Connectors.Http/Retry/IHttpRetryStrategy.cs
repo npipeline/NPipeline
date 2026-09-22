@@ -16,4 +16,10 @@ public interface IHttpRetryStrategy
     /// <param name="response">The HTTP response, or <c>null</c> when a network-level exception occurred.</param>
     /// <param name="attempt">The current (1-based) attempt number.</param>
     TimeSpan GetDelay(HttpResponseMessage? response, int attempt);
+
+    /// <summary>
+    ///     Gets the maximum total delay one request may spend waiting between its attempts, or <c>null</c> for no limit.
+    ///     The budget applies to each request separately. Once a request has spent it, the request stops retrying.
+    /// </summary>
+    TimeSpan? MaxTotalRetryDelay => null;
 }

@@ -3,9 +3,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NPipeline.Configuration;
 using NPipeline.Execution.CircuitBreaking;
 
-// Tests skipped with a defect ID pin known bugs; the phase that fixes each one removes its skip.
-#pragma warning disable xUnit1004
-
 namespace NPipeline.Tests.Reliability.Behavior;
 
 /// <summary>
@@ -14,7 +11,7 @@ namespace NPipeline.Tests.Reliability.Behavior;
 /// </summary>
 public sealed class CircuitBreakerBehaviorTests
 {
-    [Fact(Skip = Defects.B1)]
+    [Fact]
     public async Task BreakerInUse_IsNotDisposedByInactivityCleanup()
     {
         var inactivityThreshold = TimeSpan.FromMilliseconds(100);
@@ -41,5 +38,26 @@ public sealed class CircuitBreakerBehaviorTests
         };
 
         await act.Should().NotThrowAsync("a breaker that is recording outcomes is in use, not idle");
+    }
+
+    [Fact]
+    public void QuietBreaker_EvictedByCleanup_KeepsWorkingForTheStreamThatHoldsIt()
+    {
+        using var manager = new CircuitBreakerManager(
+            NullLogger.Instance,
+            new CircuitBreakerMemoryManagementOptions(
+                CleanupInterval: TimeSpan.FromMilliseconds(1),
+                InactivityThreshold: TimeSpan.FromMilliseconds(1),
+                EnableAutomaticCleanup: false));
+
+        var breaker = manager.GetCircuitBreaker("node", new PipelineCircuitBreakerOptions(5, TimeSpan.FromSeconds(1), TimeSpan.FromMinutes(1)));
+
+        // A source with no traffic, such as a quiet Kafka topic, leaves the breaker idle past the threshold.
+        Thread.Sleep(20);
+        manager.TriggerCleanup().Should().Be(1);
+
+        var act = () => breaker.RecordSuccess();
+
+        act.Should().NotThrow("eviction forgets the breaker; it must not dispose one a stream still holds");
     }
 }
