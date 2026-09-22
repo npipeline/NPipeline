@@ -167,6 +167,9 @@ public static class ErrorCodes
     /// <summary>A node received an input stream whose item type it cannot consume.</summary>
     public const string InputStreamContractMismatch = "NP0213";
 
+    /// <summary>A route node has no output item type for its runtime stream contract.</summary>
+    public const string RouteNodeMissingOutputType = "NP0214";
+
     #endregion
 
     #region Node Execution Errors (NP03xx)

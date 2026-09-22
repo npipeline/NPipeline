@@ -34,6 +34,7 @@ NPipeline error codes follow the pattern `NPxxxx` where the first two digits ind
 | NP0211 | NodeOutputTypeMismatch | A node produced items whose type does not match its declared output type, and no conversion applied. |
 | NP0212 | OutputAdaptationUnavailable | A node's output needs converting to its declared type but no converter exists for that node kind. |
 | NP0213 | InputStreamContractMismatch | A node received input items of a type it cannot consume. Check the connection's source node. |
+| NP0214 | RouteNodeMissingOutputType | A route node has no output item type. Add it with `PipelineBuilder.AddRoute<T>()`, or set `OutputType` on a custom route definition. |
 
 ## NP03xx - Node Execution Errors
 

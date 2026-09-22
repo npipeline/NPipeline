@@ -318,6 +318,35 @@ public sealed class RuntimePipelineBinderTests
     }
 
     [Fact]
+    public async Task BindAsync_RouteWithoutOutputType_ThrowsActionableError()
+    {
+        const string nodeId = "route-without-output";
+        var routeNode = new NodeDefinition(
+            Id: nodeId,
+            Name: nodeId,
+            NodeType: typeof(object),
+            Kind: NodeKind.Route,
+            InputType: typeof(int));
+
+        var graph = PipelineGraphBuilder.Create()
+            .WithNodes([routeNode])
+            .WithEdges(ImmutableArray<Edge>.Empty)
+            .WithPreconfiguredNodeInstances(ImmutableDictionary<string, INode>.Empty)
+            .WithNodeExecutionAnnotations(new Dictionary<string, object>
+            {
+                [ExecutionAnnotationKeys.RouteOptionsForNode(nodeId)] = new RouteOptions<int>(),
+            })
+            .Build();
+
+        Func<Task> act = () => _binder.BindAsync(graph, new PipelineContext());
+
+        var thrown = await act.Should().ThrowAsync<InvalidOperationException>();
+        _ = thrown.Which.Message.Should().Contain($"[{ErrorCodes.RouteNodeMissingOutputType}]");
+        _ = thrown.Which.Message.Should().Contain(nodeId);
+        _ = thrown.Which.Message.Should().Contain("PipelineBuilder.AddRoute<T>()");
+    }
+
+    [Fact]
     public async Task BindAsync_JoinNode_RuntimeContractUsesObjectInputType()
     {
         // Arrange

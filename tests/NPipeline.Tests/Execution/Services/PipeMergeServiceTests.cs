@@ -12,6 +12,26 @@ namespace NPipeline.Tests.Execution.Services;
 public sealed class PipeMergeServiceTests
 {
     [Fact]
+    public async Task MergeAsync_NoInputStreams_ThrowsActionableError()
+    {
+        var service = new PipeMergeService(new MergeStrategySelector());
+        var nodeDefinition = new NodeDefinition(
+            Id: "aggregate",
+            Name: "orders",
+            NodeType: typeof(object),
+            Kind: NodeKind.Aggregate,
+            InputType: typeof(int),
+            OutputType: typeof(int));
+
+        Func<Task> act = () => service.MergeAsync(nodeDefinition, new NullNode(), []);
+
+        var thrown = await act.Should().ThrowAsync<InvalidOperationException>();
+        _ = thrown.Which.Message.Should().Contain($"[{ErrorCodes.NodeMissingInputConnection}]");
+        _ = thrown.Which.Message.Should().Contain("aggregate");
+        _ = thrown.Which.Message.Should().Contain("Connect an upstream node");
+    }
+
+    [Fact]
     public async Task MergeAsync_NonJoin_UsesRuntimeStreamType_WhenNodeInputTypeIsPayloadType()
     {
         var service = new PipeMergeService(new MergeStrategySelector());

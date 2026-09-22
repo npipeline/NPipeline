@@ -42,8 +42,8 @@ internal static class ErrorMessages
     public static string NodeMissingInputConnection(string nodeId, string nodeName, string nodeKind)
     {
         return $"[{ErrorCodes.NodeMissingInputConnection}] Node '{nodeId}' ({nodeName}, {nodeKind}) is missing a required input connection. " +
-               $"Transform and sink nodes must have at least one incoming connection from another node. " +
-               $"Ensure all nodes except sources have inputs connected. " +
+               $"Every non-source node must have at least one incoming connection from another node. " +
+               $"Connect an upstream node before running the pipeline. " +
                $"See: {DocsBaseUrl}#{ErrorCodes.NodeMissingInputConnection}";
     }
 
@@ -122,6 +122,13 @@ internal static class ErrorMessages
         return $"[{ErrorCodes.InputStreamContractMismatch}] Node '{nodeId}' expects input items of type '{expectedType}' but an upstream node supplied '{actualType}'. " +
                $"Connect it to a node whose output type is '{expectedType}' (or a subtype), or insert a transform that converts between them. " +
                $"See: {DocsBaseUrl}#{ErrorCodes.InputStreamContractMismatch}";
+    }
+
+    public static string RouteNodeMissingOutputType(string nodeId)
+    {
+        return $"[{ErrorCodes.RouteNodeMissingOutputType}] Route node '{nodeId}' has no output item type, so its runtime route contract cannot be created. " +
+               $"Add the route with PipelineBuilder.AddRoute<T>(), or ensure a custom route definition sets OutputType. " +
+               $"See: {DocsBaseUrl}#{ErrorCodes.RouteNodeMissingOutputType}";
     }
 
     public static string CannotRegisterMappingsAfterExecution(string nodeName)

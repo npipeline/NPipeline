@@ -26,7 +26,7 @@ public sealed class PipeMergeService(IMergeStrategySelector strategySelector) : 
         var materializedInputPipes = inputPipes as IReadOnlyList<IDataStream> ?? inputPipes.ToList();
 
         if (materializedInputPipes.Count == 0)
-            throw new InvalidOperationException($"Node '{nodeDef.Id}' has no input streams to merge.");
+            throw new InvalidOperationException(ErrorMessages.NodeMissingInputConnection(nodeDef.Id, nodeDef.Name, nodeDef.Kind.ToString()));
 
         // Special-case join nodes: they intentionally accept heterogeneous input types (the two sides of the join)
         // so we must not filter by nodeDef.InputType (which reflects only the first input's type).

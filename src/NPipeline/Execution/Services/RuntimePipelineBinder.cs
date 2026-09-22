@@ -226,7 +226,7 @@ public sealed class RuntimePipelineBinder : IRuntimePipelineBinder
     private static object NormalizeRouteOptions(NodeDefinition nodeDef, RuntimeNodeStreamContract contract, object routeOptions)
     {
         var expectedItemType = contract.EffectiveOutputItemType
-            ?? throw new InvalidOperationException($"Route node '{nodeDef.Id}' has no effective runtime output item type.");
+            ?? throw new InvalidOperationException(ErrorMessages.RouteNodeMissingOutputType(nodeDef.Id));
 
         var expectedRouteOptionsType = typeof(RouteOptions<>).MakeGenericType(expectedItemType);
         var actualRouteOptionsType = routeOptions.GetType();
