@@ -31,10 +31,10 @@ public sealed class LineageMappingStrategiesTests
             yield return new LineagePacket<T>(
                 item,
                 Guid.NewGuid(),
-                ImmutableList.Create($"node_{index}"))
+                ImmutableArray.Create($"node_{index}"))
             {
                 Collect = true,
-                LineageRecords = ImmutableList<LineageRecord>.Empty,
+                LineageRecords = ImmutableArray<LineageRecord>.Empty,
             };
 
             index++;
@@ -226,10 +226,10 @@ public sealed class LineageMappingStrategiesTests
 
         LineagePacket<int>[] packets =
         [
-            new(42, correlationId, ImmutableList.Create("input_node"))
+            new(42, correlationId, ImmutableArray.Create("input_node"))
             {
                 Collect = true,
-                LineageRecords = ImmutableList<LineageRecord>.Empty,
+                LineageRecords = ImmutableArray<LineageRecord>.Empty,
             },
         ];
 

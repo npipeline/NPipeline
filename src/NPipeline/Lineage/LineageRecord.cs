@@ -1,3 +1,6 @@
+using System.Buffers;
+using System.Runtime.CompilerServices;
+
 namespace NPipeline.Lineage;
 
 /// <summary>
@@ -99,31 +102,56 @@ public sealed record LineageRecord(
             ? DateTimeOffset.UtcNow
             : TimestampUtc;
 
-        IReadOnlyList<Guid>? normalizedContributors = null;
-
-        if (ContributorCorrelationIds is { Count: > 0 })
-        {
-            normalizedContributors = ContributorCorrelationIds
-                .Distinct()
-                .OrderBy(static id => id)
-                .ToArray();
-        }
-
-        IReadOnlyList<int>? normalizedIndices = null;
-
-        if (ContributorInputIndices is { Count: > 0 })
-        {
-            normalizedIndices = ContributorInputIndices
-                .Distinct()
-                .OrderBy(static i => i)
-                .ToArray();
-        }
-
         return this with
         {
             TimestampUtc = normalizedTime,
-            ContributorCorrelationIds = normalizedContributors,
-            ContributorInputIndices = normalizedIndices,
+            ContributorCorrelationIds = SortDistinct(ContributorCorrelationIds),
+            ContributorInputIndices = SortDistinct(ContributorInputIndices),
         };
+    }
+
+    /// <summary>
+    ///     Returns the contributors sorted ascending with duplicates removed, or null when there are none.
+    /// </summary>
+    /// <remarks>
+    ///     Normalize runs on the per-item lineage path, so this avoids the Distinct/OrderBy/ToArray chain:
+    ///     nothing is allocated for the empty case, a single contributor is already normalized, and larger
+    ///     lists are sorted and deduplicated in a pooled buffer before one exact-sized array is produced.
+    /// </remarks>
+    private static IReadOnlyList<T>? SortDistinct<T>(IReadOnlyList<T>? contributors)
+        where T : IComparable<T>
+    {
+        if (contributors is null || contributors.Count == 0)
+            return null;
+
+        if (contributors.Count == 1)
+            return [contributors[0]];
+
+        var buffer = ArrayPool<T>.Shared.Rent(contributors.Count);
+
+        try
+        {
+            for (var i = 0; i < contributors.Count; i++)
+            {
+                buffer[i] = contributors[i];
+            }
+
+            var span = buffer.AsSpan(0, contributors.Count);
+            span.Sort();
+
+            var distinctCount = 1;
+
+            for (var i = 1; i < span.Length; i++)
+            {
+                if (span[i].CompareTo(span[distinctCount - 1]) != 0)
+                    span[distinctCount++] = span[i];
+            }
+
+            return span[..distinctCount].ToArray();
+        }
+        finally
+        {
+            ArrayPool<T>.Shared.Return(buffer, RuntimeHelpers.IsReferenceOrContainsReferences<T>());
+        }
     }
 }

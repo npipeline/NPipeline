@@ -115,13 +115,17 @@ internal sealed class CountingMulticastDataStream<T> : IForwardOnlyDataStream<T>
 
     private async Task PumpAsync()
     {
+        // The pump is the only writer, so the count is accumulated locally and folded into the shared
+        // counter once, keeping the per-item path free of atomics and of cross-node cache-line contention.
+        var counted = 0L;
+
         try
         {
             // Enumerate source and count + multicast in single pass
             await foreach (var item in _source.WithCancellation(_cts.Token))
             {
                 // Count once per item (before broadcasting)
-                _ = Interlocked.Increment(ref _counter.GetTotalRef());
+                counted++;
 
                 // Broadcast to all subscribers that are still reading.
                 var aggregatePending = 0;
@@ -162,6 +166,10 @@ internal sealed class CountingMulticastDataStream<T> : IForwardOnlyDataStream<T>
             }
 
             Metrics.MarkFault();
+        }
+        finally
+        {
+            _counter.Add(counted);
         }
     }
 

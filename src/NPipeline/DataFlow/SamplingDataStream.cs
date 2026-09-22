@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -108,7 +109,7 @@ public sealed class SamplingDataStream<T>(
                     var outcome = SampleOutcome.Success;
                     var retryCount = 0;
 
-                    if (envelope.LineageRecords.Count > 0)
+                    if (envelope.LineageRecords.Length > 0)
                     {
                         var latestRecord = envelope.LineageRecords[^1];
 
@@ -150,9 +151,9 @@ public sealed class SamplingDataStream<T>(
         };
     }
 
-    private static int DetermineRetryCount(IReadOnlyList<LineageRecord> lineageRecords)
+    private static int DetermineRetryCount(ImmutableArray<LineageRecord> lineageRecords)
     {
-        if (lineageRecords.Count == 0)
+        if (lineageRecords.Length == 0)
             return 0;
 
         var retryCount = lineageRecords[^1].RetryCount;

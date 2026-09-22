@@ -67,8 +67,8 @@ internal abstract class LineageMappingStrategyBase
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static ImmutableList<LineageRecord> AppendRecord(
-        ImmutableList<LineageRecord> existing,
+    private static ImmutableArray<LineageRecord> AppendRecord(
+        ImmutableArray<LineageRecord> existing,
         Guid correlationId,
         IReadOnlyList<string> traversalPath,
         string nodeId,
@@ -90,10 +90,10 @@ internal abstract class LineageMappingStrategyBase
             ? opts.MaxHopRecordsPerItem
             : int.MaxValue;
 
-        if (existing.Count >= cap)
+        if (existing.Length >= cap)
             return existing;
 
-        var truncated = existing.Count + 1 >= cap;
+        var truncated = existing.Length + 1 >= cap;
 
         var normalizedContributors = opts?.IncludeContributorCorrelationIds == true
             ? contributorCorrelationIds
@@ -127,8 +127,8 @@ internal abstract class LineageMappingStrategyBase
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    protected static ImmutableList<LineageRecord> MaybeAppendHop(
-        ImmutableList<LineageRecord> existing,
+    protected static ImmutableArray<LineageRecord> MaybeAppendHop(
+        ImmutableArray<LineageRecord> existing,
         Guid correlationId,
         IReadOnlyList<string> traversalPath,
         string nodeId,
@@ -162,8 +162,8 @@ internal abstract class LineageMappingStrategyBase
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    protected static ImmutableList<LineageRecord> AppendHop(
-        ImmutableList<LineageRecord> existing,
+    protected static ImmutableArray<LineageRecord> AppendHop(
+        ImmutableArray<LineageRecord> existing,
         Guid correlationId,
         IReadOnlyList<string> traversalPath,
         string nodeId,
@@ -489,8 +489,8 @@ internal abstract class LineageMappingStrategyBase
             else
             {
                 var correlationId = Guid.NewGuid();
-                var traversalPath = ImmutableList.Create(QualifyNodeId(nodeId, pipelineId));
-                var records = ImmutableList<LineageRecord>.Empty;
+                var traversalPath = ImmutableArray.Create(QualifyNodeId(nodeId, pipelineId));
+                var records = ImmutableArray<LineageRecord>.Empty;
 
                 if (opts?.EmitIntermediateNodeRecords != false)
                 {

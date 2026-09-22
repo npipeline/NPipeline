@@ -17,8 +17,8 @@ public interface ILineageEnvelope
     bool Collect { get; }
 
     /// <summary>Traversal path accumulated for this item.</summary>
-    ImmutableList<string> TraversalPath { get; }
+    ImmutableArray<string> TraversalPath { get; }
 
     /// <summary>Recorded lineage events accumulated for this item.</summary>
-    ImmutableList<LineageRecord> LineageRecords { get; }
+    ImmutableArray<LineageRecord> LineageRecords { get; }
 }

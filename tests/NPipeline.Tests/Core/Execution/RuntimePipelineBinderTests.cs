@@ -307,8 +307,8 @@ public sealed class RuntimePipelineBinderTests
 
         var normalized = (RouteOptions<LineagePacket<int>>)annotations[routeKey];
         _ = normalized.Rules.Should().HaveCount(1);
-        _ = normalized.Rules[0].Predicate(new LineagePacket<int>(2, Guid.NewGuid(), ImmutableList<string>.Empty)).Should().BeTrue();
-        _ = normalized.Rules[0].Predicate(new LineagePacket<int>(3, Guid.NewGuid(), ImmutableList<string>.Empty)).Should().BeFalse();
+        _ = normalized.Rules[0].Predicate(new LineagePacket<int>(2, Guid.NewGuid(), ImmutableArray<string>.Empty)).Should().BeTrue();
+        _ = normalized.Rules[0].Predicate(new LineagePacket<int>(3, Guid.NewGuid(), ImmutableArray<string>.Empty)).Should().BeFalse();
 
         _ = annotations[contractKey].Should().BeOfType<RuntimeNodeStreamContract>();
         var contract = (RuntimeNodeStreamContract)annotations[contractKey];

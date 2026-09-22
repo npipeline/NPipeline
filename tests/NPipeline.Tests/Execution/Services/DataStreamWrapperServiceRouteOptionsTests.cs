@@ -154,6 +154,6 @@ public sealed class DataStreamWrapperServiceRouteOptionsTests
 
     private static LineagePacket<int> CreatePacket(int value)
     {
-        return new LineagePacket<int>(value, Guid.NewGuid(), ImmutableList<string>.Empty);
+        return new LineagePacket<int>(value, Guid.NewGuid(), ImmutableArray<string>.Empty);
     }
 }

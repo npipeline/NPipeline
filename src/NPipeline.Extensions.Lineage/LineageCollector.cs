@@ -31,7 +31,7 @@ public sealed class LineageCollector : ILineageCollector
         ArgumentNullException.ThrowIfNull(sourceNodeId);
 
         var correlationId = Guid.NewGuid();
-        var traversalPath = ImmutableList.Create(sourceNodeId);
+        var traversalPath = ImmutableArray.Create(sourceNodeId);
 
         _ = _lineageTrails.TryAdd(correlationId, new CorrelationTrail(correlationId, traversalPath));
 
@@ -146,14 +146,15 @@ public sealed class LineageCollector : ILineageCollector
         private readonly Guid _correlationId;
         private readonly List<LineageRecordEntry> _records = [];
         private readonly object _lock = new();
-        private readonly ImmutableList<string>.Builder _traversalPathBuilder;
+        private readonly List<string> _traversalPath;
+        private readonly HashSet<string> _traversalPathSegments;
         private LineageOutcomeReason? _terminalReason;
 
-        public CorrelationTrail(Guid correlationId, ImmutableList<string> initialPath)
+        public CorrelationTrail(Guid correlationId, ImmutableArray<string> initialPath)
         {
             _correlationId = correlationId;
-            _traversalPathBuilder = ImmutableList.CreateBuilder<string>();
-            _traversalPathBuilder.AddRange(initialPath);
+            _traversalPath = [.. initialPath];
+            _traversalPathSegments = new HashSet<string>(initialPath, StringComparer.Ordinal);
         }
 
         public Guid CorrelationId => _correlationId;
@@ -173,7 +174,7 @@ public sealed class LineageCollector : ILineageCollector
         {
             lock (_lock)
             {
-                var normalizedPath = record.TraversalPath is ImmutableList<string> immutable
+                var normalizedPath = record.TraversalPath is ImmutableArray<string> immutable
                     ? immutable
                     : [.. record.TraversalPath];
 
@@ -184,8 +185,8 @@ public sealed class LineageCollector : ILineageCollector
 
                 foreach (var pathSegment in normalizedPath)
                 {
-                    if (!_traversalPathBuilder.Contains(pathSegment))
-                        _traversalPathBuilder.Add(pathSegment);
+                    if (_traversalPathSegments.Add(pathSegment))
+                        _traversalPath.Add(pathSegment);
                 }
             }
         }

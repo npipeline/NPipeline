@@ -460,7 +460,7 @@ public class DiLineageFactoryTests
 
         public LineagePacket<T> CreateLineagePacket<T>(T item, string sourceNodeId)
         {
-            return new LineagePacket<T>(item, Guid.NewGuid(), ImmutableList.Create(sourceNodeId));
+            return new LineagePacket<T>(item, Guid.NewGuid(), ImmutableArray.Create(sourceNodeId));
         }
 
         public void Record(LineageRecord record)

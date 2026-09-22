@@ -662,9 +662,9 @@ public sealed class LineageService : ILineage
     {
         var correlationId = Guid.NewGuid();
         var collect = ShouldCollect(correlationId, options);
-        var traversalPath = ImmutableList.Create(QualifyNodeId(currentNodeId, pipelineId));
+        var traversalPath = ImmutableArray.Create(QualifyNodeId(currentNodeId, pipelineId));
 
-        var lineageRecords = ImmutableList<LineageRecord>.Empty;
+        var lineageRecords = ImmutableArray<LineageRecord>.Empty;
 
         if (collect)
         {
@@ -692,8 +692,8 @@ public sealed class LineageService : ILineage
         };
     }
 
-    private static ImmutableList<LineageRecord> AppendOutcomeHop(
-        ImmutableList<LineageRecord> existing,
+    private static ImmutableArray<LineageRecord> AppendOutcomeHop(
+        ImmutableArray<LineageRecord> existing,
         Guid correlationId,
         IReadOnlyList<string> traversalPath,
         string nodeId,
@@ -712,10 +712,10 @@ public sealed class LineageService : ILineage
             ? options.MaxHopRecordsPerItem
             : int.MaxValue;
 
-        if (existing.Count >= cap)
+        if (existing.Length >= cap)
             return existing;
 
-        var truncated = existing.Count + 1 >= cap;
+        var truncated = existing.Length + 1 >= cap;
 
         var cardinality = contributorCount switch
         {
@@ -763,25 +763,29 @@ public sealed class LineageService : ILineage
         return existing.Add(record);
     }
 
-    private static ImmutableList<string> MergeTraversalPath(IReadOnlyList<InputLineageEntry> contributors)
+    private static ImmutableArray<string> MergeTraversalPath(IReadOnlyList<InputLineageEntry> contributors)
     {
-        var merged = contributors[0].TraversalPath;
+        var first = contributors[0].TraversalPath;
 
         if (contributors.Count == 1)
-            return merged;
+            return first;
 
-        var seen = new HashSet<string>(merged, StringComparer.Ordinal);
+        // Appending to the ImmutableArray directly would copy the whole array per segment, so the merge
+        // accumulates in a builder and freezes once.
+        var seen = new HashSet<string>(first, StringComparer.Ordinal);
+        var merged = ImmutableArray.CreateBuilder<string>(first.Length);
+        merged.AddRange(first);
 
         for (var i = 1; i < contributors.Count; i++)
         {
             foreach (var segment in contributors[i].TraversalPath)
             {
                 if (seen.Add(segment))
-                    merged = merged.Add(segment);
+                    merged.Add(segment);
             }
         }
 
-        return merged;
+        return merged.DrainToImmutable();
     }
 
     private static string QualifyNodeId(string nodeId, Guid pipelineId)
@@ -793,12 +797,14 @@ public sealed class LineageService : ILineage
     {
         if (context is ILineageEnvelope envelope)
         {
-            // ReSharper disable once RedundantCast - Without the cast, we'd get a runtime error trying to spread null.
-            var traversal = envelope.TraversalPath as ImmutableList<string> ?? [.. envelope.TraversalPath];
-            var records = envelope.LineageRecords as ImmutableList<LineageRecord> ?? [.. envelope.LineageRecords];
-            // ReSharper restore RedundantCast
-
-            return new InputLineageEntry(envelope.Data, envelope.CorrelationId, traversal, records, envelope.Collect, true, context);
+            return new InputLineageEntry(
+                envelope.Data,
+                envelope.CorrelationId,
+                envelope.TraversalPath,
+                envelope.LineageRecords,
+                envelope.Collect,
+                true,
+                context);
         }
 
         if (context is RawInputContext raw)
@@ -828,8 +834,8 @@ public sealed class LineageService : ILineage
         {
             var correlationId = Guid.NewGuid();
             var collect = ShouldCollect(correlationId, options);
-            var traversalPath = ImmutableList.Create(QualifyNodeId(currentNodeId, pipelineId));
-            var lineageRecords = ImmutableList<LineageRecord>.Empty;
+            var traversalPath = ImmutableArray.Create(QualifyNodeId(currentNodeId, pipelineId));
+            var lineageRecords = ImmutableArray<LineageRecord>.Empty;
 
             if (collect)
             {
@@ -938,8 +944,8 @@ public sealed class LineageService : ILineage
     private sealed record InputLineageEntry(
         object? Data,
         Guid CorrelationId,
-        ImmutableList<string> TraversalPath,
-        ImmutableList<LineageRecord> LineageRecords,
+        ImmutableArray<string> TraversalPath,
+        ImmutableArray<LineageRecord> LineageRecords,
         bool Collect,
         bool HasLineage,
         object? OriginalPacket);

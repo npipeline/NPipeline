@@ -193,11 +193,15 @@ internal sealed class CountingConditionalMulticastDataStream<T> : IForwardOnlyDa
 
     private async Task PumpAsync()
     {
+        // The pump is the only writer, so the count is accumulated locally and folded into the shared
+        // counter once, keeping the per-item path free of atomics and of cross-node cache-line contention.
+        var counted = 0L;
+
         try
         {
             await foreach (var item in _source.WithCancellation(_cts.Token))
             {
-                _ = Interlocked.Increment(ref _counter.GetTotalRef());
+                counted++;
 
                 var writes = new Task[_channels.Length];
                 var writeCount = 0;
@@ -300,6 +304,10 @@ internal sealed class CountingConditionalMulticastDataStream<T> : IForwardOnlyDa
             }
 
             Metrics.MarkFault();
+        }
+        finally
+        {
+            _counter.Add(counted);
         }
     }
 

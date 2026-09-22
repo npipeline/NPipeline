@@ -12,7 +12,7 @@ public sealed class SamplingDataStreamTests
     public async Task Enumerate_WithLineageItemWithoutRecords_RecordsSuccessWithZeroRetries()
     {
         var recorder = new TestSampleRecorder();
-        var packet = new LineagePacket<int>(42, Guid.NewGuid(), ImmutableList<string>.Empty);
+        var packet = new LineagePacket<int>(42, Guid.NewGuid(), ImmutableArray<string>.Empty);
         await using var input = new NPipeline.DataFlow.DataStreams.InMemoryDataStream<LineagePacket<int>>([packet], "input");
         await using var sampled = new SamplingDataStream<LineagePacket<int>>(input, "node-a", "output", recorder, sampleRate: 1);
 
@@ -61,12 +61,12 @@ public sealed class SamplingDataStreamTests
     {
         var recorder = new TestSampleRecorder();
         var correlationId = Guid.NewGuid();
-        var records = ImmutableList.Create(
+        var records = ImmutableArray.Create(
             BuildRecord(correlationId, "upstream", LineageOutcomeReason.Emitted, retryCount: null),
             BuildRecord(correlationId, "node-a", LineageOutcomeReason.Emitted, retryCount: 1),
             BuildRecord(correlationId, "node-a", LineageOutcomeReason.Emitted, retryCount: 2));
 
-        var packet = new LineagePacket<int>(42, correlationId, ImmutableList<string>.Empty)
+        var packet = new LineagePacket<int>(42, correlationId, ImmutableArray<string>.Empty)
         {
             LineageRecords = records,
         };
@@ -86,9 +86,9 @@ public sealed class SamplingDataStreamTests
     {
         var recorder = new TestSampleRecorder();
         var correlationId = Guid.NewGuid();
-        var packet = new LineagePacket<int>(42, correlationId, ImmutableList<string>.Empty)
+        var packet = new LineagePacket<int>(42, correlationId, ImmutableArray<string>.Empty)
         {
-            LineageRecords = ImmutableList.Create(BuildRecord(correlationId, "node-a", LineageOutcomeReason.Emitted, retryCount: 4)),
+            LineageRecords = ImmutableArray.Create(BuildRecord(correlationId, "node-a", LineageOutcomeReason.Emitted, retryCount: 4)),
         };
 
         await using var input = new NPipeline.DataFlow.DataStreams.InMemoryDataStream<LineagePacket<int>>([packet], "input");
@@ -104,9 +104,9 @@ public sealed class SamplingDataStreamTests
         int[]? contributorInputIndices = null)
     {
         var correlationId = Guid.NewGuid();
-        return new LineagePacket<int>(42, correlationId, ImmutableList<string>.Empty)
+        return new LineagePacket<int>(42, correlationId, ImmutableArray<string>.Empty)
         {
-            LineageRecords = ImmutableList.Create(BuildRecord(correlationId, nodeId, reason, retryCount, contributorInputIndices)),
+            LineageRecords = ImmutableArray.Create(BuildRecord(correlationId, nodeId, reason, retryCount, contributorInputIndices)),
         };
     }
 
@@ -119,7 +119,7 @@ public sealed class SamplingDataStreamTests
             Guid.NewGuid(),
             reason,
             false,
-            ImmutableList<string>.Empty,
+            ImmutableArray<string>.Empty,
             RetryCount: retryCount,
             ContributorInputIndices: contributorInputIndices,
             Cardinality: ObservedCardinality.One);

@@ -61,36 +61,47 @@ internal sealed class CountingPassthroughDataStream<T> : IForwardOnlyDataStream<
     {
         await using var enumerator = _inner.WithCancellation(cancellationToken).GetAsyncEnumerator();
 
-        while (true)
+        // Counted locally and folded into the shared counter once, so the per-item path carries no
+        // atomic and parallel nodes do not contend for the counter's cache line.
+        var counted = 0L;
+
+        try
         {
-            T item;
-
-            try
+            while (true)
             {
-                if (!await enumerator.MoveNextAsync())
-                    break;
+                T item;
 
-                item = enumerator.Current;
-            }
-            catch (Exception ex)
-            {
-                if (ex is RetryExhaustedException retryEx)
+                try
                 {
-                    // Store the RetryExhaustedException in the context for downstream nodes to access
-                    if (_context is not null)
-                        _context.ExecutionConfiguration.LastRetryExhaustedException = retryEx;
+                    if (!await enumerator.MoveNextAsync())
+                        break;
 
-                    ExceptionDispatchInfo.Capture(retryEx).Throw();
+                    item = enumerator.Current;
+                }
+                catch (Exception ex)
+                {
+                    if (ex is RetryExhaustedException retryEx)
+                    {
+                        // Store the RetryExhaustedException in the context for downstream nodes to access
+                        if (_context is not null)
+                            _context.ExecutionConfiguration.LastRetryExhaustedException = retryEx;
+
+                        ExceptionDispatchInfo.Capture(retryEx).Throw();
+                        yield break; // Never reached but required for compiler
+                    }
+
+                    ExceptionDispatchInfo.Capture(ex).Throw();
                     yield break; // Never reached but required for compiler
                 }
 
-                ExceptionDispatchInfo.Capture(ex).Throw();
-                yield break; // Never reached but required for compiler
+                counted++;
+                yield return item;
             }
-
-            // Inline counting - no extra wrapper layer
-            _ = Interlocked.Increment(ref _counter.GetTotalRef());
-            yield return item;
+        }
+        finally
+        {
+            // Runs on normal completion, on an abandoned enumeration and on a thrown exception.
+            _counter.Add(counted);
         }
     }
 }

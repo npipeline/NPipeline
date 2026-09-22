@@ -138,7 +138,7 @@ internal sealed class DefaultLineageAdapterBuilder
                 {
                     int[]? ancestryInputIndices = null;
 
-                    if (packet.LineageRecords.Count > 0)
+                    if (packet.LineageRecords.Length > 0)
                     {
                         var latestRecord = packet.LineageRecords[^1];
 
@@ -216,7 +216,7 @@ internal sealed class DefaultLineageAdapterBuilder
                             terminalCorrelations.Add(packet.CorrelationId))
                         {
                             var finalPath = packet.TraversalPath.Add($"{pipelineId:N}::{sinkNodeId}");
-                            var latestRecord = packet.LineageRecords.Count > 0
+                            var latestRecord = packet.LineageRecords.Length > 0
                                 ? packet.LineageRecords[^1]
                                 : null;
 

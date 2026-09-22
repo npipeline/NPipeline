@@ -89,7 +89,7 @@ public sealed class PipeMergeServiceTests
 
     private static LineagePacket<int> CreatePacket(int value)
     {
-        return new LineagePacket<int>(value, Guid.NewGuid(), ImmutableList<string>.Empty);
+        return new LineagePacket<int>(value, Guid.NewGuid(), ImmutableArray<string>.Empty);
     }
 
     private sealed class NullNode : INode
