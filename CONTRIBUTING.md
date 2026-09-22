@@ -160,7 +160,7 @@ dotnet pack src/NPipeline/NPipeline.csproj --configuration Release --output ./ar
 
 NPipeline follows the coding standards defined in [`.editorconfig`](.editorconfig). Key conventions include:
 
-- **C# 12.0** language features
+- **Latest stable C#** language features supported by the SDK pinned in `global.json`
 - **Nullable reference types** enabled throughout
 - **Implicit usings** enabled
 - **Treat warnings as errors** is enforced

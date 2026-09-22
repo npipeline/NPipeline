@@ -14,7 +14,7 @@ Defined in `Directory.Build.props`:
 
 | Setting | Value |
 |---------|-------|
-| `LangVersion` | `12.0` |
+| `LangVersion` | `latest` |
 | `TreatWarningsAsErrors` | `true` |
 | `Nullable` | `enable` |
 | `ImplicitUsings` | `enable` |
@@ -22,6 +22,8 @@ Defined in `Directory.Build.props`:
 | `EnableNETAnalyzers` | `true` |
 | `AnalysisLevel` | `latest` |
 | `TargetFrameworks` | `net8.0;net9.0;net10.0` |
+
+`global.json` pins the .NET SDK, so `latest` resolves consistently across local and CI builds.
 
 ## Style Rules
 

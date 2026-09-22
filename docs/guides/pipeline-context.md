@@ -40,7 +40,7 @@ await runner.RunAsync<MyPipeline>(context, cancellationToken);
 PipelineContext exposes three `IDictionary<string, object>` collections with different purposes:
 
 | Dictionary | Purpose | Set By | Read By |
-|-----------|---------|--------|---------|
+| ----------- | --------- | -------- | --------- |
 | `Parameters` | Runtime inputs (file paths, dates, config values) | Caller before execution | Nodes during execution |
 | `Items` | Node-to-node shared state | Any node during execution | Any downstream node |
 | `Properties` | Extension/plugin storage, and hooks the framework reads | You and your extensions | Extensions and the framework (for published hook keys) |
@@ -96,7 +96,7 @@ Framework services are grouped into five sub-contexts, each covering one concern
 sub-context that owns it:
 
 | Sub-context | Holds | Examples |
-|-------------|-------|----------|
+| ------------- | ------- | ---------- |
 | `RunIdentity` | Who this run is | `PipelineId`, `RunId`, `PipelineName`, `PipelineStartTimeUtc` |
 | `Observability` | Logging, tracing, metrics | `LoggerFactory`, `Tracer`, `ExecutionObserver`, `ObservabilityFactory` |
 | `ExecutionConfiguration` | Retry and resilience | `RetryOptions`, `EffectiveRetryOptions`, `GlobalRetryOptions`, `NodeRetryOverrides`, `ResiliencePolicy`, `CircuitBreakerOptions` |
@@ -153,7 +153,7 @@ Nodes that have not finished report `NodeExecutionStatus.Pending` and are absent
 A few members sit directly on the context because they belong to no single concern:
 
 | Member | Type | Description |
-|--------|------|-------------|
+| -------- | ------ | ------------- |
 | `CancellationToken` | `CancellationToken` | Pipeline-wide cancellation |
 | `Parameters`, `Items`, `Properties` | `IDictionary<string, object>` | The three dictionaries above |
 | `DeadLetterSink` | `IDeadLetterSink?` | For routing failed items |
@@ -203,7 +203,7 @@ var context = new PipelineContext(config);
 Available factory methods:
 
 | Method | Purpose |
-|--------|---------|
+| -------- | --------- |
 | `WithParameters(dict)` | Set runtime parameters |
 | `WithCancellation(token)` | Set cancellation token |
 | `WithLogging(loggerFactory)` | Configure logging |
