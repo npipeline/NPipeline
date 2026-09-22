@@ -59,7 +59,8 @@ internal sealed class SnowflakePerRowWriter<T> : IDatabaseWriter<T>
         {
             try
             {
-                await using var command = await _connection.CreateCommandAsync(cancellationToken);
+                var command = await _connection.CreateCommandAsync(cancellationToken).ConfigureAwait(false);
+                await using var commandScope = command.ConfigureAwait(false);
                 command.CommandText = _insertSql;
                 command.CommandType = CommandType.Text;
                 command.CommandTimeout = _configuration.CommandTimeout;
@@ -71,7 +72,7 @@ internal sealed class SnowflakePerRowWriter<T> : IDatabaseWriter<T>
                     command.AddParameter(_parameterNames[i], values[i] ?? DBNull.Value);
                 }
 
-                _ = await command.ExecuteNonQueryAsync(cancellationToken);
+                _ = await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
                 return;
             }
             catch (Exception ex) when (attempt < maxAttempts - 1 && SnowflakeExceptionHandler.ShouldRetry(ex, _configuration))
@@ -83,7 +84,8 @@ internal sealed class SnowflakePerRowWriter<T> : IDatabaseWriter<T>
         }
 
         // All retries failed - final attempt
-        await using var finalCommand = await _connection.CreateCommandAsync(cancellationToken);
+        var finalCommand = await _connection.CreateCommandAsync(cancellationToken).ConfigureAwait(false);
+        await using var finalCommandScope = finalCommand.ConfigureAwait(false);
         finalCommand.CommandText = _insertSql;
         finalCommand.CommandType = CommandType.Text;
         finalCommand.CommandTimeout = _configuration.CommandTimeout;
@@ -95,7 +97,7 @@ internal sealed class SnowflakePerRowWriter<T> : IDatabaseWriter<T>
             finalCommand.AddParameter(_parameterNames[i], finalValues[i] ?? DBNull.Value);
         }
 
-        _ = await finalCommand.ExecuteNonQueryAsync(cancellationToken);
+        _ = await finalCommand.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -116,7 +118,7 @@ internal sealed class SnowflakePerRowWriter<T> : IDatabaseWriter<T>
     /// <inheritdoc />
     public async ValueTask DisposeAsync()
     {
-        await ValueTask.CompletedTask;
+        await ValueTask.CompletedTask.ConfigureAwait(false);
     }
 
     /// <summary>

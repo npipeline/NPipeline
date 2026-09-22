@@ -50,7 +50,7 @@ public class OffsetCheckpointHandler
     /// <returns>The offset value, or 0 if no checkpoint exists.</returns>
     public async Task<long> LoadOffsetAsync(CancellationToken cancellationToken = default)
     {
-        var checkpoint = await _checkpointManager.LoadAsync(cancellationToken);
+        var checkpoint = await _checkpointManager.LoadAsync(cancellationToken).ConfigureAwait(false);
         return checkpoint?.GetAsOffset() ?? 0;
     }
 
@@ -68,7 +68,7 @@ public class OffsetCheckpointHandler
             ["updated_at"] = DateTimeOffset.UtcNow.ToString("O"),
         };
 
-        await _checkpointManager.UpdateOffsetAsync(offset, metadata, forceSave, cancellationToken);
+        await _checkpointManager.UpdateOffsetAsync(offset, metadata, forceSave, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -93,7 +93,7 @@ public class OffsetCheckpointHandler
     /// <param name="cancellationToken">The cancellation token.</param>
     public async Task SaveAsync(CancellationToken cancellationToken = default)
     {
-        await _checkpointManager.SaveAsync(cancellationToken);
+        await _checkpointManager.SaveAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -102,6 +102,6 @@ public class OffsetCheckpointHandler
     /// <param name="cancellationToken">The cancellation token.</param>
     public async Task ClearAsync(CancellationToken cancellationToken = default)
     {
-        await _checkpointManager.ClearAsync(cancellationToken);
+        await _checkpointManager.ClearAsync(cancellationToken).ConfigureAwait(false);
     }
 }

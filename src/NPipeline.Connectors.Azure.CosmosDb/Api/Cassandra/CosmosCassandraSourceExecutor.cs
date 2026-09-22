@@ -25,7 +25,7 @@ internal sealed class CosmosCassandraSourceExecutor : ICosmosSourceExecutor
     {
         cancellationToken.ThrowIfCancellationRequested();
         var statement = new SimpleStatement(query);
-        var rowSet = await _session.ExecuteAsync(statement).WaitAsync(cancellationToken);
+        var rowSet = await _session.ExecuteAsync(statement).WaitAsync(cancellationToken).ConfigureAwait(false);
         var columns = rowSet.Columns?.Select(c => c.Name).ToArray() ?? [];
 
         var result = new List<IDictionary<string, object?>>();

@@ -136,7 +136,7 @@ public static class PipelineContextRetryDelayExtensions
         ArgumentOutOfRangeException.ThrowIfNegative(attempt);
 
         var strategy = context.GetRetryDelayStrategy();
-        return await strategy.GetDelayAsync(attempt);
+        return await strategy.GetDelayAsync(attempt).ConfigureAwait(false);
     }
 
     /// <summary>

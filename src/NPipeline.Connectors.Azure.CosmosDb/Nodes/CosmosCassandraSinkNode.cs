@@ -57,7 +57,7 @@ public sealed class CosmosCassandraSinkNode<T> : SinkNode<T>
     public override async Task ConsumeAsync(IDataStream<T> input, PipelineContext context, CancellationToken cancellationToken)
     {
         var adapter = new CosmosCassandraApiAdapter();
-        var client = await adapter.CreateClientAsync(_configuration, cancellationToken);
+        var client = await adapter.CreateClientAsync(_configuration, cancellationToken).ConfigureAwait(false);
 
         try
         {
@@ -69,14 +69,14 @@ public sealed class CosmosCassandraSinkNode<T> : SinkNode<T>
                 items.Add(item);
             }
 
-            await sink.WriteAsync(items, _configuration.WriteStrategy, cancellationToken);
+            await sink.WriteAsync(items, _configuration.WriteStrategy, cancellationToken).ConfigureAwait(false);
         }
         finally
         {
             switch (client)
             {
                 case IAsyncDisposable asyncDisposable:
-                    await asyncDisposable.DisposeAsync();
+                    await asyncDisposable.DisposeAsync().ConfigureAwait(false);
                     break;
                 case IDisposable disposable:
                     disposable.Dispose();

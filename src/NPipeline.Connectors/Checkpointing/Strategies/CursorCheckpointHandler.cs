@@ -32,7 +32,7 @@ public class CursorCheckpointHandler
     /// <returns>The cursor position, or null if no checkpoint exists.</returns>
     public async Task<CursorPosition?> LoadCursorPositionAsync(CancellationToken cancellationToken = default)
     {
-        var checkpoint = await _checkpointManager.LoadAsync(cancellationToken);
+        var checkpoint = await _checkpointManager.LoadAsync(cancellationToken).ConfigureAwait(false);
 
         if (checkpoint == null)
             return null;
@@ -64,7 +64,7 @@ public class CursorCheckpointHandler
         if (cursorPosition.RowCount.HasValue)
             metadata["row_count"] = cursorPosition.RowCount.Value.ToString();
 
-        await _checkpointManager.UpdateAsync(serializedValue, metadata, forceSave, cancellationToken);
+        await _checkpointManager.UpdateAsync(serializedValue, metadata, forceSave, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -73,7 +73,7 @@ public class CursorCheckpointHandler
     /// <param name="cancellationToken">The cancellation token.</param>
     public async Task SaveAsync(CancellationToken cancellationToken = default)
     {
-        await _checkpointManager.SaveAsync(cancellationToken);
+        await _checkpointManager.SaveAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -82,7 +82,7 @@ public class CursorCheckpointHandler
     /// <param name="cancellationToken">The cancellation token.</param>
     public async Task ClearAsync(CancellationToken cancellationToken = default)
     {
-        await _checkpointManager.ClearAsync(cancellationToken);
+        await _checkpointManager.ClearAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>

@@ -41,13 +41,13 @@ internal sealed class DuckDBSqlWriter<T> : IDuckDBWriter<T>
         _buffer.Add(item);
 
         if (_buffer.Count >= _batchSize)
-            await FlushBufferAsync(cancellationToken);
+            await FlushBufferAsync(cancellationToken).ConfigureAwait(false);
     }
 
     public async Task FlushAsync(CancellationToken cancellationToken)
     {
         if (_buffer.Count > 0)
-            await FlushBufferAsync(cancellationToken);
+            await FlushBufferAsync(cancellationToken).ConfigureAwait(false);
     }
 
     public ValueTask DisposeAsync()
@@ -67,9 +67,10 @@ internal sealed class DuckDBSqlWriter<T> : IDuckDBWriter<T>
 
         var sql = BuildInsertSql(_buffer);
 
-        await using var command = _connection.CreateCommand();
+        var command = _connection.CreateCommand();
+        await using var commandScope = command.ConfigureAwait(false);
         command.CommandText = sql;
-        await command.ExecuteNonQueryAsync(cancellationToken);
+        await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
 
         _totalRows += _buffer.Count;
         _observer?.OnBatchFlushed(_buffer.Count, _totalRows);

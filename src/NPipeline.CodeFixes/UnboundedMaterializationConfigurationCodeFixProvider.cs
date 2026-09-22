@@ -29,7 +29,7 @@ public sealed class UnboundedMaterializationConfigurationCodeFixProvider : CodeF
     /// <inheritdoc />
     public override async Task RegisterCodeFixesAsync(CodeFixContext context)
     {
-        var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken);
+        var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return;
@@ -45,7 +45,7 @@ public sealed class UnboundedMaterializationConfigurationCodeFixProvider : CodeF
 
         // Register code fixes for PipelineRetryOptions object creation
         if (node is ObjectCreationExpressionSyntax objectCreation)
-            await RegisterObjectCreationFixes(context, objectCreation, diagnostic);
+            await RegisterObjectCreationFixes(context, objectCreation, diagnostic).ConfigureAwait(false);
 
         // Also handle the case where the diagnostic points to a specific argument
         else if (node is ArgumentSyntax argument)
@@ -53,7 +53,7 @@ public sealed class UnboundedMaterializationConfigurationCodeFixProvider : CodeF
             var parentObjectCreation = node.FirstAncestorOrSelf<ObjectCreationExpressionSyntax>();
 
             if (parentObjectCreation != null)
-                await RegisterObjectCreationFixes(context, parentObjectCreation, diagnostic);
+                await RegisterObjectCreationFixes(context, parentObjectCreation, diagnostic).ConfigureAwait(false);
         }
     }
 
@@ -62,7 +62,7 @@ public sealed class UnboundedMaterializationConfigurationCodeFixProvider : CodeF
         ObjectCreationExpressionSyntax objectCreation,
         Diagnostic diagnostic)
     {
-        var semanticModel = await context.Document.GetSemanticModelAsync(context.CancellationToken);
+        var semanticModel = await context.Document.GetSemanticModelAsync(context.CancellationToken).ConfigureAwait(false);
 
         if (semanticModel == null)
             return;
@@ -95,7 +95,7 @@ public sealed class UnboundedMaterializationConfigurationCodeFixProvider : CodeF
         int maxItems,
         CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken);
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return document;

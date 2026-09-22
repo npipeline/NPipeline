@@ -62,7 +62,12 @@ public static class NodeTimingDataStreamWrapper
         IAutoObservabilityScope scope,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        await using var enumerator = input.WithCancellation(cancellationToken).GetAsyncEnumerator();
+        #pragma warning disable CA2007
+        // CA2007 false positive: the enumerator comes from a ConfigureAwait(false) sequence, so its
+        // MoveNextAsync and DisposeAsync already return configured awaitables - the analyzer only
+        // recognises ConfigureAwait applied directly to the await using expression.
+        await using var enumerator = input.WithCancellation(cancellationToken).ConfigureAwait(false).GetAsyncEnumerator();
+        #pragma warning restore CA2007
 
         while (true)
         {

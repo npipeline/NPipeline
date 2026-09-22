@@ -244,7 +244,7 @@ public sealed class AdlsGen2WriteStream : Stream
             Interlocked.Exchange(ref _disposeState, 2);
         }
 
-        await base.DisposeAsync();
+        await base.DisposeAsync().ConfigureAwait(false);
 
         capturedException?.Throw();
     }

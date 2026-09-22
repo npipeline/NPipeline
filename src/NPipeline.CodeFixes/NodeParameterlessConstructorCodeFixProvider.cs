@@ -32,7 +32,7 @@ public sealed class NodeParameterlessConstructorCodeFixProvider : CodeFixProvide
     /// <inheritdoc />
     public override async Task RegisterCodeFixesAsync(CodeFixContext context)
     {
-        var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken);
+        var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return;
@@ -67,7 +67,7 @@ public sealed class NodeParameterlessConstructorCodeFixProvider : CodeFixProvide
         ClassDeclarationSyntax classDeclaration,
         CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken);
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return document;

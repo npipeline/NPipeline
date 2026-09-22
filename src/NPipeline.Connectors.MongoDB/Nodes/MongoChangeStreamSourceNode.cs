@@ -183,16 +183,16 @@ public class MongoChangeStreamSourceNode<T> : SourceNode<T>, IAsyncDisposable
                 if (!string.IsNullOrWhiteSpace(_configuration.CollectionName))
                 {
                     var collection = database.GetCollection<BsonDocument>(_configuration.CollectionName);
-                    _cursor = await collection.WatchAsync(pipeline, options, cancellationToken);
+                    _cursor = await collection.WatchAsync(pipeline, options, cancellationToken).ConfigureAwait(false);
                 }
                 else
-                    _cursor = await database.WatchAsync(pipeline, options, cancellationToken);
+                    _cursor = await database.WatchAsync(pipeline, options, cancellationToken).ConfigureAwait(false);
 
                 break;
             }
             catch (Exception ex) when (IsTransientError(ex) && attempt < maxAttempts)
             {
-                await Task.Delay(_configuration.RetryDelay, cancellationToken);
+                await Task.Delay(_configuration.RetryDelay, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex)
             {

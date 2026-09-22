@@ -86,7 +86,7 @@ public sealed class NodeExecutor(
         NodeDefinition nodeDef,
         INode instance)
     {
-        var input = await GetNodeInputAsync(plan.NodeId, graph, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, context.CancellationToken);
+        var input = await GetNodeInputAsync(plan.NodeId, graph, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, context.CancellationToken).ConfigureAwait(false);
         var strategy = NodeExecutionStrategyResolver.Resolve(nodeDef, instance);
         IDataStream transformed;
 
@@ -138,7 +138,7 @@ public sealed class NodeExecutor(
                             throw new InvalidOperationException(ErrorMessages.OutputNotFoundForSourceNode(edge.SourceNodeId)))
             .ToList();
 
-        var merged = await pipeMergeService.MergeAsync(nodeDef, instance, joinInputPipes, context.CancellationToken);
+        var merged = await pipeMergeService.MergeAsync(nodeDef, instance, joinInputPipes, context.CancellationToken).ConfigureAwait(false);
         IDataStream output;
 
         if (graph.Lineage.ItemLevelLineageEnabled)
@@ -333,7 +333,7 @@ public sealed class NodeExecutor(
             return inputPipes[0];
 
         var targetNode = nodeInstances[nodeId];
-        return await pipeMergeService.MergeAsync(nodeDef, targetNode, inputPipes, cancellationToken);
+        return await pipeMergeService.MergeAsync(nodeDef, targetNode, inputPipes, cancellationToken).ConfigureAwait(false);
     }
 
     private static void ValidateRuntimeInputContract(PipelineGraph graph, string nodeId, IReadOnlyList<IDataStream> inputPipes)

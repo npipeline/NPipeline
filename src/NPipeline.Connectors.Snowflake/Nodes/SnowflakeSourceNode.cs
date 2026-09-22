@@ -280,7 +280,7 @@ public class SnowflakeSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
                 _storageUri);
 
             if (provider is IDatabaseStorageProvider databaseProvider)
-                return await databaseProvider.GetConnectionAsync(_storageUri, cancellationToken);
+                return await databaseProvider.GetConnectionAsync(_storageUri, cancellationToken).ConfigureAwait(false);
 
             throw new InvalidOperationException($"Storage provider must implement {nameof(IDatabaseStorageProvider)} to use StorageUri.");
         }

@@ -48,7 +48,7 @@ public sealed class PipeMergeService(IMergeStrategySelector strategySelector) : 
 
         // Check for custom merge first
         if (nodeDef.HasCustomMerge && nodeDef.CustomMerge is not null)
-            return await nodeDef.CustomMerge(nodeInstance, materializedInputPipes, cancellationToken);
+            return await nodeDef.CustomMerge(nodeInstance, materializedInputPipes, cancellationToken).ConfigureAwait(false);
 
         // Use the effective runtime stream item type so lineage-wrapped streams merge correctly.
         var dataType = ResolveMergeDataType(nodeDef, materializedInputPipes);
@@ -62,7 +62,7 @@ public sealed class PipeMergeService(IMergeStrategySelector strategySelector) : 
             MergeDelegateCache[cacheKey] = mergeDelegate;
         }
 
-        return await Task.Run(() => mergeDelegate(materializedInputPipes, cancellationToken), cancellationToken);
+        return await Task.Run(() => mergeDelegate(materializedInputPipes, cancellationToken), cancellationToken).ConfigureAwait(false);
     }
 
     private static Type ResolveMergeDataType(NodeDefinition nodeDef, IReadOnlyList<IDataStream> inputPipes)

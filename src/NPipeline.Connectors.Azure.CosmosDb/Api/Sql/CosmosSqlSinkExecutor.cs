@@ -49,7 +49,7 @@ internal sealed class CosmosSqlSinkExecutor<T> : ICosmosSinkExecutor<T>
                 foreach (var item in itemList)
                 {
                     var partitionKey = GetPartitionKey(item);
-                    await _container.CreateItemAsync(EnsureId(item), partitionKey, cancellationToken: cancellationToken);
+                    await _container.CreateItemAsync(EnsureId(item), partitionKey, cancellationToken: cancellationToken).ConfigureAwait(false);
                 }
 
                 break;
@@ -58,7 +58,7 @@ internal sealed class CosmosSqlSinkExecutor<T> : ICosmosSinkExecutor<T>
                 foreach (var item in itemList)
                 {
                     var partitionKey = GetPartitionKey(item);
-                    await _container.UpsertItemAsync(EnsureId(item), partitionKey, cancellationToken: cancellationToken);
+                    await _container.UpsertItemAsync(EnsureId(item), partitionKey, cancellationToken: cancellationToken).ConfigureAwait(false);
                 }
 
                 break;
@@ -69,12 +69,12 @@ internal sealed class CosmosSqlSinkExecutor<T> : ICosmosSinkExecutor<T>
                 {
                     var tasks = itemList.Select(async item =>
                     {
-                        await semaphore.WaitAsync(cancellationToken);
+                        await semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
 
                         try
                         {
                             var partitionKey = GetPartitionKey(item);
-                            await _container.UpsertItemAsync(EnsureId(item), partitionKey, cancellationToken: cancellationToken);
+                            await _container.UpsertItemAsync(EnsureId(item), partitionKey, cancellationToken: cancellationToken).ConfigureAwait(false);
                         }
                         finally
                         {
@@ -82,7 +82,7 @@ internal sealed class CosmosSqlSinkExecutor<T> : ICosmosSinkExecutor<T>
                         }
                     });
 
-                    await Task.WhenAll(tasks);
+                    await Task.WhenAll(tasks).ConfigureAwait(false);
                 }
 
                 break;
@@ -116,7 +116,7 @@ internal sealed class CosmosSqlSinkExecutor<T> : ICosmosSinkExecutor<T>
                     batch.UpsertItem(EnsureId(item));
                 }
 
-                using (var response = await batch.ExecuteAsync(cancellationToken))
+                using (var response = await batch.ExecuteAsync(cancellationToken).ConfigureAwait(false))
                 {
                     if (!response.IsSuccessStatusCode)
                         throw new InvalidOperationException($"Transactional batch failed with status {response.StatusCode}.");

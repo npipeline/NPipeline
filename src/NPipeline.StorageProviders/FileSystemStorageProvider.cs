@@ -271,7 +271,7 @@ public sealed class FileSystemStorageProvider : IStorageProvider, IStorageProvid
 
     private static async IAsyncEnumerable<StorageItem> EmptyAsyncEnumerable()
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         yield break;
     }
 
@@ -281,7 +281,7 @@ public sealed class FileSystemStorageProvider : IStorageProvider, IStorageProvid
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         // Await once before loop to satisfy async iterator requirement without per-item overhead
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
 
         // For recursive listing, use manual stack-based traversal instead of AllDirectories.
         // This allows us to catch UnauthorizedAccessException at directory enumeration boundaries

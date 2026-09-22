@@ -29,7 +29,7 @@ public sealed class BatchingConfigurationMismatchCodeFixProvider : CodeFixProvid
     /// <inheritdoc />
     public override async Task RegisterCodeFixesAsync(CodeFixContext context)
     {
-        var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken);
+        var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return;
@@ -45,7 +45,7 @@ public sealed class BatchingConfigurationMismatchCodeFixProvider : CodeFixProvid
 
         // Register different code fixes based on node type
         if (node is ObjectCreationExpressionSyntax objectCreation)
-            await RegisterObjectCreationFixes(context, objectCreation, diagnostic);
+            await RegisterObjectCreationFixes(context, objectCreation, diagnostic).ConfigureAwait(false);
     }
 
     private static async Task RegisterObjectCreationFixes(
@@ -53,7 +53,7 @@ public sealed class BatchingConfigurationMismatchCodeFixProvider : CodeFixProvid
         ObjectCreationExpressionSyntax objectCreation,
         Diagnostic diagnostic)
     {
-        var semanticModel = await context.Document.GetSemanticModelAsync(context.CancellationToken);
+        var semanticModel = await context.Document.GetSemanticModelAsync(context.CancellationToken).ConfigureAwait(false);
 
         if (semanticModel == null)
             return;
@@ -64,9 +64,9 @@ public sealed class BatchingConfigurationMismatchCodeFixProvider : CodeFixProvid
             return;
 
         if (typeSymbol.Name == "BatchingOptions")
-            await RegisterBatchingOptionsFixes(context, objectCreation, semanticModel, diagnostic);
+            await RegisterBatchingOptionsFixes(context, objectCreation, semanticModel, diagnostic).ConfigureAwait(false);
         else if (typeSymbol.Name == "BatchingStrategy")
-            await RegisterBatchingStrategyFixes(context, objectCreation, semanticModel, diagnostic);
+            await RegisterBatchingStrategyFixes(context, objectCreation, semanticModel, diagnostic).ConfigureAwait(false);
     }
 
     private static Task RegisterBatchingOptionsFixes(
@@ -128,7 +128,7 @@ public sealed class BatchingConfigurationMismatchCodeFixProvider : CodeFixProvid
         double newTimeoutMs,
         CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken);
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return document;
@@ -165,7 +165,7 @@ public sealed class BatchingConfigurationMismatchCodeFixProvider : CodeFixProvid
         double newMaxWaitTimeMs,
         CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken);
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return document;

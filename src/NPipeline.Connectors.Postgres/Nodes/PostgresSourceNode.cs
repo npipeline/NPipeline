@@ -225,15 +225,15 @@ public class PostgresSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
                 _storageUri);
 
             if (provider is IDatabaseStorageProvider databaseProvider)
-                return await databaseProvider.GetConnectionAsync(_storageUri, cancellationToken);
+                return await databaseProvider.GetConnectionAsync(_storageUri, cancellationToken).ConfigureAwait(false);
 
             throw new InvalidOperationException($"Storage provider must implement {nameof(IDatabaseStorageProvider)} to use StorageUri.");
         }
 
         // Original connection pool logic
         var connection = _connectionName is { Length: > 0 }
-            ? await _connectionPool!.GetConnectionAsync(_connectionName, cancellationToken)
-            : await _connectionPool!.GetConnectionAsync(cancellationToken);
+            ? await _connectionPool!.GetConnectionAsync(_connectionName, cancellationToken).ConfigureAwait(false)
+            : await _connectionPool!.GetConnectionAsync(cancellationToken).ConfigureAwait(false);
 
         return new PostgresDatabaseConnection(connection);
     }
@@ -247,7 +247,7 @@ public class PostgresSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
     protected override async Task<IDatabaseReader> ExecuteQueryAsync(IDatabaseConnection connection, CancellationToken cancellationToken)
     {
         var postgresConnection = (PostgresDatabaseConnection)connection;
-        var command = await postgresConnection.CreateCommandAsync(cancellationToken);
+        var command = await postgresConnection.CreateCommandAsync(cancellationToken).ConfigureAwait(false);
 
         command.CommandText = _query;
         command.CommandTimeout = _configuration.CommandTimeout;
@@ -257,7 +257,7 @@ public class PostgresSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
             command.AddParameter(param.Name, param.Value);
         }
 
-        var reader = await command.ExecuteReaderAsync(cancellationToken);
+        var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
         return reader;
     }
 

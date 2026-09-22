@@ -28,7 +28,7 @@ public sealed class ReadOnlyCollectionUnbatchingNode<T> : IStreamTransformNode<I
         PipelineContext context,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        await foreach (var item in items.FlattenAsync(cancellationToken))
+        await foreach (var item in items.FlattenAsync(cancellationToken).ConfigureAwait(false))
         {
             yield return item;
         }

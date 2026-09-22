@@ -35,7 +35,7 @@ internal sealed class CosmosCassandraSinkExecutor<T> : ICosmosSinkExecutor<T>
             case CosmosWriteStrategy.PerRow:
                 foreach (var item in materialized)
                 {
-                    await ExecuteOneAsync(item, cancellationToken);
+                    await ExecuteOneAsync(item, cancellationToken).ConfigureAwait(false);
                 }
 
                 break;
@@ -49,7 +49,7 @@ internal sealed class CosmosCassandraSinkExecutor<T> : ICosmosSinkExecutor<T>
                     batch.Add(ToStatement(item));
                 }
 
-                await _session.ExecuteAsync(batch).WaitAsync(cancellationToken);
+                await _session.ExecuteAsync(batch).WaitAsync(cancellationToken).ConfigureAwait(false);
                 break;
             }
 
@@ -58,11 +58,11 @@ internal sealed class CosmosCassandraSinkExecutor<T> : ICosmosSinkExecutor<T>
                 {
                     var tasks = materialized.Select(async item =>
                     {
-                        await semaphore.WaitAsync(cancellationToken);
+                        await semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
 
                         try
                         {
-                            await ExecuteOneAsync(item, cancellationToken);
+                            await ExecuteOneAsync(item, cancellationToken).ConfigureAwait(false);
                         }
                         finally
                         {
@@ -70,7 +70,7 @@ internal sealed class CosmosCassandraSinkExecutor<T> : ICosmosSinkExecutor<T>
                         }
                     });
 
-                    await Task.WhenAll(tasks);
+                    await Task.WhenAll(tasks).ConfigureAwait(false);
                 }
 
                 break;
@@ -86,7 +86,7 @@ internal sealed class CosmosCassandraSinkExecutor<T> : ICosmosSinkExecutor<T>
     private async Task ExecuteOneAsync(T item, CancellationToken cancellationToken)
     {
         var statement = ToStatement(item);
-        await _session.ExecuteAsync(statement).WaitAsync(cancellationToken);
+        await _session.ExecuteAsync(statement).WaitAsync(cancellationToken).ConfigureAwait(false);
     }
 
     private static Statement ToStatement(T item)

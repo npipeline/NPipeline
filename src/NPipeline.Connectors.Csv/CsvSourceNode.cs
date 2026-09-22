@@ -152,7 +152,8 @@ public sealed class CsvSourceNode<T> : SourceNode<T>
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         // Open the stream per-enumeration so disposal is bound to consumer lifetime
-        await using var stream = await provider.OpenReadAsync(uri, cancellationToken).ConfigureAwait(false);
+        var stream = await provider.OpenReadAsync(uri, cancellationToken).ConfigureAwait(false);
+        await using var streamScope = stream.ConfigureAwait(false);
         using var reader = new StreamReader(stream, encoding, true);
         using var csv = new CsvReader(reader, cfg.HelperConfiguration);
 

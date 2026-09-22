@@ -52,12 +52,12 @@ public sealed class ParallelExecutionStrategy : BlockingParallelStrategy
         // to avoid per-call allocations on repeated pipeline runs.
         return queuePolicy switch
         {
-            BoundedQueuePolicy.Block => await base.ExecuteAsync(input, node, context, nodeId, cancellationToken),
+            BoundedQueuePolicy.Block => await base.ExecuteAsync(input, node, context, nodeId, cancellationToken).ConfigureAwait(false),
             BoundedQueuePolicy.DropOldest =>
-                await (_dropOldest ??= new DropOldestParallelStrategy(ConfiguredMaxDop)).ExecuteAsync(input, node, context, nodeId, cancellationToken),
+                await (_dropOldest ??= new DropOldestParallelStrategy(ConfiguredMaxDop)).ExecuteAsync(input, node, context, nodeId, cancellationToken).ConfigureAwait(false),
             BoundedQueuePolicy.DropNewest =>
-                await (_dropNewest ??= new DropNewestParallelStrategy(ConfiguredMaxDop)).ExecuteAsync(input, node, context, nodeId, cancellationToken),
-            _ => await base.ExecuteAsync(input, node, context, nodeId, cancellationToken),
+                await (_dropNewest ??= new DropNewestParallelStrategy(ConfiguredMaxDop)).ExecuteAsync(input, node, context, nodeId, cancellationToken).ConfigureAwait(false),
+            _ => await base.ExecuteAsync(input, node, context, nodeId, cancellationToken).ConfigureAwait(false),
         };
     }
 

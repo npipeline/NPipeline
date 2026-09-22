@@ -182,7 +182,7 @@ public sealed class PipelineTestHarness<TPipeline> where TPipeline : IPipelineDe
 
         try
         {
-            await _pipelineRunner.RunAsync<TPipeline>(executionContext);
+            await _pipelineRunner.RunAsync<TPipeline>(executionContext).ConfigureAwait(false);
         }
         catch (Exception ex)
         {

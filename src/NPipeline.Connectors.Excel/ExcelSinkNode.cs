@@ -115,7 +115,8 @@ public sealed class ExcelSinkNode<T> : SinkNode<T>
                 throw new UnsupportedStorageCapabilityException(_uri, "write", meta.Name);
         }
 
-        await using var stream = await provider.OpenWriteAsync(_uri, cancellationToken).ConfigureAwait(false);
+        var stream = await provider.OpenWriteAsync(_uri, cancellationToken).ConfigureAwait(false);
+        await using var streamScope = stream.ConfigureAwait(false);
         await WriteToExcelStream(stream, input, _configuration, cancellationToken).ConfigureAwait(false);
     }
 

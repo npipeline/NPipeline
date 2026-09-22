@@ -58,7 +58,7 @@ public sealed class SourceNodeStreamingCodeFixProvider : CodeFixProvider
             if (context.Document == null || context.Diagnostics == null || !context.Diagnostics.Any())
                 return;
 
-            var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken);
+            var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
 
             if (root == null)
                 return;
@@ -74,11 +74,11 @@ public sealed class SourceNodeStreamingCodeFixProvider : CodeFixProvider
 
             // Register different code fixes based on the pattern type
             if (node is ObjectCreationExpressionSyntax objectCreation)
-                await RegisterObjectCreationFixes(context, objectCreation, diagnostic);
+                await RegisterObjectCreationFixes(context, objectCreation, diagnostic).ConfigureAwait(false);
             else if (node is InvocationExpressionSyntax invocation)
-                await RegisterInvocationFixes(context, invocation, diagnostic);
+                await RegisterInvocationFixes(context, invocation, diagnostic).ConfigureAwait(false);
             else if (node is MemberAccessExpressionSyntax memberAccess)
-                await RegisterMemberAccessFixes(context, memberAccess, diagnostic);
+                await RegisterMemberAccessFixes(context, memberAccess, diagnostic).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -107,7 +107,7 @@ public sealed class SourceNodeStreamingCodeFixProvider : CodeFixProvider
             if (context.Document == null || objectCreation == null || diagnostic == null)
                 return;
 
-            var semanticModel = await context.Document.GetSemanticModelAsync(context.CancellationToken);
+            var semanticModel = await context.Document.GetSemanticModelAsync(context.CancellationToken).ConfigureAwait(false);
 
             if (semanticModel == null)
                 return;
@@ -267,7 +267,7 @@ public sealed class SourceNodeStreamingCodeFixProvider : CodeFixProvider
         ObjectCreationExpressionSyntax listCreation,
         CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken);
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return document;
@@ -279,7 +279,7 @@ public sealed class SourceNodeStreamingCodeFixProvider : CodeFixProvider
             return document;
 
         // Get the semantic model to determine the element type
-        var semanticModel = await document.GetSemanticModelAsync(cancellationToken);
+        var semanticModel = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
         var typeInfo = semanticModel.GetTypeInfo(listCreation, cancellationToken);
 
         if (typeInfo.Type is not INamedTypeSymbol typeSymbol)
@@ -306,7 +306,7 @@ public sealed class SourceNodeStreamingCodeFixProvider : CodeFixProvider
         ObjectCreationExpressionSyntax arrayCreation,
         CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken);
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return document;
@@ -318,7 +318,7 @@ public sealed class SourceNodeStreamingCodeFixProvider : CodeFixProvider
             return document;
 
         // Get the semantic model to determine the element type
-        var semanticModel = await document.GetSemanticModelAsync(cancellationToken);
+        var semanticModel = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
         var typeInfo = semanticModel.GetTypeInfo(arrayCreation, cancellationToken);
 
         if (typeInfo.Type is not IArrayTypeSymbol arrayType)
@@ -344,7 +344,7 @@ public sealed class SourceNodeStreamingCodeFixProvider : CodeFixProvider
         InvocationExpressionSyntax toAsyncEnumerableInvocation,
         CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken);
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return document;
@@ -376,7 +376,7 @@ public sealed class SourceNodeStreamingCodeFixProvider : CodeFixProvider
         InvocationExpressionSyntax materializationInvocation,
         CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken);
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return document;
@@ -388,7 +388,7 @@ public sealed class SourceNodeStreamingCodeFixProvider : CodeFixProvider
             return document;
 
         // Get the semantic model to determine the element type
-        var semanticModel = await document.GetSemanticModelAsync(cancellationToken);
+        var semanticModel = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
         var typeInfo = semanticModel.GetTypeInfo(materializationInvocation.Expression, cancellationToken);
 
         if (typeInfo.Type is not INamedTypeSymbol typeSymbol)
@@ -420,7 +420,7 @@ public sealed class SourceNodeStreamingCodeFixProvider : CodeFixProvider
             if (document == null || fileIOInvocation == null)
                 return document!;
 
-            var root = await document.GetSyntaxRootAsync(cancellationToken);
+            var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
 
             if (root == null)
                 return document;
@@ -453,7 +453,7 @@ public sealed class SourceNodeStreamingCodeFixProvider : CodeFixProvider
             var newRoot = root.ReplaceNode(fileIOInvocation, asyncInvocation);
 
             // Make the containing method async
-            var newRootWithAsync = await MakeMethodAsyncAsync(newRoot, fileIOInvocation, cancellationToken);
+            var newRootWithAsync = await MakeMethodAsyncAsync(newRoot, fileIOInvocation, cancellationToken).ConfigureAwait(false);
 
             return document.WithSyntaxRoot(newRootWithAsync);
         }
@@ -484,13 +484,13 @@ public sealed class SourceNodeStreamingCodeFixProvider : CodeFixProvider
             if (document == null || fileIOProperty == null)
                 return document!;
 
-            var root = await document.GetSyntaxRootAsync(cancellationToken);
+            var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
 
             if (root == null)
                 return document;
 
             var propertyName = fileIOProperty.Name.Identifier.Text;
-            var semanticModel = await document.GetSemanticModelAsync(cancellationToken);
+            var semanticModel = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
 
             // Get the type information to determine if we're dealing with FileInfo or DirectoryInfo
             var typeInfo = semanticModel.GetTypeInfo(fileIOProperty.Expression, cancellationToken);
@@ -548,7 +548,7 @@ public sealed class SourceNodeStreamingCodeFixProvider : CodeFixProvider
 
             // Make the containing method async if we're using await
             if (replacementExpression.ToString().Contains("await"))
-                newRoot = await MakeMethodAsyncAsync(newRoot, fileIOProperty, cancellationToken);
+                newRoot = await MakeMethodAsyncAsync(newRoot, fileIOProperty, cancellationToken).ConfigureAwait(false);
 
             return document.WithSyntaxRoot(newRoot);
         }

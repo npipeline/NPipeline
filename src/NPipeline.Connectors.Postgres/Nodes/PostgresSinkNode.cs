@@ -236,15 +236,15 @@ public class PostgresSinkNode<T> : DatabaseSinkNode<T>, IAsyncDisposable
                 _storageUri);
 
             if (provider is IDatabaseStorageProvider databaseProvider)
-                return await databaseProvider.GetConnectionAsync(_storageUri, cancellationToken);
+                return await databaseProvider.GetConnectionAsync(_storageUri, cancellationToken).ConfigureAwait(false);
 
             throw new InvalidOperationException($"Storage provider must implement {nameof(IDatabaseStorageProvider)} to use StorageUri.");
         }
 
         // Original connection pool logic
         var connection = _connectionName is { Length: > 0 }
-            ? await _connectionPool!.GetConnectionAsync(_connectionName, cancellationToken)
-            : await _connectionPool!.GetConnectionAsync(cancellationToken);
+            ? await _connectionPool!.GetConnectionAsync(_connectionName, cancellationToken).ConfigureAwait(false)
+            : await _connectionPool!.GetConnectionAsync(cancellationToken).ConfigureAwait(false);
 
         return new PostgresDatabaseConnection(connection);
     }

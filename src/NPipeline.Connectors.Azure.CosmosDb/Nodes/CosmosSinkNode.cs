@@ -261,7 +261,7 @@ public class CosmosSinkNode<T> : DatabaseSinkNode<T>, IAsyncDisposable
                 _storageUri);
 
             if (provider is IDatabaseStorageProvider databaseProvider)
-                return await databaseProvider.GetConnectionAsync(_storageUri, cancellationToken);
+                return await databaseProvider.GetConnectionAsync(_storageUri, cancellationToken).ConfigureAwait(false);
 
             throw new InvalidOperationException(
                 $"Storage provider must implement {nameof(IDatabaseStorageProvider)} to use StorageUri.");
@@ -269,8 +269,8 @@ public class CosmosSinkNode<T> : DatabaseSinkNode<T>, IAsyncDisposable
 
         // Original connection pool logic
         var client = _connectionName is { Length: > 0 }
-            ? await _connectionPool!.GetClientAsync(_connectionName, cancellationToken)
-            : await _connectionPool!.GetClientAsync(cancellationToken);
+            ? await _connectionPool!.GetClientAsync(_connectionName, cancellationToken).ConfigureAwait(false)
+            : await _connectionPool!.GetClientAsync(cancellationToken).ConfigureAwait(false);
 
         var database = client.GetDatabase(_databaseId);
         var container = database.GetContainer(_containerId);

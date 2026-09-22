@@ -85,9 +85,12 @@ public sealed class CsvSinkNode<T> : SinkNode<T>
                 throw new UnsupportedStorageCapabilityException(_uri, "write", meta.Name);
         }
 
-        await using var stream = await provider.OpenWriteAsync(_uri, cancellationToken).ConfigureAwait(false);
-        await using var writer = new StreamWriter(stream, _encoding, _csvConfiguration.BufferSize, false);
-        await using var csv = new CsvWriter(writer, _csvConfiguration.HelperConfiguration);
+        var stream = await provider.OpenWriteAsync(_uri, cancellationToken).ConfigureAwait(false);
+        await using var streamScope = stream.ConfigureAwait(false);
+        var writer = new StreamWriter(stream, _encoding, _csvConfiguration.BufferSize, false);
+        await using var writerScope = writer.ConfigureAwait(false);
+        var csv = new CsvWriter(writer, _csvConfiguration.HelperConfiguration);
+        await using var csvScope = csv.ConfigureAwait(false);
 
         var type = typeof(T);
 
@@ -108,12 +111,12 @@ public sealed class CsvSinkNode<T> : SinkNode<T>
                     csv.WriteField(columnName);
                 }
 
-                await csv.NextRecordAsync();
+                await csv.NextRecordAsync().ConfigureAwait(false);
             }
             else
             {
                 csv.WriteHeader(type);
-                await csv.NextRecordAsync();
+                await csv.NextRecordAsync().ConfigureAwait(false);
             }
         }
 
@@ -127,7 +130,7 @@ public sealed class CsvSinkNode<T> : SinkNode<T>
             else
                 csv.WriteRecord(item);
 
-            await csv.NextRecordAsync();
+            await csv.NextRecordAsync().ConfigureAwait(false);
         }
 
         await writer.FlushAsync(cancellationToken).ConfigureAwait(false);

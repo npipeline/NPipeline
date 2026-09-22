@@ -77,12 +77,12 @@ public sealed class CosmosMongoSourceNode<T> : SourceNode<T>
     private async IAsyncEnumerable<T> ReadAsync([EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var adapter = new CosmosMongoApiAdapter();
-        var client = await adapter.CreateClientAsync(_configuration, cancellationToken);
+        var client = await adapter.CreateClientAsync(_configuration, cancellationToken).ConfigureAwait(false);
 
         try
         {
             var executor = adapter.CreateSourceExecutor(client, _configuration);
-            var rows = await executor.QueryAsync(_query, cancellationToken);
+            var rows = await executor.QueryAsync(_query, cancellationToken).ConfigureAwait(false);
 
             foreach (var row in rows)
             {
@@ -97,7 +97,7 @@ public sealed class CosmosMongoSourceNode<T> : SourceNode<T>
             switch (client)
             {
                 case IAsyncDisposable asyncDisposable:
-                    await asyncDisposable.DisposeAsync();
+                    await asyncDisposable.DisposeAsync().ConfigureAwait(false);
                     break;
                 case IDisposable disposable:
                     disposable.Dispose();

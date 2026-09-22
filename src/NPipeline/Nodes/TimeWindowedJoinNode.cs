@@ -79,7 +79,7 @@ public abstract class TimeWindowedJoinNode<TKey, TIn1, TIn2, TOut> : BaseJoinNod
 
         var (getKey1, getKey2) = GetKeySelectors();
 
-        await foreach (var streamItem in watermarkAwareStream)
+        await foreach (var streamItem in watermarkAwareStream.ConfigureAwait(false))
         {
             if (streamItem is StreamItem<object?>.DataItem dataItem)
             {

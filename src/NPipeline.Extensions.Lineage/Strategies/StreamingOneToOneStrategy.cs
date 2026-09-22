@@ -20,8 +20,10 @@ internal sealed class StreamingOneToOneStrategy<TIn, TOut> : LineageMappingStrat
         [EnumeratorCancellation] CancellationToken ct)
     {
         // Fast streaming 1:1 path (original second half of BuildLineageAdapter)
-        await using var inputEnumerator2 = inputStream.GetAsyncEnumerator(ct);
-        await using var outputEnumerator2 = outputStream.GetAsyncEnumerator(ct);
+        var inputEnumerator2 = inputStream.GetAsyncEnumerator(ct);
+        await using var inputEnumerator2Scope = inputEnumerator2.ConfigureAwait(false);
+        var outputEnumerator2 = outputStream.GetAsyncEnumerator(ct);
+        await using var outputEnumerator2Scope = outputEnumerator2.ConfigureAwait(false);
         var matchedInputCount2 = 0;
         var matchedOutputCount2 = 0;
 

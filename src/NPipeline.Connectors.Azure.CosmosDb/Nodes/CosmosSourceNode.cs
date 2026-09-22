@@ -284,7 +284,7 @@ public class CosmosSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
                 _storageUri);
 
             if (provider is IDatabaseStorageProvider databaseProvider)
-                return await databaseProvider.GetConnectionAsync(_storageUri, cancellationToken);
+                return await databaseProvider.GetConnectionAsync(_storageUri, cancellationToken).ConfigureAwait(false);
 
             throw new InvalidOperationException(
                 $"Storage provider must implement {nameof(IDatabaseStorageProvider)} to use StorageUri.");
@@ -292,8 +292,8 @@ public class CosmosSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
 
         // Original connection pool logic
         var client = _connectionName is { Length: > 0 }
-            ? await _connectionPool!.GetClientAsync(_connectionName, cancellationToken)
-            : await _connectionPool!.GetClientAsync(cancellationToken);
+            ? await _connectionPool!.GetClientAsync(_connectionName, cancellationToken).ConfigureAwait(false)
+            : await _connectionPool!.GetClientAsync(cancellationToken).ConfigureAwait(false);
 
         var database = client.GetDatabase(_databaseId);
         var container = database.GetContainer(_containerId);
@@ -310,7 +310,7 @@ public class CosmosSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
     protected override async Task<IDatabaseReader> ExecuteQueryAsync(IDatabaseConnection connection, CancellationToken cancellationToken)
     {
         var cosmosConnection = (CosmosDatabaseConnection)connection;
-        var command = await cosmosConnection.CreateCommandAsync(cancellationToken);
+        var command = await cosmosConnection.CreateCommandAsync(cancellationToken).ConfigureAwait(false);
 
         command.CommandText = _query;
         command.CommandTimeout = _configuration.CommandTimeout;
@@ -320,7 +320,7 @@ public class CosmosSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
             command.AddParameter(param.Name, param.Value);
         }
 
-        var reader = await command.ExecuteReaderAsync(cancellationToken);
+        var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
         return reader;
     }
 

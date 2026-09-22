@@ -147,7 +147,8 @@ public static class ServiceCollectionExtensions
         CancellationToken cancellationToken = default)
         where TDefinition : IPipelineDefinition, new()
     {
-        await using var scope = serviceProvider.CreateAsyncScope();
+        var scope = serviceProvider.CreateAsyncScope();
+        await using var scopeScope = scope.ConfigureAwait(false);
         var sp = scope.ServiceProvider;
 
         var runner = sp.GetRequiredService<IPipelineRunner>();

@@ -162,7 +162,7 @@ public sealed class CosmosDatabaseStorageProvider : IDatabaseStorageProvider, IS
 
             // Verify the connection by reading database
             var database = client.GetDatabase(info.Database);
-            await database.ReadAsync(cancellationToken: cancellationToken);
+            await database.ReadAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
 
             var container = database.GetContainer(info.Container);
 

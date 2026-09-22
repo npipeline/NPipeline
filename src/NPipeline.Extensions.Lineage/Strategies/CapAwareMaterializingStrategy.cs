@@ -26,7 +26,7 @@ internal sealed class CapAwareMaterializingStrategy<TIn, TOut> : LineageMappingS
         {
             await foreach (var pkt in MaterializingStrategy<TIn, TOut>.Instance
                                .MapAsync(inputStream, outputStream, nodeId, pipelineId, pipelineName, cardinality, options, lineageMapperType,
-                                   mapperInstance, ct))
+                                   mapperInstance, ct).ConfigureAwait(false))
             {
                 yield return pkt;
             }
@@ -93,7 +93,7 @@ internal sealed class CapAwareMaterializingStrategy<TIn, TOut> : LineageMappingS
         }
 
         // Degrade path: positional streaming, include buffered items + remainder
-        await foreach (var packet in PositionalStreamingMap(InputAll(ct), OutputAll(ct), nodeId, pipelineId, pipelineName, cardinality, options, ct))
+        await foreach (var packet in PositionalStreamingMap(InputAll(ct), OutputAll(ct), nodeId, pipelineId, pipelineName, cardinality, options, ct).ConfigureAwait(false))
         {
             yield return packet;
         }

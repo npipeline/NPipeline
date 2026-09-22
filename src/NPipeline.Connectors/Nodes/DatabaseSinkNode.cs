@@ -69,13 +69,14 @@ public abstract class DatabaseSinkNode<T> : SinkNode<T>
     /// <returns>A task representing the asynchronous operation.</returns>
     public override async Task ConsumeAsync(IDataStream<T> input, PipelineContext context, CancellationToken cancellationToken)
     {
-        await using var connection = await GetConnectionAsync(cancellationToken);
+        var connection = await GetConnectionAsync(cancellationToken).ConfigureAwait(false);
+        await using var connectionScope = connection.ConfigureAwait(false);
 
         // For ExactlyOnce semantic, wrap all writes in a transaction
         if (DeliverySemantic == DeliverySemantic.ExactlyOnce)
-            await ExecuteWithTransactionAsync(connection, input, cancellationToken);
+            await ExecuteWithTransactionAsync(connection, input, cancellationToken).ConfigureAwait(false);
         else
-            await ExecuteWithoutTransactionAsync(connection, input, cancellationToken);
+            await ExecuteWithoutTransactionAsync(connection, input, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -87,11 +88,13 @@ public abstract class DatabaseSinkNode<T> : SinkNode<T>
     /// <returns>A task representing the asynchronous operation.</returns>
     private async Task ExecuteWithTransactionAsync(IDatabaseConnection connection, IDataStream<T> input, CancellationToken cancellationToken)
     {
-        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+        var transaction = await connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+        await using var transactionScope = transaction.ConfigureAwait(false);
 
         try
         {
-            await using var writer = await CreateWriterAsync(connection, cancellationToken);
+            var writer = await CreateWriterAsync(connection, cancellationToken).ConfigureAwait(false);
+            await using var writerScope = writer.ConfigureAwait(false);
 
             var batch = new List<T>(BatchSize);
 
@@ -101,23 +104,23 @@ public abstract class DatabaseSinkNode<T> : SinkNode<T>
 
                 if (batch.Count >= BatchSize)
                 {
-                    await WriteBatchAsync(writer, batch, cancellationToken);
+                    await WriteBatchAsync(writer, batch, cancellationToken).ConfigureAwait(false);
                     batch.Clear();
                 }
             }
 
             if (batch.Count > 0)
-                await WriteBatchAsync(writer, batch, cancellationToken);
+                await WriteBatchAsync(writer, batch, cancellationToken).ConfigureAwait(false);
 
-            await writer.FlushAsync(cancellationToken);
+            await writer.FlushAsync(cancellationToken).ConfigureAwait(false);
 
             // Commit transaction only after all writes succeed
-            await transaction.CommitAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
         }
         catch
         {
             // Rollback on any error
-            await transaction.RollbackAsync(cancellationToken);
+            await transaction.RollbackAsync(cancellationToken).ConfigureAwait(false);
             throw;
         }
     }
@@ -131,7 +134,8 @@ public abstract class DatabaseSinkNode<T> : SinkNode<T>
     /// <returns>A task representing the asynchronous operation.</returns>
     private async Task ExecuteWithoutTransactionAsync(IDatabaseConnection connection, IDataStream<T> input, CancellationToken cancellationToken)
     {
-        await using var writer = await CreateWriterAsync(connection, cancellationToken);
+        var writer = await CreateWriterAsync(connection, cancellationToken).ConfigureAwait(false);
+        await using var writerScope = writer.ConfigureAwait(false);
 
         var batch = new List<T>(BatchSize);
 
@@ -141,15 +145,15 @@ public abstract class DatabaseSinkNode<T> : SinkNode<T>
 
             if (batch.Count >= BatchSize)
             {
-                await WriteBatchAsync(writer, batch, cancellationToken);
+                await WriteBatchAsync(writer, batch, cancellationToken).ConfigureAwait(false);
                 batch.Clear();
             }
         }
 
         if (batch.Count > 0)
-            await WriteBatchAsync(writer, batch, cancellationToken);
+            await WriteBatchAsync(writer, batch, cancellationToken).ConfigureAwait(false);
 
-        await writer.FlushAsync(cancellationToken);
+        await writer.FlushAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -163,7 +167,7 @@ public abstract class DatabaseSinkNode<T> : SinkNode<T>
     {
         try
         {
-            await writer.WriteBatchAsync(batch, cancellationToken);
+            await writer.WriteBatchAsync(batch, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception) when (ContinueOnError)
         {

@@ -96,7 +96,8 @@ internal sealed class MySqlPerRowWriter<T> : IDatabaseWriter<T>
 
     private async Task ExecuteWriteAsync(T item, CancellationToken ct)
     {
-        await using var command = await _connection.CreateCommandAsync(ct).ConfigureAwait(false);
+        var command = await _connection.CreateCommandAsync(ct).ConfigureAwait(false);
+        await using var commandScope = command.ConfigureAwait(false);
         command.CommandText = _insertSql;
         command.CommandType = CommandType.Text;
         command.CommandTimeout = _configuration.CommandTimeout;

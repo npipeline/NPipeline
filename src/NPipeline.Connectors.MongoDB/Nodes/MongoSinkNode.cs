@@ -173,14 +173,14 @@ public class MongoSinkNode<T> : SinkNode<T>, IAsyncDisposable
 
             if (batch.Count >= WriteBatchSize)
             {
-                await WriteBatchWithRetryAsync(writer, collection, batch, cancellationToken);
+                await WriteBatchWithRetryAsync(writer, collection, batch, cancellationToken).ConfigureAwait(false);
                 batch.Clear();
             }
         }
 
         // Write remaining items
         if (batch.Count > 0)
-            await WriteBatchWithRetryAsync(writer, collection, batch, cancellationToken);
+            await WriteBatchWithRetryAsync(writer, collection, batch, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -276,7 +276,7 @@ public class MongoSinkNode<T> : SinkNode<T>, IAsyncDisposable
         {
             try
             {
-                await writer.WriteBatchAsync(collection, batch, _configuration, cancellationToken);
+                await writer.WriteBatchAsync(collection, batch, _configuration, cancellationToken).ConfigureAwait(false);
                 return;
             }
             catch (OurMongoWriteException ex)
@@ -296,7 +296,7 @@ public class MongoSinkNode<T> : SinkNode<T>, IAsyncDisposable
                         ex);
                 }
 
-                await Task.Delay(delay, cancellationToken);
+                await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
 
                 // Exponential backoff
                 delay = TimeSpan.FromMilliseconds(delay.TotalMilliseconds * 2);
@@ -314,7 +314,7 @@ public class MongoSinkNode<T> : SinkNode<T>, IAsyncDisposable
                         ex);
                 }
 
-                await Task.Delay(delay, cancellationToken);
+                await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
                 delay = TimeSpan.FromMilliseconds(delay.TotalMilliseconds * 2);
             }
             catch (Exception ex) when (ex is not OurMongoWriteException and not DriverMongoWriteException)
@@ -333,7 +333,7 @@ public class MongoSinkNode<T> : SinkNode<T>, IAsyncDisposable
                             ex);
                     }
 
-                    await Task.Delay(delay, cancellationToken);
+                    await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
                     delay = TimeSpan.FromMilliseconds(delay.TotalMilliseconds * 2);
                 }
                 else

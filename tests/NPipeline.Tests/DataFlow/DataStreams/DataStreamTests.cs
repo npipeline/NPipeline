@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using AwesomeAssertions;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
@@ -88,12 +89,18 @@ public sealed class DataStreamTests
         _ = enumeratedItems.Should().BeEmpty();
     }
 
+    /// <summary>
+    ///     <c>DataStream&lt;T&gt;</c> used to declare its own <c>WithCancellation</c> instance method, which beat the BCL
+    ///     extension in overload resolution and added a per-item <c>ThrowIfCancellationRequested</c>. That made a source
+    ///     ignoring its token look cancellable, but only when the caller's variable was typed as the concrete class -
+    ///     through <c>IDataStream&lt;T&gt;</c> the same call got the BCL's struct wrapper and no such check. The method is
+    ///     gone, so cancellation now means one thing everywhere: the token reaches the source, and the source honours it.
+    /// </summary>
     [Fact]
-    public async Task GetAsyncEnumerator_WithCancellation_RespectsCancellation()
+    public async Task WithCancellation_CancelsWhenTheSourceObservesTheToken()
     {
         // Arrange
-        var stream = GetLongRunningStream();
-        DataStream<int> pipe = new(stream);
+        DataStream<int> pipe = new(GetCancellableStream());
         CancellationTokenSource cts = new();
         List<int> enumeratedItems = [];
 
@@ -108,7 +115,7 @@ public sealed class DataStreamTests
                 count++;
 
                 if (count >= 2)
-                    cts.Cancel();
+                    await cts.CancelAsync();
             }
         });
 
@@ -116,6 +123,37 @@ public sealed class DataStreamTests
         _ = await task.Invoking(t => t).Should().ThrowAsync<OperationCanceledException>();
         _ = enumeratedItems.Should().HaveCount(2);
         _ = enumeratedItems.Should().ContainInOrder(1, 2);
+    }
+
+    [Fact]
+    public async Task WithCancellation_BindsToTheBclExtension_ThroughEitherStaticType()
+    {
+        // Arrange
+        DataStream<int> concrete = new(GetCancellableStream());
+        IDataStream<int> asInterface = concrete;
+        CancellationTokenSource cts = new();
+        await cts.CancelAsync();
+
+        // Act
+        var throughConcrete = async () =>
+        {
+            await foreach (var _ in concrete.WithCancellation(cts.Token))
+            {
+                // Should not yield.
+            }
+        };
+
+        var throughInterface = async () =>
+        {
+            await foreach (var _ in asInterface.WithCancellation(cts.Token))
+            {
+                // Should not yield.
+            }
+        };
+
+        // Assert - both static types now reach the same implementation and behave identically
+        _ = await throughConcrete.Should().ThrowAsync<OperationCanceledException>();
+        _ = await throughInterface.Should().ThrowAsync<OperationCanceledException>();
     }
 
     [Fact]
@@ -302,13 +340,14 @@ public sealed class DataStreamTests
         yield break; // Explicitly break without yielding any items
     }
 
-    private static async IAsyncEnumerable<int> GetLongRunningStream()
+    private static async IAsyncEnumerable<int> GetCancellableStream([EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         for (var i = 1; i <= 10; i++)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             yield return i;
 
-            await Task.Delay(10); // Small delay to make cancellation testable
+            await Task.Delay(10, cancellationToken); // Small delay to make cancellation testable
         }
     }
 

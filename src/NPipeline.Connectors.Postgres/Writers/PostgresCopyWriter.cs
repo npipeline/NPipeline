@@ -207,7 +207,8 @@ internal sealed class PostgresCopyWriter<T> : IDatabaseWriter<T>
     {
         var copyCommand = BuildCopyCommand();
 
-        await using var importer = await connection.BeginBinaryImportAsync(copyCommand, cancellationToken).ConfigureAwait(false);
+        var importer = await connection.BeginBinaryImportAsync(copyCommand, cancellationToken).ConfigureAwait(false);
+        await using var importerScope = importer.ConfigureAwait(false);
 
         foreach (var item in _pendingRows)
         {
@@ -239,7 +240,8 @@ internal sealed class PostgresCopyWriter<T> : IDatabaseWriter<T>
         var copyCommand = BuildCopyCommand();
         var copyData = BuildTextCopyData();
 
-        await using var writer = await connection.BeginTextImportAsync(copyCommand, cancellationToken).ConfigureAwait(false);
+        var writer = await connection.BeginTextImportAsync(copyCommand, cancellationToken).ConfigureAwait(false);
+        await using var writerScope = writer.ConfigureAwait(false);
 
         foreach (var line in copyData)
         {

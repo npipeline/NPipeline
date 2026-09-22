@@ -294,7 +294,7 @@ public sealed class SftpStorageProvider : IStorageProvider, IStorageProviderMeta
                 {
                     var subPrefix = BuildItemUri(prefix, itemPath);
 
-                    await foreach (var subItem in ListAsyncCore(subPrefix, recursive, cancellationToken))
+                    await foreach (var subItem in ListAsyncCore(subPrefix, recursive, cancellationToken).ConfigureAwait(false))
                     {
                         yield return subItem;
                     }

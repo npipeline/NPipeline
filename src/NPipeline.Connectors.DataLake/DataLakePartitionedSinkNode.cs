@@ -84,7 +84,8 @@ public sealed class DataLakePartitionedSinkNode<T> : SinkNode<T>
 
         var snapshotId = ManifestWriter.GenerateSnapshotId();
 
-        await using var manifestWriter = new ManifestWriter(provider, _tableBasePath, snapshotId);
+        var manifestWriter = new ManifestWriter(provider, _tableBasePath, snapshotId);
+        await using var manifestWriterScope = manifestWriter.ConfigureAwait(false);
 
         if (_partitionSpec is not null && _partitionSpec.HasPartitions)
         {

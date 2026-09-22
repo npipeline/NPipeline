@@ -145,7 +145,7 @@ public class CosmosChangeFeedSourceNode<T> : SourceNode<T>, IAsyncDisposable
         var container = _client.GetContainer(_databaseId, _containerId);
 
         // Get the continuation token from checkpoint store
-        var continuationToken = await _checkpointStore.GetTokenAsync(_databaseId, _containerId, cancellationToken);
+        var continuationToken = await _checkpointStore.GetTokenAsync(_databaseId, _containerId, cancellationToken).ConfigureAwait(false);
 
         // Build the Change Feed iterator
         var changeFeedStartFrom = BuildChangeFeedStartFrom(continuationToken);
@@ -167,7 +167,7 @@ public class CosmosChangeFeedSourceNode<T> : SourceNode<T>, IAsyncDisposable
 
             try
             {
-                var response = await iterator.ReadNextAsync(cancellationToken);
+                var response = await iterator.ReadNextAsync(cancellationToken).ConfigureAwait(false);
 
                 if (response.StatusCode == HttpStatusCode.NotModified)
                 {
@@ -179,7 +179,7 @@ public class CosmosChangeFeedSourceNode<T> : SourceNode<T>, IAsyncDisposable
                 {
                     // Process the changes
                     using var stream = response.Content;
-                    items = await ParseChangeFeedResponse(stream, cancellationToken);
+                    items = await ParseChangeFeedResponse(stream, cancellationToken).ConfigureAwait(false);
                     newContinuationToken = response.ContinuationToken;
                 }
             }
@@ -201,7 +201,7 @@ public class CosmosChangeFeedSourceNode<T> : SourceNode<T>, IAsyncDisposable
 
             if (shouldWait)
             {
-                await Task.Delay(_configuration.PollingInterval, cancellationToken);
+                await Task.Delay(_configuration.PollingInterval, cancellationToken).ConfigureAwait(false);
                 continue;
             }
 
@@ -248,7 +248,7 @@ public class CosmosChangeFeedSourceNode<T> : SourceNode<T>, IAsyncDisposable
                     _databaseId,
                     _containerId,
                     newContinuationToken,
-                    cancellationToken);
+                    cancellationToken).ConfigureAwait(false);
             }
         }
     }
@@ -279,7 +279,7 @@ public class CosmosChangeFeedSourceNode<T> : SourceNode<T>, IAsyncDisposable
         var items = new List<CosmosRow>();
 
         using var reader = new StreamReader(stream);
-        var content = await reader.ReadToEndAsync(cancellationToken);
+        var content = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
 
         // Parse the JSON response
         // The response format is: { "Documents": [...], "_rid": "...", "_count": N }

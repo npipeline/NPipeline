@@ -114,7 +114,7 @@ public class MongoBulkWriter<T> : IMongoWriter<T>
 
         try
         {
-            await collection.BulkWriteAsync(writeModels, options, cancellationToken);
+            await collection.BulkWriteAsync(writeModels, options, cancellationToken).ConfigureAwait(false);
         }
         catch (MongoBulkWriteException<BsonDocument> ex)
         {

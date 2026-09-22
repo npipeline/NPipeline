@@ -177,7 +177,7 @@ public class CosmosConnectionPool : ICosmosConnectionPool
     public async Task<TClient> GetClientAsync<TClient>(CosmosApiType apiType, CancellationToken cancellationToken = default)
         where TClient : class
     {
-        return await GetClientAsync<TClient>(DefaultConnectionName, apiType, cancellationToken);
+        return await GetClientAsync<TClient>(DefaultConnectionName, apiType, cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -191,8 +191,8 @@ public class CosmosConnectionPool : ICosmosConnectionPool
             case CosmosApiType.Sql:
             {
                 var sqlClient = string.Equals(name, DefaultConnectionName, StringComparison.OrdinalIgnoreCase)
-                    ? await GetClientAsync(cancellationToken)
-                    : await GetClientAsync(name, cancellationToken);
+                    ? await GetClientAsync(cancellationToken).ConfigureAwait(false)
+                    : await GetClientAsync(name, cancellationToken).ConfigureAwait(false);
 
                 return sqlClient as TClient
                        ?? throw new InvalidOperationException($"Requested client type '{typeof(TClient).Name}' is not compatible with SQL API.");
@@ -210,7 +210,7 @@ public class CosmosConnectionPool : ICosmosConnectionPool
 
             case CosmosApiType.Cassandra:
             {
-                var context = await GetCassandraClientContextAsync(name, cancellationToken);
+                var context = await GetCassandraClientContextAsync(name, cancellationToken).ConfigureAwait(false);
 
                 if (typeof(TClient) == typeof(CassandraClientContext))
                     return (context as TClient)!;
@@ -239,7 +239,7 @@ public class CosmosConnectionPool : ICosmosConnectionPool
         string containerId,
         CancellationToken cancellationToken = default)
     {
-        var client = await GetClientAsync(cancellationToken);
+        var client = await GetClientAsync(cancellationToken).ConfigureAwait(false);
         return client.GetContainer(databaseId, containerId);
     }
 
@@ -257,7 +257,7 @@ public class CosmosConnectionPool : ICosmosConnectionPool
         string containerId,
         CancellationToken cancellationToken = default)
     {
-        var client = await GetClientAsync(name, cancellationToken);
+        var client = await GetClientAsync(name, cancellationToken).ConfigureAwait(false);
         return client.GetContainer(databaseId, containerId);
     }
 
@@ -309,11 +309,11 @@ public class CosmosConnectionPool : ICosmosConnectionPool
 
         foreach (var cassandraClient in _cassandraClients.Values)
         {
-            await cassandraClient.DisposeAsync();
+            await cassandraClient.DisposeAsync().ConfigureAwait(false);
         }
 
         GC.SuppressFinalize(this);
-        await ValueTask.CompletedTask;
+        await ValueTask.CompletedTask.ConfigureAwait(false);
     }
 
     private static CosmosOptions CreateOptionsFromNamedConnections(IDictionary<string, string> namedConnections, CosmosConfiguration? configuration)
@@ -413,7 +413,7 @@ public class CosmosConnectionPool : ICosmosConnectionPool
         using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(_configuration.ConnectionTimeout));
         using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
 
-        var session = await cluster.ConnectAsync(options.Keyspace).WaitAsync(linkedCts.Token);
+        var session = await cluster.ConnectAsync(options.Keyspace).WaitAsync(linkedCts.Token).ConfigureAwait(false);
         var context = new CassandraClientContext(cluster, session);
 
         // Handle race condition: if another thread added a context while we were creating ours,
@@ -422,7 +422,7 @@ public class CosmosConnectionPool : ICosmosConnectionPool
             return context;
 
         // Another thread won the race - dispose our context and return theirs
-        await context.DisposeAsync();
+        await context.DisposeAsync().ConfigureAwait(false);
         return _cassandraClients[key];
     }
 

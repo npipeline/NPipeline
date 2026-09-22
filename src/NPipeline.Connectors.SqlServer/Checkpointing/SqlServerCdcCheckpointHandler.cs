@@ -44,7 +44,7 @@ public class SqlServerCdcCheckpointHandler
     /// <returns>The CDC position, or null if no checkpoint exists.</returns>
     public async Task<SqlServerCdcPosition?> LoadPositionAsync(CancellationToken cancellationToken = default)
     {
-        var checkpoint = await _checkpointManager.LoadAsync(cancellationToken);
+        var checkpoint = await _checkpointManager.LoadAsync(cancellationToken).ConfigureAwait(false);
 
         if (checkpoint == null)
             return null;
@@ -76,7 +76,7 @@ public class SqlServerCdcCheckpointHandler
         if (position.ChangeCount.HasValue)
             metadata["change_count"] = position.ChangeCount.Value.ToString();
 
-        await _checkpointManager.UpdateAsync(serializedValue, metadata, forceSave, cancellationToken);
+        await _checkpointManager.UpdateAsync(serializedValue, metadata, forceSave, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -103,7 +103,7 @@ public class SqlServerCdcCheckpointHandler
             Operation = operation,
         };
 
-        await UpdatePositionAsync(position, forceSave, cancellationToken);
+        await UpdatePositionAsync(position, forceSave, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -128,7 +128,7 @@ public class SqlServerCdcCheckpointHandler
             Operation = operation,
         };
 
-        await UpdatePositionAsync(position, forceSave, cancellationToken);
+        await UpdatePositionAsync(position, forceSave, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -137,7 +137,7 @@ public class SqlServerCdcCheckpointHandler
     /// <param name="cancellationToken">The cancellation token.</param>
     public async Task SaveAsync(CancellationToken cancellationToken = default)
     {
-        await _checkpointManager.SaveAsync(cancellationToken);
+        await _checkpointManager.SaveAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -146,7 +146,7 @@ public class SqlServerCdcCheckpointHandler
     /// <param name="cancellationToken">The cancellation token.</param>
     public async Task ClearAsync(CancellationToken cancellationToken = default)
     {
-        await _checkpointManager.ClearAsync(cancellationToken);
+        await _checkpointManager.ClearAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -156,7 +156,7 @@ public class SqlServerCdcCheckpointHandler
     /// <returns>A tuple with from LSN and to LSN values.</returns>
     public async Task<(string? FromLsn, string ToLsn)> GetLsnRangeAsync(CancellationToken cancellationToken = default)
     {
-        var position = await LoadPositionAsync(cancellationToken);
+        var position = await LoadPositionAsync(cancellationToken).ConfigureAwait(false);
         var fromLsn = position?.StartLsnHex;
 
         // Get the current max LSN from the database

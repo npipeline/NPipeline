@@ -167,10 +167,12 @@ public sealed class ManifestWriter : IAsyncDisposable
         // Write all pending entries to a dedicated snapshot file
         var content = BuildNdJsonContent(_pendingEntries);
 
-        await using var stream = await _provider.OpenWriteAsync(_snapshotManifestUri, cancellationToken)
+        var stream = await _provider.OpenWriteAsync(_snapshotManifestUri, cancellationToken)
             .ConfigureAwait(false);
+        await using var streamScope = stream.ConfigureAwait(false);
 
-        await using var writer = new StreamWriter(stream, Encoding.UTF8, leaveOpen: false);
+        var writer = new StreamWriter(stream, Encoding.UTF8, leaveOpen: false);
+        await using var writerScope = writer.ConfigureAwait(false);
         await writer.WriteAsync(content).ConfigureAwait(false);
         await writer.FlushAsync(cancellationToken).ConfigureAwait(false);
     }
@@ -237,10 +239,12 @@ public sealed class ManifestWriter : IAsyncDisposable
         else
         {
             // Create new manifest
-            await using var writeStream = await _provider.OpenWriteAsync(_manifestUri, cancellationToken)
+            var writeStream = await _provider.OpenWriteAsync(_manifestUri, cancellationToken)
                 .ConfigureAwait(false);
+            await using var writeStreamScope = writeStream.ConfigureAwait(false);
 
-            await using var writer = new StreamWriter(writeStream, Encoding.UTF8, leaveOpen: false);
+            var writer = new StreamWriter(writeStream, Encoding.UTF8, leaveOpen: false);
+            await using var writerScope = writer.ConfigureAwait(false);
             await writer.WriteAsync(newContent).ConfigureAwait(false);
             await writer.FlushAsync(cancellationToken).ConfigureAwait(false);
         }
@@ -254,8 +258,9 @@ public sealed class ManifestWriter : IAsyncDisposable
         // Read existing content
         string existingContent;
 
-        await using (var readStream = await _provider.OpenReadAsync(_manifestUri, cancellationToken)
-                         .ConfigureAwait(false))
+        var readStream = await _provider.OpenReadAsync(_manifestUri, cancellationToken).ConfigureAwait(false);
+
+        await using (readStream.ConfigureAwait(false))
         {
             using var reader = new StreamReader(readStream, Encoding.UTF8);
             existingContent = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
@@ -272,10 +277,12 @@ public sealed class ManifestWriter : IAsyncDisposable
         // Write to temp file
         var tempUri = CreateTempManifestUri();
 
-        await using (var writeStream = await _provider.OpenWriteAsync(tempUri, cancellationToken)
-                         .ConfigureAwait(false))
+        var writeStream = await _provider.OpenWriteAsync(tempUri, cancellationToken).ConfigureAwait(false);
+
+        await using (writeStream.ConfigureAwait(false))
         {
-            await using var writer = new StreamWriter(writeStream, Encoding.UTF8, leaveOpen: false);
+            var writer = new StreamWriter(writeStream, Encoding.UTF8, leaveOpen: false);
+            await using var writerScope = writer.ConfigureAwait(false);
             await writer.WriteAsync(combinedContent).ConfigureAwait(false);
             await writer.FlushAsync(cancellationToken).ConfigureAwait(false);
         }
@@ -289,8 +296,9 @@ public sealed class ManifestWriter : IAsyncDisposable
         // Read existing content and append
         string existingContent;
 
-        await using (var readStream = await _provider.OpenReadAsync(_manifestUri, cancellationToken)
-                         .ConfigureAwait(false))
+        var readStream = await _provider.OpenReadAsync(_manifestUri, cancellationToken).ConfigureAwait(false);
+
+        await using (readStream.ConfigureAwait(false))
         {
             using var reader = new StreamReader(readStream, Encoding.UTF8);
             existingContent = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
@@ -303,10 +311,12 @@ public sealed class ManifestWriter : IAsyncDisposable
 
         combinedContent += newContent;
 
-        await using var writeStream = await _provider.OpenWriteAsync(_manifestUri, cancellationToken)
+        var writeStream = await _provider.OpenWriteAsync(_manifestUri, cancellationToken)
             .ConfigureAwait(false);
+        await using var writeStreamScope = writeStream.ConfigureAwait(false);
 
-        await using var writer = new StreamWriter(writeStream, Encoding.UTF8, leaveOpen: false);
+        var writer = new StreamWriter(writeStream, Encoding.UTF8, leaveOpen: false);
+        await using var writerScope = writer.ConfigureAwait(false);
         await writer.WriteAsync(combinedContent).ConfigureAwait(false);
         await writer.FlushAsync(cancellationToken).ConfigureAwait(false);
     }

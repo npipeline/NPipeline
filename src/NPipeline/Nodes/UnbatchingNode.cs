@@ -29,7 +29,7 @@ public sealed class UnbatchingNode<T> : IStreamTransformNode<IEnumerable<T>, T>,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         // Delegate to the FlattenAsync extension method for the actual unbatching logic
-        await foreach (var item in items.FlattenAsync(cancellationToken))
+        await foreach (var item in items.FlattenAsync(cancellationToken).ConfigureAwait(false))
         {
             yield return item;
         }

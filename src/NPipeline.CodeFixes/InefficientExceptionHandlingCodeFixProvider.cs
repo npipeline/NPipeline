@@ -29,7 +29,7 @@ public sealed class InefficientExceptionHandlingCodeFixProvider : CodeFixProvide
     /// <inheritdoc />
     public override async Task RegisterCodeFixesAsync(CodeFixContext context)
     {
-        var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken);
+        var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return;
@@ -45,7 +45,7 @@ public sealed class InefficientExceptionHandlingCodeFixProvider : CodeFixProvide
 
         // Register different code fixes based on diagnostic type
         if (node is CatchClauseSyntax catchClause)
-            await RegisterCatchClauseFixes(context, catchClause, diagnostic);
+            await RegisterCatchClauseFixes(context, catchClause, diagnostic).ConfigureAwait(false);
     }
 
     private static async Task RegisterCatchClauseFixes(
@@ -53,7 +53,7 @@ public sealed class InefficientExceptionHandlingCodeFixProvider : CodeFixProvide
         CatchClauseSyntax catchClause,
         Diagnostic diagnostic)
     {
-        var semanticModel = await context.Document.GetSemanticModelAsync(context.CancellationToken);
+        var semanticModel = await context.Document.GetSemanticModelAsync(context.CancellationToken).ConfigureAwait(false);
 
         if (semanticModel == null)
             return;
@@ -61,15 +61,15 @@ public sealed class InefficientExceptionHandlingCodeFixProvider : CodeFixProvide
         var diagnosticMessage = diagnostic.GetMessage();
 
         if (diagnosticMessage.Contains("Catch-all exception handler"))
-            await RegisterCatchAllFixes(context, catchClause, diagnostic);
+            await RegisterCatchAllFixes(context, catchClause, diagnostic).ConfigureAwait(false);
         else if (diagnosticMessage.Contains("Exception swallowing pattern"))
-            await RegisterSwallowingFixes(context, catchClause, diagnostic);
+            await RegisterSwallowingFixes(context, catchClause, diagnostic).ConfigureAwait(false);
         else if (diagnosticMessage.Contains("Empty catch block"))
-            await RegisterEmptyCatchFixes(context, catchClause, diagnostic);
+            await RegisterEmptyCatchFixes(context, catchClause, diagnostic).ConfigureAwait(false);
         else if (diagnosticMessage.Contains("Improper re-throw pattern"))
-            await RegisterRethrowFixes(context, catchClause, diagnostic);
+            await RegisterRethrowFixes(context, catchClause, diagnostic).ConfigureAwait(false);
         else if (diagnosticMessage.Contains("Inefficient exception filtering"))
-            await RegisterFilterFixes(context, catchClause, diagnostic);
+            await RegisterFilterFixes(context, catchClause, diagnostic).ConfigureAwait(false);
     }
 
     private static Task RegisterCatchAllFixes(
@@ -181,7 +181,7 @@ public sealed class InefficientExceptionHandlingCodeFixProvider : CodeFixProvide
         CatchClauseSyntax catchClause,
         CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken);
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return document;
@@ -203,7 +203,7 @@ public sealed class InefficientExceptionHandlingCodeFixProvider : CodeFixProvide
         CatchClauseSyntax catchClause,
         CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken);
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return document;
@@ -239,7 +239,7 @@ public sealed class InefficientExceptionHandlingCodeFixProvider : CodeFixProvide
         CatchClauseSyntax catchClause,
         CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken);
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return document;
@@ -273,7 +273,7 @@ public sealed class InefficientExceptionHandlingCodeFixProvider : CodeFixProvide
         CatchClauseSyntax catchClause,
         CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken);
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return document;
@@ -310,7 +310,7 @@ public sealed class InefficientExceptionHandlingCodeFixProvider : CodeFixProvide
         CatchClauseSyntax catchClause,
         CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken);
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return document;
@@ -351,7 +351,7 @@ public sealed class InefficientExceptionHandlingCodeFixProvider : CodeFixProvide
         CatchClauseSyntax catchClause,
         CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken);
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return document;
@@ -378,7 +378,7 @@ public sealed class InefficientExceptionHandlingCodeFixProvider : CodeFixProvide
         CatchClauseSyntax catchClause,
         CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken);
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return document;

@@ -43,14 +43,14 @@ public class FileCheckpointStorage : ICheckpointStorage, IDisposable
     {
         var filePath = GetCheckpointFilePath(pipelineId, nodeId);
 
-        await _lock.WaitAsync(cancellationToken);
+        await _lock.WaitAsync(cancellationToken).ConfigureAwait(false);
 
         try
         {
             if (!File.Exists(filePath))
                 return null;
 
-            var json = await File.ReadAllTextAsync(filePath, cancellationToken);
+            var json = await File.ReadAllTextAsync(filePath, cancellationToken).ConfigureAwait(false);
             var data = JsonSerializer.Deserialize<CheckpointData>(json, JsonOptions);
 
             if (data == null)
@@ -75,7 +75,7 @@ public class FileCheckpointStorage : ICheckpointStorage, IDisposable
         var filePath = GetCheckpointFilePath(pipelineId, nodeId);
         var directoryPath = Path.GetDirectoryName(filePath);
 
-        await _lock.WaitAsync(cancellationToken);
+        await _lock.WaitAsync(cancellationToken).ConfigureAwait(false);
 
         try
         {
@@ -97,7 +97,7 @@ public class FileCheckpointStorage : ICheckpointStorage, IDisposable
             };
 
             var json = JsonSerializer.Serialize(data, JsonOptions);
-            await File.WriteAllTextAsync(filePath, json, cancellationToken);
+            await File.WriteAllTextAsync(filePath, json, cancellationToken).ConfigureAwait(false);
         }
         finally
         {
@@ -110,7 +110,7 @@ public class FileCheckpointStorage : ICheckpointStorage, IDisposable
     {
         var filePath = GetCheckpointFilePath(pipelineId, nodeId);
 
-        await _lock.WaitAsync(cancellationToken);
+        await _lock.WaitAsync(cancellationToken).ConfigureAwait(false);
 
         try
         {
@@ -128,7 +128,7 @@ public class FileCheckpointStorage : ICheckpointStorage, IDisposable
     {
         var filePath = GetCheckpointFilePath(pipelineId, nodeId);
 
-        await _lock.WaitAsync(cancellationToken);
+        await _lock.WaitAsync(cancellationToken).ConfigureAwait(false);
 
         try
         {

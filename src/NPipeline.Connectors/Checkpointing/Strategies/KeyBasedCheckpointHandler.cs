@@ -56,7 +56,7 @@ public class KeyBasedCheckpointHandler
     /// <returns>The key values dictionary, or null if no checkpoint exists.</returns>
     public async Task<Dictionary<string, object?>?> LoadKeyValuesAsync(CancellationToken cancellationToken = default)
     {
-        var checkpoint = await _checkpointManager.LoadAsync(cancellationToken);
+        var checkpoint = await _checkpointManager.LoadAsync(cancellationToken).ConfigureAwait(false);
 
         if (checkpoint == null)
             return null;
@@ -83,7 +83,7 @@ public class KeyBasedCheckpointHandler
             ["updated_at"] = DateTimeOffset.UtcNow.ToString("O"),
         };
 
-        await _checkpointManager.UpdateAsync(serializedValue, metadata, forceSave, cancellationToken);
+        await _checkpointManager.UpdateAsync(serializedValue, metadata, forceSave, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -170,7 +170,7 @@ public class KeyBasedCheckpointHandler
     /// <param name="cancellationToken">The cancellation token.</param>
     public async Task SaveAsync(CancellationToken cancellationToken = default)
     {
-        await _checkpointManager.SaveAsync(cancellationToken);
+        await _checkpointManager.SaveAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -179,7 +179,7 @@ public class KeyBasedCheckpointHandler
     /// <param name="cancellationToken">The cancellation token.</param>
     public async Task ClearAsync(CancellationToken cancellationToken = default)
     {
-        await _checkpointManager.ClearAsync(cancellationToken);
+        await _checkpointManager.ClearAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>

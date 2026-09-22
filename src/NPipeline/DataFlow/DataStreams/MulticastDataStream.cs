@@ -102,7 +102,7 @@ internal sealed class MulticastDataStream<T> : DataStreamBase<T>, IHasBranchMetr
             return;
 
         _disposed = true;
-        await _cts.CancelAsync();
+        await _cts.CancelAsync().ConfigureAwait(false);
 
         await _pumpTask.ConfigureAwait(false);
 
@@ -159,7 +159,7 @@ internal sealed class MulticastDataStream<T> : DataStreamBase<T>, IHasBranchMetr
     {
         var idx = Array.IndexOf(_channels, channel);
 
-        await foreach (var item in channel.Reader.ReadAllAsync(ct))
+        await foreach (var item in channel.Reader.ReadAllAsync(ct).ConfigureAwait(false))
         {
             yield return item!;
 

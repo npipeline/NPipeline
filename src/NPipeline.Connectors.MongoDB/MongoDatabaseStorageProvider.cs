@@ -151,9 +151,9 @@ public class MongoDatabaseStorageProvider : IDatabaseStorageProvider
             return false;
 
         // Check if database exists by listing databases
-        using var cursor = await client.ListDatabaseNamesAsync(cancellationToken);
+        using var cursor = await client.ListDatabaseNamesAsync(cancellationToken).ConfigureAwait(false);
 
-        while (await cursor.MoveNextAsync(cancellationToken))
+        while (await cursor.MoveNextAsync(cancellationToken).ConfigureAwait(false))
         {
             if (cursor.Current.Contains(databaseName))
                 return true;
@@ -213,10 +213,10 @@ public class MongoDatabaseStorageProvider : IDatabaseStorageProvider
         public async Task OpenAsync(CancellationToken cancellationToken = default)
         {
             // MongoDB client doesn't require explicit open - just verify connectivity
-            using var cursor = await _client.ListDatabaseNamesAsync(cancellationToken);
+            using var cursor = await _client.ListDatabaseNamesAsync(cancellationToken).ConfigureAwait(false);
 
             // Just enumerate to verify connection works
-            while (await cursor.MoveNextAsync(cancellationToken))
+            while (await cursor.MoveNextAsync(cancellationToken).ConfigureAwait(false))
             {
             }
         }

@@ -87,7 +87,7 @@ public abstract class DatabaseSourceNode<TReader, T> : SourceNode<T>, IAsyncDisp
         GC.SuppressFinalize(this);
 
         if (_checkpointManager != null)
-            await _checkpointManager.DisposeAsync();
+            await _checkpointManager.DisposeAsync().ConfigureAwait(false);
 
         _inMemoryStorage?.Dispose();
     }
@@ -229,8 +229,10 @@ public abstract class DatabaseSourceNode<TReader, T> : SourceNode<T>, IAsyncDisp
     /// <returns>An async enumerable of data items.</returns>
     private async IAsyncEnumerable<T> StreamDataAsync([EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        await using var connection = await GetConnectionAsync(cancellationToken).ConfigureAwait(false);
-        await using var reader = await ExecuteQueryAsync(connection, cancellationToken).ConfigureAwait(false);
+        var connection = await GetConnectionAsync(cancellationToken).ConfigureAwait(false);
+        await using var connectionScope = connection.ConfigureAwait(false);
+        var reader = await ExecuteQueryAsync(connection, cancellationToken).ConfigureAwait(false);
+        await using var readerScope = reader.ConfigureAwait(false);
 
         // Load checkpoint if available
         long startOffset = 0;
@@ -272,8 +274,10 @@ public abstract class DatabaseSourceNode<TReader, T> : SourceNode<T>, IAsyncDisp
     {
         var items = new List<T>();
 
-        await using var connection = await GetConnectionAsync(cancellationToken).ConfigureAwait(false);
-        await using var reader = await ExecuteQueryAsync(connection, cancellationToken).ConfigureAwait(false);
+        var connection = await GetConnectionAsync(cancellationToken).ConfigureAwait(false);
+        await using var connectionScope = connection.ConfigureAwait(false);
+        var reader = await ExecuteQueryAsync(connection, cancellationToken).ConfigureAwait(false);
+        await using var readerScope = reader.ConfigureAwait(false);
 
         // Load checkpoint if available
         long startOffset = 0;
@@ -330,7 +334,7 @@ public abstract class DatabaseSourceNode<TReader, T> : SourceNode<T>, IAsyncDisp
             case CheckpointStrategy.Offset:
             {
                 var offset = GetCurrentOffset(reader) ?? currentRow;
-                await _checkpointManager.UpdateOffsetAsync(offset, null, forceSave, cancellationToken);
+                await _checkpointManager.UpdateOffsetAsync(offset, null, forceSave, cancellationToken).ConfigureAwait(false);
                 break;
             }
 
@@ -341,7 +345,7 @@ public abstract class DatabaseSourceNode<TReader, T> : SourceNode<T>, IAsyncDisp
                 if (keyValues != null)
                 {
                     var serialized = string.Join("|", keyValues.Select(kv => $"{kv.Key}={kv.Value}"));
-                    await _checkpointManager.UpdateAsync(serialized, null, forceSave, cancellationToken);
+                    await _checkpointManager.UpdateAsync(serialized, null, forceSave, cancellationToken).ConfigureAwait(false);
                 }
 
                 break;
@@ -349,7 +353,7 @@ public abstract class DatabaseSourceNode<TReader, T> : SourceNode<T>, IAsyncDisp
 
             case CheckpointStrategy.Cursor:
             {
-                await _checkpointManager.UpdateOffsetAsync(currentRow, null, forceSave, cancellationToken);
+                await _checkpointManager.UpdateOffsetAsync(currentRow, null, forceSave, cancellationToken).ConfigureAwait(false);
                 break;
             }
 
@@ -373,7 +377,7 @@ public abstract class DatabaseSourceNode<TReader, T> : SourceNode<T>, IAsyncDisp
         if (_checkpointManager == null)
             return 0;
 
-        var checkpoint = await _checkpointManager.LoadAsync(cancellationToken);
+        var checkpoint = await _checkpointManager.LoadAsync(cancellationToken).ConfigureAwait(false);
         return checkpoint?.GetAsOffset() ?? 0;
     }
 }

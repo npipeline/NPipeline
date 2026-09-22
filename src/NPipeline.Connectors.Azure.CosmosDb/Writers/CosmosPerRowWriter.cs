@@ -63,9 +63,9 @@ internal sealed class CosmosPerRowWriter<T> : IDatabaseWriter<T>
         try
         {
             if (ShouldUseUpsert())
-                await _container.UpsertItemAsync(itemWithId, partitionKey, cancellationToken: cancellationToken);
+                await _container.UpsertItemAsync(itemWithId, partitionKey, cancellationToken: cancellationToken).ConfigureAwait(false);
             else
-                await _container.CreateItemAsync(itemWithId, partitionKey, cancellationToken: cancellationToken);
+                await _container.CreateItemAsync(itemWithId, partitionKey, cancellationToken: cancellationToken).ConfigureAwait(false);
         }
         catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.Conflict && _configuration.ContinueOnError)
         {
@@ -83,7 +83,7 @@ internal sealed class CosmosPerRowWriter<T> : IDatabaseWriter<T>
     {
         foreach (var item in items)
         {
-            await WriteAsync(item, cancellationToken);
+            await WriteAsync(item, cancellationToken).ConfigureAwait(false);
         }
     }
 

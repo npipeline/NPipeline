@@ -215,7 +215,7 @@ public sealed class ErrorHandlingService : IErrorHandlingService
                 break;
 
             // Call error handler to decide whether to retry
-            var errorDecision = await HandleNodeErrorAsync(nodeDefinition, node, lastException!, context, cancellationToken);
+            var errorDecision = await HandleNodeErrorAsync(nodeDefinition, node, lastException!, context, cancellationToken).ConfigureAwait(false);
 
             if (errorDecision != ResilienceDecision.Retry)
             {

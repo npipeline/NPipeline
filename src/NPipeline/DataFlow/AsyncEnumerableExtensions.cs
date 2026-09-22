@@ -59,7 +59,7 @@ public static class AsyncEnumerableExtensions
             {
                 await foreach (var item in source.WithCancellation(cancellationToken))
                 {
-                    await channel.Writer.WriteAsync(item, cancellationToken);
+                    await channel.Writer.WriteAsync(item, cancellationToken).ConfigureAwait(false);
                 }
             }
             catch (OperationCanceledException)
@@ -72,7 +72,7 @@ public static class AsyncEnumerableExtensions
             }
         }, cancellationToken);
 
-        while (await channel.Reader.WaitToReadAsync(cancellationToken))
+        while (await channel.Reader.WaitToReadAsync(cancellationToken).ConfigureAwait(false))
         {
             List<T> batch = new(batchSize);
 
@@ -119,7 +119,7 @@ public static class AsyncEnumerableExtensions
                 }
                 else
                 {
-                    if (!await channel.Reader.WaitToReadAsync(cancellationToken))
+                    if (!await channel.Reader.WaitToReadAsync(cancellationToken).ConfigureAwait(false))
                         break;
                 }
 
@@ -132,7 +132,7 @@ public static class AsyncEnumerableExtensions
             yield return batch.ToArray();
         }
 
-        await producer; // Ensure producer is finished and exceptions are propagated.
+        await producer.ConfigureAwait(false); // Ensure producer is finished and exceptions are propagated.
     }
 
     /// <summary>

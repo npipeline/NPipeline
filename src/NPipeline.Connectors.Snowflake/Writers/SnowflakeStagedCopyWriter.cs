@@ -128,7 +128,9 @@ internal sealed class SnowflakeStagedCopyWriter<T> : IDatabaseWriter<T>
             var putSql =
                 $"PUT 'file://{tempFilePath.Replace("\\", "/")}' '{stagePath}' AUTO_COMPRESS={(_configuration.CopyCompression != "NONE" ? "TRUE" : "FALSE")} OVERWRITE=TRUE";
 
-            await using (var putCommand = await _connection.CreateCommandAsync(cancellationToken).ConfigureAwait(false))
+            var putCommand = await _connection.CreateCommandAsync(cancellationToken).ConfigureAwait(false);
+
+            await using (putCommand.ConfigureAwait(false))
             {
                 putCommand.CommandText = putSql;
                 putCommand.CommandType = CommandType.Text;
@@ -156,7 +158,9 @@ internal sealed class SnowflakeStagedCopyWriter<T> : IDatabaseWriter<T>
             copySql.Append($" ON_ERROR = '{_configuration.OnErrorAction}'");
             copySql.Append($" PURGE = {(_configuration.PurgeAfterCopy ? "TRUE" : "FALSE")}");
 
-            await using (var copyCommand = await _connection.CreateCommandAsync(cancellationToken).ConfigureAwait(false))
+            var copyCommand = await _connection.CreateCommandAsync(cancellationToken).ConfigureAwait(false);
+
+            await using (copyCommand.ConfigureAwait(false))
             {
                 copyCommand.CommandText = copySql.ToString();
                 copyCommand.CommandType = CommandType.Text;
@@ -188,7 +192,8 @@ internal sealed class SnowflakeStagedCopyWriter<T> : IDatabaseWriter<T>
     /// </summary>
     private async Task WriteCsvFileAsync(string filePath, CancellationToken cancellationToken)
     {
-        await using var writer = new StreamWriter(filePath, false, Encoding.UTF8);
+        var writer = new StreamWriter(filePath, false, Encoding.UTF8);
+        await using var writerScope = writer.ConfigureAwait(false);
 
         foreach (var row in _pendingRows)
         {

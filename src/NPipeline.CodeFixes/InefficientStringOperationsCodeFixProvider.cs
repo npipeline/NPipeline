@@ -31,7 +31,7 @@ public sealed class InefficientStringOperationsCodeFixProvider : CodeFixProvider
     /// <inheritdoc />
     public override async Task RegisterCodeFixesAsync(CodeFixContext context)
     {
-        var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken);
+        var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return;
@@ -49,13 +49,13 @@ public sealed class InefficientStringOperationsCodeFixProvider : CodeFixProvider
         switch (node.Kind())
         {
             case SyntaxKind.AddExpression:
-                await RegisterBinaryExpressionFixes(context, (BinaryExpressionSyntax)node, diagnostic);
+                await RegisterBinaryExpressionFixes(context, (BinaryExpressionSyntax)node, diagnostic).ConfigureAwait(false);
                 break;
             case SyntaxKind.InvocationExpression:
-                await RegisterInvocationFixes(context, (InvocationExpressionSyntax)node, diagnostic);
+                await RegisterInvocationFixes(context, (InvocationExpressionSyntax)node, diagnostic).ConfigureAwait(false);
                 break;
             case SyntaxKind.InterpolatedStringExpression:
-                await RegisterInterpolatedStringFixes(context, (InterpolatedStringExpressionSyntax)node, diagnostic);
+                await RegisterInterpolatedStringFixes(context, (InterpolatedStringExpressionSyntax)node, diagnostic).ConfigureAwait(false);
                 break;
         }
     }
@@ -97,7 +97,7 @@ public sealed class InefficientStringOperationsCodeFixProvider : CodeFixProvider
         InvocationExpressionSyntax invocation,
         Diagnostic diagnostic)
     {
-        var semanticModel = await context.Document.GetSemanticModelAsync(context.CancellationToken);
+        var semanticModel = await context.Document.GetSemanticModelAsync(context.CancellationToken).ConfigureAwait(false);
 
         if (semanticModel == null)
             return;
@@ -161,7 +161,7 @@ public sealed class InefficientStringOperationsCodeFixProvider : CodeFixProvider
         BinaryExpressionSyntax binaryExpr,
         CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken);
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return document;
@@ -247,7 +247,7 @@ public sealed class InefficientStringOperationsCodeFixProvider : CodeFixProvider
         BinaryExpressionSyntax binaryExpr,
         CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken);
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return document;
@@ -263,7 +263,7 @@ public sealed class InefficientStringOperationsCodeFixProvider : CodeFixProvider
         InvocationExpressionSyntax invocation,
         CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken);
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return document;
@@ -286,7 +286,7 @@ public sealed class InefficientStringOperationsCodeFixProvider : CodeFixProvider
         InvocationExpressionSyntax invocation,
         CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken);
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return document;
@@ -302,7 +302,7 @@ public sealed class InefficientStringOperationsCodeFixProvider : CodeFixProvider
         InvocationExpressionSyntax invocation,
         CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken);
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return document;
@@ -318,7 +318,7 @@ public sealed class InefficientStringOperationsCodeFixProvider : CodeFixProvider
         InterpolatedStringExpressionSyntax interpolatedString,
         CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken);
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return document;

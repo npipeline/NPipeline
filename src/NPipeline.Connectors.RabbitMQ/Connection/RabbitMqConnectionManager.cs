@@ -160,7 +160,7 @@ public sealed class RabbitMqConnectionManager : IRabbitMqConnectionManager
         // Drain and close all pooled channels
         _channelPool.Writer.TryComplete();
 
-        await foreach (var channel in _channelPool.Reader.ReadAllAsync())
+        await foreach (var channel in _channelPool.Reader.ReadAllAsync().ConfigureAwait(false))
         {
             try
             {

@@ -36,7 +36,7 @@ public sealed class CancellationTokenRespectCodeFixProvider : CodeFixProvider
     /// </summary>
     public override async Task RegisterCodeFixesAsync(CodeFixContext context)
     {
-        var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken);
+        var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return;
@@ -52,13 +52,13 @@ public sealed class CancellationTokenRespectCodeFixProvider : CodeFixProvider
 
         // Register different code fixes based on the issue type
         if (node is MethodDeclarationSyntax methodDeclaration)
-            await RegisterMethodFixes(context, methodDeclaration, diagnostic);
+            await RegisterMethodFixes(context, methodDeclaration, diagnostic).ConfigureAwait(false);
         else if (node is InvocationExpressionSyntax invocation)
-            await RegisterInvocationFixes(context, invocation, diagnostic);
+            await RegisterInvocationFixes(context, invocation, diagnostic).ConfigureAwait(false);
         else if (node is ForStatementSyntax or WhileStatementSyntax or DoStatementSyntax or ForEachStatementSyntax)
-            await RegisterLoopFixes(context, node, diagnostic);
+            await RegisterLoopFixes(context, node, diagnostic).ConfigureAwait(false);
         else if (node is ParameterSyntax parameter)
-            await RegisterParameterFixes(context, parameter, diagnostic);
+            await RegisterParameterFixes(context, parameter, diagnostic).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -70,7 +70,7 @@ public sealed class CancellationTokenRespectCodeFixProvider : CodeFixProvider
         Diagnostic diagnostic)
     {
         // Check if method needs CancellationToken parameter
-        var semanticModel = await context.Document.GetSemanticModelAsync(context.CancellationToken);
+        var semanticModel = await context.Document.GetSemanticModelAsync(context.CancellationToken).ConfigureAwait(false);
 
         var hasCancellationTokenParam = methodDeclaration.ParameterList.Parameters
             .Any(p => semanticModel.GetTypeInfo(p.Type!).Type?.Name == "CancellationToken");
@@ -148,7 +148,7 @@ public sealed class CancellationTokenRespectCodeFixProvider : CodeFixProvider
         MethodDeclarationSyntax methodDeclaration,
         CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken);
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return document;
@@ -179,7 +179,7 @@ public sealed class CancellationTokenRespectCodeFixProvider : CodeFixProvider
         InvocationExpressionSyntax invocation,
         CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken);
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return document;
@@ -190,7 +190,7 @@ public sealed class CancellationTokenRespectCodeFixProvider : CodeFixProvider
         if (containingMethod == null)
             return document;
 
-        var semanticModel = await document.GetSemanticModelAsync(cancellationToken);
+        var semanticModel = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
 
         var cancellationTokenParam = containingMethod.ParameterList.Parameters
             .FirstOrDefault(p => semanticModel?.GetTypeInfo(p.Type!).Type?.Name == "CancellationToken");
@@ -220,7 +220,7 @@ public sealed class CancellationTokenRespectCodeFixProvider : CodeFixProvider
         SyntaxNode loop,
         CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken);
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return document;
@@ -231,7 +231,7 @@ public sealed class CancellationTokenRespectCodeFixProvider : CodeFixProvider
         if (containingMethod == null)
             return document;
 
-        var semanticModel = await document.GetSemanticModelAsync(cancellationToken);
+        var semanticModel = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
 
         var cancellationTokenParam = containingMethod.ParameterList.Parameters
             .FirstOrDefault(p => semanticModel?.GetTypeInfo(p.Type!).Type?.Name == "CancellationToken");
@@ -304,7 +304,7 @@ public sealed class CancellationTokenRespectCodeFixProvider : CodeFixProvider
         ParameterSyntax parameter,
         CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken);
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return document;

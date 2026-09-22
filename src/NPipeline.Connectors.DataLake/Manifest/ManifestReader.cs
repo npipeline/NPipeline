@@ -204,7 +204,8 @@ public sealed class ManifestReader
 
     private async Task<string> ReadContentAsync(StorageUri uri, CancellationToken cancellationToken)
     {
-        await using var stream = await _provider.OpenReadAsync(uri, cancellationToken).ConfigureAwait(false);
+        var stream = await _provider.OpenReadAsync(uri, cancellationToken).ConfigureAwait(false);
+        await using var streamScope = stream.ConfigureAwait(false);
         using var reader = new StreamReader(stream, Encoding.UTF8);
         return await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
     }

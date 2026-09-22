@@ -30,7 +30,7 @@ public sealed class BatchingNode<T>(int batchSize, TimeSpan timespan)
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         // Delegate to the BatchAsync extension method for the actual batching logic
-        await foreach (var batch in items.BatchAsync(batchSize, timespan, cancellationToken))
+        await foreach (var batch in items.BatchAsync(batchSize, timespan, cancellationToken).ConfigureAwait(false))
         {
             yield return batch;
         }

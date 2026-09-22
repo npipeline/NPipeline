@@ -99,7 +99,8 @@ public sealed class JevClient : IJevClient
     {
         try
         {
-            await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+            var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+            await using var streamScope = stream.ConfigureAwait(false);
 
             var result = await JsonSerializer.DeserializeAsync(stream, JevJsonContext.Default.JevSystemOneResponse, cancellationToken)
                 .ConfigureAwait(false);

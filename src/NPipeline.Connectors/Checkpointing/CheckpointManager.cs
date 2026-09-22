@@ -65,7 +65,7 @@ public class CheckpointManager : IAsyncDisposable
         // Save final checkpoint
         try
         {
-            await SaveAsync();
+            await SaveAsync().ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -85,11 +85,11 @@ public class CheckpointManager : IAsyncDisposable
     /// <returns>The loaded checkpoint, or null if none exists.</returns>
     public async Task<Checkpoint?> LoadAsync(CancellationToken cancellationToken = default)
     {
-        await _lock.WaitAsync(cancellationToken);
+        await _lock.WaitAsync(cancellationToken).ConfigureAwait(false);
 
         try
         {
-            CurrentCheckpoint = await _storage.LoadAsync(_pipelineId, _nodeId, cancellationToken);
+            CurrentCheckpoint = await _storage.LoadAsync(_pipelineId, _nodeId, cancellationToken).ConfigureAwait(false);
             return CurrentCheckpoint;
         }
         finally
@@ -112,7 +112,7 @@ public class CheckpointManager : IAsyncDisposable
         bool forceSave = false,
         CancellationToken cancellationToken = default)
     {
-        await _lock.WaitAsync(cancellationToken);
+        await _lock.WaitAsync(cancellationToken).ConfigureAwait(false);
 
         try
         {
@@ -120,7 +120,7 @@ public class CheckpointManager : IAsyncDisposable
             _rowsProcessed++;
 
             if (forceSave || ShouldSaveCheckpoint())
-                await SaveInternalAsync(cancellationToken);
+                await SaveInternalAsync(cancellationToken).ConfigureAwait(false);
         }
         finally
         {
@@ -141,7 +141,7 @@ public class CheckpointManager : IAsyncDisposable
         bool forceSave = false,
         CancellationToken cancellationToken = default)
     {
-        await UpdateAsync(offset.ToString(), metadata, forceSave, cancellationToken);
+        await UpdateAsync(offset.ToString(), metadata, forceSave, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -150,12 +150,12 @@ public class CheckpointManager : IAsyncDisposable
     /// <param name="cancellationToken">The cancellation token.</param>
     public async Task SaveAsync(CancellationToken cancellationToken = default)
     {
-        await _lock.WaitAsync(cancellationToken);
+        await _lock.WaitAsync(cancellationToken).ConfigureAwait(false);
 
         try
         {
             if (CurrentCheckpoint != null)
-                await SaveInternalAsync(cancellationToken);
+                await SaveInternalAsync(cancellationToken).ConfigureAwait(false);
         }
         finally
         {
@@ -169,11 +169,11 @@ public class CheckpointManager : IAsyncDisposable
     /// <param name="cancellationToken">The cancellation token.</param>
     public async Task ClearAsync(CancellationToken cancellationToken = default)
     {
-        await _lock.WaitAsync(cancellationToken);
+        await _lock.WaitAsync(cancellationToken).ConfigureAwait(false);
 
         try
         {
-            await _storage.DeleteAsync(_pipelineId, _nodeId, cancellationToken);
+            await _storage.DeleteAsync(_pipelineId, _nodeId, cancellationToken).ConfigureAwait(false);
             CurrentCheckpoint = null;
             _rowsProcessed = 0;
         }
@@ -221,7 +221,7 @@ public class CheckpointManager : IAsyncDisposable
         if (CurrentCheckpoint == null)
             return;
 
-        await _storage.SaveAsync(_pipelineId, _nodeId, CurrentCheckpoint, cancellationToken);
+        await _storage.SaveAsync(_pipelineId, _nodeId, CurrentCheckpoint, cancellationToken).ConfigureAwait(false);
         _lastSaveTime = DateTimeOffset.UtcNow;
     }
 }

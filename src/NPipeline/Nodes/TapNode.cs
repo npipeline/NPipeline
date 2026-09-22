@@ -18,7 +18,9 @@ public sealed class TapNode<T>(ISinkNode<T> sink) : TransformNode<T, T>, IAsyncD
     public override async ValueTask<T> TransformAsync(T item, PipelineContext context, CancellationToken cancellationToken)
     {
         // Send a copy to the sink
-        await using (var singlePipe = new InMemoryDataStream<T>([item]))
+        var singlePipe = new InMemoryDataStream<T>([item]);
+
+        await using (((IAsyncDisposable)singlePipe).ConfigureAwait(false))
         {
             await _sink.ConsumeAsync(
                 singlePipe,

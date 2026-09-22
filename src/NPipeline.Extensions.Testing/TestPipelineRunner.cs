@@ -30,7 +30,7 @@ public sealed class TestPipelineRunner
     {
         try
         {
-            await _pipelineRunner.RunAsync<TDefinition>(context);
+            await _pipelineRunner.RunAsync<TDefinition>(context).ConfigureAwait(false);
         }
         catch (OperationCanceledException oce)
         {
@@ -46,7 +46,7 @@ public sealed class TestPipelineRunner
                 $"Could not find an instance of '{typeof(InMemorySinkNode<TResult>).Name}' in the pipeline context. Make sure it is registered as the sink in your pipeline definition.");
         }
 
-        return await sink.Completion;
+        return await sink.Completion.ConfigureAwait(false);
     }
 
     /// <summary>

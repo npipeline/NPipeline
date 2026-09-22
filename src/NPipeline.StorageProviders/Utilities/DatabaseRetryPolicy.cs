@@ -45,11 +45,11 @@ public class DatabaseRetryPolicy
 
             try
             {
-                return await operation(cancellationToken);
+                return await operation(cancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex) when (ShouldRetry?.Invoke(ex) == true && attempt < MaxRetryAttempts)
             {
-                await Task.Delay(delay, cancellationToken);
+                await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
 
                 delay = TimeSpan.FromMilliseconds(
                     Math.Min(delay.TotalMilliseconds * 2, MaxDelay.TotalMilliseconds));

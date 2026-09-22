@@ -67,20 +67,4 @@ public sealed class DataStream<T>(IAsyncEnumerable<T> stream, string streamName 
         if (_stream is IAsyncDisposable disposable)
             await disposable.DisposeAsync().ConfigureAwait(false);
     }
-
-    /// <summary>
-    ///     Returns an async enumerable that supports cancellation.
-    /// </summary>
-    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
-    /// <returns>An async enumerable with cancellation support.</returns>
-    public async IAsyncEnumerable<T> WithCancellation([EnumeratorCancellation] CancellationToken cancellationToken)
-    {
-        ObjectDisposedException.ThrowIf(_disposed, this);
-
-        await foreach (var item in _stream.WithCancellation(cancellationToken))
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            yield return item;
-        }
-    }
 }

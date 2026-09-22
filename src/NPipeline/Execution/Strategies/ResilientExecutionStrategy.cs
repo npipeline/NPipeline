@@ -291,7 +291,12 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
             }
 
             var sourceStream = await streamFactory().ConfigureAwait(false);
-            await using var enumerator = sourceStream.GetAsyncEnumerator(cancellationToken);
+            #pragma warning disable CA2007
+            // CA2007 false positive: the enumerator comes from a ConfigureAwait(false) sequence, so its
+            // MoveNextAsync and DisposeAsync already return configured awaitables - the analyzer only
+            // recognises ConfigureAwait applied directly to the await using expression.
+            await using var enumerator = sourceStream.WithCancellation(cancellationToken).ConfigureAwait(false).GetAsyncEnumerator();
+            #pragma warning restore CA2007
             var restartRequested = false;
 
             while (true)
@@ -302,7 +307,7 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
 
                 try
                 {
-                    if (!await enumerator.MoveNextAsync().ConfigureAwait(false))
+                    if (!await enumerator.MoveNextAsync())
                         yield break; // completed successfully
 
                     current = enumerator.Current;

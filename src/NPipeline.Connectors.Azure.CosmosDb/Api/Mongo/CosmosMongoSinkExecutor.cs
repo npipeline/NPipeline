@@ -40,7 +40,7 @@ internal sealed class CosmosMongoSinkExecutor<T> : ICosmosSinkExecutor<T>
         switch (strategy)
         {
             case CosmosWriteStrategy.PerRow:
-                await _collection.InsertManyAsync(documents, cancellationToken: cancellationToken);
+                await _collection.InsertManyAsync(documents, cancellationToken: cancellationToken).ConfigureAwait(false);
                 break;
 
             case CosmosWriteStrategy.Upsert:
@@ -52,7 +52,7 @@ internal sealed class CosmosMongoSinkExecutor<T> : ICosmosSinkExecutor<T>
                     return new ReplaceOneModel<BsonDocument>(filter, d) { IsUpsert = true };
                 });
 
-                await _collection.BulkWriteAsync(models, new BulkWriteOptions { IsOrdered = false }, cancellationToken);
+                await _collection.BulkWriteAsync(models, new BulkWriteOptions { IsOrdered = false }, cancellationToken).ConfigureAwait(false);
                 break;
             }
 
@@ -66,7 +66,7 @@ internal sealed class CosmosMongoSinkExecutor<T> : ICosmosSinkExecutor<T>
                     IsUpsert = true,
                 });
 
-                await _collection.BulkWriteAsync(models, new BulkWriteOptions { IsOrdered = false }, cancellationToken);
+                await _collection.BulkWriteAsync(models, new BulkWriteOptions { IsOrdered = false }, cancellationToken).ConfigureAwait(false);
                 break;
             }
 

@@ -37,7 +37,7 @@ internal sealed class CosmosMongoSourceExecutor : ICosmosSourceExecutor
             : BsonDocument.Parse(query);
 
         var filter = new BsonDocumentFilterDefinition<BsonDocument>(filterDocument);
-        var documents = await _collection.Find(filter).ToListAsync(cancellationToken);
+        var documents = await _collection.Find(filter).ToListAsync(cancellationToken).ConfigureAwait(false);
 
         var result = new List<IDictionary<string, object?>>(documents.Count);
 

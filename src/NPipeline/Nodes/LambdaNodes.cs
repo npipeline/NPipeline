@@ -107,7 +107,7 @@ public sealed class AsyncLambdaTransformNode<TIn, TOut>(
     /// <returns>A task representing the asynchronous transformation.</returns>
     public override async ValueTask<TOut> TransformAsync(TIn input, PipelineContext context, CancellationToken cancellationToken)
     {
-        return await _transform(input, cancellationToken);
+        return await _transform(input, cancellationToken).ConfigureAwait(false);
     }
 }
 
@@ -277,7 +277,7 @@ public sealed class LambdaSinkNode<TIn> : SinkNode<TIn>
     {
         await foreach (var item in input.WithCancellation(cancellationToken))
         {
-            await _consume(item, cancellationToken);
+            await _consume(item, cancellationToken).ConfigureAwait(false);
         }
     }
 }

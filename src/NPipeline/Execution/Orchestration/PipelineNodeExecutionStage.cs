@@ -43,6 +43,7 @@ internal sealed class PipelineNodeExecutionStage(
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(nodeOutputs);
 
+        var topology = GraphTopology.For(setup.Graph);
         var inputLookup = topologyService.BuildInputLookup(setup.Graph);
         var sortedNodes = topologyService.TopologicalSort(setup.Graph);
         var deferTerminals = HasFanOut(setup.Graph);
@@ -51,7 +52,7 @@ internal sealed class PipelineNodeExecutionStage(
 
         foreach (var nodeDef in sortedNodes.Select(id => setup.NodeDefinitionMap[id]))
         {
-            if (deferTerminals && IsTerminal(setup.Graph, nodeDef))
+            if (deferTerminals && IsTerminal(topology, nodeDef))
             {
                 (terminals ??= []).Add(nodeDef);
                 continue;
@@ -167,18 +168,10 @@ internal sealed class PipelineNodeExecutionStage(
     ///     A node is terminal when nothing downstream consumes it, which makes it safe to defer and drain alongside
     ///     its siblings.
     /// </summary>
-    private static bool IsTerminal(PipelineGraph graph, NodeDefinition nodeDef)
+    private static bool IsTerminal(GraphTopology topology, NodeDefinition nodeDef)
     {
-        if (nodeDef.Kind is not (NodeKind.Sink or NodeKind.CompositeOutput))
-            return false;
-
-        foreach (var edge in graph.Edges)
-        {
-            if (string.Equals(edge.SourceNodeId, nodeDef.Id, StringComparison.Ordinal))
-                return false;
-        }
-
-        return true;
+        return nodeDef.Kind is NodeKind.Sink or NodeKind.CompositeOutput
+               && !topology.OutgoingEdges.ContainsKey(nodeDef.Id);
     }
 
     /// <summary>

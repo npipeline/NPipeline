@@ -81,7 +81,7 @@ internal sealed class CosmosTransactionalBatchWriter<T> : IDatabaseWriter<T>
 
         // Flush outside the lock to avoid holding the lock during I/O
         if (bufferToFlush != null)
-            await FlushPartitionAsync(partitionKey, bufferToFlush, cancellationToken);
+            await FlushPartitionAsync(partitionKey, bufferToFlush, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -96,7 +96,7 @@ internal sealed class CosmosTransactionalBatchWriter<T> : IDatabaseWriter<T>
 
         foreach (var item in items)
         {
-            await WriteAsync(item, cancellationToken);
+            await WriteAsync(item, cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -137,7 +137,7 @@ internal sealed class CosmosTransactionalBatchWriter<T> : IDatabaseWriter<T>
             }
         }
 
-        await Task.WhenAll(tasks);
+        await Task.WhenAll(tasks).ConfigureAwait(false);
         _partitionBuffers.Clear();
     }
 
@@ -148,7 +148,7 @@ internal sealed class CosmosTransactionalBatchWriter<T> : IDatabaseWriter<T>
     {
         if (!_disposed)
         {
-            await FlushAsync();
+            await FlushAsync().ConfigureAwait(false);
             _disposed = true;
         }
     }
@@ -167,7 +167,7 @@ internal sealed class CosmosTransactionalBatchWriter<T> : IDatabaseWriter<T>
         for (var i = 0; i < batchItems.Count; i += maxBatchSize)
         {
             var batchSlice = batchItems.GetRange(i, Math.Min(maxBatchSize, batchItems.Count - i));
-            await ExecuteTransactionalBatchAsync(partitionKey, batchSlice, cancellationToken);
+            await ExecuteTransactionalBatchAsync(partitionKey, batchSlice, cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -187,7 +187,7 @@ internal sealed class CosmosTransactionalBatchWriter<T> : IDatabaseWriter<T>
 
         try
         {
-            using var response = await batch.ExecuteAsync(cancellationToken);
+            using var response = await batch.ExecuteAsync(cancellationToken).ConfigureAwait(false);
 
             if (!response.IsSuccessStatusCode)
             {

@@ -16,7 +16,7 @@ public class InMemoryCheckpointStorage : ICheckpointStorage, IDisposable
     {
         var key = GetKey(pipelineId, nodeId);
 
-        await _lock.WaitAsync(cancellationToken);
+        await _lock.WaitAsync(cancellationToken).ConfigureAwait(false);
 
         try
         {
@@ -37,7 +37,7 @@ public class InMemoryCheckpointStorage : ICheckpointStorage, IDisposable
 
         var key = GetKey(pipelineId, nodeId);
 
-        await _lock.WaitAsync(cancellationToken);
+        await _lock.WaitAsync(cancellationToken).ConfigureAwait(false);
 
         try
         {
@@ -54,7 +54,7 @@ public class InMemoryCheckpointStorage : ICheckpointStorage, IDisposable
     {
         var key = GetKey(pipelineId, nodeId);
 
-        await _lock.WaitAsync(cancellationToken);
+        await _lock.WaitAsync(cancellationToken).ConfigureAwait(false);
 
         try
         {
@@ -71,7 +71,7 @@ public class InMemoryCheckpointStorage : ICheckpointStorage, IDisposable
     {
         var key = GetKey(pipelineId, nodeId);
 
-        await _lock.WaitAsync(cancellationToken);
+        await _lock.WaitAsync(cancellationToken).ConfigureAwait(false);
 
         try
         {
@@ -101,7 +101,7 @@ public class InMemoryCheckpointStorage : ICheckpointStorage, IDisposable
     /// </summary>
     public async Task ClearAllAsync(CancellationToken cancellationToken = default)
     {
-        await _lock.WaitAsync(cancellationToken);
+        await _lock.WaitAsync(cancellationToken).ConfigureAwait(false);
 
         try
         {
@@ -118,7 +118,7 @@ public class InMemoryCheckpointStorage : ICheckpointStorage, IDisposable
     /// </summary>
     public async Task<int> GetCountAsync(CancellationToken cancellationToken = default)
     {
-        await _lock.WaitAsync(cancellationToken);
+        await _lock.WaitAsync(cancellationToken).ConfigureAwait(false);
 
         try
         {

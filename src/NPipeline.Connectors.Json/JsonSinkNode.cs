@@ -132,7 +132,8 @@ public sealed class JsonSinkNode<T> : SinkNode<T>
                 throw new UnsupportedStorageCapabilityException(_uri, "write", meta.Name);
         }
 
-        await using var stream = await provider.OpenWriteAsync(_uri, cancellationToken).ConfigureAwait(false);
+        var stream = await provider.OpenWriteAsync(_uri, cancellationToken).ConfigureAwait(false);
+        await using var streamScope = stream.ConfigureAwait(false);
         await WriteToStream(stream, input, _configuration, cancellationToken).ConfigureAwait(false);
     }
 
@@ -145,7 +146,8 @@ public sealed class JsonSinkNode<T> : SinkNode<T>
         // Use UTF-8 encoding without BOM
         var utf8Encoding = new UTF8Encoding(false);
 
-        await using var writer = new BufferedStream(stream, config.BufferSize);
+        var writer = new BufferedStream(stream, config.BufferSize);
+        await using var writerScope = writer.ConfigureAwait(false);
 
         var type = typeof(T);
         var isComplexType = type.IsClass && type != typeof(string);
@@ -182,10 +184,11 @@ public sealed class JsonSinkNode<T> : SinkNode<T>
             if (config.Format == JsonFormat.NewlineDelimited)
             {
                 // For NDJSON, create a new writer for each item
-                await using var ndjsonWriter = new Utf8JsonWriter(writer, new JsonWriterOptions
+                var ndjsonWriter = new Utf8JsonWriter(writer, new JsonWriterOptions
                 {
                     Indented = false,
                 });
+                await using var ndjsonWriterScope = ndjsonWriter.ConfigureAwait(false);
 
                 WriteItem(ndjsonWriter, item, valueGetters, propertyNames, useMapper);
                 await ndjsonWriter.FlushAsync(cancellationToken).ConfigureAwait(false);

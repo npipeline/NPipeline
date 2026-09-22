@@ -29,7 +29,7 @@ public sealed class PipelineContextAccessCodeFixProvider : CodeFixProvider
     /// <inheritdoc />
     public override async Task RegisterCodeFixesAsync(CodeFixContext context)
     {
-        var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken);
+        var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return;
@@ -45,11 +45,11 @@ public sealed class PipelineContextAccessCodeFixProvider : CodeFixProvider
 
         // Register different code fixes based on node type
         if (node is MemberAccessExpressionSyntax memberAccess)
-            await RegisterMemberAccessFixes(context, memberAccess, diagnostic);
+            await RegisterMemberAccessFixes(context, memberAccess, diagnostic).ConfigureAwait(false);
         else if (node is ElementAccessExpressionSyntax elementAccess)
-            await RegisterElementAccessFixes(context, elementAccess, diagnostic);
+            await RegisterElementAccessFixes(context, elementAccess, diagnostic).ConfigureAwait(false);
         else if (node is InvocationExpressionSyntax invocation)
-            await RegisterInvocationFixes(context, invocation, diagnostic);
+            await RegisterInvocationFixes(context, invocation, diagnostic).ConfigureAwait(false);
     }
 
     private static Task RegisterMemberAccessFixes(
@@ -126,7 +126,7 @@ public sealed class PipelineContextAccessCodeFixProvider : CodeFixProvider
         MemberAccessExpressionSyntax memberAccess,
         CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken);
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return document;
@@ -150,7 +150,7 @@ public sealed class PipelineContextAccessCodeFixProvider : CodeFixProvider
         MemberAccessExpressionSyntax memberAccess,
         CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken);
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return document;
@@ -186,7 +186,7 @@ public sealed class PipelineContextAccessCodeFixProvider : CodeFixProvider
         ElementAccessExpressionSyntax elementAccess,
         CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken);
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return document;
@@ -210,7 +210,7 @@ public sealed class PipelineContextAccessCodeFixProvider : CodeFixProvider
         ElementAccessExpressionSyntax elementAccess,
         CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken);
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return document;
@@ -266,7 +266,7 @@ public sealed class PipelineContextAccessCodeFixProvider : CodeFixProvider
         InvocationExpressionSyntax invocation,
         CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken);
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return document;

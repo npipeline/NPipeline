@@ -61,7 +61,8 @@ internal sealed class PostgresPerRowWriter<T> : IDatabaseWriter<T>
     /// <returns>A task representing the asynchronous operation.</returns>
     public async Task WriteAsync(T item, CancellationToken cancellationToken = default)
     {
-        await using var command = await _connection.CreateCommandAsync(cancellationToken);
+        var command = await _connection.CreateCommandAsync(cancellationToken).ConfigureAwait(false);
+        await using var commandScope = command.ConfigureAwait(false);
         command.CommandText = _insertSql;
         command.CommandType = CommandType.Text;
         command.CommandTimeout = _configuration.CommandTimeout;
@@ -73,7 +74,7 @@ internal sealed class PostgresPerRowWriter<T> : IDatabaseWriter<T>
             command.AddParameter(_parameterNames[i], values[i] ?? DBNull.Value);
         }
 
-        _ = await command.ExecuteNonQueryAsync(cancellationToken);
+        _ = await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -106,7 +107,7 @@ internal sealed class PostgresPerRowWriter<T> : IDatabaseWriter<T>
     public async ValueTask DisposeAsync()
     {
         // Connection is owned by the sink node, not the writer
-        await ValueTask.CompletedTask;
+        await ValueTask.CompletedTask.ConfigureAwait(false);
     }
 
     /// <summary>

@@ -29,7 +29,7 @@ public sealed class BlockingAsyncOperationCodeFixProvider : CodeFixProvider
     /// <inheritdoc />
     public override async Task RegisterCodeFixesAsync(CodeFixContext context)
     {
-        var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken);
+        var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return;
@@ -45,9 +45,9 @@ public sealed class BlockingAsyncOperationCodeFixProvider : CodeFixProvider
 
         // Register different code fixes based on the blocking operation type
         if (node is MemberAccessExpressionSyntax memberAccess && memberAccess.Name.Identifier.Text == "Result")
-            await RegisterResultFixes(context, memberAccess, diagnostic);
+            await RegisterResultFixes(context, memberAccess, diagnostic).ConfigureAwait(false);
         else if (node is InvocationExpressionSyntax invocation)
-            await RegisterInvocationFixes(context, invocation, diagnostic);
+            await RegisterInvocationFixes(context, invocation, diagnostic).ConfigureAwait(false);
     }
 
     private static Task RegisterResultFixes(
@@ -268,7 +268,7 @@ public sealed class BlockingAsyncOperationCodeFixProvider : CodeFixProvider
         MemberAccessExpressionSyntax memberAccess,
         CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken);
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return document;
@@ -280,7 +280,7 @@ public sealed class BlockingAsyncOperationCodeFixProvider : CodeFixProvider
         var newRoot = root.ReplaceNode(memberAccess, awaitExpression);
 
         // Make the containing method async
-        var newRootWithAsync = await MakeMethodAsyncAsync(newRoot, memberAccess, cancellationToken);
+        var newRootWithAsync = await MakeMethodAsyncAsync(newRoot, memberAccess, cancellationToken).ConfigureAwait(false);
 
         return document.WithSyntaxRoot(newRootWithAsync);
     }
@@ -293,7 +293,7 @@ public sealed class BlockingAsyncOperationCodeFixProvider : CodeFixProvider
         MemberAccessExpressionSyntax memberAccess,
         CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken);
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return document;
@@ -316,7 +316,7 @@ public sealed class BlockingAsyncOperationCodeFixProvider : CodeFixProvider
         var newRoot = root.ReplaceNode(memberAccess, configureAwaitInvocation);
 
         // Make the containing method async
-        var newRootWithAsync = await MakeMethodAsyncAsync(newRoot, memberAccess, cancellationToken);
+        var newRootWithAsync = await MakeMethodAsyncAsync(newRoot, memberAccess, cancellationToken).ConfigureAwait(false);
 
         return document.WithSyntaxRoot(newRootWithAsync);
     }
@@ -329,7 +329,7 @@ public sealed class BlockingAsyncOperationCodeFixProvider : CodeFixProvider
         InvocationExpressionSyntax invocation,
         CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken);
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return document;
@@ -344,7 +344,7 @@ public sealed class BlockingAsyncOperationCodeFixProvider : CodeFixProvider
         var newRoot = root.ReplaceNode(invocation, awaitExpression);
 
         // Make the containing method async
-        var newRootWithAsync = await MakeMethodAsyncAsync(newRoot, invocation, cancellationToken);
+        var newRootWithAsync = await MakeMethodAsyncAsync(newRoot, invocation, cancellationToken).ConfigureAwait(false);
 
         return document.WithSyntaxRoot(newRootWithAsync);
     }
@@ -357,7 +357,7 @@ public sealed class BlockingAsyncOperationCodeFixProvider : CodeFixProvider
         InvocationExpressionSyntax invocation,
         CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken);
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return document;
@@ -373,7 +373,7 @@ public sealed class BlockingAsyncOperationCodeFixProvider : CodeFixProvider
         var newRoot = root.ReplaceNode(invocation, awaitExpression);
 
         // Make the containing method async
-        var newRootWithAsync = await MakeMethodAsyncAsync(newRoot, invocation, cancellationToken);
+        var newRootWithAsync = await MakeMethodAsyncAsync(newRoot, invocation, cancellationToken).ConfigureAwait(false);
 
         return document.WithSyntaxRoot(newRootWithAsync);
     }
@@ -386,7 +386,7 @@ public sealed class BlockingAsyncOperationCodeFixProvider : CodeFixProvider
         InvocationExpressionSyntax invocation,
         CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken);
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return document;
@@ -412,7 +412,7 @@ public sealed class BlockingAsyncOperationCodeFixProvider : CodeFixProvider
         var newRoot = root.ReplaceNode(invocation, awaitExpression);
 
         // Make the containing method async
-        var newRootWithAsync = await MakeMethodAsyncAsync(newRoot, invocation, cancellationToken);
+        var newRootWithAsync = await MakeMethodAsyncAsync(newRoot, invocation, cancellationToken).ConfigureAwait(false);
 
         return document.WithSyntaxRoot(newRootWithAsync);
     }
@@ -425,7 +425,7 @@ public sealed class BlockingAsyncOperationCodeFixProvider : CodeFixProvider
         InvocationExpressionSyntax invocation,
         CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken);
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return document;
@@ -451,7 +451,7 @@ public sealed class BlockingAsyncOperationCodeFixProvider : CodeFixProvider
         var newRoot = root.ReplaceNode(invocation, awaitExpression);
 
         // Make the containing method async
-        var newRootWithAsync = await MakeMethodAsyncAsync(newRoot, invocation, cancellationToken);
+        var newRootWithAsync = await MakeMethodAsyncAsync(newRoot, invocation, cancellationToken).ConfigureAwait(false);
 
         return document.WithSyntaxRoot(newRootWithAsync);
     }
@@ -464,7 +464,7 @@ public sealed class BlockingAsyncOperationCodeFixProvider : CodeFixProvider
         InvocationExpressionSyntax invocation,
         CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken);
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return document;
@@ -490,7 +490,7 @@ public sealed class BlockingAsyncOperationCodeFixProvider : CodeFixProvider
         var newRoot = root.ReplaceNode(invocation, awaitExpression);
 
         // Make the containing method async
-        var newRootWithAsync = await MakeMethodAsyncAsync(newRoot, invocation, cancellationToken);
+        var newRootWithAsync = await MakeMethodAsyncAsync(newRoot, invocation, cancellationToken).ConfigureAwait(false);
 
         return document.WithSyntaxRoot(newRootWithAsync);
     }
@@ -503,7 +503,7 @@ public sealed class BlockingAsyncOperationCodeFixProvider : CodeFixProvider
         InvocationExpressionSyntax invocation,
         CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken);
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return document;
@@ -515,7 +515,7 @@ public sealed class BlockingAsyncOperationCodeFixProvider : CodeFixProvider
         var newRoot = root.ReplaceNode(invocation, awaitExpression);
 
         // Make the containing method async
-        var newRootWithAsync = await MakeMethodAsyncAsync(newRoot, invocation, cancellationToken);
+        var newRootWithAsync = await MakeMethodAsyncAsync(newRoot, invocation, cancellationToken).ConfigureAwait(false);
 
         return document.WithSyntaxRoot(newRootWithAsync);
     }
@@ -528,7 +528,7 @@ public sealed class BlockingAsyncOperationCodeFixProvider : CodeFixProvider
         InvocationExpressionSyntax invocation,
         CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken);
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return document;
@@ -554,7 +554,7 @@ public sealed class BlockingAsyncOperationCodeFixProvider : CodeFixProvider
         var newRoot = root.ReplaceNode(invocation, awaitExpression);
 
         // Make the containing method async
-        var newRootWithAsync = await MakeMethodAsyncAsync(newRoot, invocation, cancellationToken);
+        var newRootWithAsync = await MakeMethodAsyncAsync(newRoot, invocation, cancellationToken).ConfigureAwait(false);
 
         return document.WithSyntaxRoot(newRootWithAsync);
     }

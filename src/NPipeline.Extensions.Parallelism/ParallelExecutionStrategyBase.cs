@@ -275,12 +275,12 @@ namespace NPipeline.Extensions.Parallelism
                     await foreach (var next in reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
                     {
                         var result = await ExecuteWithRetryAsync(next.Item, node, context, cachedContext, metrics, observer, next.LineageInputIndex,
-                            next.CorrelationId, next.AncestryInputIndices);
+                            next.CorrelationId, next.AncestryInputIndices).ConfigureAwait(false);
 
                         if (result is not null)
                         {
                             _ = metrics.IncrementProcessed();
-                            await outChannel.Writer.WriteAsync(result, cancellationToken);
+                            await outChannel.Writer.WriteAsync(result, cancellationToken).ConfigureAwait(false);
                         }
                     }
                 }, cancellationToken));

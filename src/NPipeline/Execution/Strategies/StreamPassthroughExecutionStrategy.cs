@@ -60,7 +60,17 @@ public sealed class StreamPassthroughExecutionStrategy : IExecutionStrategy, ISt
             using var activity = context.Observability.Tracer.StartActivity("Node.StreamTransform");
             var timedInput = NodeTimingDataStreamWrapper.WrapInputWait(input, observabilityScope);
 
-            await using var inputEnumerator = timedInput.WithCancellation(ct).GetAsyncEnumerator();
+            #pragma warning disable CA2007
+
+            // CA2007 false positive: the enumerator comes from a ConfigureAwait(false) sequence, so its
+
+            // MoveNextAsync and DisposeAsync already return configured awaitables - the analyzer only
+
+            // recognises ConfigureAwait applied directly to the await using expression.
+
+            await using var inputEnumerator = timedInput.WithCancellation(ct).ConfigureAwait(false).GetAsyncEnumerator();
+
+            #pragma warning restore CA2007
 
             while (true)
             {
@@ -122,7 +132,12 @@ public sealed class StreamPassthroughExecutionStrategy : IExecutionStrategy, ISt
             var timedInput = NodeTimingDataStreamWrapper.WrapInputWait(input, observabilityScope);
 
             var outputs = node.TransformAsync(TrackInput(ct), context, ct).WithCancellation(ct);
-            await using var outputEnumerator = outputs.GetAsyncEnumerator();
+            #pragma warning disable CA2007
+            // CA2007 false positive: the enumerator comes from a ConfigureAwait(false) sequence, so its
+            // MoveNextAsync and DisposeAsync already return configured awaitables - the analyzer only
+            // recognises ConfigureAwait applied directly to the await using expression.
+            await using var outputEnumerator = outputs.ConfigureAwait(false).GetAsyncEnumerator();
+            #pragma warning restore CA2007
 
             while (true)
             {

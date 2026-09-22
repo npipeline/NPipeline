@@ -34,7 +34,8 @@ public sealed class DataStreamWrapperService
         PipelineGraph graph,
         string nodeId)
     {
-        var outgoingEdges = graph.Edges.Where(e => e.SourceNodeId == nodeId).ToArray();
+        // Precomputed once per graph shape; this used to scan the whole edge array per node.
+        var outgoingEdges = GraphTopology.For(graph).OutgoingFrom(nodeId);
         var branchCount = outgoingEdges.Length;
         var routeOptions = GetRouteOptions(graph, nodeId);
         var isRouteNode = graph.NodeDefinitionMap.TryGetValue(nodeId, out var nodeDef) && nodeDef.Kind == NodeKind.Route;

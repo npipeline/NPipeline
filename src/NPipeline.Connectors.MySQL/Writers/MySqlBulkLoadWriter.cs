@@ -123,7 +123,8 @@ internal sealed class MySqlBulkLoadWriter<T> : IDatabaseWriter<T>
         var mysqlConnection = GetMySqlConnection();
 
         // Build the CSV-like data stream in memory
-        await using var stream = BuildDataStream();
+        var stream = BuildDataStream();
+        await using var streamScope = stream.ConfigureAwait(false);
 
         var loader = new MySqlBulkLoader(mysqlConnection)
         {

@@ -85,7 +85,7 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
                 throw new UnsupportedStorageCapabilityException(_uri, "write", meta.Name);
         }
 
-        await WriteParquetAsync(provider, input, cancellationToken);
+        await WriteParquetAsync(provider, input, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task WriteParquetAsync(
@@ -114,8 +114,10 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
 
         try
         {
-            await using var stream = await provider.OpenWriteAsync(tempUri, cancellationToken);
-            await using var writer = await CreateParquetWriter(stream, schema, cancellationToken);
+            var stream = await provider.OpenWriteAsync(tempUri, cancellationToken).ConfigureAwait(false);
+            await using var streamScope = stream.ConfigureAwait(false);
+            var writer = await CreateParquetWriter(stream, schema, cancellationToken).ConfigureAwait(false);
+            await using var writerScope = writer.ConfigureAwait(false);
 
             // Buffer for accumulating rows before writing a row group
             var buffer = new List<T>(_configuration.RowGroupSize);
@@ -129,7 +131,7 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
 
                 if (buffer.Count >= _configuration.RowGroupSize)
                 {
-                    await WriteRowGroup(writer, buffer, schema, columnNames, valueGetters, properties, cancellationToken);
+                    await WriteRowGroup(writer, buffer, schema, columnNames, valueGetters, properties, cancellationToken).ConfigureAwait(false);
                     observer?.OnRowGroupWritten(tempUri, rowGroupCount, buffer.Count);
                     totalRows += buffer.Count;
                     rowGroupCount++;
@@ -140,14 +142,14 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
             // Write any remaining buffered records as a final (potentially partial) row group
             if (buffer.Count > 0)
             {
-                await WriteRowGroup(writer, buffer, schema, columnNames, valueGetters, properties, cancellationToken);
+                await WriteRowGroup(writer, buffer, schema, columnNames, valueGetters, properties, cancellationToken).ConfigureAwait(false);
                 observer?.OnRowGroupWritten(tempUri, rowGroupCount, buffer.Count);
                 totalRows += buffer.Count;
                 rowGroupCount++;
             }
 
-            await writer.DisposeAsync();
-            await stream.FlushAsync(cancellationToken);
+            await writer.DisposeAsync().ConfigureAwait(false);
+            await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
         }
         catch
         {
@@ -159,7 +161,7 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
                 {
                     // Best-effort cleanup - we don't want to mask the original exception
                     if (provider is IDeletableStorageProvider deletableProvider)
-                        await deletableProvider.DeleteAsync(tempUri, CancellationToken.None);
+                        await deletableProvider.DeleteAsync(tempUri, CancellationToken.None).ConfigureAwait(false);
                 }
                 catch
                 {
@@ -172,7 +174,7 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
 
         // For atomic write, now publish the temp file to the final location
         if (useAtomicWrite && !tempUri.Equals(targetUri))
-            await PublishAtomicWrite(provider, tempUri, targetUri, cancellationToken);
+            await PublishAtomicWrite(provider, tempUri, targetUri, cancellationToken).ConfigureAwait(false);
 
         stopwatch.Stop();
         observer?.OnFileWriteCompleted(targetUri, totalRows, -1, stopwatch.Elapsed);
@@ -221,7 +223,7 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
             var valueGetter = valueGetters[colIndex];
 
             // Use reflection to call the appropriate WriteAsync<T> method
-            await WriteColumnData(rowGroupWriter, dataField, underlyingType, isNullableProperty, buffer, valueGetter, cancellationToken);
+            await WriteColumnData(rowGroupWriter, dataField, underlyingType, isNullableProperty, buffer, valueGetter, cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -242,7 +244,7 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
             var data = new string?[buffer.Count];
             for (var i = 0; i < buffer.Count; i++)
                 data[i] = valueGetter(buffer[i]) as string;
-            await rowGroupWriter.WriteAsync(dataField, data);
+            await rowGroupWriter.WriteAsync(dataField, data).ConfigureAwait(false);
         }
         else if (underlyingType == typeof(int))
         {
@@ -254,7 +256,7 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
                     var value = valueGetter(buffer[i]);
                     data[i] = value is int intValue ? intValue : null;
                 }
-                await rowGroupWriter.WriteAsync<int>(dataField, data);
+                await rowGroupWriter.WriteAsync<int>(dataField, data).ConfigureAwait(false);
             }
             else
             {
@@ -264,7 +266,7 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
                     var value = valueGetter(buffer[i]);
                     data[i] = value is int intValue ? intValue : default;
                 }
-                await rowGroupWriter.WriteAsync<int>(dataField, data);
+                await rowGroupWriter.WriteAsync<int>(dataField, data).ConfigureAwait(false);
             }
         }
         else if (underlyingType == typeof(long))
@@ -277,7 +279,7 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
                     var value = valueGetter(buffer[i]);
                     data[i] = value is long longValue ? longValue : null;
                 }
-                await rowGroupWriter.WriteAsync<long>(dataField, data);
+                await rowGroupWriter.WriteAsync<long>(dataField, data).ConfigureAwait(false);
             }
             else
             {
@@ -287,7 +289,7 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
                     var value = valueGetter(buffer[i]);
                     data[i] = value is long longValue ? longValue : default;
                 }
-                await rowGroupWriter.WriteAsync<long>(dataField, data);
+                await rowGroupWriter.WriteAsync<long>(dataField, data).ConfigureAwait(false);
             }
         }
         else if (underlyingType == typeof(short))
@@ -300,7 +302,7 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
                     var value = valueGetter(buffer[i]);
                     data[i] = value is short shortValue ? shortValue : null;
                 }
-                await rowGroupWriter.WriteAsync<short>(dataField, data);
+                await rowGroupWriter.WriteAsync<short>(dataField, data).ConfigureAwait(false);
             }
             else
             {
@@ -310,7 +312,7 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
                     var value = valueGetter(buffer[i]);
                     data[i] = value is short shortValue ? shortValue : default;
                 }
-                await rowGroupWriter.WriteAsync<short>(dataField, data);
+                await rowGroupWriter.WriteAsync<short>(dataField, data).ConfigureAwait(false);
             }
         }
         else if (underlyingType == typeof(byte))
@@ -323,7 +325,7 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
                     var value = valueGetter(buffer[i]);
                     data[i] = value is byte byteValue ? byteValue : null;
                 }
-                await rowGroupWriter.WriteAsync<byte>(dataField, data);
+                await rowGroupWriter.WriteAsync<byte>(dataField, data).ConfigureAwait(false);
             }
             else
             {
@@ -333,7 +335,7 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
                     var value = valueGetter(buffer[i]);
                     data[i] = value is byte byteValue ? byteValue : default;
                 }
-                await rowGroupWriter.WriteAsync<byte>(dataField, data);
+                await rowGroupWriter.WriteAsync<byte>(dataField, data).ConfigureAwait(false);
             }
         }
         else if (underlyingType == typeof(float))
@@ -346,7 +348,7 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
                     var value = valueGetter(buffer[i]);
                     data[i] = value is float floatValue ? floatValue : null;
                 }
-                await rowGroupWriter.WriteAsync<float>(dataField, data);
+                await rowGroupWriter.WriteAsync<float>(dataField, data).ConfigureAwait(false);
             }
             else
             {
@@ -356,7 +358,7 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
                     var value = valueGetter(buffer[i]);
                     data[i] = value is float floatValue ? floatValue : default;
                 }
-                await rowGroupWriter.WriteAsync<float>(dataField, data);
+                await rowGroupWriter.WriteAsync<float>(dataField, data).ConfigureAwait(false);
             }
         }
         else if (underlyingType == typeof(double))
@@ -369,7 +371,7 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
                     var value = valueGetter(buffer[i]);
                     data[i] = value is double doubleValue ? doubleValue : null;
                 }
-                await rowGroupWriter.WriteAsync<double>(dataField, data);
+                await rowGroupWriter.WriteAsync<double>(dataField, data).ConfigureAwait(false);
             }
             else
             {
@@ -379,7 +381,7 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
                     var value = valueGetter(buffer[i]);
                     data[i] = value is double doubleValue ? doubleValue : default;
                 }
-                await rowGroupWriter.WriteAsync<double>(dataField, data);
+                await rowGroupWriter.WriteAsync<double>(dataField, data).ConfigureAwait(false);
             }
         }
         else if (underlyingType == typeof(bool))
@@ -392,7 +394,7 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
                     var value = valueGetter(buffer[i]);
                     data[i] = value is bool boolValue ? boolValue : null;
                 }
-                await rowGroupWriter.WriteAsync<bool>(dataField, data);
+                await rowGroupWriter.WriteAsync<bool>(dataField, data).ConfigureAwait(false);
             }
             else
             {
@@ -402,7 +404,7 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
                     var value = valueGetter(buffer[i]);
                     data[i] = value is bool boolValue ? boolValue : default;
                 }
-                await rowGroupWriter.WriteAsync<bool>(dataField, data);
+                await rowGroupWriter.WriteAsync<bool>(dataField, data).ConfigureAwait(false);
             }
         }
         else if (underlyingType == typeof(decimal))
@@ -415,7 +417,7 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
                     var value = valueGetter(buffer[i]);
                     data[i] = value is decimal decimalValue ? decimalValue : null;
                 }
-                await rowGroupWriter.WriteAsync<decimal>(dataField, data);
+                await rowGroupWriter.WriteAsync<decimal>(dataField, data).ConfigureAwait(false);
             }
             else
             {
@@ -425,7 +427,7 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
                     var value = valueGetter(buffer[i]);
                     data[i] = value is decimal decimalValue ? decimalValue : default;
                 }
-                await rowGroupWriter.WriteAsync<decimal>(dataField, data);
+                await rowGroupWriter.WriteAsync<decimal>(dataField, data).ConfigureAwait(false);
             }
         }
         else if (underlyingType == typeof(DateTime))
@@ -438,7 +440,7 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
                     var value = valueGetter(buffer[i]);
                     data[i] = value is DateTime dateTimeValue ? dateTimeValue : null;
                 }
-                await rowGroupWriter.WriteAsync<DateTime>(dataField, data);
+                await rowGroupWriter.WriteAsync<DateTime>(dataField, data).ConfigureAwait(false);
             }
             else
             {
@@ -448,7 +450,7 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
                     var value = valueGetter(buffer[i]);
                     data[i] = value is DateTime dateTimeValue ? dateTimeValue : default;
                 }
-                await rowGroupWriter.WriteAsync<DateTime>(dataField, data);
+                await rowGroupWriter.WriteAsync<DateTime>(dataField, data).ConfigureAwait(false);
             }
         }
         else if (underlyingType == typeof(DateTimeOffset))
@@ -462,7 +464,7 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
                     var value = valueGetter(buffer[i]);
                     data[i] = value is DateTime dateTimeValue ? dateTimeValue : null;
                 }
-                await rowGroupWriter.WriteAsync<DateTime>(dataField, data);
+                await rowGroupWriter.WriteAsync<DateTime>(dataField, data).ConfigureAwait(false);
             }
             else
             {
@@ -472,7 +474,7 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
                     var value = valueGetter(buffer[i]);
                     data[i] = value is DateTime dateTimeValue ? dateTimeValue : default;
                 }
-                await rowGroupWriter.WriteAsync<DateTime>(dataField, data);
+                await rowGroupWriter.WriteAsync<DateTime>(dataField, data).ConfigureAwait(false);
             }
         }
         else if (underlyingType == typeof(DateOnly))
@@ -486,7 +488,7 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
                     var value = valueGetter(buffer[i]);
                     data[i] = value is DateTime dateTimeValue ? dateTimeValue : null;
                 }
-                await rowGroupWriter.WriteAsync<DateTime>(dataField, data);
+                await rowGroupWriter.WriteAsync<DateTime>(dataField, data).ConfigureAwait(false);
             }
             else
             {
@@ -496,7 +498,7 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
                     var value = valueGetter(buffer[i]);
                     data[i] = value is DateTime dateTimeValue ? dateTimeValue : default;
                 }
-                await rowGroupWriter.WriteAsync<DateTime>(dataField, data);
+                await rowGroupWriter.WriteAsync<DateTime>(dataField, data).ConfigureAwait(false);
             }
         }
         else if (underlyingType == typeof(byte[]))
@@ -507,7 +509,7 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
                 var value = valueGetter(buffer[i]);
                 data[i] = value as byte[] ?? [];
             }
-            await rowGroupWriter.WriteAsync(dataField, data);
+            await rowGroupWriter.WriteAsync(dataField, data).ConfigureAwait(false);
         }
         else
         {
@@ -518,7 +520,7 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
                 var value = valueGetter(buffer[i]);
                 data[i] = value?.ToString();
             }
-            await rowGroupWriter.WriteAsync(dataField, data);
+            await rowGroupWriter.WriteAsync(dataField, data).ConfigureAwait(false);
         }
 #pragma warning restore CA2016
     }
@@ -560,20 +562,22 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
         // Otherwise, copy and delete
         if (provider is IMoveableStorageProvider moveableProvider)
         {
-            await moveableProvider.MoveAsync(tempUri, targetUri, cancellationToken);
+            await moveableProvider.MoveAsync(tempUri, targetUri, cancellationToken).ConfigureAwait(false);
 
             // MoveAsync atomically moves the file - no separate cleanup needed
         }
         else
         {
             // Fallback: copy then delete
-            await using var readStream = await provider.OpenReadAsync(tempUri, cancellationToken);
-            await using var writeStream = await provider.OpenWriteAsync(targetUri, cancellationToken);
-            await readStream.CopyToAsync(writeStream, cancellationToken);
-            await writeStream.FlushAsync(cancellationToken);
+            var readStream = await provider.OpenReadAsync(tempUri, cancellationToken).ConfigureAwait(false);
+            await using var readStreamScope = readStream.ConfigureAwait(false);
+            var writeStream = await provider.OpenWriteAsync(targetUri, cancellationToken).ConfigureAwait(false);
+            await using var writeStreamScope = writeStream.ConfigureAwait(false);
+            await readStream.CopyToAsync(writeStream, cancellationToken).ConfigureAwait(false);
+            await writeStream.FlushAsync(cancellationToken).ConfigureAwait(false);
 
             if (provider is IDeletableStorageProvider deletableProvider)
-                await deletableProvider.DeleteAsync(tempUri, CancellationToken.None);
+                await deletableProvider.DeleteAsync(tempUri, CancellationToken.None).ConfigureAwait(false);
         }
     }
 }

@@ -12,7 +12,8 @@ public interface ITopologyService
     /// </summary>
     /// <param name="graph">The pipeline graph to sort.</param>
     /// <returns>A list of node IDs in topological order.</returns>
-    List<string> TopologicalSort(PipelineGraph graph);
+    /// <exception cref="InvalidOperationException">Thrown when the graph contains a cycle.</exception>
+    IReadOnlyList<string> TopologicalSort(PipelineGraph graph);
 
     /// <summary>
     ///     Builds a lookup table mapping node IDs to their input edges.

@@ -29,7 +29,7 @@ public sealed class AnonymousObjectAllocationCodeFixProvider : CodeFixProvider
     /// <inheritdoc />
     public override async Task RegisterCodeFixesAsync(CodeFixContext context)
     {
-        var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken);
+        var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return;
@@ -66,7 +66,7 @@ public sealed class AnonymousObjectAllocationCodeFixProvider : CodeFixProvider
         AnonymousObjectCreationExpressionSyntax anonymousObject,
         CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken);
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return document;
@@ -102,7 +102,7 @@ public sealed class AnonymousObjectAllocationCodeFixProvider : CodeFixProvider
         AnonymousObjectCreationExpressionSyntax anonymousObject,
         CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken);
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return document;

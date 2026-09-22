@@ -1,0 +1,7 @@
+# Library-only analyzer rules. Test and sample projects are not libraries and are not held to these.
+[*.cs]
+
+# CA2007: Consider calling ConfigureAwait on the awaited task.
+# A library must not capture the caller's SynchronizationContext: doing so marshals back to it on every await, and a
+# caller that blocks on the returned task deadlocks. Enforced as an error so it cannot regress.
+dotnet_diagnostic.CA2007.severity = error

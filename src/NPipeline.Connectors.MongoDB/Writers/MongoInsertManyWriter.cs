@@ -82,7 +82,7 @@ public class MongoInsertManyWriter<T> : IMongoWriter<T>
 
         try
         {
-            await collection.InsertManyAsync(documents, options, cancellationToken);
+            await collection.InsertManyAsync(documents, options, cancellationToken).ConfigureAwait(false);
         }
         catch (MongoBulkWriteException<BsonDocument> ex)
         {

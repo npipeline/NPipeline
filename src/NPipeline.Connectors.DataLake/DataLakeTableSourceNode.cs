@@ -188,7 +188,7 @@ public sealed class DataLakeTableSourceNode<T> : SourceNode<T>
 
             var fileUri = BuildFileUri(entry.Path);
 
-            await foreach (var item in ReadFileAsync(provider, fileUri, cancellationToken))
+            await foreach (var item in ReadFileAsync(provider, fileUri, cancellationToken).ConfigureAwait(false))
             {
                 yield return item;
             }

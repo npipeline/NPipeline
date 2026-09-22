@@ -129,7 +129,8 @@ public sealed class DataLakeCompactor
 
         // Update manifest with new files and mark old files as deleted
         var snapshotId = ManifestWriter.GenerateSnapshotId();
-        await using var manifestWriter = new ManifestWriter(_provider, _tableBasePath, snapshotId);
+        var manifestWriter = new ManifestWriter(_provider, _tableBasePath, snapshotId);
+        await using var manifestWriterScope = manifestWriter.ConfigureAwait(false);
 
         // Add new entries with accurate row counts
         foreach (var (newPath, rowCount) in newFiles)
@@ -263,7 +264,7 @@ public sealed class DataLakeCompactor
         {
             var fileUri = BuildFileUri(entry.Path);
 
-            await foreach (var row in ReadFileRowsAsync(fileUri, cancellationToken))
+            await foreach (var row in ReadFileRowsAsync(fileUri, cancellationToken).ConfigureAwait(false))
             {
                 allRecords.Add(row);
             }
@@ -340,14 +341,16 @@ public sealed class DataLakeCompactor
         var schema = records[0].Schema;
         var columnNames = records[0].ColumnNames;
 
-        await using var stream = await _provider.OpenWriteAsync(fileUri, cancellationToken)
+        var stream = await _provider.OpenWriteAsync(fileUri, cancellationToken)
             .ConfigureAwait(false);
+        await using var streamScope = stream.ConfigureAwait(false);
 
         var options = new ParquetOptions();
         options.CompressionMethod = _configuration.Compression;
 
-        await using var writer = await ParquetWriter.CreateAsync(schema, stream, options: options, cancellationToken: cancellationToken)
+        var writer = await ParquetWriter.CreateAsync(schema, stream, options: options, cancellationToken: cancellationToken)
             .ConfigureAwait(false);
+        await using var writerScope = writer.ConfigureAwait(false);
 
         using var rowGroupWriter = writer.CreateRowGroup();
 
@@ -382,7 +385,7 @@ public sealed class DataLakeCompactor
             var data = new string?[records.Count];
             for (var i = 0; i < records.Count; i++)
                 data[i] = records[i][columnName] as string;
-            await rowGroupWriter.WriteAsync(dataField, data);
+            await rowGroupWriter.WriteAsync(dataField, data).ConfigureAwait(false);
         }
         else if (fieldType == typeof(int))
         {
@@ -394,7 +397,7 @@ public sealed class DataLakeCompactor
                     var value = records[i][columnName];
                     data[i] = value is int intValue ? intValue : null;
                 }
-                await rowGroupWriter.WriteAsync<int>(dataField, data);
+                await rowGroupWriter.WriteAsync<int>(dataField, data).ConfigureAwait(false);
             }
             else
             {
@@ -404,7 +407,7 @@ public sealed class DataLakeCompactor
                     var value = records[i][columnName];
                     data[i] = value is int intValue ? intValue : default;
                 }
-                await rowGroupWriter.WriteAsync<int>(dataField, data);
+                await rowGroupWriter.WriteAsync<int>(dataField, data).ConfigureAwait(false);
             }
         }
         else if (fieldType == typeof(long))
@@ -417,7 +420,7 @@ public sealed class DataLakeCompactor
                     var value = records[i][columnName];
                     data[i] = value is long longValue ? longValue : null;
                 }
-                await rowGroupWriter.WriteAsync<long>(dataField, data);
+                await rowGroupWriter.WriteAsync<long>(dataField, data).ConfigureAwait(false);
             }
             else
             {
@@ -427,7 +430,7 @@ public sealed class DataLakeCompactor
                     var value = records[i][columnName];
                     data[i] = value is long longValue ? longValue : default;
                 }
-                await rowGroupWriter.WriteAsync<long>(dataField, data);
+                await rowGroupWriter.WriteAsync<long>(dataField, data).ConfigureAwait(false);
             }
         }
         else if (fieldType == typeof(short))
@@ -440,7 +443,7 @@ public sealed class DataLakeCompactor
                     var value = records[i][columnName];
                     data[i] = value is short shortValue ? shortValue : null;
                 }
-                await rowGroupWriter.WriteAsync<short>(dataField, data);
+                await rowGroupWriter.WriteAsync<short>(dataField, data).ConfigureAwait(false);
             }
             else
             {
@@ -450,7 +453,7 @@ public sealed class DataLakeCompactor
                     var value = records[i][columnName];
                     data[i] = value is short shortValue ? shortValue : default;
                 }
-                await rowGroupWriter.WriteAsync<short>(dataField, data);
+                await rowGroupWriter.WriteAsync<short>(dataField, data).ConfigureAwait(false);
             }
         }
         else if (fieldType == typeof(byte))
@@ -463,7 +466,7 @@ public sealed class DataLakeCompactor
                     var value = records[i][columnName];
                     data[i] = value is byte byteValue ? byteValue : null;
                 }
-                await rowGroupWriter.WriteAsync<byte>(dataField, data);
+                await rowGroupWriter.WriteAsync<byte>(dataField, data).ConfigureAwait(false);
             }
             else
             {
@@ -473,7 +476,7 @@ public sealed class DataLakeCompactor
                     var value = records[i][columnName];
                     data[i] = value is byte byteValue ? byteValue : default;
                 }
-                await rowGroupWriter.WriteAsync<byte>(dataField, data);
+                await rowGroupWriter.WriteAsync<byte>(dataField, data).ConfigureAwait(false);
             }
         }
         else if (fieldType == typeof(float))
@@ -486,7 +489,7 @@ public sealed class DataLakeCompactor
                     var value = records[i][columnName];
                     data[i] = value is float floatValue ? floatValue : null;
                 }
-                await rowGroupWriter.WriteAsync<float>(dataField, data);
+                await rowGroupWriter.WriteAsync<float>(dataField, data).ConfigureAwait(false);
             }
             else
             {
@@ -496,7 +499,7 @@ public sealed class DataLakeCompactor
                     var value = records[i][columnName];
                     data[i] = value is float floatValue ? floatValue : default;
                 }
-                await rowGroupWriter.WriteAsync<float>(dataField, data);
+                await rowGroupWriter.WriteAsync<float>(dataField, data).ConfigureAwait(false);
             }
         }
         else if (fieldType == typeof(double))
@@ -509,7 +512,7 @@ public sealed class DataLakeCompactor
                     var value = records[i][columnName];
                     data[i] = value is double doubleValue ? doubleValue : null;
                 }
-                await rowGroupWriter.WriteAsync<double>(dataField, data);
+                await rowGroupWriter.WriteAsync<double>(dataField, data).ConfigureAwait(false);
             }
             else
             {
@@ -519,7 +522,7 @@ public sealed class DataLakeCompactor
                     var value = records[i][columnName];
                     data[i] = value is double doubleValue ? doubleValue : default;
                 }
-                await rowGroupWriter.WriteAsync<double>(dataField, data);
+                await rowGroupWriter.WriteAsync<double>(dataField, data).ConfigureAwait(false);
             }
         }
         else if (fieldType == typeof(bool))
@@ -532,7 +535,7 @@ public sealed class DataLakeCompactor
                     var value = records[i][columnName];
                     data[i] = value is bool boolValue ? boolValue : null;
                 }
-                await rowGroupWriter.WriteAsync<bool>(dataField, data);
+                await rowGroupWriter.WriteAsync<bool>(dataField, data).ConfigureAwait(false);
             }
             else
             {
@@ -542,7 +545,7 @@ public sealed class DataLakeCompactor
                     var value = records[i][columnName];
                     data[i] = value is bool boolValue ? boolValue : default;
                 }
-                await rowGroupWriter.WriteAsync<bool>(dataField, data);
+                await rowGroupWriter.WriteAsync<bool>(dataField, data).ConfigureAwait(false);
             }
         }
         else if (fieldType == typeof(decimal))
@@ -555,7 +558,7 @@ public sealed class DataLakeCompactor
                     var value = records[i][columnName];
                     data[i] = value is decimal decimalValue ? decimalValue : null;
                 }
-                await rowGroupWriter.WriteAsync<decimal>(dataField, data);
+                await rowGroupWriter.WriteAsync<decimal>(dataField, data).ConfigureAwait(false);
             }
             else
             {
@@ -565,7 +568,7 @@ public sealed class DataLakeCompactor
                     var value = records[i][columnName];
                     data[i] = value is decimal decimalValue ? decimalValue : default;
                 }
-                await rowGroupWriter.WriteAsync<decimal>(dataField, data);
+                await rowGroupWriter.WriteAsync<decimal>(dataField, data).ConfigureAwait(false);
             }
         }
         else if (fieldType == typeof(DateTime))
@@ -578,7 +581,7 @@ public sealed class DataLakeCompactor
                     var value = records[i][columnName];
                     data[i] = value is DateTime dateTimeValue ? dateTimeValue : null;
                 }
-                await rowGroupWriter.WriteAsync<DateTime>(dataField, data);
+                await rowGroupWriter.WriteAsync<DateTime>(dataField, data).ConfigureAwait(false);
             }
             else
             {
@@ -588,7 +591,7 @@ public sealed class DataLakeCompactor
                     var value = records[i][columnName];
                     data[i] = value is DateTime dateTimeValue ? dateTimeValue : default;
                 }
-                await rowGroupWriter.WriteAsync<DateTime>(dataField, data);
+                await rowGroupWriter.WriteAsync<DateTime>(dataField, data).ConfigureAwait(false);
             }
         }
         else if (fieldType == typeof(DateTimeOffset))
@@ -601,7 +604,7 @@ public sealed class DataLakeCompactor
                     var value = records[i][columnName];
                     data[i] = value is DateTime dateTimeValue ? dateTimeValue : null;
                 }
-                await rowGroupWriter.WriteAsync<DateTime>(dataField, data);
+                await rowGroupWriter.WriteAsync<DateTime>(dataField, data).ConfigureAwait(false);
             }
             else
             {
@@ -611,7 +614,7 @@ public sealed class DataLakeCompactor
                     var value = records[i][columnName];
                     data[i] = value is DateTime dateTimeValue ? dateTimeValue : default;
                 }
-                await rowGroupWriter.WriteAsync<DateTime>(dataField, data);
+                await rowGroupWriter.WriteAsync<DateTime>(dataField, data).ConfigureAwait(false);
             }
         }
         else if (fieldType == typeof(DateOnly))
@@ -624,7 +627,7 @@ public sealed class DataLakeCompactor
                     var value = records[i][columnName];
                     data[i] = value is DateTime dateTimeValue ? dateTimeValue : null;
                 }
-                await rowGroupWriter.WriteAsync<DateTime>(dataField, data);
+                await rowGroupWriter.WriteAsync<DateTime>(dataField, data).ConfigureAwait(false);
             }
             else
             {
@@ -634,7 +637,7 @@ public sealed class DataLakeCompactor
                     var value = records[i][columnName];
                     data[i] = value is DateTime dateTimeValue ? dateTimeValue : default;
                 }
-                await rowGroupWriter.WriteAsync<DateTime>(dataField, data);
+                await rowGroupWriter.WriteAsync<DateTime>(dataField, data).ConfigureAwait(false);
             }
         }
         else if (fieldType == typeof(byte[]))
@@ -645,7 +648,7 @@ public sealed class DataLakeCompactor
                 var value = records[i][columnName];
                 data[i] = value as byte[] ?? [];
             }
-            await rowGroupWriter.WriteAsync(dataField, data);
+            await rowGroupWriter.WriteAsync(dataField, data).ConfigureAwait(false);
         }
         else
         {
@@ -656,7 +659,7 @@ public sealed class DataLakeCompactor
                 var value = records[i][columnName];
                 data[i] = value?.ToString();
             }
-            await rowGroupWriter.WriteAsync(dataField, data);
+            await rowGroupWriter.WriteAsync(dataField, data).ConfigureAwait(false);
         }
 #pragma warning restore CA2016
     }

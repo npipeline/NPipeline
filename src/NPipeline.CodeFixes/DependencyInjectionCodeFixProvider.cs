@@ -29,7 +29,7 @@ public sealed class DependencyInjectionCodeFixProvider : CodeFixProvider
     /// <inheritdoc />
     public override async Task RegisterCodeFixesAsync(CodeFixContext context)
     {
-        var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken);
+        var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return;
@@ -45,11 +45,11 @@ public sealed class DependencyInjectionCodeFixProvider : CodeFixProvider
 
         // Register different code fixes based on the anti-pattern type
         if (node is ObjectCreationExpressionSyntax objectCreation)
-            await RegisterObjectCreationFixes(context, objectCreation, diagnostic);
+            await RegisterObjectCreationFixes(context, objectCreation, diagnostic).ConfigureAwait(false);
         else if (node is AssignmentExpressionSyntax assignment)
-            await RegisterAssignmentFixes(context, assignment, diagnostic);
+            await RegisterAssignmentFixes(context, assignment, diagnostic).ConfigureAwait(false);
         else if (node is InvocationExpressionSyntax invocation)
-            await RegisterInvocationFixes(context, invocation, diagnostic);
+            await RegisterInvocationFixes(context, invocation, diagnostic).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -60,7 +60,7 @@ public sealed class DependencyInjectionCodeFixProvider : CodeFixProvider
         ObjectCreationExpressionSyntax objectCreation,
         Diagnostic diagnostic)
     {
-        var semanticModel = await context.Document.GetSemanticModelAsync(context.CancellationToken);
+        var semanticModel = await context.Document.GetSemanticModelAsync(context.CancellationToken).ConfigureAwait(false);
         var typeInfo = semanticModel.GetTypeInfo(objectCreation);
         var typeSymbol = typeInfo.Type;
 
@@ -138,7 +138,7 @@ public sealed class DependencyInjectionCodeFixProvider : CodeFixProvider
         ObjectCreationExpressionSyntax objectCreation,
         CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken);
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return document;
@@ -150,7 +150,7 @@ public sealed class DependencyInjectionCodeFixProvider : CodeFixProvider
             return document;
 
         // Get the semantic model to determine the service type
-        var semanticModel = await document.GetSemanticModelAsync(cancellationToken);
+        var semanticModel = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
         var typeInfo = semanticModel.GetTypeInfo(objectCreation, cancellationToken);
         var serviceType = typeInfo.Type;
 
@@ -180,7 +180,7 @@ public sealed class DependencyInjectionCodeFixProvider : CodeFixProvider
         AssignmentExpressionSyntax assignment,
         CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken);
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return document;
@@ -192,7 +192,7 @@ public sealed class DependencyInjectionCodeFixProvider : CodeFixProvider
             return document;
 
         // Get the semantic model to determine the service type
-        var semanticModel = await document.GetSemanticModelAsync(cancellationToken);
+        var semanticModel = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
 
         // Get the service type from the right side of the assignment
         var serviceTypeInfo = semanticModel.GetTypeInfo(assignment.Right, cancellationToken);
@@ -242,7 +242,7 @@ public sealed class DependencyInjectionCodeFixProvider : CodeFixProvider
         InvocationExpressionSyntax serviceLocatorInvocation,
         CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken);
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return document;
@@ -254,7 +254,7 @@ public sealed class DependencyInjectionCodeFixProvider : CodeFixProvider
             return document;
 
         // Get the semantic model to determine the service type
-        var semanticModel = await document.GetSemanticModelAsync(cancellationToken);
+        var semanticModel = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
 
         // Get the service type from the first argument
         if (serviceLocatorInvocation.ArgumentList?.Arguments.Count == 0)

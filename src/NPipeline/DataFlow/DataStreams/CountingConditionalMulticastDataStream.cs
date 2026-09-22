@@ -138,11 +138,9 @@ internal sealed class CountingConditionalMulticastDataStream<T> : IForwardOnlyDa
     public async IAsyncEnumerable<object?> ToAsyncEnumerable([EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        await using var enumerator = GetAsyncEnumerator(cancellationToken);
-
-        while (await enumerator.MoveNextAsync())
+        await foreach (var item in this.WithCancellation(cancellationToken).ConfigureAwait(false))
         {
-            yield return enumerator.Current;
+            yield return item;
         }
     }
 
@@ -152,7 +150,7 @@ internal sealed class CountingConditionalMulticastDataStream<T> : IForwardOnlyDa
             return;
 
         _disposed = true;
-        await _cts.CancelAsync();
+        await _cts.CancelAsync().ConfigureAwait(false);
 
         await _pumpTask.ConfigureAwait(false);
 
@@ -403,11 +401,9 @@ internal sealed class CountingConditionalMulticastDataStream<T> : IForwardOnlyDa
 
         public async IAsyncEnumerable<object?> ToAsyncEnumerable([EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            await using var enumerator = GetAsyncEnumerator(cancellationToken);
-
-            while (await enumerator.MoveNextAsync())
+            await foreach (var item in this.WithCancellation(cancellationToken).ConfigureAwait(false))
             {
-                yield return enumerator.Current;
+                yield return item;
             }
         }
 

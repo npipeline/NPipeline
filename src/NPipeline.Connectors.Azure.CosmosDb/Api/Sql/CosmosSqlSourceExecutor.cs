@@ -41,9 +41,9 @@ internal sealed class CosmosSqlSourceExecutor : ICosmosSourceExecutor
 
         while (iterator.HasMoreResults)
         {
-            using var response = await iterator.ReadNextAsync(cancellationToken);
+            using var response = await iterator.ReadNextAsync(cancellationToken).ConfigureAwait(false);
             using var reader = new StreamReader(response.Content);
-            var payload = await reader.ReadToEndAsync(cancellationToken);
+            var payload = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
 
             var json = JObject.Parse(payload);
             var documents = json["Documents"] as JArray;

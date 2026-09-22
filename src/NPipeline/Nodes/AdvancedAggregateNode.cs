@@ -218,7 +218,7 @@ public abstract class AdvancedAggregateNode<TIn, TKey, TAccumulate, TResult> : I
 
     private async IAsyncEnumerable<TIn> ConvertToTypedAsyncEnumerable(IAsyncEnumerable<object?> asyncEnumerable)
     {
-        await foreach (var item in asyncEnumerable)
+        await foreach (var item in asyncEnumerable.ConfigureAwait(false))
         {
             if (item is TIn typedItem)
                 yield return typedItem;

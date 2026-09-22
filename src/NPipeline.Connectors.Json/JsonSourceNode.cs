@@ -187,7 +187,8 @@ public sealed class JsonSourceNode<T> : SourceNode<T>
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         // Open the stream per-enumeration so disposal is bound to consumer lifetime
-        await using var stream = await provider.OpenReadAsync(uri, cancellationToken).ConfigureAwait(false);
+        var stream = await provider.OpenReadAsync(uri, cancellationToken).ConfigureAwait(false);
+        await using var streamScope = stream.ConfigureAwait(false);
 
         if (config.Format == JsonFormat.Array)
         {
@@ -221,7 +222,7 @@ public sealed class JsonSourceNode<T> : SourceNode<T>
         if (items is null)
             yield break;
 
-        await foreach (var item in items)
+        await foreach (var item in items.ConfigureAwait(false))
         {
             cancellationToken.ThrowIfCancellationRequested();
 

@@ -31,7 +31,7 @@ public sealed class ResilientExecutionConfigurationCodeFixProvider : CodeFixProv
     /// <inheritdoc />
     public override async Task RegisterCodeFixesAsync(CodeFixContext context)
     {
-        var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken);
+        var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return;
@@ -52,7 +52,7 @@ public sealed class ResilientExecutionConfigurationCodeFixProvider : CodeFixProv
             return;
 
         // Register code fixes for adding resilience configuration
-        await RegisterResilienceConfigurationFixes(context, methodDeclaration, diagnostic);
+        await RegisterResilienceConfigurationFixes(context, methodDeclaration, diagnostic).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -98,7 +98,7 @@ public sealed class ResilientExecutionConfigurationCodeFixProvider : CodeFixProv
         MethodDeclarationSyntax methodDeclaration,
         CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken);
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return document;
@@ -110,7 +110,7 @@ public sealed class ResilientExecutionConfigurationCodeFixProvider : CodeFixProv
             return document;
 
         // Get the semantic model to check if ResilientExecutionStrategy is already applied
-        var semanticModel = await document.GetSemanticModelAsync(cancellationToken);
+        var semanticModel = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
         var classSymbol = semanticModel.GetDeclaredSymbol(classDeclaration, cancellationToken);
 
         if (classSymbol is not INamedTypeSymbol namedTypeSymbol)
@@ -145,7 +145,7 @@ public sealed class ResilientExecutionConfigurationCodeFixProvider : CodeFixProv
         MethodDeclarationSyntax methodDeclaration,
         CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken);
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return document;
@@ -198,7 +198,7 @@ public sealed class ResilientExecutionConfigurationCodeFixProvider : CodeFixProv
         MethodDeclarationSyntax methodDeclaration,
         CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken);
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return document;

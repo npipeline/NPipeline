@@ -157,26 +157,28 @@ public sealed class DuckDBSourceNode<T> : SourceNode<T>
         try
         {
             connection = _connectionFactory.CreateConnection();
-            await connection.OpenAsync(ct);
+            await connection.OpenAsync(ct).ConfigureAwait(false);
 
-            await ConfigureConnectionAsync(connection, ct);
+            await ConfigureConnectionAsync(connection, ct).ConfigureAwait(false);
 
             _configuration.Observer?.OnQueryStarted(_query);
 
-            await using var command = connection.CreateCommand();
+            var command = connection.CreateCommand();
+            await using var commandScope = command.ConfigureAwait(false);
             command.CommandText = _query;
 
-            await using var reader = await command.ExecuteReaderAsync(
+            var reader = await command.ExecuteReaderAsync(
                 _configuration.StreamResults
                     ? CommandBehavior.SequentialAccess
                     : CommandBehavior.Default,
-                ct);
+                ct).ConfigureAwait(false);
+            await using var readerScope = reader.ConfigureAwait(false);
 
             var mapper = _rowMapper ?? DuckDBMapperBuilder.Build<T>(reader, _configuration);
             var row = new DuckDBRow(reader, _configuration.CaseInsensitiveMapping);
             long rowIndex = 0;
 
-            while (await reader.ReadAsync(ct))
+            while (await reader.ReadAsync(ct).ConfigureAwait(false))
             {
                 row.SetCurrentRow(rowIndex);
                 T item;
@@ -208,7 +210,7 @@ public sealed class DuckDBSourceNode<T> : SourceNode<T>
         finally
         {
             if (connection is not null)
-                await connection.DisposeAsync();
+                await connection.DisposeAsync().ConfigureAwait(false);
         }
     }
 
@@ -219,9 +221,10 @@ public sealed class DuckDBSourceNode<T> : SourceNode<T>
         {
             foreach (var extension in _configuration.Extensions)
             {
-                await using var cmd = connection.CreateCommand();
+                var cmd = connection.CreateCommand();
+                await using var cmdScope = cmd.ConfigureAwait(false);
                 cmd.CommandText = $"INSTALL '{extension}'; LOAD '{extension}';";
-                await cmd.ExecuteNonQueryAsync(ct);
+                await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
                 _configuration.Observer?.OnExtensionLoaded(extension);
             }
         }
@@ -248,9 +251,10 @@ public sealed class DuckDBSourceNode<T> : SourceNode<T>
 
         foreach (var setting in settings)
         {
-            await using var cmd = connection.CreateCommand();
+            var cmd = connection.CreateCommand();
+            await using var cmdScope = cmd.ConfigureAwait(false);
             cmd.CommandText = setting;
-            await cmd.ExecuteNonQueryAsync(ct);
+            await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
         }
     }
 }

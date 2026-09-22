@@ -63,19 +63,19 @@ public abstract class DatabaseCheckpointStorage : ICheckpointStorage, IAsyncDisp
         _lock.Dispose();
 
         if (_ownsConnection && _connection is IAsyncDisposable asyncDisposable)
-            await asyncDisposable.DisposeAsync();
+            await asyncDisposable.DisposeAsync().ConfigureAwait(false);
     }
 
     /// <inheritdoc />
     public async Task<Checkpoint?> LoadAsync(string pipelineId, string nodeId, CancellationToken cancellationToken = default)
     {
-        await EnsureInitializedAsync(cancellationToken);
+        await EnsureInitializedAsync(cancellationToken).ConfigureAwait(false);
 
-        await _lock.WaitAsync(cancellationToken);
+        await _lock.WaitAsync(cancellationToken).ConfigureAwait(false);
 
         try
         {
-            var command = await _connection.CreateCommandAsync(cancellationToken);
+            var command = await _connection.CreateCommandAsync(cancellationToken).ConfigureAwait(false);
 
             command.CommandText = $@"
                 SELECT checkpoint_value, checkpoint_timestamp, metadata
@@ -85,9 +85,10 @@ public abstract class DatabaseCheckpointStorage : ICheckpointStorage, IAsyncDisp
             command.AddParameter("@pipelineId", pipelineId);
             command.AddParameter("@nodeId", nodeId);
 
-            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+            await using var readerScope = reader.ConfigureAwait(false);
 
-            if (!await reader.ReadAsync(cancellationToken))
+            if (!await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
                 return null;
 
             var value = reader.GetFieldValue<string>(0);
@@ -116,9 +117,9 @@ public abstract class DatabaseCheckpointStorage : ICheckpointStorage, IAsyncDisp
     {
         ArgumentNullException.ThrowIfNull(checkpoint);
 
-        await EnsureInitializedAsync(cancellationToken);
+        await EnsureInitializedAsync(cancellationToken).ConfigureAwait(false);
 
-        await _lock.WaitAsync(cancellationToken);
+        await _lock.WaitAsync(cancellationToken).ConfigureAwait(false);
 
         try
         {
@@ -126,7 +127,7 @@ public abstract class DatabaseCheckpointStorage : ICheckpointStorage, IAsyncDisp
                 ? JsonSerializer.Serialize(checkpoint.Metadata, JsonOptions)
                 : null;
 
-            var command = await _connection.CreateCommandAsync(cancellationToken);
+            var command = await _connection.CreateCommandAsync(cancellationToken).ConfigureAwait(false);
             command.CommandText = GetUpsertSql();
 
             command.AddParameter("@pipelineId", pipelineId);
@@ -137,7 +138,7 @@ public abstract class DatabaseCheckpointStorage : ICheckpointStorage, IAsyncDisp
             command.AddParameter("@createdAt", DateTimeOffset.UtcNow);
             command.AddParameter("@updatedAt", DateTimeOffset.UtcNow);
 
-            _ = await command.ExecuteNonQueryAsync(cancellationToken);
+            _ = await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
         }
         finally
         {
@@ -148,13 +149,13 @@ public abstract class DatabaseCheckpointStorage : ICheckpointStorage, IAsyncDisp
     /// <inheritdoc />
     public async Task DeleteAsync(string pipelineId, string nodeId, CancellationToken cancellationToken = default)
     {
-        await EnsureInitializedAsync(cancellationToken);
+        await EnsureInitializedAsync(cancellationToken).ConfigureAwait(false);
 
-        await _lock.WaitAsync(cancellationToken);
+        await _lock.WaitAsync(cancellationToken).ConfigureAwait(false);
 
         try
         {
-            var command = await _connection.CreateCommandAsync(cancellationToken);
+            var command = await _connection.CreateCommandAsync(cancellationToken).ConfigureAwait(false);
 
             command.CommandText = $@"
                 DELETE FROM {QuotedTableName}
@@ -163,7 +164,7 @@ public abstract class DatabaseCheckpointStorage : ICheckpointStorage, IAsyncDisp
             command.AddParameter("@pipelineId", pipelineId);
             command.AddParameter("@nodeId", nodeId);
 
-            _ = await command.ExecuteNonQueryAsync(cancellationToken);
+            _ = await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
         }
         finally
         {
@@ -174,13 +175,13 @@ public abstract class DatabaseCheckpointStorage : ICheckpointStorage, IAsyncDisp
     /// <inheritdoc />
     public async Task<bool> ExistsAsync(string pipelineId, string nodeId, CancellationToken cancellationToken = default)
     {
-        await EnsureInitializedAsync(cancellationToken);
+        await EnsureInitializedAsync(cancellationToken).ConfigureAwait(false);
 
-        await _lock.WaitAsync(cancellationToken);
+        await _lock.WaitAsync(cancellationToken).ConfigureAwait(false);
 
         try
         {
-            var command = await _connection.CreateCommandAsync(cancellationToken);
+            var command = await _connection.CreateCommandAsync(cancellationToken).ConfigureAwait(false);
 
             command.CommandText = $@"
                 SELECT COUNT(1) FROM {QuotedTableName}
@@ -189,9 +190,10 @@ public abstract class DatabaseCheckpointStorage : ICheckpointStorage, IAsyncDisp
             command.AddParameter("@pipelineId", pipelineId);
             command.AddParameter("@nodeId", nodeId);
 
-            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+            await using var readerScope = reader.ConfigureAwait(false);
 
-            if (await reader.ReadAsync(cancellationToken))
+            if (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
             {
                 var count = reader.GetFieldValue<int>(0);
                 return count > 0;
@@ -228,17 +230,17 @@ public abstract class DatabaseCheckpointStorage : ICheckpointStorage, IAsyncDisp
         if (_initialized)
             return;
 
-        await _lock.WaitAsync(cancellationToken);
+        await _lock.WaitAsync(cancellationToken).ConfigureAwait(false);
 
         try
         {
             if (_initialized)
                 return;
 
-            var command = await _connection.CreateCommandAsync(cancellationToken);
+            var command = await _connection.CreateCommandAsync(cancellationToken).ConfigureAwait(false);
             command.CommandText = GetCreateTableSql();
 
-            _ = await command.ExecuteNonQueryAsync(cancellationToken);
+            _ = await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
             _initialized = true;
         }
         finally

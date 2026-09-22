@@ -164,7 +164,7 @@ internal sealed class CosmosBulkWriter<T> : IDatabaseWriter<T>
 
         foreach (var item in items)
         {
-            await WriteAsync(item, cancellationToken);
+            await WriteAsync(item, cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -204,7 +204,7 @@ internal sealed class CosmosBulkWriter<T> : IDatabaseWriter<T>
 
         try
         {
-            await Task.WhenAll(tasksToAwait);
+            await Task.WhenAll(tasksToAwait).ConfigureAwait(false);
 
             if (_logger is not null)
                 LogFlushSuccess(_logger, totalCount, typeof(T).Name, null);
@@ -230,7 +230,7 @@ internal sealed class CosmosBulkWriter<T> : IDatabaseWriter<T>
     {
         if (!_disposed)
         {
-            await FlushAsync();
+            await FlushAsync().ConfigureAwait(false);
             _disposed = true;
             GC.SuppressFinalize(this);
         }

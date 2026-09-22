@@ -54,7 +54,7 @@ public class PostgresCdcCheckpointHandler
     /// <returns>The CDC position, or null if no checkpoint exists.</returns>
     public async Task<PostgresCdcPosition?> LoadPositionAsync(CancellationToken cancellationToken = default)
     {
-        var checkpoint = await _checkpointManager.LoadAsync(cancellationToken);
+        var checkpoint = await _checkpointManager.LoadAsync(cancellationToken).ConfigureAwait(false);
 
         if (checkpoint == null)
             return null;
@@ -89,7 +89,7 @@ public class PostgresCdcCheckpointHandler
         if (position.TransactionCount.HasValue)
             metadata["transaction_count"] = position.TransactionCount.Value.ToString();
 
-        await _checkpointManager.UpdateAsync(serializedValue, metadata, forceSave, cancellationToken);
+        await _checkpointManager.UpdateAsync(serializedValue, metadata, forceSave, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -111,7 +111,7 @@ public class PostgresCdcCheckpointHandler
             TransactionId = transactionId,
         };
 
-        await UpdatePositionAsync(position, forceSave, cancellationToken);
+        await UpdatePositionAsync(position, forceSave, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -120,7 +120,7 @@ public class PostgresCdcCheckpointHandler
     /// <param name="cancellationToken">The cancellation token.</param>
     public async Task SaveAsync(CancellationToken cancellationToken = default)
     {
-        await _checkpointManager.SaveAsync(cancellationToken);
+        await _checkpointManager.SaveAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -129,7 +129,7 @@ public class PostgresCdcCheckpointHandler
     /// <param name="cancellationToken">The cancellation token.</param>
     public async Task ClearAsync(CancellationToken cancellationToken = default)
     {
-        await _checkpointManager.ClearAsync(cancellationToken);
+        await _checkpointManager.ClearAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>

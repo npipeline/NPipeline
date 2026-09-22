@@ -29,7 +29,7 @@ public sealed class CassandraClientContext : IAsyncDisposable
     /// <inheritdoc />
     public async ValueTask DisposeAsync()
     {
-        await Session.ShutdownAsync();
+        await Session.ShutdownAsync().ConfigureAwait(false);
         Cluster.Dispose();
     }
 }

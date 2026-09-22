@@ -531,8 +531,10 @@ internal abstract class LineageMappingStrategyBase
         LineageOptions? opts,
         [EnumeratorCancellation] CancellationToken token)
     {
-        await using var inputEnumerator = inAll.GetAsyncEnumerator(token);
-        await using var outputEnumerator = outAll.GetAsyncEnumerator(token);
+        var inputEnumerator = inAll.GetAsyncEnumerator(token);
+        await using var inputEnumeratorScope = inputEnumerator.ConfigureAwait(false);
+        var outputEnumerator = outAll.GetAsyncEnumerator(token);
+        await using var outputEnumeratorScope = outputEnumerator.ConfigureAwait(false);
         var matchedInputCount = 0;
         var matchedOutputCount = 0;
 

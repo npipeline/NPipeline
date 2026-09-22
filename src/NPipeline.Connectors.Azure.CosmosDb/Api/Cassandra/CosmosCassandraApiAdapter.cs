@@ -54,7 +54,7 @@ public sealed class CosmosCassandraApiAdapter : ICosmosApiAdapter
             builder.WithCredentials(username, password ?? string.Empty);
 
         var cluster = builder.Build();
-        var session = await cluster.ConnectAsync(configuration.DatabaseId).WaitAsync(cancellationToken);
+        var session = await cluster.ConnectAsync(configuration.DatabaseId).WaitAsync(cancellationToken).ConfigureAwait(false);
         return new CassandraClientContext(cluster, session);
     }
 

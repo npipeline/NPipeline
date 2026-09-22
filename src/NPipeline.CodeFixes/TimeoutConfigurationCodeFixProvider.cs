@@ -29,7 +29,7 @@ public sealed class TimeoutConfigurationCodeFixProvider : CodeFixProvider
     /// <inheritdoc />
     public override async Task RegisterCodeFixesAsync(CodeFixContext context)
     {
-        var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken);
+        var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return;
@@ -45,9 +45,9 @@ public sealed class TimeoutConfigurationCodeFixProvider : CodeFixProvider
 
         // Register different code fixes based on diagnostic type
         if (node is ObjectCreationExpressionSyntax objectCreation)
-            await RegisterObjectCreationFixes(context, objectCreation, diagnostic);
+            await RegisterObjectCreationFixes(context, objectCreation, diagnostic).ConfigureAwait(false);
         else if (node is InvocationExpressionSyntax invocation)
-            await RegisterInvocationFixes(context, invocation, diagnostic);
+            await RegisterInvocationFixes(context, invocation, diagnostic).ConfigureAwait(false);
     }
 
     private static async Task RegisterObjectCreationFixes(
@@ -55,7 +55,7 @@ public sealed class TimeoutConfigurationCodeFixProvider : CodeFixProvider
         ObjectCreationExpressionSyntax objectCreation,
         Diagnostic diagnostic)
     {
-        var semanticModel = await context.Document.GetSemanticModelAsync(context.CancellationToken);
+        var semanticModel = await context.Document.GetSemanticModelAsync(context.CancellationToken).ConfigureAwait(false);
 
         if (semanticModel == null)
             return;
@@ -66,9 +66,9 @@ public sealed class TimeoutConfigurationCodeFixProvider : CodeFixProvider
             return;
 
         if (typeSymbol.Name == "ResilientExecutionStrategy")
-            await RegisterResilientExecutionStrategyFixes(context, objectCreation, semanticModel, diagnostic);
+            await RegisterResilientExecutionStrategyFixes(context, objectCreation, semanticModel, diagnostic).ConfigureAwait(false);
         else if (typeSymbol.Name == "PipelineRetryOptions")
-            await RegisterPipelineRetryOptionsFixes(context, objectCreation, semanticModel, diagnostic);
+            await RegisterPipelineRetryOptionsFixes(context, objectCreation, semanticModel, diagnostic).ConfigureAwait(false);
     }
 
     private static Task RegisterResilientExecutionStrategyFixes(
@@ -131,7 +131,7 @@ public sealed class TimeoutConfigurationCodeFixProvider : CodeFixProvider
         InvocationExpressionSyntax invocation,
         Diagnostic diagnostic)
     {
-        var semanticModel = await context.Document.GetSemanticModelAsync(context.CancellationToken);
+        var semanticModel = await context.Document.GetSemanticModelAsync(context.CancellationToken).ConfigureAwait(false);
 
         if (semanticModel == null)
             return;
@@ -163,7 +163,7 @@ public sealed class TimeoutConfigurationCodeFixProvider : CodeFixProvider
         TimeSpan newTimeout,
         CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken);
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return document;
@@ -215,7 +215,7 @@ public sealed class TimeoutConfigurationCodeFixProvider : CodeFixProvider
         TimeSpan newTimeout,
         CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken);
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return document;
@@ -267,7 +267,7 @@ public sealed class TimeoutConfigurationCodeFixProvider : CodeFixProvider
         TimeSpan newTimeout,
         CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken);
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return document;

@@ -83,41 +83,43 @@ public sealed class DuckDBSinkNode<T> : SinkNode<T>
     {
         _configuration.Validate();
 
-        await using var connection = _connectionFactory.CreateConnection();
-        await connection.OpenAsync(cancellationToken);
+        var connection = _connectionFactory.CreateConnection();
+        await using var connectionScope = connection.ConfigureAwait(false);
+        await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
 
-        await ConfigureConnectionAsync(connection, cancellationToken);
+        await ConfigureConnectionAsync(connection, cancellationToken).ConfigureAwait(false);
 
         if (_configuration.AutoCreateTable)
-            await EnsureTableExistsAsync(connection, cancellationToken);
+            await EnsureTableExistsAsync(connection, cancellationToken).ConfigureAwait(false);
 
         if (_configuration.TruncateBeforeWrite)
-            await TruncateTableAsync(connection, cancellationToken);
+            await TruncateTableAsync(connection, cancellationToken).ConfigureAwait(false);
 
         // Write data
         if (_configuration.UseTransaction && _configuration.WriteStrategy != DuckDBWriteStrategy.Appender)
-            await WriteWithTransactionAsync(connection, input, cancellationToken);
+            await WriteWithTransactionAsync(connection, input, cancellationToken).ConfigureAwait(false);
         else
-            await WriteWithoutTransactionAsync(connection, input, cancellationToken);
+            await WriteWithoutTransactionAsync(connection, input, cancellationToken).ConfigureAwait(false);
 
         // File export: COPY TO
         if (_exportFilePath is not null)
-            await ExportToFileAsync(connection, cancellationToken);
+            await ExportToFileAsync(connection, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task WriteWithTransactionAsync(DuckDBConnection connection, IDataStream<T> input,
         CancellationToken ct)
     {
-        await using var transaction = await connection.BeginTransactionAsync(ct);
+        var transaction = await connection.BeginTransactionAsync(ct).ConfigureAwait(false);
+        await using var transactionScope = transaction.ConfigureAwait(false);
 
         try
         {
-            await WriteDataAsync(connection, input, ct);
-            await transaction.CommitAsync(ct);
+            await WriteDataAsync(connection, input, ct).ConfigureAwait(false);
+            await transaction.CommitAsync(ct).ConfigureAwait(false);
         }
         catch
         {
-            await transaction.RollbackAsync(ct);
+            await transaction.RollbackAsync(ct).ConfigureAwait(false);
             throw;
         }
     }
@@ -125,23 +127,24 @@ public sealed class DuckDBSinkNode<T> : SinkNode<T>
     private async Task WriteWithoutTransactionAsync(DuckDBConnection connection, IDataStream<T> input,
         CancellationToken ct)
     {
-        await WriteDataAsync(connection, input, ct);
+        await WriteDataAsync(connection, input, ct).ConfigureAwait(false);
     }
 
     private async Task WriteDataAsync(DuckDBConnection connection, IDataStream<T> input, CancellationToken ct)
     {
-        await using var writer = CreateWriter(connection);
+        var writer = CreateWriter(connection);
+        await using var writerScope = writer.ConfigureAwait(false);
 
         long rowCount = 0;
 
         await foreach (var item in input.WithCancellation(ct))
         {
-            await writer.WriteAsync(item, ct);
+            await writer.WriteAsync(item, ct).ConfigureAwait(false);
             rowCount++;
             _configuration.Observer?.OnRowWritten(rowCount);
         }
 
-        await writer.FlushAsync(ct);
+        await writer.FlushAsync(ct).ConfigureAwait(false);
         _configuration.Observer?.OnWriteCompleted(rowCount);
     }
 
@@ -161,9 +164,10 @@ public sealed class DuckDBSinkNode<T> : SinkNode<T>
         try
         {
             var ddl = DuckDBSchemaBuilder.BuildCreateTable<T>(_tableName);
-            await using var command = connection.CreateCommand();
+            var command = connection.CreateCommand();
+            await using var commandScope = command.ConfigureAwait(false);
             command.CommandText = ddl;
-            await command.ExecuteNonQueryAsync(ct);
+            await command.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not DuckDBConnectorException and not OperationCanceledException)
         {
@@ -176,9 +180,10 @@ public sealed class DuckDBSinkNode<T> : SinkNode<T>
 
     private async Task TruncateTableAsync(DuckDBConnection connection, CancellationToken ct)
     {
-        await using var command = connection.CreateCommand();
+        var command = connection.CreateCommand();
+        await using var commandScope = command.ConfigureAwait(false);
         command.CommandText = $"DELETE FROM \"{_tableName}\"";
-        await command.ExecuteNonQueryAsync(ct);
+        await command.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
     }
 
     private async Task ExportToFileAsync(DuckDBConnection connection, CancellationToken ct)
@@ -192,9 +197,10 @@ public sealed class DuckDBSinkNode<T> : SinkNode<T>
         if (!string.IsNullOrEmpty(directory))
             Directory.CreateDirectory(directory);
 
-        await using var command = connection.CreateCommand();
+        var command = connection.CreateCommand();
+        await using var commandScope = command.ConfigureAwait(false);
         command.CommandText = $"COPY \"{_tableName}\" TO '{_exportFilePath!.Replace("'", "''")}' ({copyOptions})";
-        await command.ExecuteNonQueryAsync(ct);
+        await command.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
     }
 
     private async Task ConfigureConnectionAsync(DuckDBConnection connection, CancellationToken ct)
@@ -204,9 +210,10 @@ public sealed class DuckDBSinkNode<T> : SinkNode<T>
         {
             foreach (var extension in _configuration.Extensions)
             {
-                await using var cmd = connection.CreateCommand();
+                var cmd = connection.CreateCommand();
+                await using var cmdScope = cmd.ConfigureAwait(false);
                 cmd.CommandText = $"INSTALL '{extension}'; LOAD '{extension}';";
-                await cmd.ExecuteNonQueryAsync(ct);
+                await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
                 _configuration.Observer?.OnExtensionLoaded(extension);
             }
         }
@@ -233,9 +240,10 @@ public sealed class DuckDBSinkNode<T> : SinkNode<T>
 
         foreach (var setting in settings)
         {
-            await using var cmd = connection.CreateCommand();
+            var cmd = connection.CreateCommand();
+            await using var cmdScope = cmd.ConfigureAwait(false);
             cmd.CommandText = setting;
-            await cmd.ExecuteNonQueryAsync(ct);
+            await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
         }
     }
 }

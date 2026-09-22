@@ -148,7 +148,7 @@ public sealed class ParquetSourceNode<T> : SourceNode<T>
         ParquetConfiguration config,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var files = await DiscoverParquetFiles(provider, uri, config, cancellationToken);
+        var files = await DiscoverParquetFiles(provider, uri, config, cancellationToken).ConfigureAwait(false);
 
         if (config.FileReadParallelism <= 1 || files.Count <= 1)
         {
@@ -156,7 +156,7 @@ public sealed class ParquetSourceNode<T> : SourceNode<T>
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                await foreach (var item in ReadFile(provider, fileUri, config, cancellationToken))
+                await foreach (var item in ReadFile(provider, fileUri, config, cancellationToken).ConfigureAwait(false))
                 {
                     yield return item;
                 }
@@ -165,7 +165,7 @@ public sealed class ParquetSourceNode<T> : SourceNode<T>
             yield break;
         }
 
-        await foreach (var item in ReadAllParallel(provider, files, config, cancellationToken))
+        await foreach (var item in ReadAllParallel(provider, files, config, cancellationToken).ConfigureAwait(false))
         {
             yield return item;
         }
@@ -246,7 +246,7 @@ public sealed class ParquetSourceNode<T> : SourceNode<T>
         // Directory listing - ListAsync returns IAsyncEnumerable
         var parquetFiles = new List<StorageUri>();
 
-        await foreach (var item in provider.ListAsync(uri, config.RecursiveDiscovery, cancellationToken))
+        await foreach (var item in provider.ListAsync(uri, config.RecursiveDiscovery, cancellationToken).ConfigureAwait(false))
         {
             // Use !IsDirectory to check for files
             if (!item.IsDirectory && ParquetExtensions.Any(ext => item.Uri.Path?.EndsWith(ext, StringComparison.OrdinalIgnoreCase) == true))
@@ -269,12 +269,14 @@ public sealed class ParquetSourceNode<T> : SourceNode<T>
 
         observer?.OnFileReadStarted(fileUri);
 
-        await using var stream = await provider.OpenReadAsync(fileUri, cancellationToken);
+        var stream = await provider.OpenReadAsync(fileUri, cancellationToken).ConfigureAwait(false);
+        await using var streamScope = stream.ConfigureAwait(false);
 
         if (stream.CanSeek)
             totalBytes = stream.Length;
 
-        await using var reader = await ParquetReader.CreateAsync(stream, cancellationToken: cancellationToken);
+        var reader = await ParquetReader.CreateAsync(stream, cancellationToken: cancellationToken).ConfigureAwait(false);
+        await using var readerScope = reader.ConfigureAwait(false);
 
         // Validate schema if configured
         if (config.SchemaValidator is not null)
@@ -316,7 +318,7 @@ public sealed class ParquetSourceNode<T> : SourceNode<T>
             observer?.OnRowGroupRead(fileUri, rowGroupIndex, rowCount);
 
             // Read column data
-            var columnData = await ReadRowGroupColumns(rowGroupReader, columnNameToField, columnsToRead, cancellationToken);
+            var columnData = await ReadRowGroupColumns(rowGroupReader, columnNameToField, columnsToRead, cancellationToken).ConfigureAwait(false);
 
             // Yield rows from this row group
             for (var rowIndex = 0L; rowIndex < rowCount; rowIndex++)
@@ -375,7 +377,7 @@ public sealed class ParquetSourceNode<T> : SourceNode<T>
                 continue;
 
             // Read the column using reflection to invoke the Parquet.net v6 ReadAsync overloads.
-            var values = await ReadColumnDataAsync(rowGroupReader, field, cancellationToken);
+            var values = await ReadColumnDataAsync(rowGroupReader, field, cancellationToken).ConfigureAwait(false);
             columnData[columnName] = values;
         }
 

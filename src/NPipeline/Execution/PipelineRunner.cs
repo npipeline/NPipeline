@@ -106,8 +106,8 @@ public sealed class PipelineRunner(
     /// </example>
     public async Task RunAsync<TDefinition>(CancellationToken cancellationToken = default) where TDefinition : IPipelineDefinition, new()
     {
-        await using var context = new PipelineContext(
-            PipelineContextConfiguration.WithCancellation(cancellationToken));
+        var context = new PipelineContext(PipelineContextConfiguration.WithCancellation(cancellationToken));
+        await using var contextScope = context.ConfigureAwait(false);
 
         await RunAsync<TDefinition>(context, cancellationToken).ConfigureAwait(false);
     }

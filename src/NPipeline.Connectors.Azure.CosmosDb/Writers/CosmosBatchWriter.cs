@@ -81,7 +81,7 @@ internal sealed class CosmosBatchWriter<T> : IDatabaseWriter<T>
         _buffer.Add(item);
 
         if (_buffer.Count >= _configuration.WriteBatchSize)
-            await FlushAsync(cancellationToken);
+            await FlushAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -110,7 +110,7 @@ internal sealed class CosmosBatchWriter<T> : IDatabaseWriter<T>
 
         try
         {
-            await Task.WhenAll(tasks);
+            await Task.WhenAll(tasks).ConfigureAwait(false);
 
             if (_logger is not null)
                 LogBatchWriteSuccess(_logger, itemList.Count, typeof(T).Name, null);
@@ -146,7 +146,7 @@ internal sealed class CosmosBatchWriter<T> : IDatabaseWriter<T>
         var items = _buffer.ToList();
         _buffer.Clear();
 
-        await WriteBatchAsync(items, cancellationToken);
+        await WriteBatchAsync(items, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -156,7 +156,7 @@ internal sealed class CosmosBatchWriter<T> : IDatabaseWriter<T>
     {
         if (!_disposed)
         {
-            await FlushAsync();
+            await FlushAsync().ConfigureAwait(false);
             _disposed = true;
         }
     }

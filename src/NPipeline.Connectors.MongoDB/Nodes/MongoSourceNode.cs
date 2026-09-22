@@ -295,7 +295,7 @@ public class MongoSourceNode<T> : SourceNode<T>, IAsyncDisposable
         if (_sort != null)
             options.Sort = _sort;
 
-        _cursor = await collection.FindAsync(_filter ?? Builders<BsonDocument>.Filter.Empty, options, cancellationToken);
+        _cursor = await collection.FindAsync(_filter ?? Builders<BsonDocument>.Filter.Empty, options, cancellationToken).ConfigureAwait(false);
 
         var mapper = _customMapper ?? MongoMapperBuilder.GetOrCreateMapper<T>();
 

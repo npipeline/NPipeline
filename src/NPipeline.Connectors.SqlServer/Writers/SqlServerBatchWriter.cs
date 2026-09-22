@@ -153,7 +153,8 @@ internal sealed class SqlServerBatchWriter<T> : IDatabaseWriter<T>
         var valueClauses = new List<string>(_pendingRows.Count);
         var paramIndex = 0;
 
-        await using var command = await _connection.CreateCommandAsync(cancellationToken).ConfigureAwait(false);
+        var command = await _connection.CreateCommandAsync(cancellationToken).ConfigureAwait(false);
+        await using var commandScope = command.ConfigureAwait(false);
         command.CommandType = CommandType.Text;
         command.CommandTimeout = _configuration.CommandTimeout;
 

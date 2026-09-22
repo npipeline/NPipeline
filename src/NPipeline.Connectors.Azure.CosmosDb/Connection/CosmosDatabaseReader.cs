@@ -86,13 +86,13 @@ internal sealed class CosmosDatabaseReader : IDatabaseReader
 
             try
             {
-                var response = await _feedIterator.ReadNextAsync(cancellationToken);
+                var response = await _feedIterator.ReadNextAsync(cancellationToken).ConfigureAwait(false);
                 _currentRows.Clear();
                 _currentRowIndex = 0;
 
                 // Parse the stream response
                 using var stream = response.Content;
-                var rows = await ParseStreamResponseAsync(stream, cancellationToken);
+                var rows = await ParseStreamResponseAsync(stream, cancellationToken).ConfigureAwait(false);
 
                 foreach (var row in rows)
                 {
@@ -187,7 +187,7 @@ internal sealed class CosmosDatabaseReader : IDatabaseReader
         _columnIndexes = null;
         _disposed = true;
 
-        await ValueTask.CompletedTask;
+        await ValueTask.CompletedTask.ConfigureAwait(false);
     }
 
     /// <summary>
@@ -262,7 +262,7 @@ internal sealed class CosmosDatabaseReader : IDatabaseReader
         var rows = new List<Dictionary<string, object?>>();
 
         using var reader = new StreamReader(stream);
-        var content = await reader.ReadToEndAsync(cancellationToken);
+        var content = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
 
         try
         {

@@ -29,7 +29,7 @@ public sealed class OperationCanceledExceptionCodeFixProvider : CodeFixProvider
     /// <inheritdoc />
     public override async Task RegisterCodeFixesAsync(CodeFixContext context)
     {
-        var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken);
+        var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return;
@@ -47,7 +47,7 @@ public sealed class OperationCanceledExceptionCodeFixProvider : CodeFixProvider
         if (exceptionType == null)
             return;
 
-        var semanticModel = await context.Document.GetSemanticModelAsync(context.CancellationToken);
+        var semanticModel = await context.Document.GetSemanticModelAsync(context.CancellationToken).ConfigureAwait(false);
         var exceptionTypeInfo = semanticModel.GetTypeInfo(exceptionType);
         var exceptionTypeSymbol = exceptionTypeInfo.Type;
 
@@ -56,11 +56,11 @@ public sealed class OperationCanceledExceptionCodeFixProvider : CodeFixProvider
 
         // Register different code fixes based on the exception type
         if (exceptionTypeSymbol.Name == "Exception" && exceptionTypeSymbol.ContainingNamespace?.Name == "System")
-            await RegisterExceptionFixes(context, catchClause, diagnostic);
+            await RegisterExceptionFixes(context, catchClause, diagnostic).ConfigureAwait(false);
         else if (exceptionTypeSymbol.Name == "OperationCanceledException" && exceptionTypeSymbol.ContainingNamespace?.Name == "System")
-            await RegisterOperationCanceledExceptionFixes(context, catchClause, diagnostic);
+            await RegisterOperationCanceledExceptionFixes(context, catchClause, diagnostic).ConfigureAwait(false);
         else if (exceptionTypeSymbol.Name == "AggregateException" && exceptionTypeSymbol.ContainingNamespace?.Name == "System")
-            await RegisterAggregateExceptionFixes(context, catchClause, diagnostic);
+            await RegisterAggregateExceptionFixes(context, catchClause, diagnostic).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -136,7 +136,7 @@ public sealed class OperationCanceledExceptionCodeFixProvider : CodeFixProvider
         CatchClauseSyntax existingCatchClause,
         CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken);
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return document;
@@ -182,7 +182,7 @@ public sealed class OperationCanceledExceptionCodeFixProvider : CodeFixProvider
         CatchClauseSyntax catchClause,
         CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken);
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return document;
@@ -225,7 +225,7 @@ public sealed class OperationCanceledExceptionCodeFixProvider : CodeFixProvider
         CatchClauseSyntax catchClause,
         CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken);
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return document;
@@ -258,7 +258,7 @@ public sealed class OperationCanceledExceptionCodeFixProvider : CodeFixProvider
         CatchClauseSyntax catchClause,
         CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken);
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
 
         if (root == null)
             return document;

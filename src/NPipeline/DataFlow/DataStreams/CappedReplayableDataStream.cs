@@ -28,10 +28,18 @@ internal sealed class CappedReplayableDataStream<T> : DataStreamBase<T>
 
     public override IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
     {
-        return WithCancellation(cancellationToken).GetAsyncEnumerator(cancellationToken);
+        return Replay(cancellationToken).GetAsyncEnumerator(cancellationToken);
     }
 
-    public async IAsyncEnumerable<T> WithCancellation([EnumeratorCancellation] CancellationToken cancellationToken)
+    /// <summary>
+    ///     Replays what has already been buffered, then keeps consuming and buffering the source.
+    /// </summary>
+    /// <remarks>
+    ///     Deliberately not named <c>WithCancellation</c>: an instance method of that name beats the BCL extension in
+    ///     overload resolution, so identical-looking call sites would bind to different things depending on the static
+    ///     type of the variable.
+    /// </remarks>
+    private async IAsyncEnumerable<T> Replay([EnumeratorCancellation] CancellationToken cancellationToken)
     {
         // First replay any already buffered items
         for (var i = 0; i < _buffer.Count; i++)
@@ -59,6 +67,6 @@ internal sealed class CappedReplayableDataStream<T> : DataStreamBase<T>
     public IAsyncEnumerable<T> ToAsyncEnumerableTyped()
     {
         // Intentionally not propagating a caller token here; explicit None clarifies choice per CA2016 guidance.
-        return WithCancellation(CancellationToken.None);
+        return Replay(CancellationToken.None);
     }
 }
