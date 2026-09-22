@@ -8,25 +8,23 @@
 [![.NET](https://img.shields.io/badge/.NET-8.0%20%7C%209.0%20%7C%2010.0-blue.svg)](https://dotnet.microsoft.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-NPipeline is a modern .NET library that makes building complex data processing workflows simple and efficient. Whether you're building AI-driven data pipelines, ETL workflows, processing
-real-time data streams, or crafting sophisticated data transformation workflows, NPipeline provides the tools you need with minimal ceremony.
+NPipeline is a .NET library for building data processing pipelines. Use it for AI-driven data pipelines, ETL workflows, real-time stream processing, and data transformation workflows.
 
-## Why Choose NPipeline?
+## Why NPipeline?
 
 ### Built for Performance
 
-Stream data efficiently using `IAsyncEnumerable<T>` without loading entire datasets into memory. Perfect for processing large files, database results, or
-real-time data streams. NPipeline is designed with performance in mind:
+Stream data efficiently using `IAsyncEnumerable<T>` without loading entire datasets into memory. Perfect for processing large files, database results, or real-time data streams. NPipeline is designed with performance in mind:
 
 - Streaming architecture minimizes memory allocations and GC pressure
 
-- Zero-reflection execution model with pre-compiled delegates and cached execution plans
+- Reflection-free hot path using pre-compiled delegates and cached execution plans
 
 - Optimized for high-throughput using `ValueTask<T>` to eliminate heap allocations for synchronous operations
 
 ### Graph-Based Architecture
 
-Create sophisticated workflows with multiple data sources, parallel processing, joins, and branching operations. Build complex DAGs (Directed Acyclic Graphs) with ease.
+Create workflows with multiple data sources, parallel processing, joins, and branching operations. Build complex DAGs (Directed Acyclic Graphs) from typed nodes.
 
 ### Type-Safe by Design
 
@@ -38,8 +36,7 @@ Roslyn analyzers flag misconfigured retries, blocking calls, silent data loss, a
 
 ### Production-Ready Resilience
 
-Built-in error handling with retry strategies, circuit breakers, and dead letter queues. Create robust pipelines that handle failures gracefully with
-intelligent backoff and jitter patterns to prevent thundering herd problems.
+Built-in error handling with retry strategies, circuit breakers, and dead letter queues. Create pipelines that handle failures with intelligent backoff and jitter patterns to prevent thundering herd problems.
 
 ### Designed for Testing
 
@@ -65,7 +62,7 @@ NPipeline excels in scenarios where you need to process data efficiently and rel
 
 - **Batch Processing** - Process large datasets efficiently with parallel execution and state management
 
-- **AI Data Enrichment & Intelligent Routing** - Augment records with LLM-generated classifications, summaries, or entity extractions, and use Jev for ultra-fast, type-safe, and hallucination-free decisions to route to the right downstream system based on content, confidence scores, or business rules
+- **AI Data Enrichment & Intelligent Routing** - Augment records with LLM-generated classifications, summaries, or entity extractions, and use Jev for fast, type-safe, deterministic decisions to route to the right downstream system based on content, confidence scores, or business rules
 
 ## Key Concepts
 
@@ -176,6 +173,8 @@ NPipeline is modular - install only what you need.
 | **NPipeline.Analyzers**                      | Roslyn analyzers for compile-time validation, style guidance, and developer guardrails |
 | **NPipeline.Extensions.DependencyInjection** | Integration with Microsoft DI container                                                |
 | **NPipeline.Extensions.Testing**             | Core testing utilities with in-memory nodes, test harness, and assertion helpers       |
+| **NPipeline.Extensions.Testing.FluentAssertions** | FluentAssertions extensions for asserting on pipeline results                    |
+| **NPipeline.Extensions.Testing.AwesomeAssertions** | AwesomeAssertions extensions for asserting on pipeline results                   |
 
 ### Key Extensions
 
@@ -185,7 +184,7 @@ NPipeline is modular - install only what you need.
 | **NPipeline.Extensions.Lineage**       | Data lineage tracking and provenance for governance, auditing, and debugging                                               |
 | **NPipeline.Extensions.Nodes**         | Ready-made, granular nodes for common data processing tasks (cleansing, validation, transformation, enrichment, filtering) |
 | **NPipeline.Extensions.Observability** | Observability and telemetry support for pipeline monitoring                                                                |
-| **NPipeline.Extensions.Parallelism**   | Parallel processing with TPL Dataflow and configurable backpressure strategies                                             |
+| **NPipeline.Extensions.Parallelism**   | Parallel processing with configurable backpressure and queue policies                                                    |
 | **NPipeline.Extensions.AI.Decisions.Jev** | High-performance, type-safe AI decision making with Jev (System One Models) for fast routing and classification |
 
 ### Connectors
@@ -204,8 +203,7 @@ NPipeline is modular - install only what you need.
 
 ### ... And More
 
-For the complete list of all available packages see
-the [Extensions Documentation](https://docs.npipeline.net/extensions) and [Connectors Documentation](https://docs.npipeline.net/connectors).
+For the complete list of all available packages, see the [Extensions Documentation](https://docs.npipeline.net/extensions) and [Connectors Documentation](https://docs.npipeline.net/connectors).
 
 ## What's Next?
 
@@ -215,7 +213,7 @@ the [Extensions Documentation](https://docs.npipeline.net/extensions) and [Conne
 
 ## Contributing
 
-Contributions are welcome! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+Contributions are welcome. See the [Contributing Guide](CONTRIBUTING.md) for details.
 
 ## License
 

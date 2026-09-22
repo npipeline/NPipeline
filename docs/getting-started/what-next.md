@@ -6,7 +6,7 @@ order: 5
 
 # What Next?
 
-You've installed NPipeline, built your first pipeline, and understand the mental model. Where you go from here depends on what you're trying to accomplish.
+You've installed NPipeline, built your first pipeline, and understand the mental model. Where you go next depends on what you want to build.
 
 ## I Want To
 
@@ -62,7 +62,7 @@ Aggregate nodes and grouping strategies let you compute summaries over streams.
 
 ### Process large files without running out of memory
 
-NPipeline streams by default, but understanding the buffering trade-offs helps with very large datasets.
+NPipeline streams by default. Understanding the buffering trade-offs helps with very large datasets.
 
 → [Streaming Large Datasets](../guides/streaming-large-datasets.md)
 
@@ -86,7 +86,7 @@ See every extension, connector, and storage provider NPipeline offers.
 
 ### Optimize performance
 
-Techniques for reducing allocations, caching execution plans, and choosing the right patterns.
+Learn techniques for reducing allocations, caching execution plans, and choosing the right patterns.
 
 → [Performance Best Practices](../performance/best-practices.md)
 

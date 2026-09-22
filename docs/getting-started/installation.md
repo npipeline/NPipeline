@@ -1,6 +1,6 @@
 ---
 title: "Installation"
-description: "Install NPipeline and verify your setup in under 2 minutes."
+description: "Install NPipeline and verify your setup."
 order: 2
 ---
 
@@ -19,7 +19,7 @@ This page gets NPipeline into your .NET project. You need one package to start; 
 dotnet add package NPipeline
 ```
 
-This gives you the pipeline builder, all base node types, data streams, and the pipeline runner. It's everything you need to define and execute pipelines.
+This gives you the pipeline builder, all base node types, data streams, and the pipeline runner.
 
 ## Add Dependency Injection (Recommended)
 
@@ -29,7 +29,7 @@ Most projects benefit from automatic node discovery and DI integration:
 dotnet add package NPipeline.Extensions.DependencyInjection
 ```
 
-With this package, NPipeline scans your assemblies for nodes and pipeline definitions, then registers them in your DI container automatically.
+Use this package to discover nodes and pipeline definitions in your assemblies and register them in your DI container.
 
 ## Verify Your Setup
 
@@ -60,11 +60,12 @@ Install these as you need them. You don't need any of these to get started.
 | `NPipeline.Extensions.Composition` | Nested sub-pipelines as reusable nodes |
 | `NPipeline.Connectors.Csv` | Read/write CSV files |
 | `NPipeline.Connectors.Json` | Read/write JSON and NDJSON files |
-| `NPipeline.Connectors.Excel` | Read/write XLS and XLSX files |
+| `NPipeline.Connectors.Excel` | Read XLS and XLSX files; write XLSX files |
 | `NPipeline.Connectors.DuckDB` | Embedded analytical SQL over Parquet/CSV/JSON |
 | `NPipeline.Connectors.Parquet` | Read/write Apache Parquet files |
 
-> 🔗 **See also:** [Extensions](../extensions/index.md) for the complete list of all available packages.
+> [!NOTE]
+> For the complete package list, see [Extensions](../extensions/index.md).
 
 ## Next Steps
 

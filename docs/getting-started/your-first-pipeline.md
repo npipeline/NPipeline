@@ -1,6 +1,6 @@
 ---
 title: "Your First Pipeline"
-description: "Build and run a complete NPipeline from scratch in 10 minutes."
+description: "Build and run a complete NPipeline from scratch."
 order: 3
 ---
 

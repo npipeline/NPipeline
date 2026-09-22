@@ -45,7 +45,7 @@ await runner.RunAsync<OrderPipeline>();
 - Real-time event processing from Kafka, RabbitMQ, or Azure Service Bus
 - Data validation and cleansing workflows
 - Intelligent routing and decisioning using Jev for sub-second, type-safe classifications and branching
-- File format conversion (CSV → Parquet, JSON → database)
+- File format conversion (CSV to Parquet, JSON to database)
 - Batch processing of large datasets with controlled memory usage
 
 ## Design Principles
@@ -61,21 +61,21 @@ NPipeline's architecture is driven by a small set of non-negotiable principles:
 | **Immutable configuration** | All config records are `sealed record` with `init`-only properties. No mutation, no race conditions. |
 | **Extension points over modification** | New behavior is added through interfaces (`IExecutionStrategy`, `IResiliencePolicy`, `IDeadLetterSink`), not by modifying core classes. |
 
-→ [Full Design Principles](advanced-topics/design-principles.md)
+For more information, see [Design Principles](advanced-topics/design-principles.md).
 
 ## Get Started
 
 New to NPipeline? Follow these pages in order:
 
 1. [Installation](getting-started/installation.md) - add the NuGet packages to your project
-2. [Your First Pipeline](getting-started/your-first-pipeline.md) - build and run a working pipeline in 10 minutes
+2. [Your First Pipeline](getting-started/your-first-pipeline.md) - build and run a working pipeline
 3. [Key Concepts](getting-started/key-concepts.md) - understand nodes, streams, and graphs
 4. [What Next?](getting-started/what-next.md) - find the right guide for what you want to build
 
 ## Next Steps
 
 - [Installation](getting-started/installation.md)
-- [Guides](guides/defining-pipelines.md) for specific tasks (branching, batching, joins, etc.)
+- [Guides](guides/defining-pipelines.md) for specific tasks such as branching, batching, and joins
 - [Connectors](connectors/index.md) for reading/writing CSV, databases, message queues, and more
 - [Build-Time Analyzers](analyzers/index.md) to see what the analyzers catch
 - [Advanced Topics](advanced-topics/index.md) for architecture deep-dives and extensibility

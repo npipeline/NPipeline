@@ -6,7 +6,7 @@ order: 4
 
 # Key Concepts
 
-This page explains the three ideas you need to understand before building pipelines. No code - just the mental model.
+This page explains the three ideas to understand before building pipelines. No code - just the mental model.
 
 ## Nodes: The Building Blocks
 
@@ -24,7 +24,7 @@ A pipeline must have at least one source and one sink. It can have any number of
 
 Data moves between nodes through streams. A stream is a sequence of items delivered one at a time, asynchronously.
 
-This is different from processing all data at once. Instead of loading an entire file into memory, a source can emit rows one by one. Each row flows through the transforms and into the sink before the next row is read. This means you can process files larger than your available memory.
+This is different from processing all data at once. Instead of loading an entire file into memory, a source emits rows one by one as downstream nodes consume them. This means you can process files larger than your available memory.
 
 ```mermaid
 graph LR
@@ -73,9 +73,9 @@ graph LR
 
 The graph structure means:
 
-- **Execution order is automatic.** NPipeline figures out which nodes to run first based on their connections. You don't manage ordering yourself.
-- **Each node is independent.** Nodes don't know about each other. They only know about the data they receive and produce. This makes them easy to test in isolation.
-- **The shape is declared, not coded.** You describe the graph (which nodes exist, how they connect) and NPipeline handles the execution mechanics.
+- **Execution order is automatic.** NPipeline determines which nodes to run first based on their connections, so you don't manage ordering.
+- **Each node is independent.** Nodes don't know about each other. They only know about the data they receive and produce, which makes them easy to test in isolation.
+- **The shape is declared, not coded.** You describe the graph (which nodes exist and how they connect), and NPipeline handles the execution mechanics.
 
 ## How These Concepts Fit Together
 

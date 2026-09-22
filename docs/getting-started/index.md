@@ -1,6 +1,6 @@
 ---
 title: Getting Started
-description: Install NPipeline and build your first pipeline in minutes.
+description: Install NPipeline and build your first pipeline.
 order: 1
 ---
 
