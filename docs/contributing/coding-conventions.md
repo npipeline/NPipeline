@@ -13,7 +13,7 @@ This page documents the enforced coding standards across the NPipeline codebase.
 Defined in `Directory.Build.props`:
 
 | Setting | Value |
-|---------|-------|
+| --------- | ------- |
 | `LangVersion` | `latest` |
 | `TreatWarningsAsErrors` | `true` |
 | `Nullable` | `enable` |
@@ -57,7 +57,7 @@ NPipeline ships 20+ Roslyn analyzers in `NPipeline.Analyzers`. They run during e
 ### Configuration & Setup
 
 | ID | Severity | Rule |
-|----|----------|------|
+| ---- | ---------- | ------ |
 | NP9001 | Warning | `RestartNode` requires `ResilientExecutionStrategy`, `MaxNodeRestartAttempts > 0`, and `MaxMaterializedItems` to be set |
 | NP9002 | Error | `MaxMaterializedItems` must not be null - prevents unbounded memory growth |
 | NP9003 | Warning | Inappropriate parallelism configuration (too high for CPU-bound, too low for I/O) |
@@ -67,7 +67,7 @@ NPipeline ships 20+ Roslyn analyzers in `NPipeline.Analyzers`. They run during e
 ### Performance & Optimization
 
 | ID | Severity | Rule |
-|----|----------|------|
+| ---- | ---------- | ------ |
 | NP9101 | Warning | Blocking calls in async methods (`.Result`, `.Wait()`, `Thread.Sleep()`) |
 | NP9102 | Warning | Sync-over-async anti-patterns |
 | NP9103 | Warning | LINQ allocations in hot-path methods (`TransformAsync`, `ConsumeAsync`, `OpenStream`) |
@@ -79,7 +79,7 @@ NPipeline ships 20+ Roslyn analyzers in `NPipeline.Analyzers`. They run during e
 ### Reliability & Error Handling
 
 | ID | Severity | Rule |
-|----|----------|------|
+| ---- | ---------- | ------ |
 | NP9201 | Warning | Catch block swallows `OperationCanceledException` without re-throwing |
 | NP9202 | Warning | Inefficient exception handling in hot paths |
 | NP9203 | Warning | `CancellationToken` parameter not forwarded to async calls or checked in loops |
@@ -94,7 +94,7 @@ NPipeline ships 20+ Roslyn analyzers in `NPipeline.Analyzers`. They run during e
 ### Design & Architecture
 
 | ID | Severity | Rule |
-|----|----------|------|
+| ---- | ---------- | ------ |
 | NP9401 | Info | `TransformAsync` returns `IAsyncEnumerable` - consider `IStreamTransformNode` instead |
 | NP9402 | Warning | `IStreamTransformNode` paired with a non-stream execution strategy |
 | NP9403 | Warning | Node missing public parameterless constructor (requires DI or pre-configured instance) |

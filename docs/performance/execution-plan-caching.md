@@ -24,7 +24,8 @@ Execution plan caching is **enabled by default**. `PipelineRunner.Create()` uses
 
 - Maximum 100 cached entries
 - Approximate LRU eviction when the limit is reached
-- Lock-free cache hits; locks only during eviction
+- Lock-free cache hits with atomic access-time updates
+- Serialized insertions and eviction to enforce the capacity limit
 - Thread-safe via `ConcurrentDictionary`
 
 ## Configuration

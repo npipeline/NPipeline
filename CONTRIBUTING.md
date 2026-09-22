@@ -45,7 +45,7 @@ Thank you for your interest in contributing to NPipeline! This guide will help y
    # On Windows
    .\build.ps1
    ```
-   
+
    This will restore packages, build the solution, and run tests automatically.
 
 4. **Alternative: Manual setup** (if you prefer not to use the build scripts):
@@ -256,6 +256,7 @@ The project includes custom Roslyn analyzers (`NPipeline.Analyzers`) that provid
 ### Test Framework
 
 NPipeline uses **xUnit** as the primary testing framework, along with:
+
 - **FluentAssertions** for readable assertions
 - **AwesomeAssertions** for additional assertion capabilities
 - **FakeItEasy** for mocking
@@ -270,6 +271,7 @@ NPipeline uses **xUnit** as the primary testing framework, along with:
 ### Writing Tests
 
 1. **Arrange, Act, Assert** pattern:
+
    ```csharp
    [Fact]
    public void Method_Should_ExpectedBehavior_When_Condition()

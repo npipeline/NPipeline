@@ -12,13 +12,12 @@ namespace NPipeline.Execution.Caching;
 /// <remarks>
 ///     <para>
 ///         This implementation uses a composite cache key based on:
-///         - Pipeline definition type name
-///         - Graph structure hash (nodes, edges, and node types)
+///         - Pipeline definition type
+///         - The node properties consumed when execution plans are built
 ///     </para>
 ///     <para>
 ///         The cache has a maximum size of 100 entries. When the limit is reached,
 ///         the least recently used entry is evicted using an approximate LRU algorithm based on timestamps.
-///         This provides 99% of LRU effectiveness with minimal lock contention.
 ///         For applications with many dynamic pipeline definitions,
 ///         consider implementing a custom cache with different eviction policies or using a distributed cache.
 ///     </para>
@@ -26,7 +25,7 @@ namespace NPipeline.Execution.Caching;
 public sealed class InMemoryPipelineExecutionPlanCache : IPipelineExecutionPlanCache
 {
     private const int MaxCacheSize = 100;
-    private readonly ConcurrentDictionary<PipelineExecutionPlanCacheKey, (Dictionary<string, NodeExecutionPlan> Plans, long LastAccess)> _cache = new();
+    private readonly ConcurrentDictionary<PipelineExecutionPlanCacheKey, CacheEntry> _cache = new();
     private readonly object _evictionLock = new();
 
     /// <inheritdoc />
@@ -42,10 +41,7 @@ public sealed class InMemoryPipelineExecutionPlanCache : IPipelineExecutionPlanC
 
         if (_cache.TryGetValue(cacheKey, out var entry))
         {
-            // Update last access timestamp without locking (atomic operation)
-            // This eliminates lock contention on cache hits
-            var updatedEntry = (entry.Plans, Stopwatch.GetTimestamp());
-            _cache[cacheKey] = updatedEntry;
+            Volatile.Write(ref entry.LastAccess, Stopwatch.GetTimestamp());
 
             cachedPlans = entry.Plans;
             return true;
@@ -68,19 +64,20 @@ public sealed class InMemoryPipelineExecutionPlanCache : IPipelineExecutionPlanC
         var cacheKey = GenerateCacheKey(pipelineDefinitionType, graph);
 
         // Store a copy to prevent external modifications from cached data
-        var plansCopy = new Dictionary<string, NodeExecutionPlan>(plans);
-        var timestamp = Stopwatch.GetTimestamp();
+        var entry = new CacheEntry(new Dictionary<string, NodeExecutionPlan>(plans), Stopwatch.GetTimestamp());
 
         lock (_evictionLock)
         {
-            // Evict if at capacity using approximate LRU based on timestamps
-            while (_cache.Count >= MaxCacheSize)
+            if (_cache.ContainsKey(cacheKey))
             {
-                EvictOldestEntry();
+                _cache[cacheKey] = entry;
+                return;
             }
 
-            // Store in cache with timestamp
-            _cache[cacheKey] = (plansCopy, timestamp);
+            if (_cache.Count >= MaxCacheSize)
+                EvictOldestEntry();
+
+            _cache.TryAdd(cacheKey, entry);
         }
     }
 
@@ -105,9 +102,11 @@ public sealed class InMemoryPipelineExecutionPlanCache : IPipelineExecutionPlanC
         // Find the entry with the oldest timestamp
         foreach (var kvp in _cache)
         {
-            if (kvp.Value.LastAccess < oldestTimestamp)
+            var lastAccess = Volatile.Read(ref kvp.Value.LastAccess);
+
+            if (lastAccess < oldestTimestamp)
             {
-                oldestTimestamp = kvp.Value.LastAccess;
+                oldestTimestamp = lastAccess;
                 oldestKey = kvp.Key;
             }
         }
@@ -127,5 +126,11 @@ public sealed class InMemoryPipelineExecutionPlanCache : IPipelineExecutionPlanC
     private static PipelineExecutionPlanCacheKey GenerateCacheKey(Type pipelineDefinitionType, PipelineGraph graph)
     {
         return PipelineExecutionPlanCacheKey.Create(pipelineDefinitionType, graph);
+    }
+
+    private sealed class CacheEntry(Dictionary<string, NodeExecutionPlan> plans, long lastAccess)
+    {
+        public readonly Dictionary<string, NodeExecutionPlan> Plans = plans;
+        public long LastAccess = lastAccess;
     }
 }

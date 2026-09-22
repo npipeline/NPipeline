@@ -22,6 +22,8 @@ namespace NPipeline.Tests.Execution.Caching;
 /// </summary>
 public sealed class ExecutionPlanCacheKeyTests
 {
+    private const int CacheCapacity = 100;
+
     [Fact]
     public void AStructurallyIdenticalGraph_ReusesCachedPlans()
     {
@@ -83,11 +85,73 @@ public sealed class ExecutionPlanCacheKeyTests
         _ = cache.TryGetCachedPlans(typeof(DefinitionA), rewritten, out _).Should().BeTrue();
     }
 
+    [Fact]
+    public void ReplacingAnEntryAtCapacity_DoesNotEvictAnotherEntry()
+    {
+        var cache = new InMemoryPipelineExecutionPlanCache();
+        var graphs = Enumerable.Range(0, CacheCapacity).Select(BuildGraph).ToArray();
+
+        foreach (var graph in graphs)
+        {
+            cache.CachePlans(typeof(DefinitionA), graph, PlansFor(graph));
+        }
+
+        cache.CachePlans(typeof(DefinitionA), graphs[^1], PlansFor(graphs[^1]));
+
+        cache.Count.Should().Be(CacheCapacity);
+
+        foreach (var graph in graphs)
+        {
+            _ = cache.TryGetCachedPlans(typeof(DefinitionA), graph, out _).Should().BeTrue();
+        }
+    }
+
+    [Fact]
+    public void AddingAnEntryBeyondCapacity_EvictsOneEntryAndRemainsBounded()
+    {
+        var cache = new InMemoryPipelineExecutionPlanCache();
+        var graphs = Enumerable.Range(0, CacheCapacity + 1).Select(BuildGraph).ToArray();
+
+        foreach (var graph in graphs)
+        {
+            cache.CachePlans(typeof(DefinitionA), graph, PlansFor(graph));
+        }
+
+        cache.Count.Should().Be(CacheCapacity);
+        _ = cache.TryGetCachedPlans(typeof(DefinitionA), graphs[^1], out _).Should().BeTrue();
+    }
+
+    [Fact]
+    public void ConcurrentReadsAndInsertions_NeverExceedCapacity()
+    {
+        var cache = new InMemoryPipelineExecutionPlanCache();
+        var graphs = Enumerable.Range(0, CacheCapacity * 3).Select(BuildGraph).ToArray();
+
+        foreach (var graph in graphs.Take(CacheCapacity))
+        {
+            cache.CachePlans(typeof(DefinitionA), graph, PlansFor(graph));
+        }
+
+        Parallel.For(0, 10_000, i =>
+        {
+            var graph = graphs[i % graphs.Length];
+
+            if ((i & 1) == 0)
+                _ = cache.TryGetCachedPlans(typeof(DefinitionA), graph, out _);
+            else
+                cache.CachePlans(typeof(DefinitionA), graph, PlansFor(graph));
+        });
+
+        cache.Count.Should().BeLessThanOrEqualTo(CacheCapacity);
+    }
+
     private static Dictionary<string, NodeExecutionPlan> PlansFor(PipelineGraph graph)
     {
+        var source = graph.Nodes[0];
+
         return new Dictionary<string, NodeExecutionPlan>(StringComparer.Ordinal)
         {
-            ["src"] = new("src", NodeKind.Source, null, typeof(int)),
+            [source.Id] = new(source.Id, NodeKind.Source, null, typeof(int)),
         };
     }
 
@@ -96,6 +160,16 @@ public sealed class ExecutionPlanCacheKeyTests
         var builder = new PipelineBuilder().WithoutExtendedValidation();
         var source = builder.AddSource<Source, int>("src");
         var sink = builder.AddSink<Sink, int>("snk");
+        _ = builder.Connect(source, sink);
+
+        return builder.Build().Graph;
+    }
+
+    private static PipelineGraph BuildGraph(int suffix)
+    {
+        var builder = new PipelineBuilder().WithoutExtendedValidation();
+        var source = builder.AddSource<Source, int>($"src-{suffix}");
+        var sink = builder.AddSink<Sink, int>($"snk-{suffix}");
         _ = builder.Connect(source, sink);
 
         return builder.Build().Graph;
