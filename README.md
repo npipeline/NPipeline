@@ -65,7 +65,7 @@ NPipeline excels in scenarios where you need to process data efficiently and rel
 
 - **Batch Processing** - Process large datasets efficiently with parallel execution and state management
 
-- **AI Data Enrichment & Intelligent Routing** - Augment records with LLM-generated classifications, summaries, or entity extractions, then route to the right downstream system based on content, confidence scores, or business rules
+- **AI Data Enrichment & Intelligent Routing** - Augment records with LLM-generated classifications, summaries, or entity extractions, and use Jev for ultra-fast, type-safe, and hallucination-free decisions to route to the right downstream system based on content, confidence scores, or business rules
 
 ## Key Concepts
 
@@ -186,6 +186,7 @@ NPipeline is modular - install only what you need.
 | **NPipeline.Extensions.Nodes**         | Ready-made, granular nodes for common data processing tasks (cleansing, validation, transformation, enrichment, filtering) |
 | **NPipeline.Extensions.Observability** | Observability and telemetry support for pipeline monitoring                                                                |
 | **NPipeline.Extensions.Parallelism**   | Parallel processing with TPL Dataflow and configurable backpressure strategies                                             |
+| **NPipeline.Extensions.AI.Decisions.Jev** | High-performance, type-safe AI decision making with Jev (System One Models) for fast routing and classification |
 
 ### Connectors
 

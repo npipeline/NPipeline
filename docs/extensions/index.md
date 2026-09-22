@@ -4,14 +4,12 @@ description: "All NPipeline packages at a glance - extensions, connectors, stora
 order: 6
 ---
 
-# Extensions
-
 NPipeline is distributed as a set of NuGet packages. The core `NPipeline` package provides the pipeline runtime, node abstractions, error handling, and configuration. Everything else is an optional extension you install as needed.
 
 ## Core Packages
 
 | Package | Description |
-|---------|-------------|
+| --- | --- |
 | `NPipeline` | Pipeline runtime, node base classes, resilience, error handling, configuration |
 | `NPipeline.Analyzers` | Roslyn analyzers and code fixes for pipeline configuration issues |
 
@@ -20,8 +18,11 @@ NPipeline is distributed as a set of NuGet packages. The core `NPipeline` packag
 These packages add capabilities to the core pipeline runtime.
 
 | Package | Description | Docs |
-|---------|-------------|------|
-| `NPipeline.Extensions.AI` | AI-powered transform and enrichment nodes using any `IChatClient` provider | [Reference](ai.md) |
+| --- | --- | --- |
+| `NPipeline.Extensions.AI` | Shared AI invocation metadata and exception contracts | [Overview](ai.md) |
+| `NPipeline.Extensions.AI.Chat` | Chat-model transforms and enrichment using any `IChatClient` provider | [Reference](ai-chat.md) |
+| `NPipeline.Extensions.AI.Decisions` | Provider-neutral typed classification and confidence-aware routing | [Reference](ai-decisions.md) |
+| `NPipeline.Extensions.AI.Decisions.Jev` | TypeSafe AI Jev decisions and Choice routing | [Reference](ai-decisions-jev.md) |
 | `NPipeline.Extensions.DependencyInjection` | Microsoft.Extensions.DependencyInjection integration for automatic node resolution | [Reference](dependency-injection.md) · [Guide](../guides/dependency-injection.md) |
 | `NPipeline.Extensions.Nodes` | Pre-built utility nodes: cleansing, validation, filtering, conversion, enrichment | [Reference](utility-nodes.md) |
 | `NPipeline.Extensions.Composition` | Treat entire pipelines as nodes within larger pipelines | [Reference](composition.md) · [Guide](../guides/pipeline-composition.md) |
@@ -40,7 +41,7 @@ Connectors provide pre-built source and sink nodes for reading from and writing 
 ### File Formats
 
 | Package | Description |
-|---------|-------------|
+| --- | --- |
 | `NPipeline.Connectors.Csv` | CSV source/sink using CsvHelper |
 | `NPipeline.Connectors.Json` | JSON source/sink using System.Text.Json |
 | `NPipeline.Connectors.Parquet` | Parquet source/sink using Parquet.Net |
@@ -49,7 +50,7 @@ Connectors provide pre-built source and sink nodes for reading from and writing 
 ### Databases
 
 | Package | Description |
-|---------|-------------|
+| --- | --- |
 | `NPipeline.Connectors.Postgres` | PostgreSQL source/sink using Npgsql |
 | `NPipeline.Connectors.SqlServer` | SQL Server source/sink using Microsoft.Data.SqlClient |
 | `NPipeline.Connectors.MySql` | MySQL/MariaDB source/sink with streaming and bulk-load writes |
@@ -61,7 +62,7 @@ Connectors provide pre-built source and sink nodes for reading from and writing 
 ### Message Queues
 
 | Package | Description |
-|---------|-------------|
+| --- | --- |
 | `NPipeline.Connectors.Kafka` | Apache Kafka source/sink with Avro/Protobuf support |
 | `NPipeline.Connectors.RabbitMQ` | RabbitMQ streaming source/sink (async API) |
 | `NPipeline.Connectors.Azure.ServiceBus` | Azure Service Bus source/sink with queues and topics |
@@ -70,14 +71,14 @@ Connectors provide pre-built source and sink nodes for reading from and writing 
 ### Specialized
 
 | Package | Description |
-|---------|-------------|
+| --- | --- |
 | `NPipeline.Connectors.Http` | HTTP/REST API source/sink with pagination, auth, retry, rate limiting |
 | `NPipeline.Connectors.DataLake` | Data Lake table abstractions with partitioning, manifests, snapshots, time travel |
 
 ### Connector Analyzers
 
 | Package | Description |
-|---------|-------------|
+| --- | --- |
 | `NPipeline.Connectors.Postgres.Analyzers` | PostgreSQL-specific analyzers (checkpointing validation) |
 | `NPipeline.Connectors.SqlServer.Analyzers` | SQL Server-specific analyzers (checkpointing validation) |
 
@@ -86,7 +87,7 @@ Connectors provide pre-built source and sink nodes for reading from and writing 
 Storage providers implement the `IStorageProvider` abstraction used by file-based connectors (CSV, JSON, Parquet, Excel) to read and write from different storage backends.
 
 | Package | Description |
-|---------|-------------|
+| --- | --- |
 | `NPipeline.StorageProviders.S3` | AWS S3 storage provider |
 | `NPipeline.StorageProviders.S3.Compatible` | S3-compatible storage (MinIO, DigitalOcean Spaces, etc.) |
 | `NPipeline.StorageProviders.Azure` | Azure Blob Storage provider |
