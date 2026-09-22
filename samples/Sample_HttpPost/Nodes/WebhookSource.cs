@@ -18,7 +18,7 @@ namespace Sample_HttpPost.Nodes;
 ///     This source must be registered as a singleton in the DI container so that
 ///     both the HTTP controller (push) and the pipeline (pull) can access the same instance.
 /// </remarks>
-public class WebhookSource : ISourceNode<WebhookData>
+public class WebhookSource : ISourceNode<WebhookData>, IAsyncDisposable
 {
     private readonly Channel<WebhookData> _channel;
     private readonly ILogger<WebhookSource> _logger;

@@ -130,7 +130,7 @@ public class ContextInheritanceTests
 
     // Test helper nodes and pipelines
 
-    private sealed class SimpleIntSource : ISourceNode<int>
+    private sealed class SimpleIntSource : ISourceNode<int>, IAsyncDisposable
     {
         public IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
@@ -301,7 +301,7 @@ public class ContextInheritanceTests
         }
     }
 
-    private sealed class DummySink : ISinkNode<int>
+    private sealed class DummySink : ISinkNode<int>, IAsyncDisposable
     {
         public async Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken cancellationToken)
         {
@@ -318,7 +318,7 @@ public class ContextInheritanceTests
         }
     }
 
-    private sealed class ModificationCheckSink : ISinkNode<int>
+    private sealed class ModificationCheckSink : ISinkNode<int>, IAsyncDisposable
     {
         public static string? ValueAfterSubPipeline { get; private set; }
 

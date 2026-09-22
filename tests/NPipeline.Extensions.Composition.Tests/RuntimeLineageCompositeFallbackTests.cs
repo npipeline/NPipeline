@@ -76,7 +76,7 @@ public sealed class RuntimeLineageCompositeFallbackTests
             : throw new InvalidOperationException("Expected collected output items in pipeline context.");
     }
 
-    private sealed class IntSource : ISourceNode<int>
+    private sealed class IntSource : ISourceNode<int>, IAsyncDisposable
     {
         public IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
             => new InMemoryDataStream<int>([1, 2, 3], nameof(IntSource));
@@ -105,7 +105,7 @@ public sealed class RuntimeLineageCompositeFallbackTests
         }
     }
 
-    private sealed class CollectingSink : ISinkNode<int>
+    private sealed class CollectingSink : ISinkNode<int>, IAsyncDisposable
     {
         public const string ReceivedItemsKey = "RuntimeLineageCompositeFallbackTests.CollectingSink.ReceivedItems";
 

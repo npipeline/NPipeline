@@ -75,7 +75,7 @@ public class CompositeErrorHandlingTests
 
     // Test helper nodes and pipelines
 
-    private sealed class ErrorSource : ISourceNode<int>
+    private sealed class ErrorSource : ISourceNode<int>, IAsyncDisposable
     {
         public IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
@@ -127,7 +127,7 @@ public class CompositeErrorHandlingTests
         }
     }
 
-    private sealed class TestSink : ISinkNode<int>
+    private sealed class TestSink : ISinkNode<int>, IAsyncDisposable
     {
         public async Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken cancellationToken)
         {
@@ -194,7 +194,7 @@ public class CompositeErrorHandlingTests
         }
     }
 
-    private sealed class EmptySource : ISourceNode<int>
+    private sealed class EmptySource : ISourceNode<int>, IAsyncDisposable
     {
         public IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
@@ -227,7 +227,7 @@ public class CompositeErrorHandlingTests
 
     // Nullable output tests
 
-    private sealed class NullableSource : ISourceNode<string?>
+    private sealed class NullableSource : ISourceNode<string?>, IAsyncDisposable
     {
         public IDataStream<string?> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
@@ -262,7 +262,7 @@ public class CompositeErrorHandlingTests
         }
     }
 
-    private sealed class NullableTestSink : ISinkNode<string?>
+    private sealed class NullableTestSink : ISinkNode<string?>, IAsyncDisposable
     {
         public static string? ReceivedValue { get; private set; }
 

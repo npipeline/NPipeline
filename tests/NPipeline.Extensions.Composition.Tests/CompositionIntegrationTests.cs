@@ -40,7 +40,7 @@ public class CompositionIntegrationTests
         ContextAwareTransform.ReceivedParameter.Should().Be("InheritedValue");
     }
 
-    private sealed class TestSource : ISourceNode<int>
+    private sealed class TestSource : ISourceNode<int>, IAsyncDisposable
     {
         public IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
@@ -54,7 +54,7 @@ public class CompositionIntegrationTests
         }
     }
 
-    private sealed class TestSink : ISinkNode<int>
+    private sealed class TestSink : ISinkNode<int>, IAsyncDisposable
     {
         public static readonly List<int> ReceivedItems = [];
 

@@ -60,7 +60,7 @@ public class NestedCompositionTests
 
     // Test helper nodes and pipelines
 
-    private sealed class IntSource : ISourceNode<int>
+    private sealed class IntSource : ISourceNode<int>, IAsyncDisposable
     {
         public IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
@@ -74,7 +74,7 @@ public class NestedCompositionTests
         }
     }
 
-    private sealed class SmallIntSource : ISourceNode<int>
+    private sealed class SmallIntSource : ISourceNode<int>, IAsyncDisposable
     {
         public IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
@@ -88,7 +88,7 @@ public class NestedCompositionTests
         }
     }
 
-    private sealed class CollectorSink : ISinkNode<int>
+    private sealed class CollectorSink : ISinkNode<int>, IAsyncDisposable
     {
         public static readonly List<int> CollectedValues = [];
 

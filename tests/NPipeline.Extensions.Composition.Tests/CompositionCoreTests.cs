@@ -520,7 +520,7 @@ namespace NPipeline.Extensions.Composition.Tests
                 : throw new InvalidOperationException($"Expected sink output under context key '{key}'.");
         }
 
-        private sealed class TestSource : ISourceNode<int>
+        private sealed class TestSource : ISourceNode<int>, IAsyncDisposable
         {
             public IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
                 => new InMemoryDataStream<int>([1, 2, 3], "TestSource");
@@ -528,7 +528,7 @@ namespace NPipeline.Extensions.Composition.Tests
             public ValueTask DisposeAsync() { GC.SuppressFinalize(this); return ValueTask.CompletedTask; }
         }
 
-        private sealed class TestSink : ISinkNode<int>
+        private sealed class TestSink : ISinkNode<int>, IAsyncDisposable
         {
             public async Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken cancellationToken)
             {
@@ -584,7 +584,7 @@ namespace NPipeline.Extensions.Composition.Tests
             }
         }
 
-        private sealed class CompositeInputOutputSink : ISinkNode<int>
+        private sealed class CompositeInputOutputSink : ISinkNode<int>, IAsyncDisposable
         {
             public const string ContextItemsKey = "CompositionCoreTests.CompositeInputOutputSink.ReceivedItems";
 
@@ -600,7 +600,7 @@ namespace NPipeline.Extensions.Composition.Tests
             public ValueTask DisposeAsync() { GC.SuppressFinalize(this); return ValueTask.CompletedTask; }
         }
 
-        private sealed class ParentSink : ISinkNode<int>
+        private sealed class ParentSink : ISinkNode<int>, IAsyncDisposable
         {
             public const string ContextItemsKey = "CompositionCoreTests.ParentSink.ReceivedItems";
 
@@ -629,7 +629,7 @@ namespace NPipeline.Extensions.Composition.Tests
             }
         }
 
-        private sealed class TrackedSink : ISinkNode<int>
+        private sealed class TrackedSink : ISinkNode<int>, IAsyncDisposable
         {
             public const string ContextItemsKey = "CompositionCoreTests.TrackedSink.ReceivedItems";
 

@@ -387,7 +387,7 @@ public class NestedObservabilityAndLineageTests
         public void OnQueueMetrics(QueueMetricsEvent e) { }
     }
 
-    private sealed class TestSource : ISourceNode<int>
+    private sealed class TestSource : ISourceNode<int>, IAsyncDisposable
     {
         public IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
             => new InMemoryDataStream<int>([1, 2, 3], "TestSource");
@@ -427,7 +427,7 @@ public class NestedObservabilityAndLineageTests
         }
     }
 
-    private sealed class TestSink : ISinkNode<int>
+    private sealed class TestSink : ISinkNode<int>, IAsyncDisposable
     {
         public static readonly List<int> ReceivedItems = [];
 
