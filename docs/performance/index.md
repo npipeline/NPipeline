@@ -17,3 +17,4 @@ For pipelines processing millions of items per second, switch to `PipelineOptimi
 - [Best Practices](best-practices.md) - do's and don'ts backed by analyzer rules
 - [Synchronous Fast Paths](synchronous-fast-paths.md) - eliminate Task allocations with `ValueTask` for synchronous transforms
 - [Execution Plan Caching](execution-plan-caching.md) - avoid reflection overhead on repeated pipeline runs
+- [Graph Caching](graph-caching.md) - build the pipeline graph once instead of on every run

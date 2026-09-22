@@ -12,9 +12,11 @@ When a pipeline runs, NPipeline builds a `NodeExecutionPlan` for each node - pre
 
 ## How It Works
 
-1. **First run:** The pipeline graph is built, a SHA256 hash is computed from node IDs, types, edges, and execution strategies. `NodeExecutionPlan` objects are created for each node and cached under the composite key `(TypeName, GraphHash)`.
-2. **Subsequent runs:** If the pipeline definition type and graph hash match a cached entry, the pre-bound plans are reused. No type inspection or delegate binding occurs.
-3. **Cache invalidation:** If you change the pipeline definition (add/remove nodes, change connections), the graph hash changes and a new entry is cached.
+1. **First run:** `NodeExecutionPlan` objects are created for each node and cached under a key built from the definition type and, for each node, its ID, kind, node type, input and output types, and execution strategy type.
+2. **Subsequent runs:** If the key matches a cached entry, the pre-bound plans are reused. No type inspection or delegate binding occurs.
+3. **Cache invalidation:** If you change the pipeline definition (add or remove nodes, change types), the key changes and a new entry is cached.
+
+The key is compared exactly rather than by digest, preventing key collisions between different graphs.
 
 ## Default Behavior
 
@@ -74,5 +76,6 @@ Caching is automatically bypassed when the pipeline graph contains pre-configure
 
 ## Next Steps
 
+- [Graph Caching](graph-caching.md) - skip the graph build itself, not just the plans
 - [Synchronous Fast Paths](synchronous-fast-paths.md) - eliminate per-item Task allocations
 - [Performance Best Practices](best-practices.md) - broader optimization guidance
