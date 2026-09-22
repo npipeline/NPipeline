@@ -10,16 +10,16 @@
 
     <PropertyGroup>
         <WarningsNotAsErrors>$(WarningsNotAsErrors);CS1591</WarningsNotAsErrors>
-        <PackageId>NPipeline.Extensions.AI</PackageId>
-        <Description>Shared contracts and diagnostics for NPipeline AI extensions.</Description>
-        <PackageTags>npipeline;extensions;ai;pipeline</PackageTags>
+        <PackageId>NPipeline.Extensions.AI.Decisions.Jev</PackageId>
+        <Description>TypeSafe AI Jev decision models and confidence-aware routing for NPipeline.</Description>
+        <PackageTags>npipeline;extensions;ai;decisions;jev;typesafe;classification;routing</PackageTags>
         <PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
         <PackageIcon>icon.png</PackageIcon>
         <PackageReadmeFile>README.md</PackageReadmeFile>
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\NPipeline\NPipeline.csproj"/>
+        <ProjectReference Include="..\NPipeline.Extensions.AI.Decisions\NPipeline.Extensions.AI.Decisions.csproj"/>
     </ItemGroup>
 
     <ItemGroup>

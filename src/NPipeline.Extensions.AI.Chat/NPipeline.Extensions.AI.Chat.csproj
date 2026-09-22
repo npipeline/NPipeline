@@ -10,16 +10,26 @@
 
     <PropertyGroup>
         <WarningsNotAsErrors>$(WarningsNotAsErrors);CS1591</WarningsNotAsErrors>
-        <PackageId>NPipeline.Extensions.AI</PackageId>
-        <Description>Shared contracts and diagnostics for NPipeline AI extensions.</Description>
-        <PackageTags>npipeline;extensions;ai;pipeline</PackageTags>
+
+        <!-- NuGet Packaging Metadata -->
+        <PackageId>NPipeline.Extensions.AI.Chat</PackageId>
+        <Description>Chat-model transformation and enrichment nodes for NPipeline using Microsoft.Extensions.AI.IChatClient.</Description>
+        <PackageTags>npipeline;extensions;ai;llm;openai;ollama;anthropic;classification;sentiment;etl;pipeline;streaming</PackageTags>
+        <Authors>NPipeline contributors</Authors>
+        <RepositoryUrl>https://github.com/NPipeline/NPipeline.git</RepositoryUrl>
+        <PackageProjectUrl>https://github.com/NPipeline/NPipeline</PackageProjectUrl>
         <PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
+        <PublishRepositoryUrl>true</PublishRepositoryUrl>
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
         <PackageIcon>icon.png</PackageIcon>
         <PackageReadmeFile>README.md</PackageReadmeFile>
     </PropertyGroup>
 
     <ItemGroup>
         <ProjectReference Include="..\NPipeline\NPipeline.csproj"/>
+        <ProjectReference Include="..\NPipeline.Extensions.AI\NPipeline.Extensions.AI.csproj"/>
+        <PackageReference Include="Microsoft.Extensions.AI.Abstractions"/>
     </ItemGroup>
 
     <ItemGroup>

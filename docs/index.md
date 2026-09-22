@@ -44,6 +44,7 @@ await runner.RunAsync<OrderPipeline>();
 - ETL pipelines (extract from APIs/databases, transform, load elsewhere)
 - Real-time event processing from Kafka, RabbitMQ, or Azure Service Bus
 - Data validation and cleansing workflows
+- Intelligent routing and decisioning using Jev for sub-second, type-safe classifications and branching
 - File format conversion (CSV → Parquet, JSON → database)
 - Batch processing of large datasets with controlled memory usage
 

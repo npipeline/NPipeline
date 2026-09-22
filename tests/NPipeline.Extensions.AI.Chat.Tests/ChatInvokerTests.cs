@@ -1,0 +1,86 @@
+using Microsoft.Extensions.AI;
+using NPipeline.Extensions.AI.Chat.Configuration;
+using NPipeline.Extensions.AI.Chat.Exceptions;
+using NPipeline.Extensions.AI.Chat.Nodes;
+using NPipeline.Pipeline;
+
+namespace NPipeline.Extensions.AI.Chat.Tests;
+
+public class ChatInvokerErrorPathTests
+{
+    [Fact]
+    public async Task InvokeTransform_MarkdownFencedJson_DeserializesSuccessfully()
+    {
+        var client = FakeChatClient.ThatReturns(
+            "```json\n{\"category\":\"Greeting\",\"confidence\":0.95}\n```");
+
+        var node = CreateTransformNode(client);
+
+        var result = await node.TransformAsync(
+            new TestDomain.Comment("hello", "alice"),
+            new PipelineContext(),
+            CancellationToken.None);
+
+        Assert.Equal("Greeting", result.Category);
+        Assert.Equal(0.95f, result.Confidence);
+    }
+
+    [Fact]
+    public async Task InvokeTransform_MarkdownFencedJson_NoNewlineAfterTag_DeserializesSuccessfully()
+    {
+        var client = FakeChatClient.ThatReturns(
+            "```json{\"category\":\"Greeting\",\"confidence\":0.95}```");
+
+        var node = CreateTransformNode(client);
+
+        var result = await node.TransformAsync(
+            new TestDomain.Comment("hello", "alice"),
+            new PipelineContext(),
+            CancellationToken.None);
+
+        Assert.Equal("Greeting", result.Category);
+        Assert.Equal(0.95f, result.Confidence);
+    }
+
+    [Fact]
+    public async Task InvokeTransform_JsonNullArray_ThrowsDeserializationError()
+    {
+        var client = FakeChatClient.ThatReturns("[null]");
+        var node = CreateTransformNode(client);
+
+        var ex = await Assert.ThrowsAsync<ChatTransformException>(() =>
+            node.TransformAsync(new TestDomain.Comment("hello", "alice"), new PipelineContext(), CancellationToken.None).AsTask());
+
+        Assert.Contains("deserialize", ex.Message);
+    }
+
+    [Fact]
+    public async Task InvokeTransform_TimeoutException_Propagates()
+    {
+        var client = FakeChatClient.ThatThrows(new TimeoutException("timed out"));
+        var node = CreateTransformNode(client);
+
+        await Assert.ThrowsAsync<TimeoutException>(() =>
+            node.TransformAsync(new TestDomain.Comment("hello", "alice"), new PipelineContext(), CancellationToken.None).AsTask());
+    }
+
+    [Fact]
+    public async Task InvokeTransform_OperationCanceled_Propagates()
+    {
+        var client = FakeChatClient.ThatThrows(new OperationCanceledException("cancelled"));
+        var node = CreateTransformNode(client);
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() =>
+            node.TransformAsync(new TestDomain.Comment("hello", "alice"), new PipelineContext(), CancellationToken.None).AsTask());
+    }
+
+    private static ChatTransformNode<TestDomain.Comment, TestDomain.ClassificationResult> CreateTransformNode(IChatClient client)
+    {
+        return new ChatTransformNode<TestDomain.Comment, TestDomain.ClassificationResult>(client)
+        {
+            Options = new ChatTransformOptions<TestDomain.Comment, TestDomain.ClassificationResult>(
+                "Classify.",
+                c => $"Classify: {c.Text}"),
+        };
+    }
+}
