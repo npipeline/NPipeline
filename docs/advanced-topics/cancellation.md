@@ -30,7 +30,7 @@ The token enters through `PipelineRunner.RunAsync()`:
 await runner.RunAsync<MyPipeline>(context, cancellationToken);
 ```
 
-If no token is provided, `CancellationToken.None` is used. The token is also stored on `PipelineContext` via `PipelineContextConfiguration.WithCancellation(token)`.
+If no token is provided, `CancellationToken.None` is used. A context can also carry its own token, set with `PipelineContextConfiguration.WithCancellation(token)`. Cancelling either token stops the run: for the duration of the run, `context.CancellationToken` is linked to both, so nodes that read the context's token observe the runner's token too. When the run ends, `context.CancellationToken` is the context's own token again.
 
 ### Distribution
 

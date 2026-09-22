@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
-using NPipeline.Configuration;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.ErrorHandling;
@@ -40,8 +39,7 @@ internal sealed class BehaviorPipeline(Action<PipelineBuilder> define) : IPipeli
     {
         var runner = PipelineRunner.Create();
 
-        // The token goes on the context: node execution observes the context's token, not the one RunAsync takes.
-        await using var context = new PipelineContext(PipelineContextConfiguration.WithCancellation(cancellationToken));
+        await using var context = new PipelineContext();
 
         if (observer is not null)
             context.Observability.ExecutionObserver = observer;

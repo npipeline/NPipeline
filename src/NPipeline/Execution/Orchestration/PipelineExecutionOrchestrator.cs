@@ -77,6 +77,9 @@ internal sealed class PipelineExecutionOrchestrator : IPipelineExecutionOrchestr
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(createPipeline);
 
+        // Link the runner's token into the context's token for the whole run, cleanup included: node execution
+        // observes the context's token, so this is what lets the caller's token stop a running pipeline.
+        using var runCancellation = context.LinkRunCancellation(cancellationToken);
         using var pipelineActivity = _observabilitySurface.BeginPipeline(definitionType, context);
         PipelineGraph? graph = null;
         InitializeExecutionContext(context);
@@ -94,7 +97,7 @@ internal sealed class PipelineExecutionOrchestrator : IPipelineExecutionOrchestr
             var pipeline = createPipeline(_pipelineFactory, context);
             graph = pipeline.Graph;
 
-            var setupResult = await _setupStage.PrepareAsync(definitionType, graph, context, cancellationToken).ConfigureAwait(false);
+            var setupResult = await _setupStage.PrepareAsync(definitionType, graph, context, context.CancellationToken).ConfigureAwait(false);
             graph = setupResult.Graph;
             nodeInstances = setupResult.NodeInstances;
 

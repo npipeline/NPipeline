@@ -82,6 +82,10 @@ public sealed class PipelineContext : IAsyncDisposable
     private readonly bool _ownsParametersDictionary;
     private readonly bool _ownsPropertiesDictionary;
 
+    // The token the context was created with, and the token linked to the runner's token for the run in progress.
+    private readonly CancellationToken _configuredCancellationToken;
+    private volatile RunCancellation? _runCancellation;
+
     // Composite disposal registry for lifecycle-managed IAsyncDisposable resources (lazy initialized).
     // Guarded by _disposalGate: terminal nodes below a fan-out drain concurrently and may each register a resource.
     // Typical pipeline runs put a handful of entries in each context dictionary.
@@ -178,7 +182,7 @@ public sealed class PipelineContext : IAsyncDisposable
         var retryOptions = config.RetryOptions ?? PipelineRetryOptions.Default;
         var lineageFactory = config.LineageFactory ?? new DefaultLineageFactory(loggerFactory);
 
-        CancellationToken = config.CancellationToken;
+        _configuredCancellationToken = config.CancellationToken;
         DeadLetterSink = config.DeadLetterSink;
         ErrorHandlerFactory = config.ErrorHandlerFactory ?? new DefaultErrorHandlerFactory(loggerFactory);
 
@@ -189,6 +193,28 @@ public sealed class PipelineContext : IAsyncDisposable
         Observability = new PipelineObservabilityContext(loggerFactory, tracer, observabilityFactory);
         NodeEnvironment = new PipelineNodeEnvironmentContext();
         Lineage = new PipelineLineageContext(lineageFactory);
+    }
+
+    /// <summary>
+    ///     Makes <see cref="CancellationToken" /> also observe <paramref name="runCancellationToken" /> until the returned
+    ///     scope is disposed at the end of the run.
+    /// </summary>
+    /// <remarks>
+    ///     Node execution observes the context's token. Without this link, cancelling the token passed to the runner
+    ///     would reach only the setup stage and never stop a running pipeline.
+    /// </remarks>
+    internal IDisposable LinkRunCancellation(CancellationToken runCancellationToken)
+    {
+        if (!runCancellationToken.CanBeCanceled || runCancellationToken == _configuredCancellationToken)
+            return NoOpDisposable.Instance;
+
+        if (_runCancellation is not null)
+            throw new InvalidOperationException("A PipelineContext can only be used by one pipeline run at a time.");
+
+        var linked = CancellationTokenSource.CreateLinkedTokenSource(_configuredCancellationToken, runCancellationToken);
+        var runCancellation = new RunCancellation(this, linked);
+        _runCancellation = runCancellation;
+        return runCancellation;
     }
 
     private static IDictionary<string, object> CreateOwnedDictionary(IOptimizationProfileBehavior profileBehavior)
@@ -274,7 +300,12 @@ public sealed class PipelineContext : IAsyncDisposable
     /// <summary>
     ///     A cancellation token to monitor for pipeline cancellation requests.
     /// </summary>
-    public CancellationToken CancellationToken { get; }
+    /// <remarks>
+    ///     While a run is in progress this token is cancelled when either the token this context was created with, or
+    ///     the token passed to <see cref="IPipelineRunner.RunAsync(IPipelineDefinition, PipelineContext, CancellationToken)" />,
+    ///     is cancelled. Outside a run it is the token the context was created with.
+    /// </remarks>
+    public CancellationToken CancellationToken => _runCancellation?.Token ?? _configuredCancellationToken;
 
     /// <summary>
     ///     The sink for items that have failed processing and have been redirected.
@@ -479,5 +510,30 @@ public sealed class PipelineContext : IAsyncDisposable
 
         if (_ownsPropertiesDictionary)
             Properties.Clear();
+    }
+
+    /// <summary>
+    ///     The linked token for one run. The token is captured up front so that code still reading it after the run has
+    ///     ended gets a valid token rather than an <see cref="ObjectDisposedException" />.
+    /// </summary>
+    private sealed class RunCancellation(PipelineContext owner, CancellationTokenSource source) : IDisposable
+    {
+        public CancellationToken Token { get; } = source.Token;
+
+        public void Dispose()
+        {
+            // Unlink first, so readers fall back to the context's own token before the linked source is disposed.
+            owner._runCancellation = null;
+            source.Dispose();
+        }
+    }
+
+    private sealed class NoOpDisposable : IDisposable
+    {
+        public static NoOpDisposable Instance { get; } = new();
+
+        public void Dispose()
+        {
+        }
     }
 }
