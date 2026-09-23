@@ -1,7 +1,8 @@
 using System.Globalization;
 using Microsoft.Extensions.Logging;
-using NPipeline.Execution.Lineage;
 using NPipeline.ErrorHandling;
+using NPipeline.Execution.CircuitBreaking;
+using NPipeline.Execution.Lineage;
 using NPipeline.Lineage;
 using NPipeline.Nodes;
 using NPipeline.Observability.Logging;
@@ -29,7 +30,8 @@ internal sealed class PerItemRetryExecutor : IPerItemRetryExecutor
         CancellationToken cancellationToken,
         Guid? correlationId = null,
         int[]? ancestryInputIndices = null,
-        Action<int>? onRetry = null)
+        Action<int>? onRetry = null,
+        CircuitBreaker? circuitBreaker = null)
     {
         ArgumentNullException.ThrowIfNull(node);
         ArgumentNullException.ThrowIfNull(context);
@@ -41,22 +43,51 @@ internal sealed class PerItemRetryExecutor : IPerItemRetryExecutor
 
         while (true)
         {
+            // The breaker admits each attempt (L1). A refused attempt is reported to the policy like a failed one,
+            // with IsBreakerOpen set.
+            BreakerPermit permit = default;
+            var admitted = false;
+
             try
             {
+                if (circuitBreaker is not null)
+                {
+                    permit = await CircuitBreakerGate.AcquireAsync(circuitBreaker, context, cancellationToken).ConfigureAwait(false);
+                    admitted = true;
+                }
+
                 var output = await node.TransformAsync(item, context, cancellationToken).ConfigureAwait(false);
+
+                if (admitted)
+                {
+                    admitted = false;
+                    CircuitBreakerGate.RecordSuccess(circuitBreaker!, permit, context);
+                }
+
                 RecordLineageOutcome(hasLineageIndex, lineageInputIndex, in lineageOutcomeWriter, context, nodeId, LineageOutcomeReason.Emitted, attempt - 1);
 
                 return ItemExecutionResult<TOut>.Emitted(output, attempt - 1);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
-                // Cancelling the pipeline is not an item failure: it must not be retried, skipped, or dead-lettered.
+                // Cancelling the pipeline is not an item failure: it must not be retried, skipped, or dead-lettered, and
+                // says nothing about the dependency's health.
+                if (admitted)
+                    circuitBreaker!.Release(permit);
+
                 throw;
             }
             catch (Exception ex)
             {
                 itemActivity?.RecordException(ex);
                 PerItemRetryExecutorLogMessages.AttemptFailed(CreateLogger(context), ex, nodeId, attempt);
+
+                var refusedByBreaker = circuitBreaker is not null && !admitted && ex is CircuitBreakerOpenException;
+                var isTransient = !refusedByBreaker && options.ItemRetry.Classifier.IsTransient(ex, cancellationToken);
+
+                // Only a transient failure counts against the breaker: a permanent one says nothing about the dependency.
+                if (admitted)
+                    CircuitBreakerGate.RecordFailure(circuitBreaker!, permit, isTransient, context);
 
                 var policy = ResilienceRuntime.ResolvePolicy(context, nodeId);
 
@@ -68,7 +99,8 @@ internal sealed class PerItemRetryExecutor : IPerItemRetryExecutor
                     Exception = ex,
                     Attempt = attempt,
                     MaxRetries = options.ItemRetry.MaxRetries,
-                    IsTransient = options.ItemRetry.Classifier.IsTransient(ex, cancellationToken),
+                    IsTransient = isTransient,
+                    IsBreakerOpen = refusedByBreaker,
                     Context = context,
                 };
 

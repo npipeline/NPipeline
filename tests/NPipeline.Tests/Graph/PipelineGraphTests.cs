@@ -195,7 +195,7 @@ public class PipelineGraphTests
     [Fact]
     public void ErrorHandlingConfiguration_WithNodeResilience_Stores()
     {
-        var nodeOptions = PipelineResilienceOptions.None with { CircuitBreaker = new PipelineCircuitBreakerOptions(1, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1), false) };
+        var nodeOptions = PipelineResilienceOptions.None with { CircuitBreaker = new CircuitBreakerOptions { ConsecutiveFailures = 1 } };
 
         ErrorHandlingConfiguration config = new()
         {
@@ -203,19 +203,6 @@ public class PipelineGraphTests
         };
 
         _ = config.NodeResilience!["node"].Should().BeSameAs(nodeOptions);
-    }
-
-    [Fact]
-    public void ErrorHandlingConfiguration_WithCircuitBreakerMemoryOptions_Stores()
-    {
-        var memoryOptions = CircuitBreakerMemoryManagementOptions.Disabled;
-
-        ErrorHandlingConfiguration config = new()
-        {
-            CircuitBreakerMemoryOptions = memoryOptions,
-        };
-
-        _ = config.CircuitBreakerMemoryOptions.Should().Be(memoryOptions);
     }
 
     [Fact]
@@ -234,20 +221,16 @@ public class PipelineGraphTests
     {
         var resilience = PipelineResilienceOptions.None with { NodeRetry = new NodeRetryOptions { MaxRetries = 2 } };
         var nodeResilience = ImmutableDictionary<string, PipelineResilienceOptions>.Empty.Add("node", resilience);
-        var memoryOptions = CircuitBreakerMemoryManagementOptions.Default;
-
         ErrorHandlingConfiguration config = new()
         {
             Resilience = resilience,
             NodeResilience = nodeResilience,
-            CircuitBreakerMemoryOptions = memoryOptions,
             ResiliencePolicyType = typeof(object),
             DeadLetterSinkType = typeof(object),
         };
 
         _ = config.Resilience.Should().Be(resilience);
         _ = config.NodeResilience.Should().BeSameAs(nodeResilience);
-        _ = config.CircuitBreakerMemoryOptions.Should().Be(memoryOptions);
         _ = config.ResiliencePolicyType.Should().NotBeNull();
         _ = config.DeadLetterSinkType.Should().NotBeNull();
     }

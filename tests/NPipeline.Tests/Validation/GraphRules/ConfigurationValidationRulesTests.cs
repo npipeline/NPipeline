@@ -4,6 +4,7 @@ using NPipeline.Execution;
 using NPipeline.Execution.Strategies;
 using NPipeline.Extensions.Testing;
 using NPipeline.Graph;
+using NPipeline.Graph.Validation;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 using NPipeline.Reliability;
@@ -73,32 +74,39 @@ public sealed class ResilienceConfigurationRuleTests
         act.Should().Throw<InvalidOperationException>().WithMessage("*node 'transform'*");
     }
 
-    [Fact]
-    public void CircuitBreaker_WithNothingToRetry_ShouldWarn()
+    [Theory]
+    [InlineData(PipelineOptimizationProfile.Default)]
+    [InlineData(PipelineOptimizationProfile.HighThroughput)]
+    public void CircuitBreaker_ShouldNotWarn_EvenWithNothingToRetry(PipelineOptimizationProfile profile)
     {
-        var builder = new PipelineBuilder().WithOptimizationProfile(PipelineOptimizationProfile.HighThroughput);
+        // Breakers outlive a run, so one on a node that retries nothing still makes the next run fail fast.
+        var builder = new PipelineBuilder().WithOptimizationProfile(profile);
         _ = Wire(builder);
 
-        builder.WithResilience(o => o with { CircuitBreaker = PipelineCircuitBreakerOptions.Default });
+        builder.WithResilience(o => o with { CircuitBreaker = CircuitBreakerOptions.Default });
 
         var ok = builder.TryBuild(out _, out var result);
 
         ok.Should().BeTrue();
-        result.Issues.Should().Contain(i => i.Category == "Resilience" && i.Message.Contains("nothing on it is ever retried"));
+        result.Issues.Should().NotContain(i => i.Category == "Resilience");
     }
 
     [Fact]
-    public void CircuitBreaker_WithRetries_ShouldNotWarn()
+    public void CircuitBreaker_OnANonTransformNode_ShouldFailTheBuild()
     {
         var builder = new PipelineBuilder();
-        _ = Wire(builder);
+        var transform = Wire(builder);
+        _ = transform;
 
-        builder.WithResilience(o => o with { CircuitBreaker = PipelineCircuitBreakerOptions.Default });
+        var source = builder.AddInMemorySourceWithDataFromContext(PipelineContext.CreateDefault(), "other-source", [1]);
+        var sink = builder.AddInMemorySink<int>("other-sink");
+        builder.Connect(source, sink);
+        builder.WithResilience(source, o => o with { CircuitBreaker = CircuitBreakerOptions.Default });
 
         var ok = builder.TryBuild(out _, out var result);
 
-        ok.Should().BeTrue("the Default profile retries items");
-        result.Issues.Should().NotContain(i => i.Category == "Resilience");
+        ok.Should().BeFalse();
+        result.Issues.Should().Contain(i => i.Severity == ValidationSeverity.Error && i.Message.Contains("CircuitBreaker"));
     }
 
     private static TransformNodeHandle<int, int> Wire(PipelineBuilder builder)

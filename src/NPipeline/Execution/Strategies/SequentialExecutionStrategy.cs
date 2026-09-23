@@ -127,7 +127,8 @@ public sealed class SequentialExecutionStrategy : IExecutionStrategy
                             lineageInputIndex,
                             cached.LineageOutcomeWriter,
                             itemActivity,
-                            ct)
+                            ct,
+                            circuitBreaker: cached.CircuitBreaker)
                         .ConfigureAwait(false);
                     observabilityScope.AddWork(Stopwatch.GetElapsedTime(workStart));
                     produced = executionResult.Produced;

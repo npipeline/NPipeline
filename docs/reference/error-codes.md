@@ -48,7 +48,7 @@ NPipeline error codes follow the pattern `NPxxxx` where the first two digits ind
 | NP0306 | ErrorHandlingFailed | The error handler itself threw an exception. |
 | NP0307 | LineageCardinalityMismatch | The number of lineage inputs doesn't match the number of outputs. Internal framework error. |
 | NP0308 | FailedToExtractItemsFromInMemoryDataStream | Could not extract items from an InMemoryDataStream. Internal framework error. |
-| NP0310 | CircuitBreakerTripped | The circuit breaker tripped after the configured threshold of consecutive failures. |
+| NP0310 | *(retired)* | No longer used. It belonged to `CircuitBreakerTrippedException`, which was never thrown and has been removed. An open breaker raises `CircuitBreakerOpenException`. |
 | NP0311 | RetryLimitExhausted | All retry attempts were exhausted. |
 
 ## NP04xx - Configuration and Setup Errors

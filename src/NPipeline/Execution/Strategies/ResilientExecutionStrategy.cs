@@ -2,7 +2,6 @@ using System.Runtime.CompilerServices;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.ErrorHandling;
-using NPipeline.Execution.CircuitBreaking;
 using NPipeline.Nodes;
 using NPipeline.Observability.Logging;
 using NPipeline.Pipeline;
@@ -20,7 +19,6 @@ namespace NPipeline.Execution.Strategies;
 ///         Performance considerations:
 ///         - Materializes streaming inputs only when necessary for resilience
 ///         - Uses CappedReplayableDataStream for efficient restart support
-///         - Implements circuit breaker pattern to prevent cascading failures
 ///         - Restarts as often as the resilience policy asks, waiting the node's NodeRestart.Backoff between runs
 ///     </para>
 /// </summary>
@@ -35,17 +33,13 @@ namespace NPipeline.Execution.Strategies;
 ///     <para>
 ///         The resilience pattern implemented here includes:
 ///         - Automatic restart on failure (when configured)
-///         - Circuit breaker to prevent repeated failures
 ///         - Restart limits and a replay cap from the node's <see cref="NodeRestartOptions" />
 ///         - Integration with pipeline-wide error handling
 ///     </para>
 ///     <para>
-///         Circuit breaker semantics:
-///         - The circuit breaker tracks consecutive failures (not total failures)
-///         - A successful item production resets the consecutive failure counter
-///         - The breaker trips only when consecutive failures exceed the threshold
-///         - This prevents premature breaker trips due to intermittent failures
-///         - The restart count is passed to the policy as <see cref="StreamFailure.Attempt" />
+///         The restart count is passed to the policy as <see cref="StreamFailure.Attempt" />. The node's circuit
+///         breaker, if it has one, guards each item attempt rather than restarts (see
+///         <see cref="PipelineResilienceOptions.CircuitBreaker" />).
 ///     </para>
 ///     <para>
 ///         Delivery guarantee on restart — <b>at-least-once, with duplicates</b>:
@@ -57,13 +51,7 @@ namespace NPipeline.Execution.Strategies;
 ///     <para>
 ///         Cancellation: cancelling the pipeline's token throws <see cref="OperationCanceledException" /> out of the
 ///         stream rather than ending it. A cancelled run never completes normally with a partial result set, and
-///         cancellation neither consumes a restart attempt nor counts as a circuit-breaker failure.
-///     </para>
-///     <para>
-///         Pattern matching enhancements:
-///         - Uses C# switch expressions for efficient error decision handling
-///         - Implements pattern-based circuit breaker logic
-///         - Leverages tuple patterns for retry state management
+///         cancellation never consumes a restart attempt.
 ///     </para>
 /// </remarks>
 /// <example>
@@ -86,7 +74,7 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
     ///     Executes a node with resilience capabilities, including automatic restart on failure.
     ///     <para>
     ///         This method wraps the inner strategy's execution with resilience features such as
-    ///         materialization for restart support, circuit breaker functionality, and retry logic.
+    ///         materialization for restart support and restart logic.
     ///     </para>
     /// </summary>
     /// <typeparam name="TIn">The input type of the node.</typeparam>
@@ -97,7 +85,6 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
     /// <param name="nodeId">The id of the node being executed, passed explicitly rather than read from the shared context.</param>
     /// <param name="cancellationToken">Cancellation token for the operation.</param>
     /// <returns>A data pipe containing the node's output with resilience capabilities.</returns>
-    /// <exception cref="CircuitBreakerOpenException">Thrown when the circuit breaker is open and blocking execution.</exception>
     /// <exception cref="RetryExhaustedException">Thrown when all retry attempts are exhausted.</exception>
     /// <exception cref="OperationCanceledException">Thrown when the operation is canceled.</exception>
     /// <remarks>
@@ -107,7 +94,6 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
     ///         2. Materialize streaming inputs if necessary to support restarts
     ///         3. Apply materialization caps to prevent memory issues
     ///         4. Create a resilient stream that handles failures according to the error handler's decisions
-    ///         5. Implement circuit breaker logic to prevent cascading failures
     ///     </para>
     ///     <para>
     ///         Materialization is a performance trade-off that enables resilience:
@@ -187,22 +173,11 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
         // Get or create a resilience activity for recording exceptions
         var resilientActivity = context.Observability.Tracer.CurrentActivity;
 
-        var circuitBreaker = CircuitBreakerResolver.Resolve(context, nodeId, options);
-
-        if (circuitBreaker is not null)
-            ResilientExecutionStrategyLogMessages.CircuitBreakerResolved(logger, nodeId, circuitBreaker.GetSnapshot().State);
-
         while (true)
         {
             // Cancellation must surface as an OperationCanceledException. Exiting the loop instead would complete the
             // iterator normally, and a cancelled run would report success with a silently truncated result set.
             cancellationToken.ThrowIfCancellationRequested();
-
-            if (circuitBreaker is not null && !circuitBreaker.CanExecute())
-            {
-                RecordDiagnostics(context, nodeId, restarts, consecutiveFailures);
-                throw CreateCircuitBreakerOpenException(nodeId, circuitBreaker, "Execution blocked before attempt due to open circuit breaker.");
-            }
 
             var sourceStream = await streamFactory().ConfigureAwait(false);
 #pragma warning disable CA2007
@@ -229,24 +204,13 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                 {
                     // Cancellation of the pipeline's own token is not a node failure: it must not consume a restart
-                    // attempt, trip the circuit breaker, or be rewritten into a RetryExhaustedException.
+                    // attempt or be rewritten into a RetryExhaustedException.
                     throw;
                 }
                 catch (Exception ex)
                 {
                     resilientActivity?.RecordException(ex);
                     consecutiveFailures++;
-
-                    if (circuitBreaker is not null)
-                    {
-                        var breakerResult = circuitBreaker.RecordFailure();
-
-                        if (!breakerResult.Allowed)
-                        {
-                            RecordDiagnostics(context, nodeId, restarts, consecutiveFailures);
-                            throw CreateCircuitBreakerOpenException(nodeId, circuitBreaker, breakerResult.Message);
-                        }
-                    }
 
                     var decision = await policy.DecideRestartAsync(new StreamFailure
                     {
@@ -294,10 +258,8 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
                     break;
                 }
 
-                // Successful item production - reset consecutive failure counter for circuit breaker
+                // A successful item production resets the consecutive failure counter.
                 consecutiveFailures = 0;
-
-                circuitBreaker?.RecordSuccess();
 
                 yield return current;
             }
@@ -313,24 +275,5 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
         registry.SetRuntimeAnnotation(PipelineContextKeys.DiagnosticsResilienceFailures(nodeId), restarts);
         registry.SetRuntimeAnnotation(PipelineContextKeys.DiagnosticsResilienceConsecutiveFailures(nodeId), consecutiveFailures);
         registry.SetRuntimeAnnotation(PipelineContextKeys.DiagnosticsResilienceThrowingOnFailure(nodeId), true);
-    }
-
-    private static NodeExecutionException CreateCircuitBreakerOpenException(string nodeId, IResilienceCircuitBreaker circuitBreaker, string? reason)
-    {
-        var detail = reason;
-
-        if (string.IsNullOrWhiteSpace(detail))
-            detail = "Circuit breaker is open and blocking execution.";
-
-        var snapshot = circuitBreaker.GetSnapshot();
-        var telemetrySuffix = snapshot.TotalOperations <= 0
-            ? $"(state: {snapshot.State}, threshold: {snapshot.FailureThreshold})"
-            :
-            $"(state: {snapshot.State}, failures: {snapshot.FailureCount}, total: {snapshot.TotalOperations}, threshold: {snapshot.FailureThreshold})";
-
-        var innerMessage = $"{detail} {telemetrySuffix}";
-        var inner = new CircuitBreakerOpenException(innerMessage.Trim());
-
-        return new NodeExecutionException(nodeId, "Circuit breaker is open and blocking execution", inner);
     }
 }

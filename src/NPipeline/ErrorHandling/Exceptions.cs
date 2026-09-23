@@ -1,3 +1,5 @@
+using NPipeline.Execution;
+
 namespace NPipeline.ErrorHandling;
 
 /// <summary>
@@ -108,80 +110,6 @@ public sealed class PipelineExecutionException : PipelineException
 }
 
 /// <summary>
-///     Exception thrown when the circuit breaker trips due to too many consecutive failures.
-///     See <see href="~/docs/reference/api/exceptions.md#circuitbreakertrippedexception" /> for detailed documentation.
-/// </summary>
-public sealed class CircuitBreakerTrippedException : PipelineException
-{
-    /// <summary>
-    ///     Initializes a new instance of the <see cref="CircuitBreakerTrippedException" /> class.
-    /// </summary>
-    public CircuitBreakerTrippedException() : base("Circuit breaker tripped.")
-    {
-        ErrorCode = "CIRCUIT_BREAKER_TRIPPED";
-    }
-
-    /// <summary>
-    ///     Initializes a new instance of the <see cref="CircuitBreakerTrippedException" /> class with a specified error message.
-    /// </summary>
-    /// <param name="message">The message that describes the error.</param>
-    public CircuitBreakerTrippedException(string message) : base(message)
-    {
-        ErrorCode = "CIRCUIT_BREAKER_TRIPPED";
-    }
-
-    /// <summary>
-    ///     Initializes a new instance of the <see cref="CircuitBreakerTrippedException" /> class with a specified error message
-    ///     and a reference to the inner exception that is the cause of this exception.
-    /// </summary>
-    /// <param name="message">The message that describes the error.</param>
-    /// <param name="innerException">The exception that is the cause of the current exception.</param>
-    public CircuitBreakerTrippedException(string message, Exception innerException) : base(message, innerException)
-    {
-        ErrorCode = "CIRCUIT_BREAKER_TRIPPED";
-    }
-
-    /// <summary>
-    ///     Initializes a new instance of the <see cref="CircuitBreakerTrippedException" /> class with the failure threshold.
-    /// </summary>
-    /// <param name="failureThreshold">The number of consecutive failures that triggered the circuit breaker.</param>
-    public CircuitBreakerTrippedException(int failureThreshold)
-        : base($"Circuit breaker tripped after reaching failure threshold of {failureThreshold} consecutive attempts.")
-    {
-        FailureThreshold = failureThreshold;
-        ErrorCode = "CIRCUIT_BREAKER_TRIPPED";
-    }
-
-    /// <summary>
-    ///     Initializes a new instance of the <see cref="CircuitBreakerTrippedException" /> class with the failure threshold and node ID.
-    /// </summary>
-    /// <param name="failureThreshold">The number of consecutive failures that triggered the circuit breaker.</param>
-    /// <param name="nodeId">The ID of the node that triggered the circuit breaker.</param>
-    public CircuitBreakerTrippedException(int failureThreshold, string nodeId)
-        : base($"Circuit breaker tripped for node '{nodeId}' after reaching failure threshold of {failureThreshold} consecutive attempts.")
-    {
-        FailureThreshold = failureThreshold;
-        NodeId = nodeId;
-        ErrorCode = "CIRCUIT_BREAKER_TRIPPED";
-    }
-
-    /// <summary>
-    ///     Gets the failure threshold that triggered the circuit breaker.
-    /// </summary>
-    public int FailureThreshold { get; }
-
-    /// <summary>
-    ///     Gets the ID of the node that triggered the circuit breaker, if applicable.
-    /// </summary>
-    public string? NodeId { get; }
-
-    /// <summary>
-    ///     Gets the error code associated with this exception.
-    /// </summary>
-    public string ErrorCode { get; }
-}
-
-/// <summary>
 ///     Exception thrown when all retry attempts have been exhausted.
 ///     See <see href="~/docs/reference/api/exceptions.md#retryexhaustedexception" /> for detailed documentation.
 /// </summary>
@@ -281,6 +209,31 @@ public sealed class CircuitBreakerOpenException : PipelineException
     {
         ErrorCode = "CIRCUIT_BREAKER_OPEN";
     }
+
+    /// <summary>
+    ///     Initializes a new instance of the <see cref="CircuitBreakerOpenException" /> class for an attempt the node's
+    ///     breaker refused.
+    /// </summary>
+    /// <param name="nodeId">The node whose breaker refused the attempt.</param>
+    /// <param name="state">The breaker's state when it refused.</param>
+    /// <param name="message">The message that describes the error.</param>
+    public CircuitBreakerOpenException(string nodeId, CircuitState state, string message) : base(message)
+    {
+        NodeId = nodeId;
+        State = state;
+        ErrorCode = "CIRCUIT_BREAKER_OPEN";
+    }
+
+    /// <summary>
+    ///     The node whose breaker refused the attempt, when known.
+    /// </summary>
+    public string? NodeId { get; }
+
+    /// <summary>
+    ///     The breaker's state when it refused the attempt: <see cref="CircuitState.Open" />, or
+    ///     <see cref="CircuitState.HalfOpen" /> with every probe slot in use.
+    /// </summary>
+    public CircuitState State { get; } = CircuitState.Open;
 
     /// <summary>
     ///     Gets the error code associated with this exception.

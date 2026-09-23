@@ -88,10 +88,7 @@ public class MyPipeline : IPipelineDefinition
         {
             ItemRetry = options.ItemRetry with { MaxRetries = 5 },
             OnItemFailure = ItemFailureAction.DeadLetter,
-            CircuitBreaker = new PipelineCircuitBreakerOptions(
-                FailureThreshold: 5,
-                OpenDuration: TimeSpan.FromMinutes(1),
-                SamplingWindow: TimeSpan.FromMinutes(5)),
+            CircuitBreaker = new CircuitBreakerOptions { ConsecutiveFailures = 5, OpenDuration = TimeSpan.FromMinutes(1) },
         });
 
         // 2. Add a dead-letter sink (where failed items go).
@@ -157,14 +154,13 @@ builder.WithResilience(transform, options => options with
 
 | Namespace | Contains |
 |-----------|----------|
-| `NPipeline.Reliability` | `PipelineResilienceOptions`, `ItemRetryOptions`, `NodeRestartOptions`, `NodeRetryOptions`, `RetryBackoff`, `RetryClassifier`, `IResiliencePolicy`, `ResiliencePolicyBase`, `ResilienceDecision` |
-| `NPipeline.ErrorHandling` | `ResiliencePolicyBuilder`, `IDeadLetterSink`, `DeadLetterEnvelope` |
-| `NPipeline.Configuration` | `PipelineCircuitBreakerOptions` |
+| `NPipeline.Reliability` | `PipelineResilienceOptions`, `ItemRetryOptions`, `NodeRestartOptions`, `NodeRetryOptions`, `CircuitBreakerOptions`, `BreakerOpenBehavior`, `RetryBackoff`, `RetryClassifier`, `IResiliencePolicy`, `ResiliencePolicyBase`, `ResilienceDecision` |
+| `NPipeline.ErrorHandling` | `ResiliencePolicyBuilder`, `IDeadLetterSink`, `DeadLetterEnvelope`, `CircuitBreakerOpenException` |
 
 ## In This Section
 
 - [Resilience Policies](resilience-policies.md) - implement custom decision logic with the fluent builder
 - [Retry Strategies](retry-strategies.md) - configure exponential, linear, or fixed backoff with jitter
-- [Circuit Breakers](circuit-breakers.md) - prevent cascading failures with automatic trip/recovery
+- [Circuit Breakers](circuit-breakers.md) - stop calling a dependency that keeps failing, and fail or pause until it recovers
 - [Dead-Letter Queues](dead-letter-queues.md) - capture and inspect failed items
 - [Materialization](materialization.md) - buffer streaming inputs to enable node restart

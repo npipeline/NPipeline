@@ -40,11 +40,6 @@ public sealed record ErrorHandlingConfiguration
     public ImmutableDictionary<string, PipelineResilienceOptions>? NodeResilience { get; init; }
 
     /// <summary>
-    ///     The circuit breaker memory management options.
-    /// </summary>
-    public CircuitBreakerMemoryManagementOptions? CircuitBreakerMemoryOptions { get; init; }
-
-    /// <summary>
     ///     Creates a new ErrorHandlingConfiguration with default values.
     /// </summary>
     public static ErrorHandlingConfiguration Default => new();

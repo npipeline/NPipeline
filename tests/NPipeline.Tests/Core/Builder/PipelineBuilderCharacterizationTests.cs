@@ -243,30 +243,22 @@ public sealed class PipelineBuilderCharacterizationTests
     {
         var b = new PipelineBuilder().WithoutExtendedValidation();
         b.AddSource<InMemorySourceNode<int>, int>("s");
-        b.WithResilience(o => o with { CircuitBreaker = new PipelineCircuitBreakerOptions(7, TimeSpan.FromSeconds(30), TimeSpan.FromMinutes(5)) });
+        b.WithResilience(o => o with { CircuitBreaker = new CircuitBreakerOptions { ConsecutiveFailures = 7 } });
         var p = b.Build();
         p.Graph.ErrorHandling.Resilience!.CircuitBreaker.Should().NotBeNull();
-        p.Graph.ErrorHandling.Resilience.CircuitBreaker!.FailureThreshold.Should().Be(7);
+        p.Graph.ErrorHandling.Resilience.CircuitBreaker!.ConsecutiveFailures.Should().Be(7);
     }
 
     [Fact]
-    public void CircuitBreakerMemoryOptions_PersistedIntoGraph()
+    public void CircuitBreakerOptions_WithNoTripCondition_FailTheBuild()
     {
-        var builder = new PipelineBuilder().WithoutExtendedValidation();
-        builder.AddSource<InMemorySourceNode<int>, int>("s");
-        builder.WithResilience(o => o with { CircuitBreaker = PipelineCircuitBreakerOptions.Default });
+        var b = new PipelineBuilder().WithoutExtendedValidation();
+        b.AddSource<InMemorySourceNode<int>, int>("s");
+        b.WithResilience(o => o with { CircuitBreaker = new CircuitBreakerOptions { ConsecutiveFailures = null } });
 
-        var customMemory = CircuitBreakerMemoryManagementOptions.Default with
-        {
-            EnableAutomaticCleanup = false,
-            MaxTrackedCircuitBreakers = 42,
-        };
+        var act = () => b.Build();
 
-        builder.ConfigureCircuitBreakerMemoryManagement(_ => customMemory);
-
-        var pipeline = builder.Build();
-        pipeline.Graph.ErrorHandling.CircuitBreakerMemoryOptions.Should().NotBeNull();
-        pipeline.Graph.ErrorHandling.CircuitBreakerMemoryOptions!.Should().Be(customMemory);
+        act.Should().Throw<InvalidOperationException>().WithMessage("*resilience options for the pipeline are invalid*");
     }
 
     [Fact]

@@ -1,7 +1,6 @@
 using NPipeline.ErrorHandling;
 using NPipeline.Execution.Annotations;
 using NPipeline.Execution.Caching;
-using NPipeline.Execution.CircuitBreaking;
 using NPipeline.Execution.Plans;
 using NPipeline.Graph;
 using NPipeline.Nodes;
@@ -35,7 +34,6 @@ internal sealed class PipelineExecutionSetupStage(
         await VisualizeIfConfiguredAsync(graph, cancellationToken).ConfigureAwait(false);
         ApplyResilienceOptions(graph, context);
         EnsureDeadLetterSinkIfNeeded(graph, context);
-        ConfigureCircuitBreaker(graph, context);
 
         var nodeInstances = nodeInstantiationService.InstantiateNodes(graph, nodeFactory);
         context.NodeEnvironment.RegisterNodes(nodeInstances);
@@ -97,27 +95,6 @@ internal sealed class PipelineExecutionSetupStage(
                 context.ExecutionConfiguration.GetResilienceOptions(node.Id).OnItemFailure == ItemFailureAction.DeadLetter)
                 throw new DeadLetterSinkNotConfiguredException(node.Id);
         }
-    }
-
-    private static void ConfigureCircuitBreaker(PipelineGraph graph, PipelineContext context)
-    {
-        var execution = context.ExecutionConfiguration;
-        execution.CircuitBreakerManager = null;
-        execution.CircuitBreakerMemoryOptions = null;
-
-        var anyBreaker = execution.Resilience.CircuitBreaker is { Enabled: true } ||
-                         graph.Nodes.Any(n => execution.GetResilienceOptions(n.Id).CircuitBreaker is { Enabled: true });
-
-        if (!anyBreaker)
-            return;
-
-        var memoryOptions = graph.ErrorHandling.CircuitBreakerMemoryOptions;
-        execution.CircuitBreakerMemoryOptions = memoryOptions;
-
-        var managerLogger = context.Observability.LoggerFactory.CreateLogger(nameof(CircuitBreakerManager));
-        var circuitBreakerManager = context.CreateAndRegister(new CircuitBreakerManager(managerLogger, memoryOptions, CircuitBreakerResolver.ReportStateChanges(context)));
-        execution.CircuitBreakerManager = circuitBreakerManager;
-        PipelineRunnerLogMessages.CircuitBreakerManagerCreated(managerLogger);
     }
 
     private static void ApplyRuntimeBindings(PipelineContext context, RuntimePipelineBindingResult runtimeBinding)

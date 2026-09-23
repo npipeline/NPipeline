@@ -224,7 +224,6 @@ public sealed partial class PipelineBuilder
             DeadLetterSinkType = ConfigurationState.DeadLetterSinkType,
             Resilience = resilience,
             NodeResilience = nodeResilience,
-            CircuitBreakerMemoryOptions = _config.CircuitBreakerMemoryOptions,
         };
     }
 

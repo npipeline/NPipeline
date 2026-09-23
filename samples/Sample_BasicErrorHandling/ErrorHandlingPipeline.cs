@@ -71,16 +71,17 @@ public class ErrorHandlingPipeline : IPipelineDefinition
         Console.WriteLine("=== DIAGNOSTIC: ErrorHandlingPipeline.Define() called ===");
         Console.WriteLine("DIAGNOSTIC: About to add nodes to pipeline...");
 
-        // Configure resilience: retry transient item failures three times, retry a failed node twice, and guard
-        // restarts with a circuit breaker that trips after three consecutive failures.
+        // Configure resilience: retry transient item failures three times, retry a failed node twice, and guard each
+        // item attempt with a circuit breaker that opens after three consecutive transient failures.
         builder.WithResilience(options => options with
         {
             ItemRetry = ItemRetryOptions.Default with { MaxRetries = 3 },
             NodeRetry = new NodeRetryOptions { MaxRetries = 2 },
-            CircuitBreaker = new PipelineCircuitBreakerOptions(
-                3, // Trip after 3 consecutive failures
-                TimeSpan.FromSeconds(30), // Wait 30 seconds before attempting recovery
-                TimeSpan.FromMinutes(5)), // Track operations for monitoring
+            CircuitBreaker = new CircuitBreakerOptions
+            {
+                ConsecutiveFailures = 3, // Open after 3 transient failures in a row
+                OpenDuration = TimeSpan.FromSeconds(30), // Wait 30 seconds before letting a probe through
+            },
         });
 
         // Add the source node that generates data with potential intermittent failures

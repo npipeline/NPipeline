@@ -9,71 +9,20 @@ namespace NPipeline.Observability.Logging;
 [ExcludeFromCodeCoverage]
 internal static partial class CircuitBreakerLogMessages
 {
-    [LoggerMessage(1, LogLevel.Warning, "Circuit breaker transitioned from {PreviousState} to Open: {Reason}")]
-    public static partial void TransitionedToOpen(ILogger logger, string previousState, string reason);
+    [LoggerMessage(1, LogLevel.Warning, "Circuit breaker for node {NodeId} opened: {Reason}")]
+    public static partial void Opened(ILogger logger, string nodeId, string reason);
 
-    [LoggerMessage(2, LogLevel.Information, "Circuit breaker transitioned from {PreviousState} to Half-Open: {Reason}. Success threshold: {Threshold}")]
-    public static partial void TransitionedToHalfOpen(ILogger logger, string previousState, string reason, int threshold);
+    [LoggerMessage(2, LogLevel.Information, "Circuit breaker for node {NodeId} half-opened: {Reason}")]
+    public static partial void HalfOpened(ILogger logger, string nodeId, string reason);
 
-    [LoggerMessage(3, LogLevel.Information, "Circuit breaker transitioned from {PreviousState} to Closed: {Reason}. Metrics reset.")]
-    public static partial void TransitionedToClosed(ILogger logger, string previousState, string reason);
+    [LoggerMessage(3, LogLevel.Information, "Circuit breaker for node {NodeId} closed: {Reason}")]
+    public static partial void Closed(ILogger logger, string nodeId, string reason);
 
-    [LoggerMessage(4, LogLevel.Warning, "Circuit breaker state-change listener failed for the transition from {PreviousState} to {State}")]
-    public static partial void StateChangeListenerFailed(ILogger logger, Exception exception, string previousState, string state);
-}
+    [LoggerMessage(4, LogLevel.Warning, "Execution observer failed handling the circuit breaker transition from {PreviousState} to {State} for node {NodeId}")]
+    public static partial void StateChangeListenerFailed(ILogger logger, Exception exception, string nodeId, string previousState, string state);
 
-/// <summary>
-///     Source-generated logging methods for circuit breaker manager operations.
-/// </summary>
-[ExcludeFromCodeCoverage]
-internal static partial class CircuitBreakerManagerLogMessages
-{
-    [LoggerMessage(1, LogLevel.Debug, "Circuit breaker cleanup timer initialized with interval: {Interval}")]
-    public static partial void CleanupTimerInitialized(ILogger logger, TimeSpan interval);
-
-    [LoggerMessage(2, LogLevel.Debug, "Removed circuit breaker for node {NodeId}")]
-    public static partial void CircuitBreakerRemoved(ILogger logger, string nodeId);
-
-    [LoggerMessage(3, LogLevel.Debug, "Automatic cleanup is disabled, manual cleanup triggered")]
-    public static partial void ManualCleanupTriggered(ILogger logger);
-
-    [LoggerMessage(4, LogLevel.Debug, "Manual cleanup triggered")]
-    public static partial void ManualCleanupTriggeredWithAutoEnabled(ILogger logger);
-
-    [LoggerMessage(5, LogLevel.Warning,
-        "Maximum circuit breaker limit ({MaxCount}) reached while creating circuit breaker for node {NodeId}. Issuing aggressive cleanup.")]
-    public static partial void MaxCircuitBreakerLimitReached(ILogger logger, int maxCount, string nodeId);
-
-    [LoggerMessage(6, LogLevel.Error, "Unable to create circuit breaker for node '{NodeId}' because the manager exhausted its maximum capacity of {MaxCount}.")]
-    public static partial void CircuitBreakerCreationFailed(ILogger logger, string nodeId, int maxCount);
-
-    [LoggerMessage(7, LogLevel.Debug, "Creating circuit breaker for node {NodeId} with options: {@Options}")]
-    public static partial void CreatingCircuitBreaker(ILogger logger, string nodeId, object options);
-
-    [LoggerMessage(8, LogLevel.Error, "Error during automatic circuit breaker cleanup")]
-    public static partial void CleanupError(ILogger logger, Exception exception);
-
-    [LoggerMessage(9, LogLevel.Warning, "Cleanup operation already in progress, skipping")]
-    public static partial void CleanupSkippedInProgress(ILogger logger);
-
-    [LoggerMessage(10, LogLevel.Debug, "Removed inactive circuit breaker for node {NodeId}")]
-    public static partial void InactiveCircuitBreakerRemoved(ILogger logger, string nodeId);
-
-    [LoggerMessage(11, LogLevel.Debug, "Removed stale tracking for circuit breaker node {NodeId}")]
-    public static partial void StaleTrackingRemoved(ILogger logger, string nodeId);
-
-    [LoggerMessage(12, LogLevel.Warning, "Aggressive cleanup removed least recently used circuit breaker for node {NodeId} last accessed at {LastAccess}")]
-    public static partial void AggressiveCleanupRemoved(ILogger logger, string nodeId, DateTimeOffset lastAccess);
-
-    [LoggerMessage(13, LogLevel.Warning,
-        "Aggressive cleanup removed stale tracking for least recently used circuit breaker node {NodeId} last accessed at {LastAccess}")]
-    public static partial void AggressiveCleanupStaleTrackingRemoved(ILogger logger, string nodeId, DateTimeOffset lastAccess);
-
-    [LoggerMessage(14, LogLevel.Warning, "Aggressive cleanup requested but no tracked circuit breakers were available for eviction.")]
-    public static partial void AggressiveCleanupNoVictims(ILogger logger);
-
-    [LoggerMessage(15, LogLevel.Information, "Cleanup completed: removed {Count} circuit breaker(s)")]
-    public static partial void CleanupCompleted(ILogger logger, int count);
+    [LoggerMessage(5, LogLevel.Debug, "Item on node {NodeId} is waiting up to {MaxPause} for its open circuit breaker")]
+    public static partial void Pausing(ILogger logger, string nodeId, TimeSpan maxPause);
 }
 
 /// <summary>
@@ -116,9 +65,6 @@ internal static partial class ObservabilitySurfaceLogMessages
 [ExcludeFromCodeCoverage]
 internal static partial class ResilientExecutionStrategyLogMessages
 {
-    [LoggerMessage(1, LogLevel.Debug, "Circuit breaker resolved for node {NodeId}. State: {State}")]
-    public static partial void CircuitBreakerResolved(ILogger logger, string nodeId, string state);
-
     [LoggerMessage(3, LogLevel.Warning, "Node {NodeId} failed after {Attempts} runs. Throwing RetryExhaustedException.")]
     public static partial void RetryExhausted(ILogger logger, string nodeId, int attempts);
 
@@ -217,9 +163,6 @@ internal static partial class PipelineRunnerLogMessages
 {
     [LoggerMessage(1, LogLevel.Debug, "Setting pipeline resilience options on PipelineContext: ItemRetry.MaxRetries={MaxItemRetries}")]
     public static partial void StoringResilienceOptions(ILogger logger, int maxItemRetries);
-
-    [LoggerMessage(3, LogLevel.Debug, "CircuitBreakerManager created and stored in context")]
-    public static partial void CircuitBreakerManagerCreated(ILogger logger);
 
     [LoggerMessage(4, LogLevel.Warning, "Node {NodeId} failed with exception type {ExceptionType}: {ExceptionMessage}")]
     public static partial void NodeFailed(ILogger logger, string nodeId, string exceptionType, string exceptionMessage);

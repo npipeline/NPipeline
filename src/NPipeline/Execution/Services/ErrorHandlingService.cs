@@ -56,7 +56,7 @@ public sealed class ErrorHandlingService : IErrorHandlingService
     /// <param name="cancellationToken">Cancellation token for the operation.</param>
     /// <returns>A task that represents asynchronous execution.</returns>
     /// <exception cref="NodeExecutionException">Thrown when the node execution fails after all retries.</exception>
-    /// <exception cref="CircuitBreakerTrippedException">Thrown when the circuit breaker trips due to too many failures.</exception>
+    /// <exception cref="CircuitBreakerOpenException">Thrown when a node's open circuit breaker refuses an item attempt.</exception>
     /// <exception cref="RetryExhaustedException">Thrown when all retry attempts are exhausted.</exception>
     /// <exception cref="OperationCanceledException">Thrown when the operation is canceled.</exception>
     /// <remarks>

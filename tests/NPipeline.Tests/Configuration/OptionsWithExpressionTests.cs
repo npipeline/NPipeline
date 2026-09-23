@@ -39,7 +39,7 @@ public sealed class OptionsWithExpressionTests
     [Fact]
     public void PipelineResilienceOptions_WithExpression_CanClearANullable()
     {
-        var configured = PipelineResilienceOptions.None with { CircuitBreaker = PipelineCircuitBreakerOptions.Default };
+        var configured = PipelineResilienceOptions.None with { CircuitBreaker = CircuitBreakerOptions.Default };
 
         var cleared = configured with { CircuitBreaker = null };
 

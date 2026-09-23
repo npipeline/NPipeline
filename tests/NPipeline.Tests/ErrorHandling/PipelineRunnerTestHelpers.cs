@@ -142,20 +142,6 @@ public static class PipelineRunnerTestHelpers
                 .Build();
         }
 
-        public static PipelineGraph CreateGraphWithCircuitBreakerOptions(
-            NodeDefinition nodeDef,
-            PipelineCircuitBreakerOptions circuitBreakerOptions,
-            CircuitBreakerMemoryManagementOptions? memoryOptions = null)
-        {
-            return PipelineGraphBuilder.Create()
-                .WithNodes(ImmutableList.Create(nodeDef))
-                .WithEdges(ImmutableList<Edge>.Empty)
-                .WithPreconfiguredNodeInstances(ImmutableDictionary<string, INode>.Empty)
-                .WithResilienceOptions(PipelineResilienceOptions.None with { CircuitBreaker = circuitBreakerOptions })
-                .WithCircuitBreakerMemoryOptions(memoryOptions)
-                .Build();
-        }
-
         public static PipelineGraph CreateSimpleGraph(NodeDefinition nodeDef)
         {
             return PipelineGraphBuilder.Create()

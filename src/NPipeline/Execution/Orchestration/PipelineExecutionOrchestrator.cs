@@ -1,3 +1,4 @@
+using NPipeline.Execution.CircuitBreaking;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.Execution.Caching;
@@ -96,6 +97,9 @@ internal sealed class PipelineExecutionOrchestrator : IPipelineExecutionOrchestr
         {
             var pipeline = createPipeline(_pipelineFactory, context);
             graph = pipeline.Graph;
+
+            // A factory-built pipeline carries its definition's breakers, which outlive this run. Any other gets fresh ones.
+            context.ExecutionConfiguration.CircuitBreakers = pipeline.CircuitBreakers ?? new CircuitBreakerRegistry();
 
             var setupResult = await _setupStage.PrepareAsync(definitionType, graph, context, context.CancellationToken).ConfigureAwait(false);
             graph = setupResult.Graph;

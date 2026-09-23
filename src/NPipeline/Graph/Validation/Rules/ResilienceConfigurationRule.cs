@@ -8,17 +8,12 @@ namespace NPipeline.Graph.Validation.Rules;
 ///     Warns about resilience configuration that is valid but probably not what was intended.
 /// </summary>
 /// <remarks>
-///     <list type="bullet">
-///         <item>
-///             <description>
-///                 A node wrapped for restart whose options allow no restarts, with no custom policy that could
-///                 restart it anyway.
-///             </description>
-///         </item>
-///         <item>
-///             <description>A circuit breaker configured where nothing is ever retried or restarted.</description>
-///         </item>
-///     </list>
+///     A node wrapped for restart whose options allow no restarts, with no custom policy that could restart it anyway.
+///     <para>
+///         A circuit breaker on a node that retries nothing is not flagged: breakers outlive a run, so it still makes
+///         later runs fail fast, and with <see cref="ItemFailureAction.Skip" /> or
+///         <see cref="ItemFailureAction.DeadLetter" /> it stops calls to a dependency that is down.
+///     </para>
 /// </remarks>
 internal sealed class ResilienceConfigurationRule : IGraphRule
 {
@@ -46,16 +41,6 @@ internal sealed class ResilienceConfigurationRule : IGraphRule
                     ValidationSeverity.Warning,
                     $"Node '{node.Name}' is wrapped for restart, but its NodeRestart.MaxRestarts is 0, so it will never restart. " +
                     "Configure: builder.WithResilience(handle, o => o with { NodeRestart = new NodeRestartOptions { MaxRestarts = 3 } })",
-                    "Resilience"));
-            }
-
-            if (options.CircuitBreaker is { Enabled: true } &&
-                options.ItemRetry.MaxRetries == 0 && options.NodeRestart.MaxRestarts == 0 && options.NodeRetry.MaxRetries == 0 &&
-                !hasCustomPolicy)
-            {
-                issues.Add(new ValidationIssue(
-                    ValidationSeverity.Warning,
-                    $"Node '{node.Name}' has a circuit breaker, but nothing on it is ever retried or restarted, so the breaker has nothing to stop.",
                     "Resilience"));
             }
         }

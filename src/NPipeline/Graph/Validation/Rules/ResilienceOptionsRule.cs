@@ -4,8 +4,9 @@ using NPipeline.Nodes;
 namespace NPipeline.Graph.Validation.Rules;
 
 /// <summary>
-///     Rejects resilience options that would silently do nothing: item retry or node restart configured for a node
-///     that is not a transform. Only transform nodes retry items or restart their stream.
+///     Rejects resilience options that would silently do nothing: item retry, node restart, or a circuit breaker
+///     configured for a node that is not a transform. Only transform nodes retry items, restart their stream, or have
+///     their attempts guarded by a breaker.
 /// </summary>
 /// <remarks>
 ///     A node's options are derived from the pipeline's, so this rule flags only the settings the node changed. A
@@ -40,6 +41,9 @@ internal sealed class ResilienceOptionsRule : IGraphRule
 
             if (options.NodeRestart != pipelineOptions.NodeRestart)
                 issues.Add(Unsupported(node, "NodeRestart"));
+
+            if (options.CircuitBreaker != pipelineOptions.CircuitBreaker)
+                issues.Add(Unsupported(node, "CircuitBreaker"));
         }
 
         return issues.ToImmutable();

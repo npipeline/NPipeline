@@ -60,17 +60,16 @@ builder.AddDeadLetterSink(new BoundedInMemoryDeadLetterSink());
 transform.WithResilience(builder);
 ```
 
-### CircuitBreakerTrippedException (NP0310)
+### CircuitBreakerOpenException
 
-Too many consecutive failures triggered the circuit breaker. Check the `FailureThreshold` property.
+A node's circuit breaker is open, so it refused an item attempt. The breaker opened because the node's dependency kept
+failing transiently. The exception's `NodeId` and `State` properties say which breaker refused the attempt and in what
+state.
 
-**Fix:** Investigate the underlying error causing repeated failures. Increase the threshold or open duration if failures are expected:
-
-```csharp
-builder.WithCircuitBreaker(
-    failureThreshold: 10,
-    openDuration: TimeSpan.FromSeconds(30));
-```
+**Fix:** Investigate the underlying failure that opened the breaker; the observer's `OnCircuitStateChanged` event and
+the breaker's log messages give the reason. If short outages are expected, set `WhenOpen = BreakerOpenBehavior.Pause`
+so that attempts wait for the breaker instead of failing. For more information, see
+[Circuit Breakers](../error-handling/circuit-breakers.md).
 
 ### RetryExhaustedException (NP0311)
 

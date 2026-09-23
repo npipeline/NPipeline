@@ -97,7 +97,8 @@ namespace NPipeline.Extensions.Parallelism
                 cached.CancellationToken,
                 work.CorrelationId,
                 work.AncestryInputIndices,
-                onRetry);
+                onRetry,
+                cached.CircuitBreaker);
         }
 
         /// <summary>

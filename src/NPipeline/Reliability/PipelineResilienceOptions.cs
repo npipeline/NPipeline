@@ -83,9 +83,13 @@ public sealed record PipelineResilienceOptions
     public NodeRetryOptions NodeRetry { get; init; } = NodeRetryOptions.None;
 
     /// <summary>
-    ///     The circuit breaker guarding node restarts. Null, the default, means no breaker.
+    ///     The circuit breaker guarding each item attempt in a transform node. Null, the default, means no breaker.
     /// </summary>
-    public PipelineCircuitBreakerOptions? CircuitBreaker { get; init; }
+    /// <remarks>
+    ///     An open breaker fails the attempt by default. Waiting for the breaker instead is opt-in, through
+    ///     <see cref="CircuitBreakerOptions.WhenOpen" />.
+    /// </remarks>
+    public CircuitBreakerOptions? CircuitBreaker { get; init; }
 
     /// <summary>
     ///     What happens to an item whose failure is not retried. Default: <see cref="ItemFailureAction.Fail" />.

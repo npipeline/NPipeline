@@ -101,7 +101,6 @@ public sealed record PipelineGraph
 /// </summary>
 public sealed class PipelineGraphBuilder
 {
-    private CircuitBreakerMemoryManagementOptions? _circuitBreakerMemoryOptions;
     private IDeadLetterSink? _deadLetterSink;
     private Type? _deadLetterSinkType;
     private ImmutableArray<Edge> _edges = [];
@@ -369,17 +368,6 @@ public sealed class PipelineGraphBuilder
     }
 
     /// <summary>
-    ///     Sets the circuit breaker memory management options.
-    /// </summary>
-    /// <param name="options">The circuit breaker memory management options.</param>
-    /// <returns>The builder instance for method chaining.</returns>
-    public PipelineGraphBuilder WithCircuitBreakerMemoryOptions(CircuitBreakerMemoryManagementOptions? options)
-    {
-        _circuitBreakerMemoryOptions = options;
-        return this;
-    }
-
-    /// <summary>
     ///     Sets the visualizer.
     /// </summary>
     /// <param name="visualizer">The visualizer.</param>
@@ -405,7 +393,6 @@ public sealed class PipelineGraphBuilder
         _deadLetterSinkType = config.DeadLetterSinkType;
         _resilience = config.Resilience;
         _nodeResilience = config.NodeResilience ?? ImmutableDictionary<string, PipelineResilienceOptions>.Empty;
-        _circuitBreakerMemoryOptions = config.CircuitBreakerMemoryOptions;
 
         return this;
     }
@@ -464,7 +451,6 @@ public sealed class PipelineGraphBuilder
                 DeadLetterSinkType = _deadLetterSinkType,
                 Resilience = _resilience,
                 NodeResilience = _nodeResilience,
-                CircuitBreakerMemoryOptions = _circuitBreakerMemoryOptions,
             },
             Lineage = new LineageConfiguration
             {

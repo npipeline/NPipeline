@@ -256,14 +256,6 @@ internal static class ErrorMessages
                $"See: {DocsBaseUrl}#{ErrorCodes.FailedToExtractItemsFromInMemoryDataStream}";
     }
 
-    public static string CircuitBreakerTripped(int failureThreshold, string nodeId)
-    {
-        return $"[{ErrorCodes.CircuitBreakerTripped}] Circuit breaker tripped for node '{nodeId}' after {failureThreshold} consecutive failures. " +
-               $"The node has been temporarily disabled to prevent cascading failures. " +
-               $"Either fix the underlying issue or increase the failure threshold. " +
-               $"See: {DocsBaseUrl}#{ErrorCodes.CircuitBreakerTripped}";
-    }
-
     public static string RetryLimitExhausted(string nodeId, int maxAttempts, int consecutiveFailures)
     {
         return $"[{ErrorCodes.RetryLimitExhausted}] Retry limit exhausted for node '{nodeId}'. " +

@@ -1,4 +1,5 @@
 using NPipeline.Configuration;
+using NPipeline.Execution.CircuitBreaking;
 using NPipeline.Execution.Lineage;
 using NPipeline.Observability.Logging;
 using NPipeline.Observability.Tracing;
@@ -61,6 +62,7 @@ public readonly struct CachedNodeExecutionContext
     /// <param name="tracingEnabled">Whether tracing is enabled.</param>
     /// <param name="loggingEnabled">Whether logging is enabled.</param>
     /// <param name="lineageOutcomeWriter">The lineage outcome writer resolved once for this node execution.</param>
+    /// <param name="circuitBreaker">The node's circuit breaker, or null when it has none.</param>
     /// <param name="cancellationToken">The cancellation token for this execution.</param>
     private CachedNodeExecutionContext(
         string nodeId,
@@ -68,6 +70,7 @@ public readonly struct CachedNodeExecutionContext
         bool tracingEnabled,
         bool loggingEnabled,
         LineageNodeOutcomeWriter lineageOutcomeWriter,
+        CircuitBreaker? circuitBreaker,
         CancellationToken cancellationToken)
     {
         NodeId = nodeId;
@@ -75,6 +78,7 @@ public readonly struct CachedNodeExecutionContext
         TracingEnabled = tracingEnabled;
         LoggingEnabled = loggingEnabled;
         LineageOutcomeWriter = lineageOutcomeWriter;
+        CircuitBreaker = circuitBreaker;
         CancellationToken = cancellationToken;
     }
 
@@ -113,6 +117,11 @@ public readonly struct CachedNodeExecutionContext
     internal LineageNodeOutcomeWriter LineageOutcomeWriter { get; }
 
     /// <summary>
+    ///     Gets the node's circuit breaker, resolved once for this execution, or null when its options configure none.
+    /// </summary>
+    internal CircuitBreaker? CircuitBreaker { get; }
+
+    /// <summary>
     ///     Creates a cached execution context from the current pipeline context.
     ///     This method captures a snapshot of execution-relevant state for efficient per-item processing.
     /// </summary>
@@ -144,6 +153,9 @@ public readonly struct CachedNodeExecutionContext
     ///     <list type="bullet">
     ///         <item>
     ///             <description>Resilience options (the node's own, or else the pipeline's)</description>
+    ///         </item>
+    ///         <item>
+    ///             <description>The node's circuit breaker, if its options configure one</description>
     ///         </item>
     ///         <item>
     ///             <description>Tracing enabled flag (based on tracer type)</description>
@@ -184,6 +196,7 @@ public readonly struct CachedNodeExecutionContext
             tracingEnabled,
             loggingEnabled,
             LineageNodeOutcomeRegistry.GetWriter(context.RunIdentity.PipelineId, nodeId),
+            context.ExecutionConfiguration.CircuitBreakers.Resolve(nodeId, resilience),
             context.CancellationToken);
     }
 }

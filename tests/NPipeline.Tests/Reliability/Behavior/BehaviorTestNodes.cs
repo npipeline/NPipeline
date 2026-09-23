@@ -31,10 +31,17 @@ internal sealed class BehaviorPipeline(Action<PipelineBuilder> define) : IPipeli
         define(builder);
     }
 
+    /// <param name="define">Builds the pipeline.</param>
+    /// <param name="observer">Receives the run's execution events.</param>
+    /// <param name="runner">
+    ///     The runner to use. Pass the same one to several runs to share its <see cref="PipelineFactory" />, and with it
+    ///     the definition's circuit breakers. Default: a new runner per run.
+    /// </param>
+    /// <param name="cancellationToken">Cancels the run.</param>
     public static async Task RunAsync(Action<PipelineBuilder> define, IExecutionObserver? observer = null,
-        CancellationToken cancellationToken = default)
+        PipelineRunner? runner = null, CancellationToken cancellationToken = default)
     {
-        var runner = PipelineRunner.Create();
+        runner ??= PipelineRunner.Create();
 
         await using var context = new PipelineContext();
 

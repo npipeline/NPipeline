@@ -52,50 +52,37 @@ new RetryDelayStrategyConfiguration(
 
 See [Retry Strategies](../error-handling/retry-strategies.md) for all built-in backoff and jitter options.
 
-## PipelineCircuitBreakerOptions
+## CircuitBreakerOptions
 
-Controls the circuit breaker that prevents cascading failures. Configure via `builder.WithCircuitBreaker()`.
+Controls a transform node's circuit breaker, which guards each item attempt. Set it through
+`PipelineResilienceOptions.CircuitBreaker`, for the pipeline or for one node.
 
-**Namespace:** `NPipeline.Configuration`
+**Namespace:** `NPipeline.Reliability`
 
 ```csharp
-builder.WithCircuitBreaker(
-    failureThreshold: 5,
-    openDuration: TimeSpan.FromMinutes(1),
-    samplingWindow: TimeSpan.FromMinutes(5));
+builder.WithResilience(transform, options => options with
+{
+    CircuitBreaker = new CircuitBreakerOptions { ConsecutiveFailures = 5, OpenDuration = TimeSpan.FromMinutes(1) },
+});
 ```
 
 | Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `FailureThreshold` | `int` | `5` | Failures before tripping the breaker (must be ≥ 1). |
-| `OpenDuration` | `TimeSpan` | 1 min | How long the breaker stays open before transitioning to half-open. |
-| `SamplingWindow` | `TimeSpan` | 5 min | Rolling window for failure tracking. |
-| `Enabled` | `bool` | `true` | Whether the circuit breaker is active. |
-| `ThresholdType` | `CircuitBreakerThresholdType` | `ConsecutiveFailures` | How failures are counted: `ConsecutiveFailures`, `RollingWindowCount`, or `RollingWindowRate`. |
-| `FailureRateThreshold` | `double` | `0.5` | Failure rate (0.0–1.0) for rate-based threshold types. |
-| `HalfOpenSuccessThreshold` | `int` | `1` | Consecutive successes needed in half-open to close. |
-| `HalfOpenMaxAttempts` | `int` | `5` | Maximum attempts allowed in half-open state. |
-| `TrackOperationsInWindow` | `bool` | `true` | Whether to track operations in the rolling window for statistics. |
+| --- | --- | --- | --- |
+| `ConsecutiveFailures` | `int?` | `5` | Trip after this many transient failures in a row. `null` disables the condition. |
+| `FailureRate` | `double?` | `null` | Trip when this fraction of attempts in `Window` failed transiently (greater than 0, at most 1). |
+| `MinimumCalls` | `int` | `20` | The fewest attempts in `Window` before `FailureRate` is considered. |
+| `Window` | `TimeSpan` | 30 sec | The period `FailureRate` is measured over. |
+| `OpenDuration` | `TimeSpan` | 30 sec | How long the breaker stays open before it lets a probe through. |
+| `HalfOpenProbes` | `int` | `1` | The most probes in flight at once while half-open. |
+| `ProbeSuccesses` | `int` | `1` | The successful probes needed to close the breaker. |
+| `WhenOpen` | `BreakerOpenBehavior` | `Fail` | `Fail` (the default) fails a refused attempt. `Pause` (opt-in) waits for the breaker, up to `MaxPause`. |
+| `MaxPause` | `TimeSpan` | 5 min | With `Pause`, the longest one attempt waits before it fails. |
 
-Static members: `PipelineCircuitBreakerOptions.Default`, `PipelineCircuitBreakerOptions.Disabled`
+Static member: `CircuitBreakerOptions.Default`. At least one of `ConsecutiveFailures` and `FailureRate` must be set.
+
+Breakers live as long as the `PipelineFactory` that built the pipeline, so their state carries over between runs.
 
 See [Circuit Breakers](../error-handling/circuit-breakers.md) for usage guidance.
-
-## CircuitBreakerMemoryManagementOptions
-
-Controls automatic cleanup of per-node circuit breaker instances. Configure via `builder.ConfigureCircuitBreakerMemoryManagement()`.
-
-**Namespace:** `NPipeline.Configuration`
-
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `CleanupInterval` | `TimeSpan` | 5 min | How often the cleanup process runs. |
-| `InactivityThreshold` | `TimeSpan` | 30 min | How long a breaker must be inactive before removal. |
-| `EnableAutomaticCleanup` | `bool` | `true` | Whether automatic cleanup is enabled. |
-| `MaxTrackedCircuitBreakers` | `int` | `1000` | Maximum number of tracked breakers. |
-| `CleanupTimeout` | `TimeSpan` | 30 sec | Timeout for each cleanup operation. |
-
-Static members: `CircuitBreakerMemoryManagementOptions.Default`, `CircuitBreakerMemoryManagementOptions.Disabled`
 
 ## ErrorHandlingConfiguration
 
@@ -111,8 +98,6 @@ Aggregates all error handling settings. Typically configured indirectly through 
 | `DeadLetterSinkType` | `Type?` | `null` | Dead-letter sink type for DI resolution. Set via `builder.AddDeadLetterSink<T>()`. |
 | `RetryOptions` | `PipelineRetryOptions?` | `null` | Global retry options. |
 | `NodeRetryOverrides` | `ImmutableDictionary<string, PipelineRetryOptions>?` | `null` | Per-node retry option overrides keyed by node ID. |
-| `CircuitBreakerOptions` | `PipelineCircuitBreakerOptions?` | `null` | Circuit breaker configuration. |
-| `CircuitBreakerMemoryOptions` | `CircuitBreakerMemoryManagementOptions?` | `null` | Circuit breaker memory management. |
 
 ## LineageOptions
 

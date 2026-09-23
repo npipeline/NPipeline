@@ -1,3 +1,4 @@
+using NPipeline.Execution.CircuitBreaking;
 using NPipeline.Execution.Lineage;
 using NPipeline.Nodes;
 using NPipeline.Observability.Tracing;
@@ -51,5 +52,6 @@ internal interface IPerItemRetryExecutor
         CancellationToken cancellationToken,
         Guid? correlationId = null,
         int[]? ancestryInputIndices = null,
-        Action<int>? onRetry = null);
+        Action<int>? onRetry = null,
+        CircuitBreaker? circuitBreaker = null);
 }

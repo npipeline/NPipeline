@@ -234,20 +234,6 @@ public sealed partial class PipelineBuilder
     }
 
     /// <summary>
-    ///     Configures memory management options for the circuit breaker.
-    /// </summary>
-    /// <param name="configure">A function that takes the current memory management options and returns modified options.</param>
-    /// <returns>The current PipelineBuilder instance for method chaining.</returns>
-    public PipelineBuilder ConfigureCircuitBreakerMemoryManagement(Func<CircuitBreakerMemoryManagementOptions, CircuitBreakerMemoryManagementOptions> configure)
-    {
-        ArgumentNullException.ThrowIfNull(configure);
-
-        var current = _config.CircuitBreakerMemoryOptions ?? CircuitBreakerMemoryManagementOptions.Default;
-        _config = _config with { CircuitBreakerMemoryOptions = configure(current).Validate() };
-        return this;
-    }
-
-    /// <summary>
     ///     Enables item-level lineage tracking with default options.
     /// </summary>
     /// <returns>The current PipelineBuilder instance for method chaining.</returns>

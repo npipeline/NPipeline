@@ -198,8 +198,7 @@ public static class ErrorCodes
     /// <summary>Failed to extract items from InMemoryDataStream.</summary>
     public const string FailedToExtractItemsFromInMemoryDataStream = "NP0308";
 
-    /// <summary>Circuit breaker tripped after threshold of consecutive failures.</summary>
-    public const string CircuitBreakerTripped = "NP0310";
+    // NP0310 is retired: it belonged to CircuitBreakerTrippedException, which was never thrown. Don't reuse it.
 
     /// <summary>Retry limit exhausted after maximum attempts.</summary>
     public const string RetryLimitExhausted = "NP0311";

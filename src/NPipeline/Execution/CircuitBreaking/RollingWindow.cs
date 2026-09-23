@@ -1,133 +1,113 @@
 namespace NPipeline.Execution.CircuitBreaking;
 
 /// <summary>
-///     Provides rolling window operation tracking for circuit breaker failure analysis.
-///     Thread-safe implementation using ConcurrentQueue and lock for simplicity and reliability.
+///     Counts successes and failures over a sliding period, for a breaker's failure rate.
 /// </summary>
-internal sealed class RollingWindow : IDisposable
+/// <remarks>
+///     The period is split into a fixed number of buckets, so recording an outcome is an increment, not an allocation,
+///     and old outcomes expire a bucket at a time. Counts are approximate at a bucket boundary, which a failure rate
+///     can tolerate. Thread-safe.
+/// </remarks>
+internal sealed class RollingWindow
 {
-    private readonly object _gate = new();
-    private readonly Queue<OperationRecord> _operations = new();
-    private readonly TimeSpan _windowSize;
+    private const int BucketCount = 10;
 
-    /// <summary>
-    ///     Initializes a new instance of the <see cref="RollingWindow" /> class.
-    /// </summary>
-    /// <param name="windowSize">The size of the rolling window. Must be positive.</param>
-    /// <exception cref="ArgumentOutOfRangeException">Thrown when windowSize is not positive.</exception>
-    public RollingWindow(TimeSpan windowSize)
+    private readonly Bucket[] _buckets;
+    private readonly long _bucketTicks;
+    private readonly TimeProvider _time;
+
+    /// <param name="window">The period to count over. Must be positive.</param>
+    /// <param name="time">The clock.</param>
+    public RollingWindow(TimeSpan window, TimeProvider time)
     {
-        if (windowSize <= TimeSpan.Zero)
-            throw new ArgumentOutOfRangeException(nameof(windowSize), "Rolling window size must be positive.");
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(window, TimeSpan.Zero);
+        _time = time ?? throw new ArgumentNullException(nameof(time));
 
-        _windowSize = windowSize;
-    }
+        // Timestamp ticks per bucket, at least one so a tiny window still advances.
+        _bucketTicks = Math.Max(1, (long)(window.TotalSeconds * time.TimestampFrequency / BucketCount));
+        _buckets = new Bucket[BucketCount];
 
-    /// <summary>
-    ///     Releases all resources used by the RollingWindow.
-    /// </summary>
-    public void Dispose()
-    {
-        // Nothing to dispose currently. Method exists for future extensibility.
-    }
-
-    /// <summary>
-    ///     Adds an operation outcome to rolling window.
-    /// </summary>
-    /// <param name="outcome">The outcome of operation.</param>
-    public void AddOperation(OperationOutcome outcome)
-    {
-        var record = new OperationRecord(DateTime.UtcNow, outcome);
-
-        lock (_gate)
+        for (var i = 0; i < BucketCount; i++)
         {
-            _operations.Enqueue(record);
-            PurgeExpiredOperationsUnsafe();
+            _buckets[i] = new Bucket { Epoch = long.MinValue };
         }
     }
 
-    /// <summary>
-    ///     Gets statistics for operations within the current rolling window.
-    /// </summary>
-    /// <returns>Window statistics including counts and failure rate.</returns>
-    public WindowStatistics GetStatistics()
+    public void RecordSuccess()
     {
-        lock (_gate)
-        {
-            // First purge expired operations
-            PurgeExpiredOperationsUnsafe();
+        _ = Interlocked.Increment(ref Current().Successes);
+    }
 
-            if (_operations.Count == 0)
-                return new WindowStatistics(0, 0, 0, 0);
-
-            var totalOperations = _operations.Count;
-            var failureCount = 0;
-
-            foreach (var operation in _operations)
-            {
-                if (operation.Outcome == OperationOutcome.Failure)
-                    failureCount++;
-            }
-
-            var successCount = totalOperations - failureCount;
-            var failureRate = (double)failureCount / totalOperations;
-
-            return new WindowStatistics(totalOperations, failureCount, successCount, failureRate);
-        }
+    public void RecordFailure()
+    {
+        _ = Interlocked.Increment(ref Current().Failures);
     }
 
     /// <summary>
-    ///     Clears all operations from the rolling window.
+    ///     The attempts and failures recorded over the period.
     /// </summary>
+    public (int Total, int Failures) Read()
+    {
+        var epoch = CurrentEpoch();
+        int successes = 0, failures = 0;
+
+        foreach (var bucket in _buckets)
+        {
+            var age = epoch - Volatile.Read(ref bucket.Epoch);
+
+            if (age is < 0 or >= BucketCount)
+                continue;
+
+            successes += Volatile.Read(ref bucket.Successes);
+            failures += Volatile.Read(ref bucket.Failures);
+        }
+
+        return (successes + failures, failures);
+    }
+
     public void Clear()
     {
-        lock (_gate)
+        foreach (var bucket in _buckets)
         {
-            _operations.Clear();
-        }
-    }
-
-    /// <summary>
-    ///     Gets count of consecutive failures at the end of the window.
-    /// </summary>
-    /// <returns>Number of consecutive failures.</returns>
-    public int GetConsecutiveFailures()
-    {
-        lock (_gate)
-        {
-            // First purge expired operations
-            PurgeExpiredOperationsUnsafe();
-
-            if (_operations.Count == 0)
-                return 0;
-
-            var operationsArray = _operations.ToArray();
-            var consecutiveFailures = 0;
-
-            // Count from the end backwards
-            for (var i = operationsArray.Length - 1; i >= 0; i--)
+            lock (bucket)
             {
-                if (operationsArray[i].Outcome == OperationOutcome.Failure)
-                    consecutiveFailures++;
-                else
-                    break;
+                bucket.Epoch = long.MinValue;
+                bucket.Successes = 0;
+                bucket.Failures = 0;
             }
-
-            return consecutiveFailures;
         }
     }
 
-    /// <summary>
-    ///     Removes operations that are outside of the sampling window.
-    ///     This method assumes the caller holds the lock.
-    /// </summary>
-    private void PurgeExpiredOperationsUnsafe()
+    private long CurrentEpoch()
     {
-        var cutoff = DateTime.UtcNow - _windowSize;
+        return _time.GetTimestamp() / _bucketTicks;
+    }
 
-        while (_operations.Count > 0 && _operations.Peek().Timestamp < cutoff)
+    private Bucket Current()
+    {
+        var epoch = CurrentEpoch();
+        var bucket = _buckets[(int)(((epoch % BucketCount) + BucketCount) % BucketCount)];
+
+        if (Volatile.Read(ref bucket.Epoch) != epoch)
         {
-            _ = _operations.Dequeue();
+            lock (bucket)
+            {
+                if (bucket.Epoch != epoch)
+                {
+                    bucket.Successes = 0;
+                    bucket.Failures = 0;
+                    Volatile.Write(ref bucket.Epoch, epoch);
+                }
+            }
         }
+
+        return bucket;
+    }
+
+    private sealed class Bucket
+    {
+        public long Epoch;
+        public int Failures;
+        public int Successes;
     }
 }

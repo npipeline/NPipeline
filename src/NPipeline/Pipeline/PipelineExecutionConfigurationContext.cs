@@ -59,11 +59,6 @@ public sealed class PipelineExecutionConfigurationContext
     public IResiliencePolicy ResiliencePolicy { get; internal set; }
 
     /// <summary>
-    ///     Circuit-breaker memory management options for the current run.
-    /// </summary>
-    public CircuitBreakerMemoryManagementOptions? CircuitBreakerMemoryOptions { get; internal set; }
-
-    /// <summary>
     ///     The optimization profile governing runtime behavior for this pipeline run.
     ///     This is the runtime source of truth for the active profile - node authors and runtime
     ///     code should read it from here rather than from <see cref="PipelineContextConfiguration" />.
@@ -107,5 +102,10 @@ public sealed class PipelineExecutionConfigurationContext
         return Interlocked.Exchange(ref _lastRetryExhaustedException, null);
     }
 
-    internal ICircuitBreakerManager? CircuitBreakerManager { get; set; }
+    /// <summary>
+    ///     The circuit breakers for this run's nodes. A run started by <see cref="PipelineFactory" /> uses the
+    ///     factory's registry for its definition, so breaker state carries over between runs; a strategy executed
+    ///     outside a run uses this context's own.
+    /// </summary>
+    internal CircuitBreakerRegistry CircuitBreakers { get; set; } = new();
 }

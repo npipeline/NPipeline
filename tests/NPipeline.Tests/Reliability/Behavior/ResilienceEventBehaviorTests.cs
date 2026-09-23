@@ -150,11 +150,9 @@ public sealed class ResilienceEventBehaviorTests
             var t = Wire(b, new FlakyTransform(failuresPerItem: 100), new CollectingSink<int>(), [1], "sequential");
             _ = b.WithResilience(t, o => o with
             {
-                ItemRetry = ItemRetryOptions.None,
-                NodeRestart = new NodeRestartOptions { MaxRestarts = 5, MaxReplayWindow = 100, Backoff = RetryBackoff.None },
-                CircuitBreaker = new PipelineCircuitBreakerOptions(1, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1)),
+                ItemRetry = new ItemRetryOptions { MaxRetries = 5 },
+                CircuitBreaker = new CircuitBreakerOptions { ConsecutiveFailures = 1 },
             });
-            _ = t.WithResilience(b);
         }, observer: observer);
 
         _ = await act.Should().ThrowAsync<Exception>();

@@ -124,7 +124,6 @@ public sealed partial class PipelineBuilder
         bool EarlyNameValidation,
         bool ItemLevelLineageEnabled,
         GraphValidationMode GraphValidationMode,
-        CircuitBreakerMemoryManagementOptions? CircuitBreakerMemoryOptions,
         LineageOptions? LineageOptions,
         Func<PipelineResilienceOptions, PipelineResilienceOptions>? ConfigureResilience,
         PipelineOptimizationProfile OptimizationProfile)
@@ -142,7 +141,6 @@ public sealed partial class PipelineBuilder
             true,
             false,
             GraphValidationMode.Error,
-            null,
             null,
             null,
             PipelineOptimizationProfile.Default);
