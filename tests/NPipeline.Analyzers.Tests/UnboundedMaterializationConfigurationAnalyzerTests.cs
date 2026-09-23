@@ -1,7 +1,7 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
-using NPipeline.Configuration;
+using NPipeline.Reliability;
 
 namespace NPipeline.Analyzers.Tests;
 
@@ -242,12 +242,44 @@ public sealed class UnboundedMaterializationConfigurationAnalyzerTests
         Assert.False(hasDiagnostic, "Analyzer should not analyze static property access");
     }
 
+    /// <summary>
+    ///     Stand-in for <c>NPipeline.Configuration.PipelineRetryOptions</c>, which the resilience redesign deleted from
+    ///     NPipeline. The analyzer resolves the type semantically, so the test compilation declares it with the shape it
+    ///     had until the analyzer is rewritten.
+    /// </summary>
+    private const string DeletedPipelineRetryOptionsStub = """
+                                                           using System;
+
+                                                           namespace NPipeline.Configuration.RetryDelay
+                                                           {
+                                                               public abstract record RetryDelayStrategyConfiguration;
+
+                                                               public sealed record FixedDelayConfiguration(TimeSpan Delay) : RetryDelayStrategyConfiguration;
+                                                           }
+
+                                                           namespace NPipeline.Configuration
+                                                           {
+                                                               using NPipeline.Configuration.RetryDelay;
+
+                                                               public sealed record PipelineRetryOptions(
+                                                                   int MaxItemRetries = 0,
+                                                                   int? MaxMaterializedItems = null,
+                                                                   RetryDelayStrategyConfiguration? DelayStrategyConfiguration = null,
+                                                                   int MaxNodeRestartAttempts = 3,
+                                                                   int MaxSequentialNodeAttempts = 5)
+                                                               {
+                                                                   public static PipelineRetryOptions Default { get; } = new();
+                                                               }
+                                                           }
+                                                           """;
+
     private static IEnumerable<Diagnostic> GetDiagnostics(string code)
     {
         var syntaxTree = CSharpSyntaxTree.ParseText(code);
+        var stubSyntaxTree = CSharpSyntaxTree.ParseText(DeletedPipelineRetryOptionsStub);
 
         // Get path to NPipeline assembly
-        var nPipelineAssemblyPath = typeof(PipelineRetryOptions).Assembly.Location;
+        var nPipelineAssemblyPath = typeof(PipelineResilienceOptions).Assembly.Location;
 
         var references = new[]
         {
@@ -260,7 +292,7 @@ public sealed class UnboundedMaterializationConfigurationAnalyzerTests
 
         var compilation = CSharpCompilation.Create("TestAssembly")
             .AddReferences(references)
-            .AddSyntaxTrees(syntaxTree);
+            .AddSyntaxTrees(syntaxTree, stubSyntaxTree);
 
         var analyzer = new UnboundedMaterializationConfigurationAnalyzer();
         var compilationWithAnalyzers = compilation.WithAnalyzers([analyzer]);

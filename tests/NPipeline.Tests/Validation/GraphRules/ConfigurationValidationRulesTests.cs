@@ -3,9 +3,10 @@ using NPipeline.Configuration;
 using NPipeline.Execution;
 using NPipeline.Execution.Strategies;
 using NPipeline.Extensions.Testing;
+using NPipeline.Graph;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
-using NPipeline.Resilience;
+using NPipeline.Reliability;
 using ParallelOptions = NPipeline.Extensions.Parallelism.ParallelOptions;
 using BoundedQueuePolicy = NPipeline.Extensions.Parallelism.BoundedQueuePolicy;
 
@@ -14,158 +15,101 @@ namespace NPipeline.Tests.Validation.GraphRules;
 public sealed class ResilienceConfigurationRuleTests
 {
     [Fact]
-    public void ResilientNode_WithoutErrorHandler_ShouldWarn()
+    public void ResilientNode_WithNoRestartsAndTheDefaultPolicy_ShouldWarn()
     {
-        var builder = new PipelineBuilder()
-            ;
+        var builder = new PipelineBuilder();
+        var transform = Wire(builder);
 
-        var source = builder.AddInMemorySourceWithDataFromContext(PipelineContext.CreateDefault(), "source", [1]);
-        var transform = builder.AddTransform<ResilientTransform, int, int>("transform");
-        var sink = builder.AddInMemorySink<int>("sink");
-
-        builder.Connect(source, transform);
-        builder.Connect(transform, sink);
-
-        // Wrap with resilience but no error handler
         builder.WithResilience(transform);
 
         var ok = builder.TryBuild(out _, out var result);
 
         ok.Should().BeTrue("Build should succeed, validation issues are warnings");
-
-        result.Issues.Should()
-            .Contain(i => i.Category == "Resilience" && i.Message.Contains("no custom IResiliencePolicy"));
+        result.Issues.Should().Contain(i => i.Category == "Resilience" && i.Message.Contains("MaxRestarts is 0"));
     }
 
     [Fact]
-    public void ResilientNode_WithoutRetryOptions_ShouldWarn()
+    public void ResilientNode_WithNoRestartsButACustomPolicy_ShouldNotWarn()
     {
-        var builder = new PipelineBuilder()
-            .WithOptimizationProfile(PipelineOptimizationProfile.HighThroughput)
-            ;
+        var builder = new PipelineBuilder();
+        var transform = Wire(builder);
 
-        var source = builder.AddInMemorySourceWithDataFromContext(PipelineContext.CreateDefault(), "source", [1]);
-        var transform = builder.AddTransform<ResilientTransform, int, int>("transform");
-        var sink = builder.AddInMemorySink<int>("sink");
-
-        builder.Connect(source, transform);
-        builder.Connect(transform, sink);
-
-        // Add error handler but no retry options - this will use context default which has null MaxMaterializedItems
+        // The custom policy may restart the node whatever its options say.
         builder.AddResiliencePolicy<DummyResiliencePolicy>();
         builder.WithResilience(transform);
 
         var ok = builder.TryBuild(out _, out var result);
 
         ok.Should().BeTrue();
-
-        // When no retry options are configured, the context default (which has null MaxMaterializedItems) is used
-        result.Issues.Should()
-            .Contain(i => i.Category == "Resilience" && i.Message.Contains("MaxMaterializedItems is null"));
+        result.Issues.Should().NotContain(i => i.Category == "Resilience");
     }
 
     [Fact]
-    public void ResilientNode_WithZeroMaxNodeRestartAttempts_ShouldWarn()
+    public void ResilientNode_WithRestarts_ShouldNotWarn()
     {
-        var builder = new PipelineBuilder()
-            ;
+        var builder = new PipelineBuilder();
+        var transform = Wire(builder);
 
+        builder.WithResilience(transform, o => o with { NodeRestart = new NodeRestartOptions { MaxRestarts = 3 } });
+        builder.WithResilience(transform);
+
+        var ok = builder.TryBuild(out _, out var result);
+
+        ok.Should().BeTrue();
+        result.Issues.Should().NotContain(i => i.Category == "Resilience");
+    }
+
+    [Fact]
+    public void ResilientNode_WithAZeroReplayWindow_FailsTheBuild()
+    {
+        var builder = new PipelineBuilder();
+        var transform = Wire(builder);
+
+        builder.WithResilience(transform, o => o with { NodeRestart = new NodeRestartOptions { MaxRestarts = 3, MaxReplayWindow = 0 } });
+        builder.WithResilience(transform);
+
+        var act = () => builder.TryBuild(out _, out _);
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*node 'transform'*");
+    }
+
+    [Fact]
+    public void CircuitBreaker_WithNothingToRetry_ShouldWarn()
+    {
+        var builder = new PipelineBuilder().WithOptimizationProfile(PipelineOptimizationProfile.HighThroughput);
+        _ = Wire(builder);
+
+        builder.WithResilience(o => o with { CircuitBreaker = PipelineCircuitBreakerOptions.Default });
+
+        var ok = builder.TryBuild(out _, out var result);
+
+        ok.Should().BeTrue();
+        result.Issues.Should().Contain(i => i.Category == "Resilience" && i.Message.Contains("nothing on it is ever retried"));
+    }
+
+    [Fact]
+    public void CircuitBreaker_WithRetries_ShouldNotWarn()
+    {
+        var builder = new PipelineBuilder();
+        _ = Wire(builder);
+
+        builder.WithResilience(o => o with { CircuitBreaker = PipelineCircuitBreakerOptions.Default });
+
+        var ok = builder.TryBuild(out _, out var result);
+
+        ok.Should().BeTrue("the Default profile retries items");
+        result.Issues.Should().NotContain(i => i.Category == "Resilience");
+    }
+
+    private static TransformNodeHandle<int, int> Wire(PipelineBuilder builder)
+    {
         var source = builder.AddInMemorySourceWithDataFromContext(PipelineContext.CreateDefault(), "source", [1]);
         var transform = builder.AddTransform<ResilientTransform, int, int>("transform");
         var sink = builder.AddInMemorySink<int>("sink");
 
         builder.Connect(source, transform);
         builder.Connect(transform, sink);
-
-        // Configure retry options with zero restart attempts
-        builder.WithRetryOptions(opts => opts with { MaxNodeRestartAttempts = 0, MaxMaterializedItems = 1000 });
-        builder.AddResiliencePolicy<DummyResiliencePolicy>();
-        builder.WithResilience(transform);
-
-        var ok = builder.TryBuild(out _, out var result);
-
-        ok.Should().BeTrue();
-
-        result.Issues.Should()
-            .Contain(i => i.Category == "Resilience" && i.Message.Contains("MaxNodeRestartAttempts is 0"));
-    }
-
-    [Fact]
-    public void ResilientNode_WithNullMaxMaterializedItems_ShouldWarn()
-    {
-        var builder = new PipelineBuilder()
-            ;
-
-        var source = builder.AddInMemorySourceWithDataFromContext(PipelineContext.CreateDefault(), "source", [1]);
-        var transform = builder.AddTransform<ResilientTransform, int, int>("transform");
-        var sink = builder.AddInMemorySink<int>("sink");
-
-        builder.Connect(source, transform);
-        builder.Connect(transform, sink);
-
-        // Configure retry options with null MaxMaterializedItems
-        builder.WithRetryOptions(opts => opts with { MaxNodeRestartAttempts = 3, MaxMaterializedItems = null });
-        builder.AddResiliencePolicy<DummyResiliencePolicy>();
-        builder.WithResilience(transform);
-
-        var ok = builder.TryBuild(out _, out var result);
-
-        ok.Should().BeTrue();
-
-        result.Issues.Should()
-            .Contain(i => i.Category == "Resilience" && i.Message.Contains("MaxMaterializedItems is null"));
-    }
-
-    [Fact]
-    public void ResilientNode_WithZeroMaxMaterializedItems_ShouldWarn()
-    {
-        var builder = new PipelineBuilder()
-            ;
-
-        var source = builder.AddInMemorySourceWithDataFromContext(PipelineContext.CreateDefault(), "source", [1]);
-        var transform = builder.AddTransform<ResilientTransform, int, int>("transform");
-        var sink = builder.AddInMemorySink<int>("sink");
-
-        builder.Connect(source, transform);
-        builder.Connect(transform, sink);
-
-        // Configure retry options with zero MaxMaterializedItems
-        builder.WithRetryOptions(opts => opts with { MaxNodeRestartAttempts = 3, MaxMaterializedItems = 0 });
-        builder.AddResiliencePolicy<DummyResiliencePolicy>();
-        builder.WithResilience(transform);
-
-        var ok = builder.TryBuild(out _, out var result);
-
-        ok.Should().BeTrue();
-
-        result.Issues.Should()
-            .Contain(i => i.Category == "Resilience" && i.Message.Contains("MaxMaterializedItems is 0"));
-    }
-
-    [Fact]
-    public void ResilientNode_WithCompleteConfig_ShouldNotWarn()
-    {
-        var builder = new PipelineBuilder()
-            ;
-
-        var source = builder.AddInMemorySourceWithDataFromContext(PipelineContext.CreateDefault(), "source", [1]);
-        var transform = builder.AddTransform<ResilientTransform, int, int>("transform");
-        var sink = builder.AddInMemorySink<int>("sink");
-
-        builder.Connect(source, transform);
-        builder.Connect(transform, sink);
-
-        // Configure everything properly
-        builder.AddResiliencePolicy<DummyResiliencePolicy>();
-        builder.WithRetryOptions(opts => opts with { MaxNodeRestartAttempts = 3, MaxMaterializedItems = 1000 });
-        builder.WithResilience(transform);
-
-        var ok = builder.TryBuild(out _, out var result);
-
-        ok.Should().BeTrue();
-        result.Issues.Should().NotContain(i => i.Category == "Resilience" && i.Message.Contains("no custom IResiliencePolicy"));
-        result.Issues.Should().NotContain(i => i.Category == "Resilience" && i.Message.Contains("MaxNodeRestartAttempts"));
-        result.Issues.Should().NotContain(i => i.Category == "Resilience" && i.Message.Contains("MaxMaterializedItems"));
+        return transform;
     }
 
     [Fact]
@@ -190,7 +134,6 @@ public sealed class ResilienceConfigurationRuleTests
 
     private sealed class ResilientTransform : ITransformNode<int, int>
     {
-
         public ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             return ValueTask.FromResult<int>(item);
@@ -204,7 +147,6 @@ public sealed class ResilienceConfigurationRuleTests
 
     private sealed class RegularTransform : ITransformNode<int, int>
     {
-
         public ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             return ValueTask.FromResult<int>(item);
@@ -218,46 +160,21 @@ public sealed class ResilienceConfigurationRuleTests
 
     private sealed class DummyResiliencePolicy : IResiliencePolicy
     {
-        public Task<ResilienceDecision> DecideNodeFailureAsync(
-            NPipeline.Graph.NodeDefinition nodeDefinition,
-            INode node,
-            Exception exception,
-            PipelineContext context,
-            CancellationToken cancellationToken)
+        public ValueTask<ResilienceDecision> DecideNodeFailureAsync(NodeFailure failure, CancellationToken cancellationToken)
         {
-            return Task.FromResult(ResilienceDecision.Fail);
+            return ValueTask.FromResult(ResilienceDecision.Fail);
         }
 
-        public Task<ResilienceDecision> DecidePipelineFailureAsync(
-            string nodeId,
-            Exception exception,
-            PipelineContext context,
-            CancellationToken cancellationToken)
+        public ValueTask<ResilienceDecision> DecideRestartAsync(StreamFailure failure, CancellationToken cancellationToken)
         {
-            return Task.FromResult(ResilienceDecision.Fail);
+            return ValueTask.FromResult(ResilienceDecision.Fail);
         }
 
-        public Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
-            ITransformNode<TIn, TOut> node,
-            TIn failedItem,
-            Exception exception,
-            PipelineContext context,
-            string nodeId,
-            int retryAttempt,
-            CancellationToken cancellationToken)
+        public ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken)
         {
-            return Task.FromResult(ResilienceDecision.Fail);
+            return ValueTask.FromResult(ResilienceDecision.Fail);
         }
 
-        public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, RetryKind retryKind, int attemptNumber, CancellationToken cancellationToken)
-        {
-            return context.GetRetryDelayStrategy().GetDelayAsync(attemptNumber, cancellationToken);
-        }
-
-        public IResilienceCircuitBreaker? GetCircuitBreaker(PipelineContext context, string nodeId)
-        {
-            return DefaultResiliencePolicy.Instance.GetCircuitBreaker(context, nodeId);
-        }
     }
 }
 
@@ -429,7 +346,6 @@ public sealed class ParallelConfigurationRuleTests
 
     private sealed class ParallelTransform : ITransformNode<int, int>
     {
-
         public ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             return ValueTask.FromResult<int>(item);

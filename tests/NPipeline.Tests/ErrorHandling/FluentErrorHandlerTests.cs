@@ -2,7 +2,7 @@ using AwesomeAssertions;
 using NPipeline.ErrorHandling;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
-using NPipeline.Resilience;
+using NPipeline.Reliability;
 
 namespace NPipeline.Tests.ErrorHandling;
 
@@ -333,14 +333,15 @@ public sealed class FluentErrorHandlerTests
     {
         var context = PipelineContext.CreateDefault();
 
-        return policy.DecideItemFailureAsync<string, string>(
-            new TestTransformNode(),
-            item,
-            exception,
-            context,
-            "test-node",
-            retryAttempt,
-            CancellationToken.None);
+        return policy.DecideItemFailureAsync(new ItemFailure<string>
+        {
+            Item = item,
+            Node = new TestTransformNode(),
+            NodeId = "test-node",
+            Exception = exception,
+            Attempt = retryAttempt + 1,
+            Context = context,
+        }, CancellationToken.None).AsTask();
     }
 
     /// <summary>

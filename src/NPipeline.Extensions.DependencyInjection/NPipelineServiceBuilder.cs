@@ -5,7 +5,7 @@ using NPipeline.ErrorHandling;
 using NPipeline.Lineage;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
-using NPipeline.Resilience;
+using NPipeline.Reliability;
 
 namespace NPipeline.Extensions.DependencyInjection;
 

@@ -8,7 +8,7 @@ using NPipeline.Execution;
 using NPipeline.Extensions.Parallelism;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
-using NPipeline.Resilience;
+using NPipeline.Reliability;
 
 namespace NPipeline.Benchmarks.Benchmarks;
 
@@ -81,11 +81,10 @@ public class ItemRetryBenchmarks
             if ((bool)c.Parameters[ParallelKey])
                 b.WithExecutionStrategy(t, new ParallelExecutionStrategy(4));
 
-            if (scenario == RetryScenario.NoRetry)
-                return;
-
-            b.AddResiliencePolicy(RetryWithoutDelayPolicy.Instance);
-            b.WithRetryOptions(o => o with { MaxItemRetries = 3, DelayStrategyConfiguration = null });
+            // The default policy and classifier decide, so the retry cases include classification.
+            b.WithResilience(o => scenario == RetryScenario.NoRetry
+                ? PipelineResilienceOptions.None
+                : o with { ItemRetry = ItemRetryOptions.Default with { Backoff = RetryBackoff.None } });
         }
     }
 
@@ -125,23 +124,6 @@ public class ItemRetryBenchmarks
                 throw new TimeoutException("transient");
 
             return ValueTask.FromResult(item);
-        }
-    }
-
-    private sealed class RetryWithoutDelayPolicy : ResiliencePolicyBase
-    {
-        public static RetryWithoutDelayPolicy Instance { get; } = new();
-
-        public override Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(ITransformNode<TIn, TOut> node, TIn failedItem, Exception exception,
-            PipelineContext context, string nodeId, int retryAttempt, CancellationToken cancellationToken)
-        {
-            return Task.FromResult(ResilienceDecision.Retry);
-        }
-
-        public override ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, RetryKind retryKind, int attemptNumber,
-            CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult(TimeSpan.Zero);
         }
     }
 

@@ -13,7 +13,7 @@ using NPipeline.Extensions.Testing;
 using NPipeline.Graph;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
-using NPipeline.Resilience;
+using NPipeline.Reliability;
 
 namespace NPipeline.Tests.Resilience.Restart;
 
@@ -56,7 +56,7 @@ public sealed class ResilientMemoryUsageTests
         var act = async () => await runner.RunAsync<LargeStreamSmallCapPipeline>(ctx);
 
         await act.Should().ThrowAsync<NodeExecutionException>()
-            .WithMessage("*Resilience materialization exceeded MaxMaterializedItems*");
+            .WithMessage("*Resilience materialization exceeded NodeRestart.MaxReplayWindow*");
 
         // Measure memory after failure
         var memoryAfter = ForceAndGetMemory();
@@ -87,7 +87,7 @@ public sealed class ResilientMemoryUsageTests
         var smallCapAct = async () => await runner.RunAsync<SmallCapPipeline>(smallCapCtx);
 
         await smallCapAct.Should().ThrowAsync<NodeExecutionException>()
-            .WithMessage("*Resilience materialization exceeded MaxMaterializedItems*");
+            .WithMessage("*Resilience materialization exceeded NodeRestart.MaxReplayWindow*");
 
         var memoryAfterSmallCap = ForceAndGetMemory();
         var smallCapMemoryUsage = memoryAfterSmallCap - memoryBeforeSmallCap;
@@ -100,7 +100,7 @@ public sealed class ResilientMemoryUsageTests
         var largeCapAct = async () => await runner.RunAsync<LargeCapPipeline>(largeCapCtx);
 
         await largeCapAct.Should().ThrowAsync<NodeExecutionException>()
-            .WithMessage("*Resilience materialization exceeded MaxMaterializedItems*");
+            .WithMessage("*Resilience materialization exceeded NodeRestart.MaxReplayWindow*");
 
         var memoryAfterLargeCap = ForceAndGetMemory();
         var largeCapMemoryUsage = memoryAfterLargeCap - memoryBeforeLargeCap;
@@ -153,7 +153,7 @@ public sealed class ResilientMemoryUsageTests
         var act = async () => await runner.RunAsync<ResourceDisposalTestPipeline>(ctx);
 
         await act.Should().ThrowAsync<NodeExecutionException>()
-            .WithMessage("*Resilience materialization exceeded MaxMaterializedItems*");
+            .WithMessage("*Resilience materialization exceeded NodeRestart.MaxReplayWindow*");
 
         // The test passes if the exception is thrown, which indicates that
         // the cap was reached and the pipeline was properly terminated
@@ -163,46 +163,21 @@ public sealed class ResilientMemoryUsageTests
     // Helper classes for the tests
     private sealed class MemoryTestResiliencePolicy : IResiliencePolicy
     {
-        public Task<ResilienceDecision> DecideNodeFailureAsync(
-            NodeDefinition nodeDefinition,
-            INode node,
-            Exception error,
-            PipelineContext context,
-            CancellationToken cancellationToken)
+        public ValueTask<ResilienceDecision> DecideNodeFailureAsync(NodeFailure failure, CancellationToken cancellationToken)
         {
-            return Task.FromResult(ResilienceDecision.Fail);
+            return ValueTask.FromResult(ResilienceDecision.Fail);
         }
 
-        public Task<ResilienceDecision> DecidePipelineFailureAsync(
-            string nodeId,
-            Exception error,
-            PipelineContext context,
-            CancellationToken cancellationToken)
+        public ValueTask<ResilienceDecision> DecideRestartAsync(StreamFailure failure, CancellationToken cancellationToken)
         {
-            return Task.FromResult(ResilienceDecision.Fail);
+            return ValueTask.FromResult(ResilienceDecision.Fail);
         }
 
-        public Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
-            ITransformNode<TIn, TOut> node,
-            TIn failedItem,
-            Exception exception,
-            PipelineContext context,
-            string nodeId,
-            int retryAttempt,
-            CancellationToken cancellationToken)
+        public ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken)
         {
-            return Task.FromResult(ResilienceDecision.Fail);
+            return ValueTask.FromResult(ResilienceDecision.Fail);
         }
 
-        public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, RetryKind retryKind, int attemptNumber, CancellationToken cancellationToken)
-        {
-            return context.GetRetryDelayStrategy().GetDelayAsync(attemptNumber, cancellationToken);
-        }
-
-        public IResilienceCircuitBreaker? GetCircuitBreaker(PipelineContext context, string nodeId)
-        {
-            return DefaultResiliencePolicy.Instance.GetCircuitBreaker(context, nodeId);
-        }
     }
 
     private sealed class LargeStreamSource : SourceNode<int>
@@ -281,7 +256,7 @@ public sealed class ResilientMemoryUsageTests
             var k = builder.AddInMemorySink<int>("testSink");
             builder.Connect(s, t).Connect(t, k);
             builder.WithResilience(t);
-            builder.WithRetryOptions(o => o with { MaxNodeRestartAttempts = 1, MaxMaterializedItems = 100 });
+            builder.WithResilience(o => o with { NodeRestart = new NodeRestartOptions { MaxRestarts = 1, MaxReplayWindow = 100, Backoff = RetryBackoff.None } });
             builder.AddResiliencePolicy<MemoryTestResiliencePolicy>();
         }
     }
@@ -295,7 +270,7 @@ public sealed class ResilientMemoryUsageTests
             var k = builder.AddInMemorySink<int>("testSink");
             builder.Connect(s, t).Connect(t, k);
             builder.WithResilience(t);
-            builder.WithRetryOptions(o => o with { MaxNodeRestartAttempts = 1, MaxMaterializedItems = 50 });
+            builder.WithResilience(o => o with { NodeRestart = new NodeRestartOptions { MaxRestarts = 1, MaxReplayWindow = 50, Backoff = RetryBackoff.None } });
             builder.AddResiliencePolicy<MemoryTestResiliencePolicy>();
         }
     }
@@ -309,7 +284,7 @@ public sealed class ResilientMemoryUsageTests
             var k = builder.AddInMemorySink<int>("testSink");
             builder.Connect(s, t).Connect(t, k);
             builder.WithResilience(t);
-            builder.WithRetryOptions(o => o with { MaxNodeRestartAttempts = 1, MaxMaterializedItems = 500 });
+            builder.WithResilience(o => o with { NodeRestart = new NodeRestartOptions { MaxRestarts = 1, MaxReplayWindow = 500, Backoff = RetryBackoff.None } });
             builder.AddResiliencePolicy<MemoryTestResiliencePolicy>();
         }
     }
@@ -323,7 +298,7 @@ public sealed class ResilientMemoryUsageTests
             var k = builder.AddInMemorySink<int>("testSink");
             builder.Connect(s, t).Connect(t, k);
             builder.WithResilience(t);
-            builder.WithRetryOptions(o => o with { MaxNodeRestartAttempts = 1, MaxMaterializedItems = 200 });
+            builder.WithResilience(o => o with { NodeRestart = new NodeRestartOptions { MaxRestarts = 1, MaxReplayWindow = 200, Backoff = RetryBackoff.None } });
             builder.AddResiliencePolicy<MemoryTestResiliencePolicy>();
         }
     }
@@ -337,7 +312,7 @@ public sealed class ResilientMemoryUsageTests
             var k = builder.AddInMemorySink<int>("testSink");
             builder.Connect(s, t).Connect(t, k);
             builder.WithResilience(t);
-            builder.WithRetryOptions(o => o with { MaxNodeRestartAttempts = 1, MaxMaterializedItems = 100 });
+            builder.WithResilience(o => o with { NodeRestart = new NodeRestartOptions { MaxRestarts = 1, MaxReplayWindow = 100, Backoff = RetryBackoff.None } });
             builder.AddResiliencePolicy<MemoryTestResiliencePolicy>();
         }
     }

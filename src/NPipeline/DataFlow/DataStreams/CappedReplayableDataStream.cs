@@ -54,7 +54,7 @@ internal sealed class CappedReplayableDataStream<T> : DataStreamBase<T>
         await foreach (var item in Inner.WithCancellation(cancellationToken).ConfigureAwait(false))
         {
             if (_cap is not null && _buffer.Count >= _cap)
-                throw new InvalidOperationException($"Resilience materialization exceeded MaxMaterializedItems={_cap}.");
+                throw new InvalidOperationException($"Resilience materialization exceeded NodeRestart.MaxReplayWindow={_cap}.");
 
             _buffer.Add(item);
             yield return item;

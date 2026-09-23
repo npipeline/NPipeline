@@ -6,7 +6,7 @@ using NPipeline.Extensions.Testing;
 using NPipeline.Graph;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
-using NPipeline.Resilience;
+using NPipeline.Reliability;
 using Xunit.Abstractions;
 
 namespace NPipeline.Tests.ErrorHandling;
@@ -51,46 +51,21 @@ public sealed class ErrorHandlingTests(ITestOutputHelper output)
 
     public sealed class TestResiliencePolicy : IResiliencePolicy
     {
-        public Task<ResilienceDecision> DecideNodeFailureAsync(
-            NodeDefinition nodeDefinition,
-            INode node,
-            Exception exception,
-            PipelineContext context,
-            CancellationToken cancellationToken)
+        public ValueTask<ResilienceDecision> DecideNodeFailureAsync(NodeFailure failure, CancellationToken cancellationToken)
         {
-            return Task.FromResult(ResilienceDecision.Fail);
+            return ValueTask.FromResult(ResilienceDecision.Fail);
         }
 
-        public Task<ResilienceDecision> DecidePipelineFailureAsync(
-            string nodeId,
-            Exception exception,
-            PipelineContext context,
-            CancellationToken cancellationToken)
+        public ValueTask<ResilienceDecision> DecideRestartAsync(StreamFailure failure, CancellationToken cancellationToken)
         {
-            return Task.FromResult(ResilienceDecision.Fail);
+            return ValueTask.FromResult(ResilienceDecision.Fail);
         }
 
-        public Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
-            ITransformNode<TIn, TOut> node,
-            TIn failedItem,
-            Exception exception,
-            PipelineContext context,
-            string nodeId,
-            int retryAttempt,
-            CancellationToken cancellationToken)
+        public ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken)
         {
-            return Task.FromResult(ResilienceDecision.Skip);
+            return ValueTask.FromResult(ResilienceDecision.Skip);
         }
 
-        public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, RetryKind retryKind, int attemptNumber, CancellationToken cancellationToken)
-        {
-            return context.GetRetryDelayStrategy().GetDelayAsync(attemptNumber, cancellationToken);
-        }
-
-        public IResilienceCircuitBreaker? GetCircuitBreaker(PipelineContext context, string nodeId)
-        {
-            return DefaultResiliencePolicy.Instance.GetCircuitBreaker(context, nodeId);
-        }
     }
 
     public sealed class FailingPipelineDefinition : IPipelineDefinition
@@ -101,7 +76,7 @@ public sealed class ErrorHandlingTests(ITestOutputHelper output)
             var failing = builder.AddTransform<FailingNode, string, string>("failing");
             var sink = builder.AddInMemorySink<string>("sink");
 
-            builder.SetNodeResiliencePolicy(failing, new TestResiliencePolicy());
+            builder.AddResiliencePolicy(failing, new TestResiliencePolicy());
 
             builder.Connect(source, failing);
             builder.Connect(failing, sink);

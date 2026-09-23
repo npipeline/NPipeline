@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using NPipeline.Pipeline;
+using NPipeline.Reliability;
 
 // Tests skipped with a defect ID pin known bugs; the phase that fixes each one removes its skip.
 #pragma warning disable xUnit1004
@@ -65,8 +66,7 @@ public sealed class RestartBehaviorTests
             .AddPreconfiguredNodeInstance(k.Id, sink)
             .Connect(s, t)
             .Connect(t, k)
-            .AddResiliencePolicy(new RestartOnFailurePolicy())
-            .WithRetryOptions(o => o with { MaxNodeRestartAttempts = 1, MaxMaterializedItems = maxMaterializedItems });
+            .WithResilience(t, o => o with { NodeRestart = new NodeRestartOptions { MaxRestarts = 1, MaxReplayWindow = maxMaterializedItems } });
 
         _ = t.WithResilience(builder);
     }

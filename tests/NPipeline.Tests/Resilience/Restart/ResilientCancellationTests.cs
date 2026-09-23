@@ -9,7 +9,7 @@ using NPipeline.Execution.Strategies;
 using NPipeline.Graph;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
-using NPipeline.Resilience;
+using NPipeline.Reliability;
 
 namespace NPipeline.Tests.Resilience.Restart;
 
@@ -91,10 +91,9 @@ public sealed class ResilientCancellationTests
     [Fact]
     public async Task CancellationDuringTheRetryDelay_ThrowsRatherThanRetrying()
     {
-        // The retry delay is awaited inside a catch-all that logs and carries on. Cancellation during the delay must
-        // escape that handler instead of being logged and swallowed.
+        // Cancellation during the restart delay must propagate instead of being followed by another run.
         var policy = new RecordingPolicy { CancelDuringRetryDelay = true };
-        var context = CreateContext(policy);
+        var context = CreateContext(policy, RetryBackoff.Constant(TimeSpan.FromSeconds(30)));
         using var cts = new CancellationTokenSource();
         policy.CancellationSource = cts;
 
@@ -131,11 +130,15 @@ public sealed class ResilientCancellationTests
 
     private static readonly PassthroughNode Node = new();
 
-    private static PipelineContext CreateContext(IResiliencePolicy policy)
+    private static PipelineContext CreateContext(IResiliencePolicy policy, RetryBackoff restartBackoff = default)
     {
-        return new PipelineContext(new PipelineContextConfiguration(
-            RetryOptions: PipelineRetryOptions.Default with { MaxNodeRestartAttempts = 3, MaxMaterializedItems = 128 },
-            ResiliencePolicy: policy));
+        var context = new PipelineContext(new PipelineContextConfiguration(ResiliencePolicy: policy));
+        context.ExecutionConfiguration.Resilience = PipelineResilienceOptions.None with
+        {
+            NodeRestart = new NodeRestartOptions { MaxRestarts = 3, MaxReplayWindow = 128, Backoff = restartBackoff },
+        };
+
+        return context;
     }
 
     private static (ResilientExecutionStrategy Strategy, StubInnerStrategy Inner) CreateStrategy(Func<CancellationToken, IAsyncEnumerable<int>> produce)
@@ -224,36 +227,25 @@ public sealed class ResilientCancellationTests
 
         public CancellationTokenSource? CancellationSource { get; set; }
 
-        public Task<ResilienceDecision> DecideNodeFailureAsync(NodeDefinition nodeDefinition, INode node, Exception exception,
-            PipelineContext context, CancellationToken cancellationToken)
+        public ValueTask<ResilienceDecision> DecideNodeFailureAsync(NodeFailure failure, CancellationToken cancellationToken)
         {
-            return Task.FromResult(ResilienceDecision.Fail);
+            return ValueTask.FromResult(ResilienceDecision.Fail);
         }
 
-        public Task<ResilienceDecision> DecidePipelineFailureAsync(string nodeId, Exception exception, PipelineContext context,
-            CancellationToken cancellationToken)
+        public ValueTask<ResilienceDecision> DecideRestartAsync(StreamFailure failure, CancellationToken cancellationToken)
         {
             PipelineFailureDecisions++;
-            return Task.FromResult(ResilienceDecision.RestartNode);
+
+            // A shutdown arriving just as the restart backoff begins.
+            if (CancelDuringRetryDelay)
+                CancellationSource?.Cancel();
+
+            return ValueTask.FromResult(failure.CanRestart ? ResilienceDecision.RestartNode : ResilienceDecision.Fail);
         }
 
-        public Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(ITransformNode<TIn, TOut> node, TIn failedItem, Exception exception,
-            PipelineContext context, string nodeId, int retryAttempt, CancellationToken cancellationToken)
+        public ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken)
         {
-            return Task.FromResult(ResilienceDecision.Fail);
-        }
-
-        public async ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, RetryKind retryKind, int attemptNumber, CancellationToken cancellationToken)
-        {
-            if (CancelDuringRetryDelay && CancellationSource is not null)
-                await CancellationSource.CancelAsync();
-
-            return TimeSpan.FromMilliseconds(50);
-        }
-
-        public IResilienceCircuitBreaker? GetCircuitBreaker(PipelineContext context, string nodeId)
-        {
-            return DefaultResiliencePolicy.Instance.GetCircuitBreaker(context, nodeId);
+            return ValueTask.FromResult(ResilienceDecision.Fail);
         }
     }
 }

@@ -2,6 +2,7 @@ using NPipeline.Execution.Lineage;
 using NPipeline.Nodes;
 using NPipeline.Observability.Tracing;
 using NPipeline.Pipeline;
+using NPipeline.Reliability;
 
 namespace NPipeline.Execution;
 
@@ -42,7 +43,7 @@ internal interface IPerItemRetryExecutor
         ITransformNode<TIn, TOut> node,
         PipelineContext context,
         string nodeId,
-        int maxItemRetries,
+        PipelineResilienceOptions options,
         bool hasLineageIndex,
         long lineageInputIndex,
         LineageNodeOutcomeWriter lineageOutcomeWriter,

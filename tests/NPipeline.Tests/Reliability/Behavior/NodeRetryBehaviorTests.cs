@@ -1,9 +1,10 @@
 using AwesomeAssertions;
 using NPipeline.Execution;
-using NPipeline.Graph;
+using NPipeline.DataFlow;
+using NPipeline.ErrorHandling;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
-using NPipeline.Resilience;
+using NPipeline.Reliability;
 
 namespace NPipeline.Tests.Reliability.Behavior;
 
@@ -19,10 +20,17 @@ public sealed class NodeRetryBehaviorTests
         var source = new FailsToOpenOnceSource([1]);
         var sink = new CollectingSink<int>();
 
+        // A shutdown arriving mid-backoff: the backoff cancels the run and asks for a long delay.
+        var backoff = RetryBackoff.Custom(_ =>
+        {
+            cts.Cancel();
+            return TimeSpan.FromSeconds(30);
+        });
+
         var act = () => BehaviorPipeline.RunAsync(b =>
         {
             WireSource(b, source, sink);
-            _ = b.AddResiliencePolicy(new RetryNodePolicy(cancelDuringDelay: cts));
+            _ = b.WithResilience(o => o with { NodeRetry = new NodeRetryOptions { MaxRetries = 1, Backoff = backoff } });
         }, cancellationToken: cts.Token);
 
         _ = await act.Should().ThrowAsync<OperationCanceledException>();
@@ -39,7 +47,7 @@ public sealed class NodeRetryBehaviorTests
         await BehaviorPipeline.RunAsync(b =>
         {
             WireSource(b, new FailsToOpenOnceSource([1]), sink);
-            _ = b.AddResiliencePolicy(new RetryNodePolicy(cancelDuringDelay: null));
+            _ = b.WithResilience(o => o with { NodeRetry = new NodeRetryOptions { MaxRetries = 1, Backoff = RetryBackoff.None } });
         }, observer: observer);
 
         sink.Items.Should().Equal([1]);
@@ -64,8 +72,7 @@ public sealed class NodeRetryBehaviorTests
                 .AddPreconfiguredNodeInstance(k.Id, sink)
                 .Connect(s, t)
                 .Connect(t, k)
-                .AddResiliencePolicy(new FixedDecisionPolicy(ResilienceDecision.Retry))
-                .WithRetryOptions(o => o with { MaxItemRetries = 3 });
+                .WithResilience(o => o with { ItemRetry = new ItemRetryOptions { MaxRetries = 3 } });
         }, observer: observer);
 
         sink.Items.Should().Equal([1]);
@@ -83,26 +90,56 @@ public sealed class NodeRetryBehaviorTests
             .Connect(s, k);
     }
 
-    /// <summary>
-    ///     Retries any node failure. When given a token source, cancels it while the retry delay is being computed and
-    ///     asks for a long delay, as a shutdown arriving mid-backoff would.
-    /// </summary>
-    private sealed class RetryNodePolicy(CancellationTokenSource? cancelDuringDelay) : ResiliencePolicyBase
+    [Fact]
+    public async Task NodeRetry_IsNotAttemptedForAPermanentFailure()
     {
-        public override Task<ResilienceDecision> DecideNodeFailureAsync(NodeDefinition nodeDefinition, INode node, Exception exception,
-            PipelineContext context, CancellationToken cancellationToken)
-        {
-            return Task.FromResult(ResilienceDecision.Retry);
-        }
+        var source = new FailsToOpenSource(() => new InvalidOperationException("misconfigured"));
 
-        public override async ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, RetryKind retryKind, int attemptNumber,
-            CancellationToken cancellationToken)
+        var act = () => BehaviorPipeline.RunAsync(b =>
         {
-            if (cancelDuringDelay is null)
-                return TimeSpan.Zero;
+            var s = b.AddSource<FailsToOpenSource, int>("source");
+            var k = b.AddSink<CollectingSink<int>, int>("sink");
+            _ = b.AddPreconfiguredNodeInstance(s.Id, source).AddPreconfiguredNodeInstance(k.Id, new CollectingSink<int>()).Connect(s, k);
+            _ = b.WithResilience(o => o with { NodeRetry = new NodeRetryOptions { MaxRetries = 3, Backoff = RetryBackoff.None } });
+        });
 
-            await cancelDuringDelay.CancelAsync();
-            return TimeSpan.FromSeconds(30);
+        _ = await act.Should().ThrowAsync<Exception>();
+        source.Opens.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task ExhaustedNodeRetries_ThrowRetryExhausted()
+    {
+        var source = new FailsToOpenSource(() => new TimeoutException("still down"));
+
+        var act = () => BehaviorPipeline.RunAsync(b =>
+        {
+            var s = b.AddSource<FailsToOpenSource, int>("source");
+            var k = b.AddSink<CollectingSink<int>, int>("sink");
+            _ = b.AddPreconfiguredNodeInstance(s.Id, source).AddPreconfiguredNodeInstance(k.Id, new CollectingSink<int>()).Connect(s, k);
+            _ = b.WithResilience(o => o with { NodeRetry = new NodeRetryOptions { MaxRetries = 2, Backoff = RetryBackoff.None } });
+        });
+
+        var thrown = await act.Should().ThrowAsync<Exception>();
+
+        var exhausted = thrown.Which;
+        while (exhausted is not null and not RetryExhaustedException)
+            exhausted = exhausted.InnerException;
+
+        exhausted.Should().BeOfType<RetryExhaustedException>().Which.NodeId.Should().Be("source");
+        source.Opens.Should().Be(3);
+    }
+
+    private sealed class FailsToOpenSource(Func<Exception> failure) : SourceNode<int>
+    {
+        private int _opens;
+
+        public int Opens => _opens;
+
+        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
+        {
+            _ = Interlocked.Increment(ref _opens);
+            throw failure();
         }
     }
 }

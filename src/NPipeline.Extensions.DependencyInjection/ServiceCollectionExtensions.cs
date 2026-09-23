@@ -9,7 +9,7 @@ using NPipeline.Lineage;
 using NPipeline.Nodes;
 using NPipeline.Observability;
 using NPipeline.Pipeline;
-using NPipeline.Resilience;
+using NPipeline.Reliability;
 
 namespace NPipeline.Extensions.DependencyInjection;
 

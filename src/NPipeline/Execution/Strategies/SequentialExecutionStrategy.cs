@@ -122,7 +122,7 @@ public sealed class SequentialExecutionStrategy : IExecutionStrategy
                             node,
                             context,
                             nodeId,
-                            cached.RetryOptions.MaxItemRetries,
+                            cached.Resilience,
                             hasLineageIndex,
                             lineageInputIndex,
                             cached.LineageOutcomeWriter,

@@ -11,7 +11,7 @@ using NPipeline.Extensions.Testing;
 using NPipeline.Graph;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
-using NPipeline.Resilience;
+using NPipeline.Reliability;
 
 namespace NPipeline.Tests.Resilience.Materialization;
 
@@ -47,46 +47,21 @@ public sealed class ResilientMaterializationCapTests
 
     private sealed class NoopResiliencePolicy : IResiliencePolicy
     {
-        public Task<ResilienceDecision> DecideNodeFailureAsync(
-            NodeDefinition nodeDefinition,
-            INode node,
-            Exception error,
-            PipelineContext context,
-            CancellationToken cancellationToken)
+        public ValueTask<ResilienceDecision> DecideNodeFailureAsync(NodeFailure failure, CancellationToken cancellationToken)
         {
-            return Task.FromResult(ResilienceDecision.Fail);
+            return ValueTask.FromResult(ResilienceDecision.Fail);
         }
 
-        public Task<ResilienceDecision> DecidePipelineFailureAsync(
-            string nodeId,
-            Exception error,
-            PipelineContext context,
-            CancellationToken cancellationToken)
+        public ValueTask<ResilienceDecision> DecideRestartAsync(StreamFailure failure, CancellationToken cancellationToken)
         {
-            return Task.FromResult(ResilienceDecision.Fail);
+            return ValueTask.FromResult(ResilienceDecision.Fail);
         }
 
-        public Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
-            ITransformNode<TIn, TOut> node,
-            TIn failedItem,
-            Exception exception,
-            PipelineContext context,
-            string nodeId,
-            int retryAttempt,
-            CancellationToken cancellationToken)
+        public ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken)
         {
-            return Task.FromResult(ResilienceDecision.Fail);
+            return ValueTask.FromResult(ResilienceDecision.Fail);
         }
 
-        public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, RetryKind retryKind, int attemptNumber, CancellationToken cancellationToken)
-        {
-            return context.GetRetryDelayStrategy().GetDelayAsync(attemptNumber, cancellationToken);
-        }
-
-        public IResilienceCircuitBreaker? GetCircuitBreaker(PipelineContext context, string nodeId)
-        {
-            return DefaultResiliencePolicy.Instance.GetCircuitBreaker(context, nodeId);
-        }
     }
 
     private sealed class StreamingSource : SourceNode<int>
@@ -117,7 +92,7 @@ public sealed class ResilientMaterializationCapTests
             var k = builder.AddInMemorySink<int>("snkMat");
             builder.Connect(s, t).Connect(t, k);
             builder.WithResilience(t);
-            builder.WithRetryOptions(o => o with { MaxNodeRestartAttempts = 1, MaxMaterializedItems = 50 });
+            builder.WithResilience(o => o with { NodeRestart = new NodeRestartOptions { MaxRestarts = 1, MaxReplayWindow = 50, Backoff = RetryBackoff.None } });
             builder.AddResiliencePolicy<NoopResiliencePolicy>();
         }
     }
@@ -131,7 +106,7 @@ public sealed class ResilientMaterializationCapTests
             var k = builder.AddInMemorySink<int>("snkMat2");
             builder.Connect(s, t).Connect(t, k);
             builder.WithResilience(t);
-            builder.WithRetryOptions(o => o with { MaxNodeRestartAttempts = 1, MaxMaterializedItems = 120 });
+            builder.WithResilience(o => o with { NodeRestart = new NodeRestartOptions { MaxRestarts = 1, MaxReplayWindow = 120, Backoff = RetryBackoff.None } });
             builder.AddResiliencePolicy<NoopResiliencePolicy>();
         }
     }

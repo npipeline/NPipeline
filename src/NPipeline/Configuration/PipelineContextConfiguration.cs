@@ -4,7 +4,7 @@ using NPipeline.Lineage;
 using NPipeline.Observability;
 using NPipeline.Observability.Tracing;
 using NPipeline.Pipeline;
-using NPipeline.Resilience;
+using NPipeline.Reliability;
 
 namespace NPipeline.Configuration;
 
@@ -27,7 +27,6 @@ public sealed record PipelineContextConfiguration(
     IDictionary<string, object>? Parameters = null,
     IDictionary<string, object>? Items = null,
     IDictionary<string, object>? Properties = null,
-    PipelineRetryOptions? RetryOptions = null,
     IErrorHandlerFactory? ErrorHandlerFactory = null,
     IResiliencePolicy? ResiliencePolicy = null,
     IDeadLetterSink? DeadLetterSink = null,
@@ -60,17 +59,6 @@ public sealed record PipelineContextConfiguration(
             ErrorHandlerFactory: errorHandlerFactory,
             LineageFactory: lineageFactory,
             ObservabilityFactory: observabilityFactory);
-    }
-
-    /// <summary>
-    ///     Creates a configuration with retry options.
-    ///     Useful for configuring pipeline resilience behavior without affecting other settings.
-    /// </summary>
-    /// <param name="retries">The retry options to apply globally across the pipeline.</param>
-    /// <returns>A new configuration with the specified retry options.</returns>
-    public static PipelineContextConfiguration WithRetry(PipelineRetryOptions retries)
-    {
-        return Default with { RetryOptions = retries };
     }
 
     /// <summary>

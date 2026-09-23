@@ -1,16 +1,13 @@
-using System.Diagnostics;
 using AwesomeAssertions;
+using Microsoft.Extensions.Time.Testing;
 using NPipeline.Configuration;
-using NPipeline.Configuration.RetryDelay;
 using NPipeline.ErrorHandling;
-using NPipeline.Execution.RetryDelay;
 using NPipeline.Extensions.Parallelism;
 using NPipeline.Graph;
+using NPipeline.Graph.Validation;
+using NPipeline.Nodes;
 using NPipeline.Pipeline;
-using NPipeline.Resilience;
-
-// Tests skipped with a defect ID pin known bugs; the phase that fixes each one removes its skip.
-#pragma warning disable xUnit1004
+using NPipeline.Reliability;
 
 namespace NPipeline.Tests.Reliability.Behavior;
 
@@ -20,11 +17,11 @@ namespace NPipeline.Tests.Reliability.Behavior;
 /// </summary>
 public sealed class ItemRetryBehaviorTests
 {
-    [Fact(Skip = Defects.C1)]
+    [Fact]
     public async Task DefaultProfile_RetriesATransientItemFailure()
     {
-        // The docs promise that under the Default profile a failed item is "retried automatically before the
-        // pipeline fails. No explicit configuration is required."
+        // The docs promise that under the Default profile a failed item is retried automatically, with no explicit
+        // configuration (C1).
         var transform = new FlakyTransform(failuresPerItem: 1);
         var sink = new CollectingSink<int>();
 
@@ -36,6 +33,63 @@ public sealed class ItemRetryBehaviorTests
 
         sink.Items.Should().Equal([1], "a transient failure must be retried under the Default profile");
         transform.AttemptsFor(1).Should().Be(2);
+    }
+
+    [Fact]
+    public async Task DefaultProfile_FailsAPermanentItemFailureAtOnce()
+    {
+        var transform = new ThrowingTransform(() => new InvalidOperationException("a bug, not an outage"));
+
+        var act = () => BehaviorPipeline.RunAsync(b =>
+        {
+            var s = b.AddSource<StreamingSource<int>, int>("source");
+            var t = b.AddTransform<ThrowingTransform, int, int>("transform");
+            var k = b.AddSink<CollectingSink<int>, int>("sink");
+
+            _ = b.AddPreconfiguredNodeInstance(s.Id, StreamingSource<int>.Of([1]))
+                .AddPreconfiguredNodeInstance(t.Id, transform)
+                .AddPreconfiguredNodeInstance(k.Id, new CollectingSink<int>())
+                .Connect(s, t)
+                .Connect(t, k);
+        });
+
+        _ = await act.Should().ThrowAsync<Exception>();
+        transform.Attempts.Should().Be(1, "the classifier limits the Default profile's retries to transient failures");
+    }
+
+    [Fact]
+    public async Task HighThroughputProfile_DoesNotRetry()
+    {
+        var transform = new FlakyTransform(failuresPerItem: 1);
+
+        var act = () => BehaviorPipeline.RunAsync(b =>
+        {
+            _ = b.WithOptimizationProfile(PipelineOptimizationProfile.HighThroughput);
+            _ = Wire(b, StreamingSource<int>.Of([1]), transform, new CollectingSink<int>());
+        });
+
+        _ = await act.Should().ThrowAsync<Exception>();
+        transform.AttemptsFor(1).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task ExhaustedItemRetries_ThrowRetryExhausted()
+    {
+        // C4: exhaustion used to surface as a bare InvalidOperationException.
+        var transform = new FlakyTransform(failuresPerItem: int.MaxValue);
+
+        var act = () => BehaviorPipeline.RunAsync(b =>
+        {
+            _ = Wire(b, StreamingSource<int>.Of([1]), transform, new CollectingSink<int>());
+            _ = b.WithResilience(o => o with { ItemRetry = new ItemRetryOptions { MaxRetries = 2 } });
+        });
+
+        var thrown = await act.Should().ThrowAsync<Exception>();
+        var exhausted = FindInChain<RetryExhaustedException>(thrown.Which);
+        exhausted.Should().NotBeNull();
+        exhausted!.NodeId.Should().Be("transform");
+        exhausted.InnerException.Should().BeOfType<TimeoutException>();
+        transform.AttemptsFor(1).Should().Be(3);
     }
 
     [Theory]
@@ -62,7 +116,41 @@ public sealed class ItemRetryBehaviorTests
         sink.Items.Should().BeEmpty();
     }
 
-    [Fact(Skip = Defects.C3)]
+    [Fact]
+    public async Task DeadLetterOption_WithoutADeadLetterSink_FailsBeforeAnyNodeRuns()
+    {
+        var transform = new FlakyTransform(failuresPerItem: 0);
+
+        var act = () => BehaviorPipeline.RunAsync(b =>
+        {
+            _ = Wire(b, StreamingSource<int>.Of([1]), transform, new CollectingSink<int>());
+            _ = b.WithResilience(o => o with { OnItemFailure = ItemFailureAction.DeadLetter });
+        });
+
+        (await act.Should().ThrowAsync<DeadLetterSinkNotConfiguredException>()).Which.NodeId.Should().Be("transform");
+        transform.TotalAttempts.Should().Be(0);
+    }
+
+    [Theory]
+    [InlineData(ItemFailureAction.Skip, false)]
+    [InlineData(ItemFailureAction.DeadLetter, true)]
+    public async Task OnItemFailure_HandlesAFailureThatIsNotRetried(ItemFailureAction action, bool deadLettered)
+    {
+        var sink = new CollectingSink<int>();
+        var deadLetters = new CollectingDeadLetterSink();
+
+        await BehaviorPipeline.RunAsync(b =>
+        {
+            _ = Wire(b, StreamingSource<int>.Of([1, 2]), new FailsOnTransform(1), sink);
+            _ = b.WithResilience(o => o with { OnItemFailure = action });
+            _ = b.AddDeadLetterSink(deadLetters);
+        });
+
+        sink.Items.Should().Equal([2]);
+        deadLetters.Envelopes.Should().HaveCount(deadLettered ? 1 : 0);
+    }
+
+    [Fact]
     public async Task PolicyRetryRule_UnderHighThroughput_RetriesItsOwnCountThenDeadLetters()
     {
         var transform = new FlakyTransform(failuresPerItem: int.MaxValue);
@@ -74,7 +162,7 @@ public sealed class ItemRetryBehaviorTests
 
         await BehaviorPipeline.RunAsync(b =>
         {
-            // HighThroughput leaves MaxItemRetries at 0, which today overrides the rule and fails on the first retry.
+            // HighThroughput leaves ItemRetry.MaxRetries at 0. That is advice to the policy, not a cap on it (C3).
             _ = b.WithOptimizationProfile(PipelineOptimizationProfile.HighThroughput);
             _ = Wire(b, StreamingSource<int>.Of([1]), transform, new CollectingSink<int>());
             _ = b.AddResiliencePolicy(policy);
@@ -86,71 +174,132 @@ public sealed class ItemRetryBehaviorTests
     }
 
     [Fact]
-    public async Task SequentialItemRetries_AskForABackoffBeforeEachRetry()
+    public async Task PolicyThatAlwaysRetries_HitsTheSafetyCeiling()
     {
-        // Control for the parallel test below: the sequential path already backs off.
-        var policy = new FixedDecisionPolicy(ResilienceDecision.Retry);
+        var transform = new FlakyTransform(failuresPerItem: int.MaxValue);
+
+        var act = () => BehaviorPipeline.RunAsync(b =>
+        {
+            // HighThroughput has no backoff, so the hundred retries take no time.
+            _ = b.WithOptimizationProfile(PipelineOptimizationProfile.HighThroughput);
+            _ = Wire(b, StreamingSource<int>.Of([1]), transform, new CollectingSink<int>());
+            _ = b.AddResiliencePolicy(new FixedDecisionPolicy(ResilienceDecision.Retry));
+        });
+
+        var thrown = await act.Should().ThrowAsync<Exception>();
+        FindInChain<InvalidOperationException>(thrown.Which)!.Message.Should().Contain(nameof(FixedDecisionPolicy));
+        transform.AttemptsFor(1).Should().Be(101);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ItemRetries_UseTheBackoffBeforeEachRetry(bool parallel)
+    {
+        var backoff = new RecordingBackoff();
         var sink = new CollectingSink<int>();
 
         await BehaviorPipeline.RunAsync(b =>
         {
-            _ = Wire(b, StreamingSource<int>.Of([1]), new FlakyTransform(failuresPerItem: 2), sink);
-            _ = b.AddResiliencePolicy(policy);
-            _ = b.WithRetryOptions(o => o with { MaxItemRetries = 3 });
+            var t = Wire(b, StreamingSource<int>.Of([1]), new FlakyTransform(failuresPerItem: 2), sink);
+
+            if (parallel)
+                _ = b.WithExecutionStrategy(t, new ParallelExecutionStrategy(2));
+
+            _ = b.WithResilience(o => o with { ItemRetry = new ItemRetryOptions { MaxRetries = 3, Backoff = backoff.Backoff } });
         });
 
         sink.Items.Should().Equal([1]);
-        policy.DelayRequests.Should().Equal([1, 2]);
+        backoff.Requests.Should().Equal([1, 2], "without a backoff the retries spin against a failing dependency");
     }
 
     [Fact]
-    public async Task ParallelItemRetries_AskForABackoffBeforeEachRetry()
-    {
-        var policy = new FixedDecisionPolicy(ResilienceDecision.Retry);
-        var sink = new CollectingSink<int>();
-
-        await BehaviorPipeline.RunAsync(b =>
-        {
-            var t = Wire(b, StreamingSource<int>.Of([1]), new FlakyTransform(failuresPerItem: 2), sink);
-            _ = b.WithExecutionStrategy(t, new ParallelExecutionStrategy(2));
-            _ = b.AddResiliencePolicy(policy);
-            _ = b.WithRetryOptions(o => o with { MaxItemRetries = 3 });
-        });
-
-        sink.Items.Should().Equal([1]);
-        policy.DelayRequests.Should().Equal([1, 2], "without a backoff the parallel path spins against a failing dependency");
-    }
-
-    [Fact(Skip = Defects.C6)]
     public async Task PerNodeBackoff_IsHonored()
     {
-        var delay = TimeSpan.FromMilliseconds(150);
+        // C6: the delay strategy used to be built once per run from the pipeline-wide options.
+        var pipelineBackoff = new RecordingBackoff();
+        var nodeBackoff = new RecordingBackoff();
         var sink = new CollectingSink<int>();
-
-        var nodeOptions = PipelineRetryOptions.Default with
-        {
-            MaxItemRetries = 3,
-            DelayStrategyConfiguration = new RetryDelayStrategyConfiguration(BackoffStrategies.FixedDelay(delay), JitterStrategies.NoJitter()),
-        };
-
-        var stopwatch = Stopwatch.StartNew();
 
         await BehaviorPipeline.RunAsync(b =>
         {
             var t = Wire(b, StreamingSource<int>.Of([1]), new FlakyTransform(failuresPerItem: 2), sink);
-            _ = b.AddResiliencePolicy(new FixedDecisionPolicy(ResilienceDecision.Retry));
-
-            // The pipeline-wide options carry no delay; only the node override does.
-            _ = b.WithRetryOptions(o => o with { MaxItemRetries = 3, DelayStrategyConfiguration = null });
-            _ = b.WithRetryOptions(t, nodeOptions);
+            _ = b.WithResilience(o => o with { ItemRetry = new ItemRetryOptions { MaxRetries = 3, Backoff = pipelineBackoff.Backoff } });
+            _ = b.WithResilience(t, o => o with { ItemRetry = o.ItemRetry with { Backoff = nodeBackoff.Backoff } });
         });
 
-        stopwatch.Stop();
+        sink.Items.Should().Equal([1]);
+        nodeBackoff.Requests.Should().Equal([1, 2]);
+        pipelineBackoff.Requests.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task RetryDelays_WaitOnThePipelinesClock()
+    {
+        var time = new FakeTimeProvider();
+        var sink = new CollectingSink<int>();
+
+        var run = BehaviorPipeline.RunAsync(b =>
+        {
+            _ = Wire(b, StreamingSource<int>.Of([1]), new FlakyTransform(failuresPerItem: 1), sink);
+            _ = b.WithResilience(o => o with
+            {
+                ItemRetry = new ItemRetryOptions { MaxRetries = 1, Backoff = RetryBackoff.Constant(TimeSpan.FromHours(1)) },
+                Time = time,
+            });
+        });
+
+        // The hour-long delay only passes when the fake clock is advanced.
+        await Task.Delay(100);
+        run.IsCompleted.Should().BeFalse();
+
+        time.Advance(TimeSpan.FromHours(1));
+        await run.WaitAsync(TimeSpan.FromSeconds(10));
 
         sink.Items.Should().Equal([1]);
+    }
 
-        // Two retries at 150ms each. Asserting a lower bound only keeps this robust on a loaded machine.
-        stopwatch.Elapsed.Should().BeGreaterThan(TimeSpan.FromMilliseconds(250), "the node's own backoff must be applied");
+    [Fact]
+    public async Task PerNodePolicy_DecidesForItsNodeOnly()
+    {
+        var sink = new CollectingSink<int>();
+
+        await BehaviorPipeline.RunAsync(b =>
+        {
+            var t = Wire(b, StreamingSource<int>.Of([1, 2]), new FailsOnTransform(1), sink);
+            _ = b.AddResiliencePolicy(t, new FixedDecisionPolicy(ResilienceDecision.Skip));
+        });
+
+        sink.Items.Should().Equal([2]);
+    }
+
+    [Fact]
+    public void ItemRetry_OnASink_IsABuildError()
+    {
+        // C11: this used to be accepted and silently ignored.
+        var builder = new PipelineBuilder();
+        var s = builder.AddSource<StreamingSource<int>, int>("source");
+        var k = builder.AddSink<CollectingSink<int>, int>("sink");
+        _ = builder.Connect(s, k);
+        _ = builder.WithResilience(k, o => o with { ItemRetry = new ItemRetryOptions { MaxRetries = 3 } });
+
+        var act = () => builder.Build();
+
+        act.Should().Throw<PipelineValidationException>().WithMessage("*'sink'*ItemRetry*");
+    }
+
+    [Fact]
+    public void NodeRetry_OnASink_IsAllowed()
+    {
+        var builder = new PipelineBuilder();
+        var s = builder.AddSource<StreamingSource<int>, int>("source");
+        var k = builder.AddSink<CollectingSink<int>, int>("sink");
+        _ = builder.Connect(s, k);
+        _ = builder.WithResilience(k, o => o with { NodeRetry = new NodeRetryOptions { MaxRetries = 1 } });
+
+        var act = () => builder.Build();
+
+        act.Should().NotThrow("a sink inherits the pipeline's ItemRetry, which it does not change");
     }
 
     private static T? FindInChain<T>(Exception? exception) where T : Exception
@@ -164,11 +313,11 @@ public sealed class ItemRetryBehaviorTests
         return null;
     }
 
-    private static TransformNodeHandle<int, int> Wire(PipelineBuilder builder, StreamingSource<int> source, FlakyTransform transform,
-        CollectingSink<int> sink)
+    private static TransformNodeHandle<int, int> Wire<TTransform>(PipelineBuilder builder, StreamingSource<int> source, TTransform transform,
+        CollectingSink<int> sink) where TTransform : ITransformNode<int, int>
     {
         var s = builder.AddSource<StreamingSource<int>, int>("source");
-        var t = builder.AddTransform<FlakyTransform, int, int>("transform");
+        var t = builder.AddTransform<TTransform, int, int>("transform");
         var k = builder.AddSink<CollectingSink<int>, int>("sink");
 
         _ = builder.AddPreconfiguredNodeInstance(s.Id, source)
@@ -178,5 +327,31 @@ public sealed class ItemRetryBehaviorTests
             .Connect(t, k);
 
         return t;
+    }
+
+    private sealed class ThrowingTransform(Func<Exception> failure) : TransformNode<int, int>
+    {
+        private int _attempts;
+
+        public int Attempts => _attempts;
+
+        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        {
+            _ = Interlocked.Increment(ref _attempts);
+            throw failure();
+        }
+    }
+
+    /// <summary>
+    ///     Fails one item permanently and passes every other item through.
+    /// </summary>
+    private sealed class FailsOnTransform(int failingItem) : TransformNode<int, int>
+    {
+        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        {
+            return item == failingItem
+                ? throw new FormatException($"item {item} is malformed")
+                : ValueTask.FromResult(item);
+        }
     }
 }

@@ -6,7 +6,7 @@ using NPipeline.Execution.CircuitBreaking;
 namespace NPipeline.Tests.Reliability.Behavior;
 
 /// <summary>
-///     Circuit breaker lifetime. Until Phase 2 adds an injectable clock this drives the manager directly, with the
+///     Circuit breaker lifetime. Until Phase 4 moves the breaker onto the pipeline's clock this drives the manager directly, with the
 ///     30-minute inactivity threshold shrunk to milliseconds.
 /// </summary>
 public sealed class CircuitBreakerBehaviorTests

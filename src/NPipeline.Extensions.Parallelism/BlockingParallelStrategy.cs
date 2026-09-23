@@ -60,10 +60,9 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
         // Capture the current activity for tagging observability metrics
         var currentActivity = context.Observability.Tracer.CurrentActivity;
 
-        // Resolve effective retry options using our helper method
-        var effectiveRetries = GetRetryOptions(nodeId, context);
+        var cachedContext = CachedNodeExecutionContext.Create(context, nodeId);
         var logger = context.Observability.LoggerFactory.CreateLogger(nameof(BlockingParallelStrategy));
-        ParallelExecutionStrategyLogMessages.FinalMaxRetries(logger, nodeId, effectiveRetries.MaxItemRetries);
+        ParallelExecutionStrategyLogMessages.FinalMaxRetries(logger, nodeId, cachedContext.Resilience.ItemRetry.MaxRetries);
 
         var effectiveDop = parallelOptions?.MaxDegreeOfParallelism ?? ConfiguredMaxDop ?? Environment.ProcessorCount;
         var windowSize = parallelOptions?.MaxQueueLength;
@@ -82,9 +81,6 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
             blockMetrics = new ParallelExecutionMetrics();
             context.NodeEnvironment.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.ParallelMetrics(nodeId), blockMetrics);
         }
-
-        // Create cached execution context once for all items (performance optimization)
-        var cachedContext = CachedNodeExecutionContext.CreateWithRetryOptions(context, nodeId, effectiveRetries);
 
         // Input channels: one dedicated channel per worker (single writer = feeder, single reader = the owning
         // worker). The feeder round-robins items across partitions. Giving each worker its own channel avoids the

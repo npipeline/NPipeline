@@ -3,6 +3,7 @@ using NPipeline.Execution.Lineage;
 using NPipeline.Observability.Logging;
 using NPipeline.Observability.Tracing;
 using NPipeline.Pipeline;
+using NPipeline.Reliability;
 
 namespace NPipeline.Execution;
 
@@ -56,21 +57,21 @@ public readonly struct CachedNodeExecutionContext
     ///     Initializes a new instance of the <see cref="CachedNodeExecutionContext" /> struct.
     /// </summary>
     /// <param name="nodeId">The ID of the node being executed.</param>
-    /// <param name="retryOptions">The effective retry options for this node.</param>
+    /// <param name="resilience">The resilience options that apply to this node.</param>
     /// <param name="tracingEnabled">Whether tracing is enabled.</param>
     /// <param name="loggingEnabled">Whether logging is enabled.</param>
     /// <param name="lineageOutcomeWriter">The lineage outcome writer resolved once for this node execution.</param>
     /// <param name="cancellationToken">The cancellation token for this execution.</param>
     private CachedNodeExecutionContext(
         string nodeId,
-        PipelineRetryOptions retryOptions,
+        PipelineResilienceOptions resilience,
         bool tracingEnabled,
         bool loggingEnabled,
         LineageNodeOutcomeWriter lineageOutcomeWriter,
         CancellationToken cancellationToken)
     {
         NodeId = nodeId;
-        RetryOptions = retryOptions;
+        Resilience = resilience;
         TracingEnabled = tracingEnabled;
         LoggingEnabled = loggingEnabled;
         LineageOutcomeWriter = lineageOutcomeWriter;
@@ -83,10 +84,9 @@ public readonly struct CachedNodeExecutionContext
     public string NodeId { get; }
 
     /// <summary>
-    ///     Gets the effective retry options for this node execution.
-    ///     This value considers per-node overrides, global options, and context defaults.
+    ///     Gets the resilience options that apply to this node execution: the node's own, or else the pipeline's.
     /// </summary>
-    public PipelineRetryOptions RetryOptions { get; }
+    public PipelineResilienceOptions Resilience { get; }
 
     /// <summary>
     ///     Gets a value indicating whether tracing is enabled for this execution.
@@ -134,7 +134,7 @@ public readonly struct CachedNodeExecutionContext
     ///             if (cached.TracingEnabled)
     ///             {
     ///                 using var activity = context.Observability.Tracer.StartActivity("Item.Transform");
-    ///                 // ... process item with cached.RetryOptions
+    ///                 // ... process item with cached.Resilience
     ///             }
     ///         }
     ///     </code>
@@ -143,7 +143,7 @@ public readonly struct CachedNodeExecutionContext
     ///     </para>
     ///     <list type="bullet">
     ///         <item>
-    ///             <description>Retry options (with precedence: node-specific -> global -> context)</description>
+    ///             <description>Resilience options (the node's own, or else the pipeline's)</description>
     ///         </item>
     ///         <item>
     ///             <description>Tracing enabled flag (based on tracer type)</description>
@@ -170,7 +170,7 @@ public readonly struct CachedNodeExecutionContext
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(nodeId);
 
-        var effectiveRetries = RetryOptionsResolver.Resolve(context, nodeId);
+        var resilience = context.ExecutionConfiguration.GetResilienceOptions(nodeId);
 
         // Determine if tracing is enabled by checking if tracer is not the null implementation
         var tracingEnabled = context.Observability.Tracer is not NullPipelineTracer;
@@ -180,40 +180,7 @@ public readonly struct CachedNodeExecutionContext
 
         return new CachedNodeExecutionContext(
             nodeId,
-            effectiveRetries,
-            tracingEnabled,
-            loggingEnabled,
-            LineageNodeOutcomeRegistry.GetWriter(context.RunIdentity.PipelineId, nodeId),
-            context.CancellationToken);
-    }
-
-    /// <summary>
-    ///     Creates a cached execution context for parallel execution scenarios where retry options
-    ///     have already been resolved using a different key pattern.
-    /// </summary>
-    /// <param name="context">The pipeline context to capture state from.</param>
-    /// <param name="nodeId">The ID of the node being executed.</param>
-    /// <param name="preResolvedRetryOptions">Pre-resolved retry options (e.g., from ParallelExecutionStrategyBase.GetRetryOptions).</param>
-    /// <returns>A cached execution context with the specified retry options.</returns>
-    /// <remarks>
-    ///     This overload is provided for parallel execution strategies that use a different key pattern
-    ///     for retry options ("retryOptions::{nodeId}" vs "retry::{nodeId}"). This avoids double lookup.
-    /// </remarks>
-    public static CachedNodeExecutionContext CreateWithRetryOptions(
-        PipelineContext context,
-        string nodeId,
-        PipelineRetryOptions preResolvedRetryOptions)
-    {
-        ArgumentNullException.ThrowIfNull(context);
-        ArgumentNullException.ThrowIfNull(nodeId);
-        ArgumentNullException.ThrowIfNull(preResolvedRetryOptions);
-
-        var tracingEnabled = context.Observability.Tracer is not NullPipelineTracer;
-        var loggingEnabled = context.Observability.LoggerFactory is not NullLoggerFactory;
-
-        return new CachedNodeExecutionContext(
-            nodeId,
-            preResolvedRetryOptions,
+            resilience,
             tracingEnabled,
             loggingEnabled,
             LineageNodeOutcomeRegistry.GetWriter(context.RunIdentity.PipelineId, nodeId),

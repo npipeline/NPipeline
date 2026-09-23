@@ -12,7 +12,7 @@ using NPipeline.Graph;
 using NPipeline.Lineage;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
-using NPipeline.Resilience;
+using NPipeline.Reliability;
 using NPipeline.State;
 
 namespace NPipeline.Tests.Core.Execution;

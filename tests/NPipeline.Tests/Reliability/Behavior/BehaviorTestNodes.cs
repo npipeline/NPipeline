@@ -6,7 +6,7 @@ using NPipeline.ErrorHandling;
 using NPipeline.Execution;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
-using NPipeline.Resilience;
+using NPipeline.Reliability;
 
 namespace NPipeline.Tests.Reliability.Behavior;
 
@@ -16,9 +16,6 @@ namespace NPipeline.Tests.Reliability.Behavior;
 /// </summary>
 internal static class Defects
 {
-    public const string C1 = "C1 (Phase 2): the Default profile never retries item failures";
-    public const string C3 = "C3 (Phase 2): MaxItemRetries caps a policy's own retry rule";
-    public const string C6 = "C6 (Phase 2): per-node delay configuration is ignored";
     public const string R1 = "R1 (Phase 5): a resilient node buffers its whole streaming input before processing";
     public const string R2 = "R2 (Phase 5): a resilient node fails with zero errors once its input exceeds MaxMaterializedItems";
 }
@@ -207,36 +204,28 @@ internal sealed class FlakyTransform(int failuresPerItem) : TransformNode<int, i
 }
 
 /// <summary>
-///     A policy that answers every item failure with a fixed decision and records the delays it is asked for.
+///     A policy that answers every item failure with a fixed decision, whatever the node's options say.
 /// </summary>
 internal sealed class FixedDecisionPolicy(ResilienceDecision itemDecision) : ResiliencePolicyBase
 {
-    private readonly ConcurrentQueue<int> _delayRequests = new();
-
-    public IReadOnlyList<int> DelayRequests => [.. _delayRequests];
-
-    public override Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(ITransformNode<TIn, TOut> node, TIn failedItem, Exception exception,
-        PipelineContext context, string nodeId, int retryAttempt, CancellationToken cancellationToken)
+    public override ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken)
     {
-        return Task.FromResult(itemDecision);
-    }
-
-    public override ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, RetryKind retryKind, int attemptNumber,
-        CancellationToken cancellationToken)
-    {
-        _delayRequests.Enqueue(attemptNumber);
-        return base.GetRetryDelayAsync(context, retryKind, attemptNumber, cancellationToken);
+        return ValueTask.FromResult(itemDecision);
     }
 }
 
 /// <summary>
-///     Enables the resilient strategy, which refuses to run under the default policy, without ever restarting.
+///     A backoff that records the retry numbers it is asked for and never waits.
 /// </summary>
-internal sealed class RestartOnFailurePolicy : ResiliencePolicyBase
+internal sealed class RecordingBackoff
 {
-    public override Task<ResilienceDecision> DecidePipelineFailureAsync(string nodeId, Exception exception, PipelineContext context,
-        CancellationToken cancellationToken)
+    private readonly ConcurrentQueue<int> _requests = new();
+
+    public IReadOnlyList<int> Requests => [.. _requests];
+
+    public RetryBackoff Backoff => RetryBackoff.Custom(retry =>
     {
-        return Task.FromResult(ResilienceDecision.RestartNode);
-    }
+        _requests.Enqueue(retry);
+        return TimeSpan.Zero;
+    });
 }

@@ -1,4 +1,4 @@
-namespace NPipeline.Resilience;
+namespace NPipeline.Reliability;
 
 /// <summary>
 ///     Snapshot of a resilience circuit breaker state.

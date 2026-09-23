@@ -8,6 +8,7 @@ using NPipeline.Graph.PipelineDelegates;
 using NPipeline.Graph.Validation;
 using NPipeline.Nodes;
 using NPipeline.Pipeline.Internals;
+using NPipeline.Reliability;
 
 namespace NPipeline.Pipeline;
 
@@ -123,11 +124,9 @@ public sealed partial class PipelineBuilder
         bool EarlyNameValidation,
         bool ItemLevelLineageEnabled,
         GraphValidationMode GraphValidationMode,
-        PipelineCircuitBreakerOptions? CircuitBreakerOptions,
         CircuitBreakerMemoryManagementOptions? CircuitBreakerMemoryOptions,
         LineageOptions? LineageOptions,
-        PipelineRetryOptions RetryOptions,
-        bool RetryExplicitlyConfigured,
+        Func<PipelineResilienceOptions, PipelineResilienceOptions>? ConfigureResilience,
         PipelineOptimizationProfile OptimizationProfile)
     {
         /// <summary>
@@ -146,8 +145,6 @@ public sealed partial class PipelineBuilder
             null,
             null,
             null,
-            PipelineRetryOptions.Default,
-            false,
             PipelineOptimizationProfile.Default);
     }
 

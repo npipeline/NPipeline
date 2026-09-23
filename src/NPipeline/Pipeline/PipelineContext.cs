@@ -11,7 +11,7 @@ using NPipeline.Nodes;
 using NPipeline.Observability;
 using NPipeline.Observability.Logging;
 using NPipeline.Observability.Tracing;
-using NPipeline.Resilience;
+using NPipeline.Reliability;
 using NPipeline.State;
 
 namespace NPipeline.Pipeline;
@@ -179,7 +179,6 @@ public sealed class PipelineContext : IAsyncDisposable
         var loggerFactory = config.LoggerFactory ?? NullLoggerFactory.Instance;
         var tracer = config.Tracer ?? NullPipelineTracer.Instance;
         var observabilityFactory = config.ObservabilityFactory ?? new DefaultObservabilityFactory();
-        var retryOptions = config.RetryOptions ?? PipelineRetryOptions.Default;
         var lineageFactory = config.LineageFactory ?? new DefaultLineageFactory(loggerFactory);
 
         _configuredCancellationToken = config.CancellationToken;
@@ -187,7 +186,7 @@ public sealed class PipelineContext : IAsyncDisposable
         ErrorHandlerFactory = config.ErrorHandlerFactory ?? new DefaultErrorHandlerFactory(loggerFactory);
 
         RunIdentity = new PipelineRunIdentityContext(DateTime.UtcNow);
-        ExecutionConfiguration = new PipelineExecutionConfigurationContext(retryOptions, config.OptimizationProfile);
+        ExecutionConfiguration = new PipelineExecutionConfigurationContext(config.OptimizationProfile);
         if (config.ResiliencePolicy is not null)
             ExecutionConfiguration.ResiliencePolicy = config.ResiliencePolicy;
         Observability = new PipelineObservabilityContext(loggerFactory, tracer, observabilityFactory);
@@ -499,7 +498,7 @@ public sealed class PipelineContext : IAsyncDisposable
 
     private void ClearOwnedDictionaries()
     {
-        ExecutionConfiguration.NodeRetryOverrides.Clear();
+        ExecutionConfiguration.ResetResilienceOptions();
         NodeEnvironment.NodeExecutionScopeRegistry.Clear();
 
         if (_ownsParametersDictionary)

@@ -1,8 +1,4 @@
-using NPipeline.Execution;
-using NPipeline.Graph;
-using NPipeline.Nodes;
-using NPipeline.Pipeline;
-using NPipeline.Resilience;
+using NPipeline.Reliability;
 
 namespace NPipeline.Extensions.Testing;
 
@@ -18,63 +14,31 @@ internal sealed class CapturingResiliencePolicy(
     List<Exception> errors,
     ResilienceDecision decisionOnError = ResilienceDecision.Skip) : IResiliencePolicy
 {
-    public async Task<ResilienceDecision> DecideNodeFailureAsync(
-        NodeDefinition nodeDefinition,
-        INode node,
-        Exception exception,
-        PipelineContext context,
-        CancellationToken cancellationToken)
+    public async ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken)
     {
-        await InvokeOriginalAsync(
-            () => originalPolicy.DecideNodeFailureAsync(nodeDefinition, node, exception, context, cancellationToken))
-            .ConfigureAwait(false);
+        await InvokeOriginalAsync(() => originalPolicy.DecideItemFailureAsync(failure, cancellationToken)).ConfigureAwait(false);
 
-        errors.Add(exception);
+        errors.Add(failure.Exception);
         return decisionOnError;
     }
 
-    public async Task<ResilienceDecision> DecidePipelineFailureAsync(
-        string nodeId,
-        Exception exception,
-        PipelineContext context,
-        CancellationToken cancellationToken)
+    public async ValueTask<ResilienceDecision> DecideRestartAsync(StreamFailure failure, CancellationToken cancellationToken)
     {
-        await InvokeOriginalAsync(
-            () => originalPolicy.DecidePipelineFailureAsync(nodeId, exception, context, cancellationToken))
-            .ConfigureAwait(false);
+        await InvokeOriginalAsync(() => originalPolicy.DecideRestartAsync(failure, cancellationToken)).ConfigureAwait(false);
 
-        errors.Add(exception);
+        errors.Add(failure.Exception);
         return decisionOnError;
     }
 
-    public async Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
-        ITransformNode<TIn, TOut> node,
-        TIn failedItem,
-        Exception exception,
-        PipelineContext context,
-        string nodeId,
-        int retryAttempt,
-        CancellationToken cancellationToken)
+    public async ValueTask<ResilienceDecision> DecideNodeFailureAsync(NodeFailure failure, CancellationToken cancellationToken)
     {
-        await InvokeOriginalAsync(
-            () => originalPolicy.DecideItemFailureAsync(node, failedItem, exception, context, nodeId, retryAttempt, cancellationToken))
-            .ConfigureAwait(false);
+        await InvokeOriginalAsync(() => originalPolicy.DecideNodeFailureAsync(failure, cancellationToken)).ConfigureAwait(false);
 
-        errors.Add(exception);
+        errors.Add(failure.Exception);
         return decisionOnError;
     }
 
-    public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, RetryKind retryKind, int attemptNumber, CancellationToken cancellationToken)
-    {
-        return originalPolicy.GetRetryDelayAsync(context, retryKind, attemptNumber, cancellationToken);
-    }
-
-    public IResilienceCircuitBreaker? GetCircuitBreaker(PipelineContext context, string nodeId)
-    {
-        return originalPolicy.GetCircuitBreaker(context, nodeId);
-    }
-
-    private static async Task InvokeOriginalAsync(Func<Task<ResilienceDecision>> action)
+    private static async Task InvokeOriginalAsync(Func<ValueTask<ResilienceDecision>> action)
     {
         try
         {

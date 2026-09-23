@@ -55,7 +55,7 @@ public class CappedReplayableDataStreamTests
 
         // Assert
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("Resilience materialization exceeded MaxMaterializedItems=2.");
+            .WithMessage("Resilience materialization exceeded NodeRestart.MaxReplayWindow=2.");
     }
 
     [Fact]
@@ -81,7 +81,7 @@ public class CappedReplayableDataStreamTests
 
         // Assert
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("Resilience materialization exceeded MaxMaterializedItems=0.");
+            .WithMessage("Resilience materialization exceeded NodeRestart.MaxReplayWindow=0.");
     }
 
     [Fact]
@@ -190,7 +190,7 @@ public class CappedReplayableDataStreamTests
 
         // Negative cap should still throw when trying to materialize
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("Resilience materialization exceeded MaxMaterializedItems=-1.");
+            .WithMessage("Resilience materialization exceeded NodeRestart.MaxReplayWindow=-1.");
     }
 }
 

@@ -1,7 +1,5 @@
-using NPipeline.Graph;
 using NPipeline.Nodes;
-using NPipeline.Pipeline;
-using NPipeline.Resilience;
+using NPipeline.Reliability;
 
 namespace NPipeline.ErrorHandling;
 
@@ -272,31 +270,24 @@ internal sealed class NodeScopedResiliencePolicy<TNode, TData> : ResiliencePolic
         _default = defaultDecision;
     }
 
-    public override Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
-        ITransformNode<TIn, TOut> node,
-        TIn failedItem,
-        Exception exception,
-        PipelineContext context,
-        string nodeId,
-        int retryAttempt,
-        CancellationToken cancellationToken)
+    public override ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(node);
-        ArgumentNullException.ThrowIfNull(exception);
-        ArgumentNullException.ThrowIfNull(context);
-        ArgumentNullException.ThrowIfNull(nodeId);
+        ArgumentNullException.ThrowIfNull(failure.Node);
+        ArgumentNullException.ThrowIfNull(failure.Exception);
 
-        if (node is not TNode || failedItem is not TData)
-            return Task.FromResult(ResilienceDecision.Fail);
+        // A null item matches when TData admits null. Anything else outside the policy's scope follows the node's
+        // options, as it would with no policy registered.
+        var itemMatches = failure.Item is TData || (failure.Item is null && default(TData) is null);
 
-        var attempt = retryAttempt + 1;
+        if (failure.Node is not TNode || !itemMatches)
+            return base.DecideItemFailureAsync(failure, cancellationToken);
 
         foreach (var (predicate, factory) in _rules)
         {
-            if (predicate(exception))
-                return Task.FromResult(factory(attempt));
+            if (predicate(failure.Exception))
+                return ValueTask.FromResult(factory(failure.Attempt));
         }
 
-        return Task.FromResult(_default(attempt));
+        return ValueTask.FromResult(_default(failure.Attempt));
     }
 }

@@ -12,6 +12,7 @@ using NPipeline.Observability;
 using NPipeline.Observability.DependencyInjection;
 using NPipeline.Observability.Metrics;
 using NPipeline.Pipeline;
+using NPipeline.Reliability;
 
 namespace NPipeline.Extensions.Observability.Tests;
 
@@ -644,8 +645,9 @@ public sealed class CompatibilityTests
 
             var transform = builder.AddTransform<TestRetryTransformNode, int, int>("parallelTransform")
                 .WithObservability(builder)
-                .WithBlockingParallelism(builder, 4)
-                .WithRetries(builder, 2);
+                .WithBlockingParallelism(builder, 4);
+
+            _ = builder.WithResilience(transform, o => o with { ItemRetry = new ItemRetryOptions { MaxRetries = 2 } });
 
             var sink = builder.AddSink<TestSinkNode, int>("sink")
                 .WithObservability(builder);

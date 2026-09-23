@@ -8,7 +8,7 @@ using NPipeline.Graph;
 using NPipeline.Graph.Validation;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
-using NPipeline.Resilience;
+using NPipeline.Reliability;
 using Xunit.Abstractions;
 
 namespace NPipeline.Tests.Core.Builder;
@@ -206,14 +206,13 @@ public sealed class PipelineBuilderTests(ITestOutputHelper output)
         builder.Connect(source, transform);
 
         // Act
-        builder.SetNodeResiliencePolicy(transform, new TestResiliencePolicy());
+        builder.AddResiliencePolicy(transform, new TestResiliencePolicy());
         var pipeline = builder.Build();
 
         // Assert
         var key = ExecutionAnnotationKeys.NodeResiliencePolicyForNode("transform");
         pipeline.Graph.ExecutionOptions.NodeExecutionAnnotations.Should().ContainKey(key);
     }
-
 
     // Test Node Implementations
     private sealed class TestSourceNode : SourceNode<string>
@@ -243,46 +242,21 @@ public sealed class PipelineBuilderTests(ITestOutputHelper output)
 
     private sealed class TestResiliencePolicy : IResiliencePolicy
     {
-        public Task<ResilienceDecision> DecideNodeFailureAsync(
-            NodeDefinition nodeDefinition,
-            INode node,
-            Exception error,
-            PipelineContext context,
-            CancellationToken cancellationToken)
+        public ValueTask<ResilienceDecision> DecideNodeFailureAsync(NodeFailure failure, CancellationToken cancellationToken)
         {
-            return Task.FromResult(ResilienceDecision.Fail);
+            return ValueTask.FromResult(ResilienceDecision.Fail);
         }
 
-        public Task<ResilienceDecision> DecidePipelineFailureAsync(
-            string nodeId,
-            Exception error,
-            PipelineContext context,
-            CancellationToken cancellationToken)
+        public ValueTask<ResilienceDecision> DecideRestartAsync(StreamFailure failure, CancellationToken cancellationToken)
         {
-            return Task.FromResult(ResilienceDecision.Fail);
+            return ValueTask.FromResult(ResilienceDecision.Fail);
         }
 
-        public Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
-            ITransformNode<TIn, TOut> node,
-            TIn failedItem,
-            Exception exception,
-            PipelineContext context,
-            string nodeId,
-            int retryAttempt,
-            CancellationToken cancellationToken)
+        public ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken)
         {
-            return Task.FromResult(ResilienceDecision.Fail);
+            return ValueTask.FromResult(ResilienceDecision.Fail);
         }
 
-        public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, RetryKind retryKind, int attemptNumber, CancellationToken cancellationToken)
-        {
-            return context.GetRetryDelayStrategy().GetDelayAsync(attemptNumber, cancellationToken);
-        }
-
-        public IResilienceCircuitBreaker? GetCircuitBreaker(PipelineContext context, string nodeId)
-        {
-            return DefaultResiliencePolicy.Instance.GetCircuitBreaker(context, nodeId);
-        }
     }
 
     private sealed class AutoSourceNode : SourceNode<int>

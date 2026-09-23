@@ -7,6 +7,7 @@ using NPipeline.Graph;
 using NPipeline.Nodes;
 using NPipeline.Observability;
 using NPipeline.Pipeline;
+using NPipeline.Reliability;
 
 namespace NPipeline.Tests.ErrorHandling;
 
@@ -131,13 +132,13 @@ public static class PipelineRunnerTestHelpers
 
     public static class PipelineGraphFactory
     {
-        public static PipelineGraph CreateGraphWithRetryOptions(NodeDefinition nodeDef, PipelineRetryOptions retryOptions)
+        public static PipelineGraph CreateGraphWithResilienceOptions(NodeDefinition nodeDef, PipelineResilienceOptions resilience)
         {
             return PipelineGraphBuilder.Create()
                 .WithNodes(ImmutableList.Create(nodeDef))
                 .WithEdges(ImmutableList<Edge>.Empty)
                 .WithPreconfiguredNodeInstances(ImmutableDictionary<string, INode>.Empty)
-                .WithRetryOptions(retryOptions)
+                .WithResilienceOptions(resilience)
                 .Build();
         }
 
@@ -150,7 +151,7 @@ public static class PipelineRunnerTestHelpers
                 .WithNodes(ImmutableList.Create(nodeDef))
                 .WithEdges(ImmutableList<Edge>.Empty)
                 .WithPreconfiguredNodeInstances(ImmutableDictionary<string, INode>.Empty)
-                .WithCircuitBreakerOptions(circuitBreakerOptions)
+                .WithResilienceOptions(PipelineResilienceOptions.None with { CircuitBreaker = circuitBreakerOptions })
                 .WithCircuitBreakerMemoryOptions(memoryOptions)
                 .Build();
         }

@@ -454,6 +454,14 @@ internal static class ErrorMessages
                $"See: {DocsBaseUrl}#{ErrorCodes.DeadLetterSinkNotConfigured}";
     }
 
+    public static string DeadLetterSinkNotConfiguredForOptions(string nodeId)
+    {
+        return $"[{ErrorCodes.DeadLetterSinkNotConfigured}] Node '{nodeId}': its resilience options dead-letter failed items (OnItemFailure = DeadLetter), " +
+               $"but no dead-letter sink is configured, so the pipeline was not started. " +
+               $"Configure one with builder.AddDeadLetterSink(...), or set OnItemFailure to Skip or Fail. " +
+               $"See: {DocsBaseUrl}#{ErrorCodes.DeadLetterSinkNotConfigured}";
+    }
+
     #endregion
 
     #region Resource and Capacity Errors (NP05xx)

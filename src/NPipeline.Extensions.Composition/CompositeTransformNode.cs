@@ -124,8 +124,7 @@ public sealed class CompositeTransformNode<TIn, TOut, TDefinition>
             Tracer: parentContext.Observability.Tracer,
             ErrorHandlerFactory: parentContext.ErrorHandlerFactory,
             LineageFactory: parentContext.Lineage.LineageFactory,
-            ObservabilityFactory: parentContext.Observability.ObservabilityFactory,
-            RetryOptions: parentContext.ExecutionConfiguration.RetryOptions);
+            ObservabilityFactory: parentContext.Observability.ObservabilityFactory);
 
         var subContext = new PipelineContext(config);
         subContext.RunIdentity.PipelineId = Guid.NewGuid();

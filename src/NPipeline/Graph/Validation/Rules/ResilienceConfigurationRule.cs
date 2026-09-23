@@ -1,26 +1,24 @@
 using System.Collections.Immutable;
 using NPipeline.Execution.Strategies;
+using NPipeline.Reliability;
 
 namespace NPipeline.Graph.Validation.Rules;
 
 /// <summary>
-///     Validates that resilience configuration is complete when ResilientExecutionStrategy is used.
-///     Detects common missing configurations that prevent node restarts from working correctly.
+///     Warns about resilience configuration that is valid but probably not what was intended.
 /// </summary>
 /// <remarks>
-///     <para>
-///         For node restarts to function properly, the following conditions must ALL be met:
-///         <list type="number">
-///             <item>The node is wrapped with ResilientExecutionStrategy</item>
-///             <item>MaxNodeRestartAttempts > 0 is configured</item>
-///             <item>MaxMaterializedItems is set to a positive number (not null)</item>
-///             <item>A custom IResiliencePolicy is registered</item>
-///         </list>
-///     </para>
-///     <para>
-///         This rule generates warnings when any of these prerequisites are missing, helping users
-///         avoid silent failures where node restarts are configured but do not execute.
-///     </para>
+///     <list type="bullet">
+///         <item>
+///             <description>
+///                 A node wrapped for restart whose options allow no restarts, with no custom policy that could
+///                 restart it anyway.
+///             </description>
+///         </item>
+///         <item>
+///             <description>A circuit breaker configured where nothing is ever retried or restarted.</description>
+///         </item>
+///     </list>
 /// </remarks>
 internal sealed class ResilienceConfigurationRule : IGraphRule
 {
@@ -35,78 +33,41 @@ internal sealed class ResilienceConfigurationRule : IGraphRule
     {
         var graph = context.Graph;
         var issues = ImmutableList.CreateBuilder<ValidationIssue>();
+        var hasCustomPolicy = graph.ErrorHandling.ResiliencePolicy is not null and not DefaultResiliencePolicy
+                              || graph.ErrorHandling.ResiliencePolicyType is not null;
 
-        // Find all nodes using ResilientExecutionStrategy
-        var nodesWithResilience = graph.Nodes
-            .Where(n => n.ExecutionStrategy is ResilientExecutionStrategy)
-            .ToList();
-
-        if (nodesWithResilience.Count == 0)
-            return issues.ToImmutable();
-
-        var hasCustomPolicy = graph.ErrorHandling.ResiliencePolicy is not null
-                      || graph.ErrorHandling.ResiliencePolicyType is not null;
-
-        foreach (var node in nodesWithResilience)
+        foreach (var node in graph.Nodes)
         {
-            if (!hasCustomPolicy)
+            var options = OptionsFor(graph, node.Id);
+
+            if (node.ExecutionStrategy is ResilientExecutionStrategy && options.NodeRestart.MaxRestarts == 0 && !hasCustomPolicy)
             {
                 issues.Add(new ValidationIssue(
                     ValidationSeverity.Warning,
-                    $"Node '{node.Name}' uses ResilientExecutionStrategy but no custom IResiliencePolicy is configured. " +
-                    $"Node restarts will not work with DefaultResiliencePolicy because it fail-fasts by design. " +
-                    $"Configure: builder.AddResiliencePolicy<YourPolicy>().",
+                    $"Node '{node.Name}' is wrapped for restart, but its NodeRestart.MaxRestarts is 0, so it will never restart. " +
+                    "Configure: builder.WithResilience(handle, o => o with { NodeRestart = new NodeRestartOptions { MaxRestarts = 3 } })",
                     "Resilience"));
             }
 
-            // Get effective retry options (prefer node-specific, then graph-level)
-            var retryOptions = graph.ErrorHandling.NodeRetryOverrides?.GetValueOrDefault(node.Id)
-                               ?? graph.ErrorHandling.RetryOptions;
-
-            if (retryOptions is null)
+            if (options.CircuitBreaker is { Enabled: true } &&
+                options.ItemRetry.MaxRetries == 0 && options.NodeRestart.MaxRestarts == 0 && options.NodeRetry.MaxRetries == 0 &&
+                !hasCustomPolicy)
             {
                 issues.Add(new ValidationIssue(
                     ValidationSeverity.Warning,
-                    $"Node '{node.Name}' uses ResilientExecutionStrategy but retry options are not configured. " +
-                    $"Set MaxNodeRestartAttempts > 0 and MaxMaterializedItems to enable restarts. " +
-                    "Configure: builder.WithRetryOptions(o => o with { MaxNodeRestartAttempts = 3, MaxMaterializedItems = 1000 })",
-                    "Resilience"));
-
-                continue;
-            }
-
-            // Check MaxNodeRestartAttempts
-            if (retryOptions.MaxNodeRestartAttempts <= 0)
-            {
-                issues.Add(new ValidationIssue(
-                    ValidationSeverity.Warning,
-                    $"Node '{node.Name}' uses ResilientExecutionStrategy but MaxNodeRestartAttempts is {retryOptions.MaxNodeRestartAttempts} (not > 0). " +
-                    $"The node will not restart on failures. " +
-                    "Configure: builder.WithRetryOptions(o => o with { MaxNodeRestartAttempts = 3 })",
-                    "Resilience"));
-            }
-
-            // Check MaxMaterializedItems
-            if (retryOptions.MaxMaterializedItems is null)
-            {
-                issues.Add(new ValidationIssue(
-                    ValidationSeverity.Warning,
-                    $"Node '{node.Name}' uses ResilientExecutionStrategy but MaxMaterializedItems is null (unbounded). " +
-                    $"This disables materialization, preventing node restarts and allowing unlimited memory growth. " +
-                    "Configure: builder.WithRetryOptions(o => o with { MaxMaterializedItems = 1000 })",
-                    "Resilience"));
-            }
-            else if (retryOptions.MaxMaterializedItems <= 0)
-            {
-                issues.Add(new ValidationIssue(
-                    ValidationSeverity.Warning,
-                    $"Node '{node.Name}' uses ResilientExecutionStrategy but MaxMaterializedItems is {retryOptions.MaxMaterializedItems} (not > 0). " +
-                    $"Materialization is disabled, preventing restarts. " +
-                    "Configure: builder.WithRetryOptions(o => o with { MaxMaterializedItems = 1000 })",
+                    $"Node '{node.Name}' has a circuit breaker, but nothing on it is ever retried or restarted, so the breaker has nothing to stop.",
                     "Resilience"));
             }
         }
 
         return issues.ToImmutable();
+    }
+
+    private static PipelineResilienceOptions OptionsFor(PipelineGraph graph, string nodeId)
+    {
+        if (graph.ErrorHandling.NodeResilience?.TryGetValue(nodeId, out var nodeOptions) == true)
+            return nodeOptions;
+
+        return graph.ErrorHandling.Resilience ?? PipelineResilienceOptions.None;
     }
 }

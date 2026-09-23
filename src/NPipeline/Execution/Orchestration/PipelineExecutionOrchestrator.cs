@@ -142,8 +142,7 @@ internal sealed class PipelineExecutionOrchestrator : IPipelineExecutionOrchestr
             runIdentity.RunId = Guid.NewGuid();
 
         observability.ProcessedItemsCounter = new StatsCounter();
-        execution.GlobalRetryOptions = execution.RetryOptions;
-        execution.NodeRetryOverrides.Clear();
+        execution.ResetResilienceOptions();
         nodeEnvironment.NodeExecutionScopeRegistry.Clear();
         execution.IsParallelExecution = false;
         execution.LastRetryExhaustedException = null;

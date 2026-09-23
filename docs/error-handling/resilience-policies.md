@@ -10,7 +10,7 @@ A resilience policy tells NPipeline what to do when something goes wrong. It rec
 
 ## The IResiliencePolicy Interface
 
-The core contract lives in `NPipeline.Resilience`:
+The core contract lives in `NPipeline.Reliability`:
 
 ```csharp
 public interface IResiliencePolicy
@@ -57,7 +57,7 @@ Most policies only need to customize one or two of these methods. Use `Resilienc
 
 ```csharp
 using NPipeline.Pipeline;
-using NPipeline.Resilience;
+using NPipeline.Reliability;
 
 public sealed class RetryTransientPolicy : ResiliencePolicyBase
 {
@@ -102,7 +102,7 @@ For common patterns, the `ResiliencePolicyBuilder` in `NPipeline.ErrorHandling` 
 
 ```csharp
 using NPipeline.ErrorHandling;
-using NPipeline.Resilience;
+using NPipeline.Reliability;
 
 // Retry TimeoutException up to 3 times, then dead-letter. Fail on anything else.
 var policy = ResiliencePolicyBuilder

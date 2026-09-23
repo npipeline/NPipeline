@@ -12,6 +12,7 @@ using NPipeline.Graph;
 using NPipeline.Graph.Validation;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
+using NPipeline.Reliability;
 
 namespace NPipeline.Tests.Core.Builder;
 
@@ -194,20 +195,47 @@ public sealed class PipelineBuilderCharacterizationTests
     }
 
     [Fact]
-    public void RetryOptions_GlobalAndPerNodeOverridePersisted()
+    public void ResilienceOptions_GlobalAndPerNodeOverridePersisted()
     {
         var b = new PipelineBuilder().WithoutExtendedValidation();
         var s = b.AddSource<InMemorySourceNode<int>, int>("s");
         var t = b.AddTransform<PassthroughTransform, int, int>("t");
         b.Connect(s, t);
-        b.WithRetryOptions(o => o with { MaxItemRetries = 5 });
-        b.WithRetryOptions(t, PipelineRetryOptions.Default with { MaxItemRetries = 2 });
+        b.WithResilience(o => o with { ItemRetry = o.ItemRetry with { MaxRetries = 5 } });
+        b.WithResilience(t, o => o with { ItemRetry = o.ItemRetry with { MaxRetries = 2 } });
         var p = b.Build();
-        p.Graph.ErrorHandling.RetryOptions.Should().NotBeNull();
-        p.Graph.ErrorHandling.RetryOptions!.MaxItemRetries.Should().Be(5);
+        p.Graph.ErrorHandling.Resilience.Should().NotBeNull();
+        p.Graph.ErrorHandling.Resilience!.ItemRetry.MaxRetries.Should().Be(5);
 
-        p.Graph.ErrorHandling.NodeRetryOverrides.Should().ContainKey(t.Id)
-            .WhoseValue.MaxItemRetries.Should().Be(2);
+        // The node's options derive from the pipeline's, so what it did not set is inherited.
+        var nodeOptions = p.Graph.ErrorHandling.NodeResilience.Should().ContainKey(t.Id).WhoseValue;
+        nodeOptions.ItemRetry.MaxRetries.Should().Be(2);
+        nodeOptions.ItemRetry.Backoff.Should().Be(p.Graph.ErrorHandling.Resilience.ItemRetry.Backoff);
+    }
+
+    [Fact]
+    public void ResilienceOptions_ConfiguredBeforeTheProfile_StartFromTheProfile()
+    {
+        var b = new PipelineBuilder().WithoutExtendedValidation();
+        b.AddSource<InMemorySourceNode<int>, int>("s");
+        b.WithResilience(o => o with { OnItemFailure = ItemFailureAction.Skip });
+        b.WithOptimizationProfile(PipelineOptimizationProfile.HighThroughput);
+        var p = b.Build();
+
+        p.Graph.ErrorHandling.Resilience!.ItemRetry.Should().BeSameAs(ItemRetryOptions.None);
+        p.Graph.ErrorHandling.Resilience.OnItemFailure.Should().Be(ItemFailureAction.Skip);
+    }
+
+    [Fact]
+    public void ResilienceOptions_Invalid_FailTheBuild()
+    {
+        var b = new PipelineBuilder().WithoutExtendedValidation();
+        b.AddSource<InMemorySourceNode<int>, int>("s");
+        b.WithResilience(o => o with { ItemRetry = new ItemRetryOptions { MaxRetries = -1 } });
+
+        var act = () => b.Build();
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*resilience options for the pipeline are invalid*");
     }
 
     [Fact]
@@ -215,10 +243,10 @@ public sealed class PipelineBuilderCharacterizationTests
     {
         var b = new PipelineBuilder().WithoutExtendedValidation();
         b.AddSource<InMemorySourceNode<int>, int>("s");
-        b.WithCircuitBreaker(7, TimeSpan.FromSeconds(30));
+        b.WithResilience(o => o with { CircuitBreaker = new PipelineCircuitBreakerOptions(7, TimeSpan.FromSeconds(30), TimeSpan.FromMinutes(5)) });
         var p = b.Build();
-        p.Graph.ErrorHandling.CircuitBreakerOptions.Should().NotBeNull();
-        p.Graph.ErrorHandling.CircuitBreakerOptions!.FailureThreshold.Should().Be(7);
+        p.Graph.ErrorHandling.Resilience!.CircuitBreaker.Should().NotBeNull();
+        p.Graph.ErrorHandling.Resilience.CircuitBreaker!.FailureThreshold.Should().Be(7);
     }
 
     [Fact]
@@ -226,7 +254,7 @@ public sealed class PipelineBuilderCharacterizationTests
     {
         var builder = new PipelineBuilder().WithoutExtendedValidation();
         builder.AddSource<InMemorySourceNode<int>, int>("s");
-        builder.WithCircuitBreaker();
+        builder.WithResilience(o => o with { CircuitBreaker = PipelineCircuitBreakerOptions.Default });
 
         var customMemory = CircuitBreakerMemoryManagementOptions.Default with
         {
@@ -362,7 +390,6 @@ public sealed class PipelineBuilderCharacterizationTests
 
     private sealed class PassthroughStreamTransform : IStreamTransformNode<int, int>
     {
-
         public async IAsyncEnumerable<int> TransformAsync(IAsyncEnumerable<int> items, PipelineContext context,
             [EnumeratorCancellation] CancellationToken cancellationToken)
         {

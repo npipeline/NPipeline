@@ -4,7 +4,7 @@ using NPipeline.Configuration;
 using NPipeline.ErrorHandling;
 using NPipeline.Lineage;
 using NPipeline.Nodes;
-using NPipeline.Resilience;
+using NPipeline.Reliability;
 using NPipeline.Visualization;
 
 namespace NPipeline.Graph;
@@ -102,7 +102,6 @@ public sealed record PipelineGraph
 public sealed class PipelineGraphBuilder
 {
     private CircuitBreakerMemoryManagementOptions? _circuitBreakerMemoryOptions;
-    private PipelineCircuitBreakerOptions? _circuitBreakerOptions;
     private IDeadLetterSink? _deadLetterSink;
     private Type? _deadLetterSinkType;
     private ImmutableArray<Edge> _edges = [];
@@ -112,14 +111,14 @@ public sealed class PipelineGraphBuilder
     private Type? _lineageSinkType;
     private FrozenDictionary<string, NodeDefinition> _nodeDefinitionMap = FrozenDictionary<string, NodeDefinition>.Empty;
     private ImmutableDictionary<string, object> _nodeExecutionAnnotations = ImmutableDictionary<string, object>.Empty;
-    private ImmutableDictionary<string, PipelineRetryOptions> _nodeRetryOverrides = ImmutableDictionary<string, PipelineRetryOptions>.Empty;
+    private ImmutableDictionary<string, PipelineResilienceOptions> _nodeResilience = ImmutableDictionary<string, PipelineResilienceOptions>.Empty;
     private ImmutableArray<NodeDefinition> _nodes = [];
     private IResiliencePolicy? _resiliencePolicy;
     private Type? _resiliencePolicyType;
     private IPipelineLineageSink? _pipelineLineageSink;
     private Type? _pipelineLineageSinkType;
     private FrozenDictionary<string, INode> _preconfiguredNodeInstances = FrozenDictionary<string, INode>.Empty;
-    private PipelineRetryOptions? _retryOptions;
+    private PipelineResilienceOptions? _resilience;
     private IPipelineVisualizer? _visualizer;
 
     /// <summary>
@@ -326,35 +325,24 @@ public sealed class PipelineGraphBuilder
     }
 
     /// <summary>
-    ///     Sets the retry options.
+    ///     Sets the pipeline's resilience options.
     /// </summary>
-    /// <param name="options">The retry options.</param>
+    /// <param name="options">The resilience options.</param>
     /// <returns>The builder instance for method chaining.</returns>
-    public PipelineGraphBuilder WithRetryOptions(PipelineRetryOptions? options)
+    public PipelineGraphBuilder WithResilienceOptions(PipelineResilienceOptions? options)
     {
-        _retryOptions = options;
+        _resilience = options;
         return this;
     }
 
     /// <summary>
-    ///     Sets the node retry overrides.
+    ///     Sets per-node resilience options, keyed by node id.
     /// </summary>
-    /// <param name="overrides">The node retry overrides.</param>
+    /// <param name="options">The per-node resilience options.</param>
     /// <returns>The builder instance for method chaining.</returns>
-    public PipelineGraphBuilder WithNodeRetryOverrides(ImmutableDictionary<string, PipelineRetryOptions>? overrides)
+    public PipelineGraphBuilder WithNodeResilienceOptions(IReadOnlyDictionary<string, PipelineResilienceOptions>? options)
     {
-        _nodeRetryOverrides = overrides ?? ImmutableDictionary<string, PipelineRetryOptions>.Empty;
-        return this;
-    }
-
-    /// <summary>
-    ///     Sets the node retry overrides.
-    /// </summary>
-    /// <param name="overrides">The node retry overrides.</param>
-    /// <returns>The builder instance for method chaining.</returns>
-    public PipelineGraphBuilder WithNodeRetryOverrides(IDictionary<string, PipelineRetryOptions>? overrides)
-    {
-        _nodeRetryOverrides = overrides?.ToImmutableDictionary() ?? ImmutableDictionary<string, PipelineRetryOptions>.Empty;
+        _nodeResilience = options?.ToImmutableDictionary() ?? ImmutableDictionary<string, PipelineResilienceOptions>.Empty;
         return this;
     }
 
@@ -377,17 +365,6 @@ public sealed class PipelineGraphBuilder
     public PipelineGraphBuilder WithNodeExecutionAnnotations(IDictionary<string, object>? annotations)
     {
         _nodeExecutionAnnotations = annotations?.ToImmutableDictionary() ?? ImmutableDictionary<string, object>.Empty;
-        return this;
-    }
-
-    /// <summary>
-    ///     Sets the circuit breaker options.
-    /// </summary>
-    /// <param name="options">The circuit breaker options.</param>
-    /// <returns>The builder instance for method chaining.</returns>
-    public PipelineGraphBuilder WithCircuitBreakerOptions(PipelineCircuitBreakerOptions? options)
-    {
-        _circuitBreakerOptions = options;
         return this;
     }
 
@@ -426,9 +403,8 @@ public sealed class PipelineGraphBuilder
         _resiliencePolicyType = config.ResiliencePolicyType;
         _deadLetterSink = config.DeadLetterSink;
         _deadLetterSinkType = config.DeadLetterSinkType;
-        _retryOptions = config.RetryOptions;
-        _nodeRetryOverrides = config.NodeRetryOverrides ?? ImmutableDictionary<string, PipelineRetryOptions>.Empty;
-        _circuitBreakerOptions = config.CircuitBreakerOptions;
+        _resilience = config.Resilience;
+        _nodeResilience = config.NodeResilience ?? ImmutableDictionary<string, PipelineResilienceOptions>.Empty;
         _circuitBreakerMemoryOptions = config.CircuitBreakerMemoryOptions;
 
         return this;
@@ -486,9 +462,8 @@ public sealed class PipelineGraphBuilder
                 ResiliencePolicyType = _resiliencePolicyType,
                 DeadLetterSink = _deadLetterSink,
                 DeadLetterSinkType = _deadLetterSinkType,
-                RetryOptions = _retryOptions,
-                NodeRetryOverrides = _nodeRetryOverrides,
-                CircuitBreakerOptions = _circuitBreakerOptions,
+                Resilience = _resilience,
+                NodeResilience = _nodeResilience,
                 CircuitBreakerMemoryOptions = _circuitBreakerMemoryOptions,
             },
             Lineage = new LineageConfiguration

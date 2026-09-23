@@ -10,7 +10,7 @@ using NPipeline.Extensions.Testing;
 using NPipeline.Graph;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
-using NPipeline.Resilience;
+using NPipeline.Reliability;
 
 namespace NPipeline.Tests.ErrorHandling;
 
@@ -290,43 +290,17 @@ public sealed class ErrorHandlerResolutionTests
 
     private abstract class CountingPolicyBase : IResiliencePolicy
     {
-        public virtual Task<ResilienceDecision> DecideNodeFailureAsync(
-            NodeDefinition nodeDefinition,
-            INode node,
-            Exception error,
-            PipelineContext context,
-            CancellationToken cancellationToken)
+        public virtual ValueTask<ResilienceDecision> DecideNodeFailureAsync(NodeFailure failure, CancellationToken cancellationToken)
         {
-            return Task.FromResult(ResilienceDecision.Fail);
+            return ValueTask.FromResult(ResilienceDecision.Fail);
         }
 
-        public virtual Task<ResilienceDecision> DecidePipelineFailureAsync(
-            string nodeId,
-            Exception error,
-            PipelineContext context,
-            CancellationToken cancellationToken)
+        public virtual ValueTask<ResilienceDecision> DecideRestartAsync(StreamFailure failure, CancellationToken cancellationToken)
         {
-            return Task.FromResult(ResilienceDecision.Fail);
+            return ValueTask.FromResult(ResilienceDecision.Fail);
         }
 
-        public abstract Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
-            ITransformNode<TIn, TOut> node,
-            TIn failedItem,
-            Exception exception,
-            PipelineContext context,
-            string nodeId,
-            int retryAttempt,
-            CancellationToken cancellationToken);
-
-        public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, RetryKind retryKind, int attemptNumber, CancellationToken cancellationToken)
-        {
-            return context.GetRetryDelayStrategy().GetDelayAsync(attemptNumber, cancellationToken);
-        }
-
-        public IResilienceCircuitBreaker? GetCircuitBreaker(PipelineContext context, string nodeId)
-        {
-            return DefaultResiliencePolicy.Instance.GetCircuitBreaker(context, nodeId);
-        }
+        public abstract ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken);
     }
 
     private sealed class GlobalTestErrorHandler : CountingPolicyBase
@@ -334,17 +308,10 @@ public sealed class ErrorHandlerResolutionTests
         public static int GlobalCallCount { get; set; }
         public int CallCount => GlobalCallCount;
 
-        public override Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
-            ITransformNode<TIn, TOut> node,
-            TIn failedItem,
-            Exception exception,
-            PipelineContext context,
-            string nodeId,
-            int retryAttempt,
-            CancellationToken cancellationToken)
+        public override ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken)
         {
             GlobalCallCount++;
-            return Task.FromResult(ResilienceDecision.Skip);
+            return ValueTask.FromResult(ResilienceDecision.Skip);
         }
     }
 
@@ -353,17 +320,10 @@ public sealed class ErrorHandlerResolutionTests
         public static int GlobalCallCount { get; set; }
         public int CallCount => GlobalCallCount;
 
-        public override Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
-            ITransformNode<TIn, TOut> node,
-            TIn failedItem,
-            Exception exception,
-            PipelineContext context,
-            string nodeId,
-            int retryAttempt,
-            CancellationToken cancellationToken)
+        public override ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken)
         {
             GlobalCallCount++;
-            return Task.FromResult(ResilienceDecision.Skip);
+            return ValueTask.FromResult(ResilienceDecision.Skip);
         }
     }
 
@@ -372,17 +332,10 @@ public sealed class ErrorHandlerResolutionTests
         public static int GlobalCallCount { get; set; }
         public int CallCount => GlobalCallCount;
 
-        public override Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
-            ITransformNode<TIn, TOut> node,
-            TIn failedItem,
-            Exception exception,
-            PipelineContext context,
-            string nodeId,
-            int retryAttempt,
-            CancellationToken cancellationToken)
+        public override ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken)
         {
             GlobalCallCount++;
-            return Task.FromResult(ResilienceDecision.Fail);
+            return ValueTask.FromResult(ResilienceDecision.Fail);
         }
     }
 
@@ -391,17 +344,10 @@ public sealed class ErrorHandlerResolutionTests
         public static int GlobalCallCount { get; set; }
         public int CallCount => GlobalCallCount;
 
-        public override Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
-            ITransformNode<TIn, TOut> node,
-            TIn failedItem,
-            Exception exception,
-            PipelineContext context,
-            string nodeId,
-            int retryAttempt,
-            CancellationToken cancellationToken)
+        public override ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken)
         {
             GlobalCallCount++;
-            return Task.FromResult(ResilienceDecision.Fail);
+            return ValueTask.FromResult(ResilienceDecision.Fail);
         }
     }
 
@@ -412,18 +358,11 @@ public sealed class ErrorHandlerResolutionTests
         public int CallCount => GlobalCallCount;
         public ResilienceDecision LastDecision => LastReturnedDecision ?? ResilienceDecision.Fail;
 
-        public override Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
-            ITransformNode<TIn, TOut> node,
-            TIn failedItem,
-            Exception exception,
-            PipelineContext context,
-            string nodeId,
-            int retryAttempt,
-            CancellationToken cancellationToken)
+        public override ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken)
         {
             GlobalCallCount++;
             LastReturnedDecision = ResilienceDecision.Skip;
-            return Task.FromResult(ResilienceDecision.Skip);
+            return ValueTask.FromResult(ResilienceDecision.Skip);
         }
     }
 
@@ -434,18 +373,11 @@ public sealed class ErrorHandlerResolutionTests
         public int CallCount => GlobalCallCount;
         public ResilienceDecision LastDecision => LastReturnedDecision ?? ResilienceDecision.Fail;
 
-        public override Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
-            ITransformNode<TIn, TOut> node,
-            TIn failedItem,
-            Exception exception,
-            PipelineContext context,
-            string nodeId,
-            int retryAttempt,
-            CancellationToken cancellationToken)
+        public override ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken)
         {
             GlobalCallCount++;
             LastReturnedDecision = ResilienceDecision.Fail;
-            return Task.FromResult(ResilienceDecision.Fail);
+            return ValueTask.FromResult(ResilienceDecision.Fail);
         }
     }
 
@@ -461,7 +393,7 @@ public sealed class ErrorHandlerResolutionTests
             builder.Connect(source, transform);
             builder.Connect(transform, sink);
             builder.AddResiliencePolicy<GlobalTestErrorHandler>();
-            builder.SetNodeResiliencePolicy(transform, new NodeLevelTestErrorHandler());
+            builder.AddResiliencePolicy(transform, new NodeLevelTestErrorHandler());
         }
     }
 
@@ -476,7 +408,7 @@ public sealed class ErrorHandlerResolutionTests
             builder.Connect(source, transform);
             builder.Connect(transform, sink);
             builder.AddResiliencePolicy<GlobalTestErrorHandler>();
-            builder.SetNodeResiliencePolicy(transform, new FailNodeLevelErrorHandler());
+            builder.AddResiliencePolicy(transform, new FailNodeLevelErrorHandler());
         }
     }
 
@@ -531,7 +463,7 @@ public sealed class ErrorHandlerResolutionTests
 
             builder.Connect(source, transform);
             builder.Connect(transform, sink);
-            builder.SetNodeResiliencePolicy(transform, new NodeLevelTestErrorHandler());
+            builder.AddResiliencePolicy(transform, new NodeLevelTestErrorHandler());
         }
     }
 
@@ -545,7 +477,7 @@ public sealed class ErrorHandlerResolutionTests
 
             builder.Connect(source, transform);
             builder.Connect(transform, sink);
-            builder.SetNodeResiliencePolicy(transform, new SkipDecisionHandler());
+            builder.AddResiliencePolicy(transform, new SkipDecisionHandler());
         }
     }
 
@@ -559,7 +491,7 @@ public sealed class ErrorHandlerResolutionTests
 
             builder.Connect(source, transform);
             builder.Connect(transform, sink);
-            builder.SetNodeResiliencePolicy(transform, new FailDecisionHandler());
+            builder.AddResiliencePolicy(transform, new FailDecisionHandler());
         }
     }
 

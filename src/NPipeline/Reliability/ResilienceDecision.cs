@@ -1,4 +1,4 @@
-namespace NPipeline.Resilience;
+namespace NPipeline.Reliability;
 
 /// <summary>
 ///     Unified decision model used by resilience policy execution.

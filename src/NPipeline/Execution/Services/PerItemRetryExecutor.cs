@@ -1,12 +1,12 @@
+using System.Globalization;
 using NPipeline.Execution.Lineage;
-using NPipeline.Execution.Annotations;
 using NPipeline.ErrorHandling;
 using NPipeline.Lineage;
 using NPipeline.Nodes;
 using NPipeline.Observability.Logging;
 using NPipeline.Observability.Tracing;
 using NPipeline.Pipeline;
-using NPipeline.Resilience;
+using NPipeline.Reliability;
 using NPipeline.Sampling;
 
 namespace NPipeline.Execution.Services;
@@ -20,7 +20,7 @@ internal sealed class PerItemRetryExecutor : IPerItemRetryExecutor
         ITransformNode<TIn, TOut> node,
         PipelineContext context,
         string nodeId,
-        int maxItemRetries,
+        PipelineResilienceOptions options,
         bool hasLineageIndex,
         long lineageInputIndex,
         LineageNodeOutcomeWriter lineageOutcomeWriter,
@@ -30,79 +30,95 @@ internal sealed class PerItemRetryExecutor : IPerItemRetryExecutor
         ArgumentNullException.ThrowIfNull(node);
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(nodeId);
+        ArgumentNullException.ThrowIfNull(options);
 
-        if (maxItemRetries < 0)
-            throw new ArgumentOutOfRangeException(nameof(maxItemRetries), "maxItemRetries must be greater than or equal to zero.");
-
-        var attempt = 0;
+        // attempt is the 1-based number of the attempt being made; retries so far is attempt - 1.
+        var attempt = 1;
 
         while (true)
         {
             try
             {
                 var output = await node.TransformAsync(item, context, cancellationToken).ConfigureAwait(false);
-                RecordLineageOutcome(hasLineageIndex, lineageInputIndex, in lineageOutcomeWriter, context, nodeId, LineageOutcomeReason.Emitted, attempt);
+                RecordLineageOutcome(hasLineageIndex, lineageInputIndex, in lineageOutcomeWriter, context, nodeId, LineageOutcomeReason.Emitted, attempt - 1);
 
-                return ItemExecutionResult<TOut>.Emitted(output, attempt);
+                return ItemExecutionResult<TOut>.Emitted(output, attempt - 1);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                // Cancelling the pipeline is not an item failure: it must not be retried, skipped, or dead-lettered.
+                throw;
             }
             catch (Exception ex)
             {
                 itemActivity?.RecordException(ex);
 
-                var policy = ResolveResiliencePolicy(context, nodeId);
+                var policy = ResilienceRuntime.ResolvePolicy(context, nodeId);
 
-                var decision = await policy
-                    .DecideItemFailureAsync(node, item, ex, context, nodeId, attempt, cancellationToken)
-                    .ConfigureAwait(false);
+                var failure = new ItemFailure<TIn>
+                {
+                    Item = item,
+                    Node = node,
+                    NodeId = nodeId,
+                    Exception = ex,
+                    Attempt = attempt,
+                    MaxRetries = options.ItemRetry.MaxRetries,
+                    IsTransient = options.ItemRetry.Classifier.IsTransient(ex, cancellationToken),
+                    Context = context,
+                };
+
+                var decision = await policy.DecideItemFailureAsync(failure, cancellationToken).ConfigureAwait(false);
+                var retries = attempt - 1;
 
                 switch (decision)
                 {
                     case ResilienceDecision.Skip:
-                        RecordLineageOutcome(hasLineageIndex, lineageInputIndex, in lineageOutcomeWriter, context, nodeId, LineageOutcomeReason.FilteredOut, attempt);
-                        return ItemExecutionResult<TOut>.Skipped(attempt);
+                        RecordLineageOutcome(hasLineageIndex, lineageInputIndex, in lineageOutcomeWriter, context, nodeId, LineageOutcomeReason.FilteredOut, retries);
+                        return ItemExecutionResult<TOut>.Skipped(retries);
 
                     case ResilienceDecision.DeadLetter:
                         if (context.DeadLetterSink is null)
                         {
                             // Dropping the item here would lose it silently while lineage claimed it was dead-lettered.
                             var noSink = new DeadLetterSinkNotConfiguredException(nodeId, ex);
-                            PipelineSampleErrorReporter.TryRecordError(context, nodeId, item, noSink, attempt);
-                            RecordLineageOutcome(hasLineageIndex, lineageInputIndex, in lineageOutcomeWriter, context, nodeId, LineageOutcomeReason.Error, attempt);
+                            PipelineSampleErrorReporter.TryRecordError(context, nodeId, item, noSink, retries);
+                            RecordLineageOutcome(hasLineageIndex, lineageInputIndex, in lineageOutcomeWriter, context, nodeId, LineageOutcomeReason.Error, retries);
                             throw noSink;
                         }
 
-                        await DispatchDeadLetterAsync(context.DeadLetterSink, item, ex, context, nodeId, attempt, cancellationToken).ConfigureAwait(false);
-                        RecordLineageOutcome(hasLineageIndex, lineageInputIndex, in lineageOutcomeWriter, context, nodeId, LineageOutcomeReason.DeadLettered, attempt);
-                        return ItemExecutionResult<TOut>.DeadLettered(attempt);
+                        await DispatchDeadLetterAsync(context.DeadLetterSink, item, ex, context, nodeId, retries, cancellationToken).ConfigureAwait(false);
+                        RecordLineageOutcome(hasLineageIndex, lineageInputIndex, in lineageOutcomeWriter, context, nodeId, LineageOutcomeReason.DeadLettered, retries);
+                        return ItemExecutionResult<TOut>.DeadLettered(retries);
 
                     case ResilienceDecision.Retry:
-                        attempt++;
-
-                        if (attempt > maxItemRetries)
+                        if (attempt > ResilienceRuntime.MaxPolicyRepeats)
                         {
-                            var exhausted = new InvalidOperationException(
-                                $"An item failed to process after {attempt} attempts.",
-                                ex);
-
-                            PipelineSampleErrorReporter.TryRecordError(context, nodeId, item, exhausted, maxItemRetries);
-                            RecordLineageOutcome(hasLineageIndex, lineageInputIndex, in lineageOutcomeWriter, context, nodeId, LineageOutcomeReason.Error, maxItemRetries);
-                            throw exhausted;
+                            var runaway = ResilienceRuntime.RepeatCeilingExceeded(policy, nodeId, decision, ex);
+                            PipelineSampleErrorReporter.TryRecordError(context, nodeId, item, runaway, retries);
+                            RecordLineageOutcome(hasLineageIndex, lineageInputIndex, in lineageOutcomeWriter, context, nodeId, LineageOutcomeReason.Error, retries);
+                            throw runaway;
                         }
 
-                        itemActivity?.SetTag("retry.attempt", attempt.ToString());
+                        itemActivity?.SetTag("retry.attempt", attempt.ToString(CultureInfo.InvariantCulture));
 
                         context.Observability.ExecutionObserver.OnRetry(new NodeRetryEvent(nodeId, RetryKind.ItemRetry, attempt, ex,
                             context.RunIdentity.PipelineId, context.RunIdentity.PipelineName));
 
-                        // Back off before retrying. Without this the configured delay strategy - exponential
-                        // backoff, jitter, the composite - is inert for item-level retries and the pipeline spins
-                        // against an already-struggling dependency as fast as the CPU allows.
-                        await ApplyRetryDelayAsync(policy, context, nodeId, attempt, cancellationToken).ConfigureAwait(false);
+                        await WaitBeforeRetryAsync(options, context, nodeId, attempt, cancellationToken).ConfigureAwait(false);
+                        attempt++;
                         continue;
 
                     case ResilienceDecision.Fail:
-                        PipelineSampleErrorReporter.TryRecordError(context, nodeId, item, ex, attempt);
-                        RecordLineageOutcome(hasLineageIndex, lineageInputIndex, in lineageOutcomeWriter, context, nodeId, LineageOutcomeReason.Error, attempt);
+                        if (retries > 0)
+                        {
+                            var exhausted = new RetryExhaustedException(nodeId, attempt, ex);
+                            PipelineSampleErrorReporter.TryRecordError(context, nodeId, item, exhausted, retries);
+                            RecordLineageOutcome(hasLineageIndex, lineageInputIndex, in lineageOutcomeWriter, context, nodeId, LineageOutcomeReason.Error, retries);
+                            throw exhausted;
+                        }
+
+                        PipelineSampleErrorReporter.TryRecordError(context, nodeId, item, ex, retries);
+                        RecordLineageOutcome(hasLineageIndex, lineageInputIndex, in lineageOutcomeWriter, context, nodeId, LineageOutcomeReason.Error, retries);
                         throw;
 
                     default:
@@ -112,44 +128,22 @@ internal sealed class PerItemRetryExecutor : IPerItemRetryExecutor
         }
     }
 
-    private static async Task ApplyRetryDelayAsync(
-        IResiliencePolicy policy,
+    private static async Task WaitBeforeRetryAsync(
+        PipelineResilienceOptions options,
         PipelineContext context,
         string nodeId,
-        int attempt,
+        int retry,
         CancellationToken cancellationToken)
     {
-        var logger = context.Observability.LoggerFactory.CreateLogger(nameof(PerItemRetryExecutor));
-        TimeSpan delay;
-
-        try
-        {
-            delay = await policy.GetRetryDelayAsync(context, RetryKind.ItemRetry, attempt, cancellationToken).ConfigureAwait(false);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
-        {
-            // A broken delay strategy must not break the retry itself. Cancellation of the pipeline's own token is
-            // excluded by the filter so it propagates rather than being swallowed here.
-            PerItemRetryExecutorLogMessages.RetryDelayFailed(logger, ex, nodeId);
-            return;
-        }
+        var delay = options.ItemRetry.Backoff.DelayFor(retry);
 
         if (delay <= TimeSpan.Zero)
             return;
 
-        PerItemRetryExecutorLogMessages.ApplyingRetryDelay(logger, delay.TotalMilliseconds, nodeId, attempt);
+        var logger = context.Observability.LoggerFactory.CreateLogger(nameof(PerItemRetryExecutor));
+        PerItemRetryExecutorLogMessages.ApplyingRetryDelay(logger, delay.TotalMilliseconds, nodeId, retry);
 
-        await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
-    }
-
-    private static IResiliencePolicy ResolveResiliencePolicy(PipelineContext context, string nodeId)
-    {
-        var key = ExecutionAnnotationKeys.NodeResiliencePolicyForNode(nodeId);
-
-        if (context.NodeEnvironment.NodeExecutionScopeRegistry.TryGetRuntimeAnnotation(key, out var annotation) && annotation is IResiliencePolicy nodePolicy)
-            return nodePolicy;
-
-        return context.ExecutionConfiguration.ResiliencePolicy;
+        await Task.Delay(delay, options.Time, cancellationToken).ConfigureAwait(false);
     }
 
     private static void RecordLineageOutcome(

@@ -116,35 +116,15 @@ internal static partial class ResilientExecutionStrategyLogMessages
     [LoggerMessage(1, LogLevel.Debug, "Circuit breaker resolved for node {NodeId}. State: {State}")]
     public static partial void CircuitBreakerResolved(ILogger logger, string nodeId, string state);
 
-    [LoggerMessage(2, LogLevel.Warning,
-        "Circuit breaker options enabled but manager unavailable for node {NodeId}. Resilience will continue without breaker integration.")]
-    public static partial void CircuitBreakerManagerUnavailable(ILogger logger, string nodeId);
-
-    [LoggerMessage(3, LogLevel.Debug, "Checking retry limit for node {NodeId}. Failures: {Failures}, MaxAttempts: {MaxAttempts}")]
-    public static partial void CheckingRetryLimit(ILogger logger, string nodeId, int failures, int maxAttempts);
-
-    [LoggerMessage(4, LogLevel.Warning, "Retry limit exceeded at start of loop for node {NodeId}. Throwing RetryExhaustedException.")]
-    public static partial void RetryLimitExceeded(ILogger logger, string nodeId);
-
-    [LoggerMessage(5, LogLevel.Warning,
-        "Failure limit reached for node {NodeId}. Failures: {Failures}, Consecutive failures: {ConsecutiveFailures}, MaxAttempts: {MaxAttempts}. Throwing RetryExhaustedException.")]
-    public static partial void FailureLimitReached(ILogger logger, string nodeId, int failures, int consecutiveFailures, int maxAttempts);
-
-    [LoggerMessage(6, LogLevel.Debug, "Created RetryExhaustedException with message: {ExceptionMessage}")]
-    public static partial void RetryExhaustedExceptionCreated(ILogger logger, string exceptionMessage);
+    [LoggerMessage(3, LogLevel.Warning, "Node {NodeId} failed after {Attempts} runs. Throwing RetryExhaustedException.")]
+    public static partial void RetryExhausted(ILogger logger, string nodeId, int attempts);
 
     [LoggerMessage(7, LogLevel.Debug,
-        "ErrorHandler returned decision {Decision} for node {NodeId}. Current failures: {Failures}, Consecutive failures: {ConsecutiveFailures}.")]
+        "Resilience policy returned decision {Decision} for node {NodeId}. Restarts so far: {Failures}, Consecutive failures: {ConsecutiveFailures}.")]
     public static partial void ErrorHandlerDecision(ILogger logger, string decision, string nodeId, int failures, int consecutiveFailures);
 
-    [LoggerMessage(8, LogLevel.Debug, "shouldContinue for node {NodeId} is {ShouldContinue}.")]
-    public static partial void ShouldContinueDecision(ILogger logger, string nodeId, bool shouldContinue);
-
-    [LoggerMessage(9, LogLevel.Debug, "Applying retry delay of {Delay}ms for node {NodeId} after {FailureCount} failures")]
-    public static partial void ApplyingRetryDelay(ILogger logger, double delay, string nodeId, int failureCount);
-
-    [LoggerMessage(10, LogLevel.Warning, "Failed to apply retry delay for node {NodeId}. Continuing with retry without delay.")]
-    public static partial void RetryDelayFailed(ILogger logger, Exception exception, string nodeId);
+    [LoggerMessage(9, LogLevel.Debug, "Applying restart delay of {Delay}ms for node {NodeId} before restart {Restart}")]
+    public static partial void ApplyingRetryDelay(ILogger logger, double delay, string nodeId, int restart);
 }
 
 /// <summary>
@@ -158,12 +138,6 @@ internal static partial class ParallelExecutionStrategyLogMessages
 
     [LoggerMessage(2, LogLevel.Warning, "Node {NodeId}, Failed to enqueue item {Item} after {MaxAttempts} drop attempts")]
     public static partial void EnqueueFailed(ILogger logger, string nodeId, string? item, int maxAttempts);
-
-    [LoggerMessage(3, LogLevel.Debug, "Node {NodeId}, Found per-node retry options: MaxRetries={MaxRetries}")]
-    public static partial void PerNodeRetryOptionsFound(ILogger logger, string nodeId, int maxRetries);
-
-    [LoggerMessage(4, LogLevel.Debug, "Node {NodeId}, Using global retry options: MaxItemRetries={MaxRetries}")]
-    public static partial void GlobalRetryOptionsUsed(ILogger logger, string nodeId, int maxRetries);
 
     [LoggerMessage(6, LogLevel.Debug, "Node {NodeId} failed on attempt {Attempt}.")]
     public static partial void NodeFailure(ILogger logger, Exception exception, string nodeId, int attempt);
@@ -238,25 +212,14 @@ internal static partial class CompositeExecutionObserverLogMessages
 [ExcludeFromCodeCoverage]
 internal static partial class PipelineRunnerLogMessages
 {
-    [LoggerMessage(1, LogLevel.Debug, "Setting global retry options on PipelineContext: MaxItemRetries={MaxItemRetries}")]
-    public static partial void StoringRetryOptions(ILogger logger, int maxItemRetries);
-
-    [LoggerMessage(2, LogLevel.Debug, "graph.ErrorHandling.RetryOptions is null")]
-    public static partial void RetryOptionsNull(ILogger logger);
+    [LoggerMessage(1, LogLevel.Debug, "Setting pipeline resilience options on PipelineContext: ItemRetry.MaxRetries={MaxItemRetries}")]
+    public static partial void StoringResilienceOptions(ILogger logger, int maxItemRetries);
 
     [LoggerMessage(3, LogLevel.Debug, "CircuitBreakerManager created and stored in context")]
     public static partial void CircuitBreakerManagerCreated(ILogger logger);
 
     [LoggerMessage(4, LogLevel.Warning, "Node {NodeId} failed with exception type {ExceptionType}: {ExceptionMessage}")]
     public static partial void NodeFailed(ILogger logger, string nodeId, string exceptionType, string exceptionMessage);
-
-    [LoggerMessage(5, LogLevel.Warning,
-        "Node {NodeId} uses ResilientExecutionStrategy but MaxNodeRestartAttempts is {MaxAttempts} (must be > 0). Restart functionality is disabled. Configure: builder.WithRetryOptions(o => o with {{ MaxNodeRestartAttempts = 3 }})")]
-    public static partial void ResilientStrategyWithoutRestartAttempts(ILogger logger, string nodeId, int maxAttempts);
-
-    [LoggerMessage(6, LogLevel.Warning,
-        "Node {NodeId} has MaxMaterializedItems set to null. Restart functionality is disabled for streaming inputs. Configure: builder.WithRetryOptions(o => o with {{ MaxMaterializedItems = 1000 }})")]
-    public static partial void ResilientStrategyWithoutMaterializedItems(ILogger logger, string nodeId);
 
     [LoggerMessage(7, LogLevel.Warning, "Preserving original exception {ExceptionType} for parallel execution of node {NodeId}")]
     public static partial void PreservingExceptionForParallelExecution(ILogger logger, string exceptionType, string nodeId);
@@ -274,11 +237,8 @@ internal static partial class PipelineRunnerLogMessages
 [ExcludeFromCodeCoverage]
 internal static partial class ErrorHandlingServiceLogMessages
 {
-    [LoggerMessage(1, LogLevel.Debug, "Applying retry delay of {Delay}ms for node {NodeId} after {RetryCount} retries")]
-    public static partial void ApplyingRetryDelay(ILogger logger, double delay, string nodeId, int retryCount);
-
-    [LoggerMessage(2, LogLevel.Warning, "Failed to apply retry delay for node {NodeId}. Continuing with retry without delay.")]
-    public static partial void RetryDelayFailed(ILogger logger, Exception exception, string nodeId);
+    [LoggerMessage(1, LogLevel.Debug, "Applying retry delay of {Delay}ms for node {NodeId} before retry {Retry}")]
+    public static partial void ApplyingRetryDelay(ILogger logger, double delay, string nodeId, int retry);
 }
 
 /// <summary>
@@ -287,11 +247,8 @@ internal static partial class ErrorHandlingServiceLogMessages
 [ExcludeFromCodeCoverage]
 internal static partial class PerItemRetryExecutorLogMessages
 {
-    [LoggerMessage(1, LogLevel.Debug, "Applying retry delay of {Delay}ms for item on node {NodeId} before attempt {Attempt}")]
-    public static partial void ApplyingRetryDelay(ILogger logger, double delay, string nodeId, int attempt);
-
-    [LoggerMessage(2, LogLevel.Warning, "Failed to apply item retry delay for node {NodeId}. Continuing with retry without delay.")]
-    public static partial void RetryDelayFailed(ILogger logger, Exception exception, string nodeId);
+    [LoggerMessage(1, LogLevel.Debug, "Applying retry delay of {Delay}ms for item on node {NodeId} before retry {Retry}")]
+    public static partial void ApplyingRetryDelay(ILogger logger, double delay, string nodeId, int retry);
 }
 
 /// <summary>
@@ -336,16 +293,6 @@ internal static partial class RuntimePipelineBinderLogMessages
     public static partial void ItemLevelLineageSinkIgnored(ILogger logger, string sinkType);
 }
 
-/// <summary>
-///     Source-generated logging methods for pipeline context retry delay extensions.
-/// </summary>
-[ExcludeFromCodeCoverage]
-internal static partial class PipelineContextRetryDelayExtensionsLogMessages
-{
-    [LoggerMessage(1, LogLevel.Warning,
-        "RetryDelayStrategy: Failed to create strategy from configuration. BackoffStrategy={BackoffStrategy}, JitterStrategy={JitterStrategy}")]
-    public static partial void RetryDelayStrategyCreationFailed(ILogger logger, Exception exception, string backoffStrategy, string jitterStrategy);
-}
 
 /// <summary>
 ///     Source-generated logging methods for branch node operations.

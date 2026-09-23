@@ -7,6 +7,7 @@ using NPipeline.Graph;
 using NPipeline.Nodes;
 using NPipeline.Observability;
 using NPipeline.Pipeline;
+using NPipeline.Reliability;
 
 namespace NPipeline.Tests.ErrorHandling;
 
@@ -35,9 +36,9 @@ public sealed class PipelineRunnerTests
         var failingNode = new PipelineRunnerTestHelpers.FailingNode(3); // Fails 3 times
         var nodeDef = PipelineRunnerTestHelpers.NodeDefinitionFactory.CreateSourceNodeDefinition(nodeId);
 
-        var graph = PipelineRunnerTestHelpers.PipelineGraphFactory.CreateGraphWithRetryOptions(
+        var graph = PipelineRunnerTestHelpers.PipelineGraphFactory.CreateGraphWithResilienceOptions(
             nodeDef,
-            new PipelineRetryOptions(MaxNodeRestartAttempts: 3, MaxSequentialNodeAttempts: 3));
+            PipelineResilienceOptions.None with { NodeRetry = new NodeRetryOptions { MaxRetries = 3, Backoff = RetryBackoff.None } });
 
         A.CallTo(() => _pipelineFactory.Create<PipelineRunnerTestHelpers.TestPipelineDefinition>(A<PipelineContext>._))
             .Returns(new NPipeline.Pipeline.Pipeline(graph));

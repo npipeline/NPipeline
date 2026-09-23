@@ -66,7 +66,7 @@ public sealed class ResilientExecutionConfigurationAnalyzer : DiagnosticAnalyzer
             return;
 
         var implementsResiliencePolicy = containingType.AllInterfaces
-            .Any(i => i.Name == "IResiliencePolicy" && i.ContainingNamespace?.Name == "Resilience");
+            .Any(i => i.Name == "IResiliencePolicy" && i.ContainingNamespace?.Name == "Reliability");
 
         if (!implementsResiliencePolicy)
             return;

@@ -18,7 +18,7 @@ public sealed class ResilientExecutionConfigurationAnalyzerTests
                    using NPipeline.Graph;
                    using NPipeline.Nodes;
                    using NPipeline.Pipeline;
-                   using NPipeline.Resilience;
+                   using NPipeline.Reliability;
                    using System.Threading;
                    using System.Threading.Tasks;
 
@@ -65,7 +65,7 @@ public sealed class ResilientExecutionConfigurationAnalyzerTests
                    using NPipeline.Graph;
                    using NPipeline.Nodes;
                    using NPipeline.Pipeline;
-                   using NPipeline.Resilience;
+                   using NPipeline.Reliability;
                    using System.Threading;
                    using System.Threading.Tasks;
 
@@ -112,7 +112,7 @@ public sealed class ResilientExecutionConfigurationAnalyzerTests
                    using NPipeline.Graph;
                    using NPipeline.Nodes;
                    using NPipeline.Pipeline;
-                   using NPipeline.Resilience;
+                   using NPipeline.Reliability;
                    using System.Threading;
                    using System.Threading.Tasks;
 
@@ -159,7 +159,7 @@ public sealed class ResilientExecutionConfigurationAnalyzerTests
                    using NPipeline.Graph;
                    using NPipeline.Nodes;
                    using NPipeline.Pipeline;
-                   using NPipeline.Resilience;
+                   using NPipeline.Reliability;
                    using System.Threading;
                    using System.Threading.Tasks;
 
@@ -209,7 +209,7 @@ public sealed class ResilientExecutionConfigurationAnalyzerTests
                    using NPipeline.Graph;
                    using NPipeline.Nodes;
                    using NPipeline.Pipeline;
-                   using NPipeline.Resilience;
+                   using NPipeline.Reliability;
                    using System.Threading;
                    using System.Threading.Tasks;
 

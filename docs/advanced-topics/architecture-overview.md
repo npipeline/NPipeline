@@ -121,7 +121,7 @@ All nodes implement `INode` (marker interface extending `IAsyncDisposable`). The
 
 Additional interfaces: `IStreamTransformNode<TIn, TOut>`, `IAggregateNode`, `IJoinNode`, `IBranchNode`, `ILookupNode`, `IBatchNode`, `ICompositeNode`.
 
-### Resilience (`NPipeline.Resilience`, `NPipeline.ErrorHandling`)
+### Resilience (`NPipeline.Reliability`, `NPipeline.ErrorHandling`)
 
 `IResiliencePolicy` makes all failure decisions. `ResilientExecutionStrategy` wraps a base strategy with retry, circuit breaker, and dead-letter support. `ResiliencePolicyBuilder` provides the fluent API.
 

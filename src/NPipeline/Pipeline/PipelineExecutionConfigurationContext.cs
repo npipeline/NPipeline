@@ -1,9 +1,7 @@
 using NPipeline.Configuration;
-using NPipeline.Configuration.RetryDelay;
 using NPipeline.ErrorHandling;
 using NPipeline.Execution.CircuitBreaking;
-using NPipeline.Execution.RetryDelay;
-using NPipeline.Resilience;
+using NPipeline.Reliability;
 
 namespace NPipeline.Pipeline;
 
@@ -12,84 +10,53 @@ namespace NPipeline.Pipeline;
 /// </summary>
 public sealed class PipelineExecutionConfigurationContext
 {
-    internal PipelineExecutionConfigurationContext(
-        PipelineRetryOptions retryOptions,
-        PipelineOptimizationProfile optimizationProfile)
+    private readonly Dictionary<string, PipelineResilienceOptions> _nodeResilience = new();
+
+    internal PipelineExecutionConfigurationContext(PipelineOptimizationProfile optimizationProfile)
     {
-        RetryOptions = retryOptions;
-        GlobalRetryOptions = retryOptions;
-        _effectiveRetryOptions = retryOptions;
         ResiliencePolicy = DefaultResiliencePolicy.Instance;
         OptimizationProfile = optimizationProfile;
     }
 
     /// <summary>
-    ///     Initial execution / retry configuration for this pipeline run.
-    /// </summary>
-    public PipelineRetryOptions RetryOptions { get; }
-
-    /// <summary>
-    ///     Retry options as amended at runtime, which is what retry delays are computed from.
+    ///     The pipeline's resilience options for the current run. Nodes without their own options use these.
     /// </summary>
     /// <remarks>
-    ///     Identical to <see cref="RetryOptions" /> until something overrides the delay strategy through one of the
-    ///     <c>Use*Delay</c> extensions on <see cref="PipelineContext" />.
+    ///     <see cref="PipelineResilienceOptions.None" /> until a run starts, when the pipeline's built options replace it.
     /// </remarks>
-    public PipelineRetryOptions EffectiveRetryOptions => Volatile.Read(ref _effectiveRetryOptions);
+    public PipelineResilienceOptions Resilience { get; internal set; } = PipelineResilienceOptions.None;
 
     /// <summary>
-    ///     Replaces the delay strategy configuration for this run and discards the cached strategy built from the
-    ///     previous one.
+    ///     The resilience options that apply to <paramref name="nodeId" />: the node's own, or else the pipeline's.
     /// </summary>
-    internal void OverrideRetryDelayConfiguration(RetryDelayStrategyConfiguration configuration)
+    /// <param name="nodeId">The node id.</param>
+    public PipelineResilienceOptions GetResilienceOptions(string nodeId)
     {
-        lock (_retryDelayGate)
-        {
-            Volatile.Write(ref _effectiveRetryOptions, _effectiveRetryOptions with { DelayStrategyConfiguration = configuration });
-            _retryDelayStrategy = null;
-        }
+        ArgumentNullException.ThrowIfNull(nodeId);
+        return _nodeResilience.TryGetValue(nodeId, out var options) ? options : Resilience;
     }
 
     /// <summary>
-    ///     Returns the retry delay strategy for this run, building it once through <paramref name="factory" />.
+    ///     Sets the node's own resilience options for the current run.
     /// </summary>
-    /// <remarks>
-    ///     The strategy is per-run state, so the cache and its gate live on the run's context rather than in a static
-    ///     field shared by every pipeline in the process.
-    /// </remarks>
-    internal IRetryDelayStrategy GetOrCreateRetryDelayStrategy(Func<PipelineRetryOptions, IRetryDelayStrategy> factory)
+    internal void SetNodeResilienceOptions(string nodeId, PipelineResilienceOptions options)
     {
-        var cached = Volatile.Read(ref _retryDelayStrategy);
-
-        if (cached is not null)
-            return cached;
-
-        lock (_retryDelayGate)
-        {
-            _retryDelayStrategy ??= factory(_effectiveRetryOptions);
-            return _retryDelayStrategy;
-        }
+        _nodeResilience[nodeId] = options;
     }
 
     /// <summary>
-    ///     Effective global retry options for the current pipeline run.
+    ///     Returns the resilience state to what a new context starts with.
     /// </summary>
-    public PipelineRetryOptions GlobalRetryOptions { get; internal set; }
-
-    /// <summary>
-    ///     Per-node retry option overrides indexed by node id.
-    /// </summary>
-    public Dictionary<string, PipelineRetryOptions> NodeRetryOverrides { get; } = new();
+    internal void ResetResilienceOptions()
+    {
+        Resilience = PipelineResilienceOptions.None;
+        _nodeResilience.Clear();
+    }
 
     /// <summary>
     ///     Unified resilience policy used by runtime execution.
     /// </summary>
     public IResiliencePolicy ResiliencePolicy { get; internal set; }
-
-    /// <summary>
-    ///     Circuit-breaker options for the current run.
-    /// </summary>
-    public PipelineCircuitBreakerOptions? CircuitBreakerOptions { get; internal set; }
 
     /// <summary>
     ///     Circuit-breaker memory management options for the current run.
@@ -100,7 +67,7 @@ public sealed class PipelineExecutionConfigurationContext
     ///     The optimization profile governing runtime behavior for this pipeline run.
     ///     This is the runtime source of truth for the active profile - node authors and runtime
     ///     code should read it from here rather than from <see cref="PipelineContextConfiguration" />.
-    ///     The profile's effects (retry defaults, dictionary types) are already baked into their
+    ///     The profile's effects (resilience defaults, dictionary types) are already baked into their
     ///     respective configurations at build time.
     /// </summary>
     public PipelineOptimizationProfile OptimizationProfile { get; }
@@ -109,10 +76,6 @@ public sealed class PipelineExecutionConfigurationContext
     ///     Indicates the current run uses parallel execution behavior.
     /// </summary>
     public bool IsParallelExecution { get; internal set; }
-
-    private readonly object _retryDelayGate = new();
-    private PipelineRetryOptions _effectiveRetryOptions;
-    private IRetryDelayStrategy? _retryDelayStrategy;
 
     private RetryExhaustedException? _lastRetryExhaustedException;
 

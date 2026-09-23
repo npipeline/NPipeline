@@ -8,7 +8,7 @@ using NPipeline.Lineage;
 using NPipeline.Nodes;
 using NPipeline.Observability.Tracing;
 using NPipeline.Pipeline;
-using NPipeline.Resilience;
+using NPipeline.Reliability;
 using NPipeline.Sampling;
 
 namespace NPipeline.Tests.Execution.Services;
@@ -38,7 +38,7 @@ public sealed class PerItemRetryExecutorTests
                 node: transform,
                 context,
                 NodeId,
-                maxItemRetries: 3,
+                Options(3),
                 hasLineageIndex: true,
                 lineageInputIndex: 0,
                 lineageOutcomeWriter: LineageNodeOutcomeRegistry.GetWriter(pipelineId, NodeId),
@@ -83,7 +83,7 @@ public sealed class PerItemRetryExecutorTests
                 node: transform,
                 context,
                 NodeId,
-                maxItemRetries: 2,
+                Options(2),
                 hasLineageIndex: true,
                 lineageInputIndex: 0,
                 lineageOutcomeWriter: LineageNodeOutcomeRegistry.GetWriter(pipelineId, NodeId),
@@ -126,7 +126,7 @@ public sealed class PerItemRetryExecutorTests
                 node: transform,
                 context,
                 NodeId,
-                maxItemRetries: 3,
+                Options(3),
                 hasLineageIndex: true,
                 lineageInputIndex: 0,
                 lineageOutcomeWriter: LineageNodeOutcomeRegistry.GetWriter(pipelineId, NodeId),
@@ -175,7 +175,7 @@ public sealed class PerItemRetryExecutorTests
                 node: transform,
                 context,
                 NodeId,
-                maxItemRetries: 0,
+                Options(0),
                 hasLineageIndex: true,
                 lineageInputIndex: 0,
                 lineageOutcomeWriter: LineageNodeOutcomeRegistry.GetWriter(pipelineId, NodeId),
@@ -205,7 +205,8 @@ public sealed class PerItemRetryExecutorTests
     {
         var executor = PerItemRetryExecutor.Instance;
         var transform = new ScriptedTransform(new InvalidOperationException("first"), new InvalidOperationException("second"));
-        var resiliencePolicy = new SequenceDecisionPolicy(ResilienceDecision.Retry, ResilienceDecision.Retry);
+        // One retry, then Fail: the policy, not a cap in the executor, ends the retries.
+        var resiliencePolicy = new SequenceDecisionPolicy(ResilienceDecision.Retry);
         var recorder = new RecordingSampleRecorder();
 
         var (context, pipelineId) = CreateTrackedContext();
@@ -220,14 +221,16 @@ public sealed class PerItemRetryExecutorTests
                 node: transform,
                 context,
                 NodeId,
-                maxItemRetries: 1,
+                Options(1),
                 hasLineageIndex: true,
                 lineageInputIndex: 0,
                 lineageOutcomeWriter: LineageNodeOutcomeRegistry.GetWriter(pipelineId, NodeId),
                 itemActivity: null,
                 CancellationToken.None);
 
-            var thrown = await act.Should().ThrowAsync<InvalidOperationException>();
+            // C4: exhaustion is a RetryExhaustedException, as at the other two layers.
+            var thrown = await act.Should().ThrowAsync<RetryExhaustedException>();
+            _ = thrown.Which.NodeId.Should().Be(NodeId);
             _ = thrown.Which.Message.Should().Contain("after 2 attempts");
             _ = thrown.Which.InnerException.Should().NotBeNull();
             _ = thrown.Which.InnerException!.Message.Should().Be("second");
@@ -244,6 +247,11 @@ public sealed class PerItemRetryExecutorTests
             LineageNodeOutcomeRegistry.ClearNode(pipelineId, NodeId);
             LineageExecutionItemContext.ClearCurrentInputIndex();
         }
+    }
+
+    private static PipelineResilienceOptions Options(int maxRetries)
+    {
+        return PipelineResilienceOptions.None with { ItemRetry = new ItemRetryOptions { MaxRetries = maxRetries } };
     }
 
     private static (PipelineContext Context, Guid PipelineId) CreateTrackedContext()
@@ -287,33 +295,17 @@ public sealed class PerItemRetryExecutorTests
 
         public int CallCount { get; private set; }
 
-        public Task<ResilienceDecision> DecideNodeFailureAsync(
-            NodeDefinition nodeDefinition,
-            INode node,
-            Exception exception,
-            PipelineContext context,
-            CancellationToken cancellationToken)
+        public ValueTask<ResilienceDecision> DecideNodeFailureAsync(NodeFailure failure, CancellationToken cancellationToken)
         {
-            return Task.FromResult(ResilienceDecision.Fail);
+            return ValueTask.FromResult(ResilienceDecision.Fail);
         }
 
-        public Task<ResilienceDecision> DecidePipelineFailureAsync(
-            string nodeId,
-            Exception exception,
-            PipelineContext context,
-            CancellationToken cancellationToken)
+        public ValueTask<ResilienceDecision> DecideRestartAsync(StreamFailure failure, CancellationToken cancellationToken)
         {
-            return Task.FromResult(ResilienceDecision.Fail);
+            return ValueTask.FromResult(ResilienceDecision.Fail);
         }
 
-        public Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
-            ITransformNode<TIn, TOut> node,
-            TIn failedItem,
-            Exception exception,
-            PipelineContext context,
-            string nodeId,
-            int retryAttempt,
-            CancellationToken cancellationToken)
+        public ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken)
         {
             CallCount++;
 
@@ -321,17 +313,7 @@ public sealed class PerItemRetryExecutorTests
                 ? _decisions.Dequeue()
                 : ResilienceDecision.Fail;
 
-            return Task.FromResult(decision);
-        }
-
-        public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, RetryKind retryKind, int attemptNumber, CancellationToken cancellationToken)
-        {
-            return context.GetRetryDelayStrategy().GetDelayAsync(attemptNumber, cancellationToken);
-        }
-
-        public IResilienceCircuitBreaker? GetCircuitBreaker(PipelineContext context, string nodeId)
-        {
-            return DefaultResiliencePolicy.Instance.GetCircuitBreaker(context, nodeId);
+            return ValueTask.FromResult(decision);
         }
     }
 

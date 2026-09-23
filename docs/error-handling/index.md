@@ -41,33 +41,38 @@ When a failure occurs, NPipeline consults your **resilience policy** to decide w
 | Decision | Meaning |
 |----------|---------|
 | `Fail` | Stop the pipeline immediately. Surface the exception. |
-| `Retry` | Retry the failed operation (with configured delay). |
+| `Retry` | Retry the failed operation, after the layer's backoff. |
 | `Skip` | Discard the failed item and continue processing. |
 | `DeadLetter` | Route the failed item to a dead-letter sink for later inspection. |
 | `RestartNode` | Restart the entire failed node from its materialized input. |
 | `ContinueWithoutNode` | Remove the failed node and continue the pipeline without it. |
 
-These decisions are defined in the `ResilienceDecision` enum (`NPipeline.Resilience` namespace).
+These decisions are defined in the `ResilienceDecision` enum (`NPipeline.Reliability` namespace).
 
 ## Default Behavior
 
-The default error handling behavior depends on the [optimization profile](../guides/optimization-profiles.md):
+Each node's `PipelineResilienceOptions` describe what is retried, and `DefaultResiliencePolicy` carries them out. The options start from the [optimization profile](../guides/optimization-profiles.md):
 
-Without a resilience policy, NPipeline uses `DefaultResiliencePolicy`, which returns `Fail` for every failure. In both profiles, a failed item fails the pipeline unless you add a policy with `AddResiliencePolicy()`. Nothing is retried, skipped, or dead-lettered automatically.
+**Default profile:** transient item failures are retried up to 3 times, with exponential backoff from 200 ms up to 30 s and full jitter (`ItemRetryOptions.Default`).
 
-The profiles differ in the retry *limits* they fill in, which only matter once your policy returns `Retry`:
+Transient failures include:
+- `TimeoutException`, `IOException`, and `SocketException`
+- `HttpRequestException` (no status or status 408, 429, or 5xx)
+- `DbException` where `IsTransient` is true
+- `TaskCanceledException` (unless caused by the pipeline's own token)
 
-**Default profile:** sets `MaxItemRetries` to 3, exponential backoff with full jitter, and a 10,000-item materialization cap. When your policy returns `Retry` for an item, NPipeline retries it up to 3 times with that backoff.
+Any other failure fails the node at once, so a programming error is not retried.
 
-**HighThroughput profile:** leaves `MaxItemRetries` at 0. A policy that returns `Retry` for an item fails it on the first retry unless you raise `MaxItemRetries` with `WithRetryOptions()`.
-
-> [!NOTE]
-> `MaxItemRetries` caps a policy's own retry rules. A rule such as `On<TimeoutException>().Retry(5)` gets at most `MaxItemRetries` retries, and when that limit is lower the item fails instead of reaching the rule's dead-letter fallback.
+**HighThroughput profile:** nothing is retried (`PipelineResilienceOptions.None`).
 
 In both profiles:
 
-- If a policy returns `DeadLetter` and no dead-letter sink is configured, the node fails with `DeadLetterSinkNotConfiguredException` ([NP0424](../reference/error-codes.md)). The item is never dropped silently.
-- The fail-fast behavior for *unhandled* failures (those exceeding retry limits or not covered by a policy) is intentional - silent data loss is worse than a loud failure.
+- An item that is not retried fails the node unless you set `OnItemFailure` to `Skip` or `DeadLetter`.
+- Node restart (`NodeRestart`) and node retry (`NodeRetry`) are off until you configure them.
+- `OnItemFailure = DeadLetter` without a dead-letter sink stops the run before any node starts. A custom policy that returns `DeadLetter` without a sink fails the node with `DeadLetterSinkNotConfiguredException` ([NP0424](../reference/error-codes.md)). The item is never dropped silently.
+- A failure that is not retried fails the pipeline. This is intentional: silent data loss is worse than a loud failure.
+
+A custom policy registered with `AddResiliencePolicy()` makes the decisions instead. The node's limits are passed to it as advice (`failure.MaxRetries`, `failure.CanRetry`); the runtime does not override its answer, except that repeating the same work more than 100 times fails the node.
 
 ## Configuring Error Handling
 
@@ -78,49 +83,49 @@ public class MyPipeline : IPipelineDefinition
 {
     public void Define(PipelineBuilder builder, PipelineContext context)
     {
-        // 1. Configure retry options (override auto-configured defaults if needed)
-        builder.WithRetryOptions(options => options with
+        // 1. Configure the pipeline's resilience options, starting from the profile's defaults.
+        builder.WithResilience(options => options with
         {
-            MaxItemRetries = 5,
-            MaxNodeRestartAttempts = 2,
-            MaxMaterializedItems = 1000
+            ItemRetry = options.ItemRetry with { MaxRetries = 5 },
+            OnItemFailure = ItemFailureAction.DeadLetter,
+            CircuitBreaker = new PipelineCircuitBreakerOptions(
+                FailureThreshold: 5,
+                OpenDuration: TimeSpan.FromMinutes(1),
+                SamplingWindow: TimeSpan.FromMinutes(5)),
         });
 
-        // 2. Add a resilience policy (decides what to do on failure)
-        builder.AddResiliencePolicy(myPolicy);
-
-        // 3. Add a dead-letter sink (where failed items go)
+        // 2. Add a dead-letter sink (where failed items go).
         builder.AddDeadLetterSink(new BoundedInMemoryDeadLetterSink());
 
-        // 4. Configure circuit breaker (prevents cascading failures)
-        builder.WithCircuitBreaker(
-            failureThreshold: 5,
-            openDuration: TimeSpan.FromMinutes(1),
-            samplingWindow: TimeSpan.FromMinutes(5));
+        // 3. Optionally, add a resilience policy with your own decision logic.
+        builder.AddResiliencePolicy(myPolicy);
 
         // ... add nodes and connections ...
     }
 }
 ```
 
-Or use the `WithRetry()` shorthand to set the profile's retry limits without specifying individual values. Like any retry option, the limits take effect only for failures your policy answers with `Retry`:
+A node's options derive from the pipeline's. Override them for one node with `WithResilience(handle, ...)`:
 
 ```csharp
-builder.WithRetry();  // Applies the retry limits for the active optimization profile
+builder.WithResilience(enrich, options => options with
+{
+    ItemRetry = options.ItemRetry with { MaxRetries = 10 },
+});
 ```
 
 ## How Failures Flow
 
 ```mermaid
 flowchart TD
-    A[Exception thrown] --> B{Which level?}
-    B -->|Item| C[DecideItemFailureAsync]
-    B -->|Node| D[DecideNodeFailureAsync]
-    B -->|Pipeline| E[DecidePipelineFailureAsync]
+    A[Exception thrown] --> B{Which layer?}
+    B -->|Item, in a transform| C[DecideItemFailureAsync]
+    B -->|Stream, in a node wrapped for restart| D[DecideRestartAsync]
+    B -->|Node| E[DecideNodeFailureAsync]
     C --> F{Decision}
     D --> F
     E --> F
-    F -->|Retry| G[Wait for delay → retry]
+    F -->|Retry| G[Wait for the layer's backoff → retry]
     F -->|Skip| H[Discard item → continue]
     F -->|DeadLetter| I[Route to sink → continue]
     F -->|RestartNode| J[Replay materialized input]
@@ -137,7 +142,14 @@ var transform = builder.AddTransform<MyTransform, string, string>("my-transform"
 transform.WithResilience(builder);
 ```
 
-This wraps the node's execution strategy with `ResilientExecutionStrategy`, which integrates with your resilience policy, retry delays, and circuit breaker.
+This wraps the node's execution strategy with `ResilientExecutionStrategy`. The node restarts only as often as its `NodeRestart.MaxRestarts` allows (or a custom policy asks), waiting `NodeRestart.Backoff` between runs:
+
+```csharp
+builder.WithResilience(transform, options => options with
+{
+    NodeRestart = new NodeRestartOptions { MaxRestarts = 3 },
+});
+```
 
 > **Note:** Resilience is only applicable to transform nodes. Source and sink nodes handle errors through the node-level and pipeline-level decision methods.
 
@@ -145,10 +157,9 @@ This wraps the node's execution strategy with `ResilientExecutionStrategy`, whic
 
 | Namespace | Contains |
 |-----------|----------|
-| `NPipeline.Resilience` | `IResiliencePolicy`, `ResiliencePolicyBase`, `ResilienceDecision` |
+| `NPipeline.Reliability` | `PipelineResilienceOptions`, `ItemRetryOptions`, `NodeRestartOptions`, `NodeRetryOptions`, `RetryBackoff`, `RetryClassifier`, `IResiliencePolicy`, `ResiliencePolicyBase`, `ResilienceDecision` |
 | `NPipeline.ErrorHandling` | `ResiliencePolicyBuilder`, `IDeadLetterSink`, `DeadLetterEnvelope` |
-| `NPipeline.Configuration` | `PipelineRetryOptions`, `PipelineCircuitBreakerOptions` |
-| `NPipeline.Execution.RetryDelay` | `IRetryDelayStrategy`, `BackoffStrategies`, `JitterStrategies` |
+| `NPipeline.Configuration` | `PipelineCircuitBreakerOptions` |
 
 ## In This Section
 

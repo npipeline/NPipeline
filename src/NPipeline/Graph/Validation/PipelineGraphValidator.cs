@@ -17,6 +17,7 @@ public static class PipelineGraphValidator
         new EdgeReferenceRule(),
         new SourceAndReachabilityRule(),
         new CycleDetectionRule(),
+        new ResilienceOptionsRule(),
     ];
 
     // Extended rules (enabled by default, opt-out via builder.WithoutExtendedValidation())

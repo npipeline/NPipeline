@@ -7,6 +7,7 @@ using NPipeline.Execution.Annotations;
 using NPipeline.Graph;
 using NPipeline.Graph.Validation;
 using NPipeline.Lineage;
+using NPipeline.Reliability;
 
 namespace NPipeline.Pipeline;
 
@@ -198,15 +199,22 @@ public sealed partial class PipelineBuilder
     /// </summary>
     private ErrorHandlingConfiguration BuildErrorHandlingConfiguration()
     {
-        var retryOptions = _config.RetryOptions;
-        var profileBehavior = OptimizationProfileBehaviorRegistry.For(_config.OptimizationProfile);
+        var profileDefaults = OptimizationProfileBehaviorRegistry.For(_config.OptimizationProfile).ResilienceDefaults;
+        var resilience = BuildResilienceOptions(_config.ConfigureResilience, profileDefaults, "the pipeline");
 
-        if (!_config.RetryExplicitlyConfigured && profileBehavior.AutomaticRetryDefaults is not null)
-            retryOptions = profileBehavior.AutomaticRetryDefaults;
+        ImmutableDictionary<string, PipelineResilienceOptions>? nodeResilience = null;
 
-        var overrideDict = NodeState.RetryOverrides.Count > 0
-            ? NodeState.RetryOverrides.ToImmutableDictionary()
-            : null;
+        if (NodeState.ResilienceOverrides.Count > 0)
+        {
+            var builder = ImmutableDictionary.CreateBuilder<string, PipelineResilienceOptions>();
+
+            foreach (var (nodeId, configure) in NodeState.ResilienceOverrides)
+            {
+                builder[nodeId] = BuildResilienceOptions(configure, resilience, $"node '{nodeId}'");
+            }
+
+            nodeResilience = builder.ToImmutable();
+        }
 
         return new ErrorHandlingConfiguration
         {
@@ -214,11 +222,31 @@ public sealed partial class PipelineBuilder
             ResiliencePolicyType = ConfigurationState.ResiliencePolicyType,
             DeadLetterSink = ConfigurationState.DeadLetterSink,
             DeadLetterSinkType = ConfigurationState.DeadLetterSinkType,
-            RetryOptions = retryOptions,
-            NodeRetryOverrides = overrideDict,
-            CircuitBreakerOptions = _config.CircuitBreakerOptions,
+            Resilience = resilience,
+            NodeResilience = nodeResilience,
             CircuitBreakerMemoryOptions = _config.CircuitBreakerMemoryOptions,
         };
+    }
+
+    private static PipelineResilienceOptions BuildResilienceOptions(
+        Func<PipelineResilienceOptions, PipelineResilienceOptions>? configure,
+        PipelineResilienceOptions baseline,
+        string owner)
+    {
+        if (configure is null)
+            return baseline;
+
+        var options = configure(baseline)
+                      ?? throw new InvalidOperationException($"The resilience configuration for {owner} returned null.");
+
+        try
+        {
+            return options.Validate();
+        }
+        catch (ArgumentException ex)
+        {
+            throw new InvalidOperationException($"The resilience options for {owner} are invalid: {ex.Message}", ex);
+        }
     }
 
     /// <summary>

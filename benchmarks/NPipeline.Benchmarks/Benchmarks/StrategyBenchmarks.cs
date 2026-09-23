@@ -6,7 +6,7 @@ using NPipeline.DataFlow.DataStreams;
 using NPipeline.Execution;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
-using NPipeline.Resilience;
+using NPipeline.Reliability;
 
 namespace NPipeline.Benchmarks.Benchmarks;
 
@@ -82,27 +82,20 @@ public class StrategyBenchmarks
             var t = b.AddTransform<PassThrough, int, int>("t");
             var sink = b.AddSink<BlackHoleSink, int>("sink");
 
-            // Wrap transform with resilient execution strategy. The strategy refuses to run without a policy that can
-            // restart the node, and a forward-only input needs a replay cap that covers the whole run.
+            // Wrap transform with resilient execution strategy. A forward-only input needs a replay window that covers
+            // the whole run.
             b.WithResilience(t);
-            b.AddResiliencePolicy<RestartNodePolicy>();
 
             var count = c.Parameters.TryGetValue("count", out var v)
                 ? Convert.ToInt32(v)
                 : 0;
 
-            b.WithRetryOptions(o => o with { MaxNodeRestartAttempts = 1, MaxMaterializedItems = Math.Max(count, 1) });
+            b.WithResilience(t, o => o with
+            {
+                NodeRestart = new NodeRestartOptions { MaxRestarts = 1, MaxReplayWindow = Math.Max(count, 1) },
+            });
 
             b.Connect(src, t).Connect(t, sink);
-        }
-    }
-
-    private sealed class RestartNodePolicy : ResiliencePolicyBase
-    {
-        public override Task<ResilienceDecision> DecidePipelineFailureAsync(string nodeId, Exception exception, PipelineContext context,
-            CancellationToken cancellationToken)
-        {
-            return Task.FromResult(ResilienceDecision.RestartNode);
         }
     }
 

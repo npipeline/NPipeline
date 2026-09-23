@@ -7,7 +7,7 @@ using NPipeline.Execution.Strategies;
 using NPipeline.Graph;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
-using NPipeline.Resilience;
+using NPipeline.Reliability;
 
 namespace NPipeline.Tests.Core.Builder;
 
@@ -52,172 +52,87 @@ public sealed class NodeConfigurationExtensionsTests
 
     private sealed class TestErrorHandler : IResiliencePolicy
     {
-        public Task<ResilienceDecision> DecideNodeFailureAsync(
-            NodeDefinition nodeDefinition,
-            INode node,
-            Exception exception,
-            PipelineContext context,
-            CancellationToken cancellationToken)
+        public ValueTask<ResilienceDecision> DecideNodeFailureAsync(NodeFailure failure, CancellationToken cancellationToken)
         {
-            return Task.FromResult(ResilienceDecision.Fail);
+            return ValueTask.FromResult(ResilienceDecision.Fail);
         }
 
-        public Task<ResilienceDecision> DecidePipelineFailureAsync(
-            string nodeId,
-            Exception exception,
-            PipelineContext context,
-            CancellationToken cancellationToken)
+        public ValueTask<ResilienceDecision> DecideRestartAsync(StreamFailure failure, CancellationToken cancellationToken)
         {
-            return Task.FromResult(ResilienceDecision.Fail);
+            return ValueTask.FromResult(ResilienceDecision.Fail);
         }
 
-        public Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
-            ITransformNode<TIn, TOut> node,
-            TIn item,
-            Exception exception,
-            PipelineContext context,
-            string nodeId,
-            int retryAttempt,
-            CancellationToken cancellationToken)
+        public ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken)
         {
-            return Task.FromResult(ResilienceDecision.Skip);
+            return ValueTask.FromResult(ResilienceDecision.Skip);
         }
 
-        public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, RetryKind retryKind, int attemptNumber, CancellationToken cancellationToken)
-        {
-            return context.GetRetryDelayStrategy().GetDelayAsync(attemptNumber, cancellationToken);
-        }
-
-        public IResilienceCircuitBreaker? GetCircuitBreaker(PipelineContext context, string nodeId)
-        {
-            return DefaultResiliencePolicy.Instance.GetCircuitBreaker(context, nodeId);
-        }
     }
 
     #endregion
 
-    #region WithRetries Tests
+    #region Per-node WithResilience Tests
 
     [Fact]
-    public void WithRetries_OnTransformHandle_ReturnsHandle()
+    public void WithResilienceForNode_RecordsTheNodesConfiguration()
     {
         // Arrange
         var builder = new PipelineBuilder();
         var handle = builder.AddTransform<TestTransformNode, int, string>();
 
         // Act
-        var result = handle.WithRetries(builder, 3);
+        builder.WithResilience(handle, o => o with { ItemRetry = new ItemRetryOptions { MaxRetries = 5 } });
 
         // Assert
-        _ = result.Should().Be(handle);
+        _ = builder.NodeState.ResilienceOverrides.Should().ContainKey(handle.Id);
+        _ = builder.NodeState.ResilienceOverrides[handle.Id](PipelineResilienceOptions.None).ItemRetry.MaxRetries.Should().Be(5);
     }
 
     [Fact]
-    public void WithRetries_WithValidParameters_ConfiguresRetryOptions()
+    public void WithResilienceForNode_ComposesRepeatedCalls()
     {
         // Arrange
         var builder = new PipelineBuilder();
         var handle = builder.AddTransform<TestTransformNode, int, string>();
 
         // Act
-        handle.WithRetries(builder, 5, 100);
+        builder.WithResilience(handle, o => o with { ItemRetry = new ItemRetryOptions { MaxRetries = 5 } });
+        builder.WithResilience(handle, o => o with { OnItemFailure = ItemFailureAction.Skip });
 
         // Assert
-        _ = builder.NodeState.RetryOverrides.Should().ContainKey(handle.Id);
-        var retryOptions = builder.NodeState.RetryOverrides[handle.Id];
-        _ = retryOptions.MaxItemRetries.Should().Be(5);
+        var options = builder.NodeState.ResilienceOverrides[handle.Id](PipelineResilienceOptions.None);
+        _ = options.ItemRetry.MaxRetries.Should().Be(5);
+        _ = options.OnItemFailure.Should().Be(ItemFailureAction.Skip);
     }
 
     [Fact]
-    public void WithRetries_WithNullBuilder_ThrowsArgumentNullException()
+    public void WithResilienceForNode_WithUnknownNode_Throws()
     {
         // Arrange
-        var handle = new TransformNodeHandle<int, string>("test");
+        var builder = new PipelineBuilder();
 
         // Act & Assert
-        _ = Assert.Throws<ArgumentNullException>(() => handle.WithRetries(null!, 3));
+        _ = Assert.Throws<InvalidOperationException>(() =>
+            builder.WithResilience(new TransformNodeHandle<int, string>("missing"), o => o));
     }
 
     [Fact]
-    public void WithRetries_WithNegativeRetries_ThrowsArgumentOutOfRangeException()
+    public void WithResilienceForNode_WithNullConfigure_Throws()
     {
         // Arrange
         var builder = new PipelineBuilder();
         var handle = builder.AddTransform<TestTransformNode, int, string>();
 
         // Act & Assert
-        _ = Assert.Throws<ArgumentOutOfRangeException>(() => handle.WithRetries(builder, -1));
-    }
-
-    [Fact]
-    public void WithRetries_OnSourceHandle_ReturnsHandle()
-    {
-        // Arrange
-        var builder = new PipelineBuilder();
-        var handle = builder.AddSource<TestSourceNode, int>();
-
-        // Act
-        var result = handle.WithRetries(builder, 2);
-
-        // Assert
-        _ = result.Should().Be(handle);
-    }
-
-    [Fact]
-    public void WithRetries_OnSinkHandle_ReturnsHandle()
-    {
-        // Arrange
-        var builder = new PipelineBuilder();
-        var handle = builder.AddSink<TestSinkNode, string>();
-
-        // Act
-        var result = handle.WithRetries(builder, 2);
-
-        // Assert
-        _ = result.Should().Be(handle);
-    }
-
-    [Fact]
-    public void WithRetry_UsesBuilderOptimizationProfileDefaults()
-    {
-        // Arrange
-        var builder = new PipelineBuilder()
-            .WithOptimizationProfile(PipelineOptimizationProfile.HighThroughput);
-        var handle = builder.AddTransform<TestTransformNode, int, string>();
-
-        // Act
-        handle.WithRetry(builder);
-
-        // Assert
-        _ = builder.NodeState.RetryOverrides.Should().ContainKey(handle.Id);
-        var retryOptions = builder.NodeState.RetryOverrides[handle.Id];
-        _ = retryOptions.Should().Be(PipelineRetryOptions.ForProfile(PipelineOptimizationProfile.HighThroughput));
-    }
-
-    [Fact]
-    public void WithRetry_WithExplicitProfile_UsesSpecifiedProfileDefaults()
-    {
-        // Arrange
-        var builder = new PipelineBuilder()
-            .WithOptimizationProfile(PipelineOptimizationProfile.HighThroughput);
-        var handle = builder.AddTransform<TestTransformNode, int, string>();
-
-        // Act
-        handle.WithRetry(builder, PipelineOptimizationProfile.Default);
-
-        // Assert
-        _ = builder.NodeState.RetryOverrides.Should().ContainKey(handle.Id);
-        var retryOptions = builder.NodeState.RetryOverrides[handle.Id];
-        _ = retryOptions.MaxItemRetries.Should().Be(3);
-        _ = retryOptions.MaxMaterializedItems.Should().Be(10_000);
+        _ = Assert.Throws<ArgumentNullException>(() => builder.WithResilience(handle, null!));
     }
 
     #endregion
 
-    #region SetNodeResiliencePolicy Tests
+    #region AddResiliencePolicyForNode Tests
 
     [Fact]
-    public void SetNodeResiliencePolicy_WithValidPolicy_ConfiguresAnnotation()
+    public void AddResiliencePolicyForNode_WithValidPolicy_ConfiguresAnnotation()
     {
         // Arrange
         var builder = new PipelineBuilder();
@@ -225,7 +140,7 @@ public sealed class NodeConfigurationExtensionsTests
         var policy = new TestErrorHandler();
 
         // Act
-        builder.SetNodeResiliencePolicy(handle, policy);
+        builder.AddResiliencePolicy(handle, policy);
 
         // Assert
         var key = ExecutionAnnotationKeys.NodeResiliencePolicyForNode(handle.Id);
@@ -234,27 +149,27 @@ public sealed class NodeConfigurationExtensionsTests
     }
 
     [Fact]
-    public void SetNodeResiliencePolicy_WithNullHandle_ThrowsArgumentNullException()
+    public void AddResiliencePolicyForNode_WithNullHandle_ThrowsArgumentNullException()
     {
         // Arrange
         var builder = new PipelineBuilder();
 
         // Act
-        var act = () => builder.SetNodeResiliencePolicy(null!, new TestErrorHandler());
+        var act = () => builder.AddResiliencePolicy(null!, new TestErrorHandler());
 
         // Assert
         _ = act.Should().Throw<ArgumentNullException>();
     }
 
     [Fact]
-    public void SetNodeResiliencePolicy_WithNullPolicy_ThrowsArgumentNullException()
+    public void AddResiliencePolicyForNode_WithNullPolicy_ThrowsArgumentNullException()
     {
         // Arrange
         var builder = new PipelineBuilder();
         var handle = builder.AddTransform<TestTransformNode, int, string>();
 
         // Act & Assert
-        _ = Assert.Throws<ArgumentNullException>(() => builder.SetNodeResiliencePolicy(handle, null!));
+        _ = Assert.Throws<ArgumentNullException>(() => builder.AddResiliencePolicy(handle, null!));
     }
 
     #endregion
@@ -369,14 +284,14 @@ public sealed class NodeConfigurationExtensionsTests
         // Arrange
         var builder = new PipelineBuilder();
 
-        var handle = builder
-            .AddTransform<TestTransformNode, int, string>()
-            .WithRetries(builder, 3, 50);
+        var handle = builder.AddTransform<TestTransformNode, int, string>();
 
-        builder.SetNodeResiliencePolicy(handle, new TestErrorHandler());
+        builder
+            .WithResilience(handle, o => o with { ItemRetry = new ItemRetryOptions { MaxRetries = 3 } })
+            .AddResiliencePolicy(handle, new TestErrorHandler());
 
         // Act & Assert
-        _ = builder.NodeState.RetryOverrides.Should().ContainKey(handle.Id);
+        _ = builder.NodeState.ResilienceOverrides.Should().ContainKey(handle.Id);
         var key = ExecutionAnnotationKeys.NodeResiliencePolicyForNode(handle.Id);
         _ = builder.NodeState.ExecutionAnnotations.Should().ContainKey(key);
         _ = builder.NodeState.ExecutionAnnotations[key].Should().BeOfType<TestErrorHandler>();
@@ -391,7 +306,7 @@ public sealed class NodeConfigurationExtensionsTests
 
         // Act
         var result = originalHandle
-            .WithRetries(builder, 3)
+            .WithExecutionStrategy(builder, new SequentialExecutionStrategy())
             .WithResilience(builder);
 
         // Assert

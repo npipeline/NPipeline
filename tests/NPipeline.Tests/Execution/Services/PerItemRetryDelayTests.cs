@@ -1,153 +1,116 @@
-using System.Diagnostics;
 using AwesomeAssertions;
+using Microsoft.Extensions.Time.Testing;
 using NPipeline.ErrorHandling;
 using NPipeline.Execution;
 using NPipeline.Execution.Lineage;
 using NPipeline.Execution.Services;
-using NPipeline.Graph;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
-using NPipeline.Resilience;
+using NPipeline.Reliability;
 
 namespace NPipeline.Tests.Execution.Services;
 
 /// <summary>
-///     Item-level retry used to <c>continue</c> straight into the next attempt, so the whole retry-delay subsystem —
-///     exponential backoff, jitter, the composite strategy — was inert for the most common retry scenario and the
-///     pipeline spun against a struggling dependency as fast as the CPU allowed.
+///     Item-level retry used to <c>continue</c> straight into the next attempt, so backoff was inert for the most
+///     common retry scenario and the pipeline spun against a struggling dependency as fast as the CPU allowed. The
+///     delay now comes from the node's <see cref="ItemRetryOptions.Backoff" />.
 /// </summary>
 public sealed class PerItemRetryDelayTests
 {
     private const string NodeId = "transform";
 
     [Fact]
-    public async Task ItemRetry_AsksThePolicyForADelayOnEveryAttempt()
+    public async Task ItemRetry_AsksTheBackoffForADelayBeforeEveryRetry()
     {
-        var policy = new RecordingDelayPolicy(TimeSpan.Zero);
-        var (context, pipelineId) = CreateContext(policy);
+        var requests = new List<int>();
+        await using var context = CreateContext();
 
-        try
-        {
-            var result = await ExecuteAsync(context, pipelineId, policy, failures: 3, maxItemRetries: 3);
+        var result = await ExecuteAsync(context, Options(3, Recording(requests)), failures: 3);
 
-            result.Outcome.Should().Be(ItemExecutionOutcome.Emitted);
-            // Each retry must consult the delay strategy, numbered from 1.
-            policy.RequestedAttempts.Should().Equal(1, 2, 3);
-        }
-        finally
-        {
-            await context.DisposeAsync();
-        }
+        result.Outcome.Should().Be(ItemExecutionOutcome.Emitted);
+        requests.Should().Equal(1, 2, 3);
     }
 
     [Fact]
-    public async Task ItemRetry_ActuallyWaitsForTheConfiguredDelay()
+    public async Task ItemRetry_WaitsForTheDelayOnThePipelinesClock()
     {
-        var delay = TimeSpan.FromMilliseconds(120);
-        var policy = new RecordingDelayPolicy(delay);
-        var (context, pipelineId) = CreateContext(policy);
+        var time = new FakeTimeProvider();
+        await using var context = CreateContext();
+        var options = Options(3, RetryBackoff.Constant(TimeSpan.FromMinutes(5))) with { Time = time };
 
-        try
-        {
-            var stopwatch = Stopwatch.StartNew();
-            _ = await ExecuteAsync(context, pipelineId, policy, failures: 2, maxItemRetries: 3);
-            stopwatch.Stop();
+        var run = ExecuteAsync(context, options, failures: 1);
 
-            // Two retries at 120ms. Asserting against a fraction of the total keeps this robust on a loaded machine
-            // while still failing outright if the delay is skipped, which is what the defect did.
-            stopwatch.Elapsed.Should().BeGreaterThan(delay, "the configured backoff must actually be awaited");
-        }
-        finally
-        {
-            await context.DisposeAsync();
-        }
+        await Task.Delay(50);
+        run.IsCompleted.Should().BeFalse("the retry waits for the backoff");
+
+        time.Advance(TimeSpan.FromMinutes(5));
+        (await run.WaitAsync(TimeSpan.FromSeconds(10))).Outcome.Should().Be(ItemExecutionOutcome.Emitted);
     }
 
     [Fact]
     public async Task ItemRetry_DoesNotDelayWhenTheItemSucceedsFirstTime()
     {
-        var policy = new RecordingDelayPolicy(TimeSpan.FromSeconds(30));
-        var (context, pipelineId) = CreateContext(policy);
+        var requests = new List<int>();
+        await using var context = CreateContext();
 
-        try
-        {
-            var result = await ExecuteAsync(context, pipelineId, policy, failures: 0, maxItemRetries: 3);
+        var result = await ExecuteAsync(context, Options(3, Recording(requests)), failures: 0);
 
-            result.Outcome.Should().Be(ItemExecutionOutcome.Emitted);
-            policy.RequestedAttempts.Should().BeEmpty("a successful item must not touch the delay strategy");
-        }
-        finally
-        {
-            await context.DisposeAsync();
-        }
+        result.Outcome.Should().Be(ItemExecutionOutcome.Emitted);
+        requests.Should().BeEmpty("a successful item must not wait");
     }
 
     [Fact]
     public async Task ItemRetry_DoesNotDelayAfterTheFinalAttemptFails()
     {
         // The delay belongs before a retry, not after the last one: it would be pure dead time.
-        var policy = new RecordingDelayPolicy(TimeSpan.Zero);
-        var (context, pipelineId) = CreateContext(policy);
+        var requests = new List<int>();
+        await using var context = CreateContext();
 
-        try
-        {
-            var act = () => ExecuteAsync(context, pipelineId, policy, failures: 5, maxItemRetries: 2);
+        var act = () => ExecuteAsync(context, Options(2, Recording(requests)), failures: 5);
 
-            _ = await act.Should().ThrowAsync<InvalidOperationException>();
-            // Two retries means two delays, not three.
-            policy.RequestedAttempts.Should().Equal(1, 2);
-        }
-        finally
-        {
-            await context.DisposeAsync();
-        }
+        _ = await act.Should().ThrowAsync<RetryExhaustedException>();
+        requests.Should().Equal(1, 2);
     }
 
     [Fact]
     public async Task ItemRetry_PropagatesCancellationRaisedDuringTheDelay()
     {
         using var cts = new CancellationTokenSource();
-        var policy = new RecordingDelayPolicy(TimeSpan.FromSeconds(30)) { CancellationSource = cts };
-        var (context, pipelineId) = CreateContext(policy);
+        await using var context = CreateContext();
 
-        try
+        var backoff = RetryBackoff.Custom(_ =>
         {
-            var act = () => ExecuteAsync(context, pipelineId, policy, failures: 5, maxItemRetries: 3, cts.Token);
+            cts.Cancel();
+            return TimeSpan.FromSeconds(30);
+        });
 
-            _ = await act.Should().ThrowAsync<OperationCanceledException>();
-        }
-        finally
-        {
-            await context.DisposeAsync();
-        }
+        var act = () => ExecuteAsync(context, Options(3, backoff), failures: 5, cts.Token);
+
+        _ = await act.Should().ThrowAsync<OperationCanceledException>();
     }
 
-    [Fact]
-    public async Task ItemRetry_SurvivesADelayStrategyThatThrows()
+    private static PipelineResilienceOptions Options(int maxRetries, RetryBackoff backoff)
     {
-        // A broken delay strategy must not break the retry itself.
-        var policy = new RecordingDelayPolicy(TimeSpan.Zero) { ThrowFromDelay = true };
-        var (context, pipelineId) = CreateContext(policy);
-
-        try
+        // The transform's failures are not transient, so the classifier retries everything.
+        return PipelineResilienceOptions.None with
         {
-            var result = await ExecuteAsync(context, pipelineId, policy, failures: 2, maxItemRetries: 3);
+            ItemRetry = new ItemRetryOptions { MaxRetries = maxRetries, Backoff = backoff, Classifier = RetryClassifier.All },
+        };
+    }
 
-            result.Outcome.Should().Be(ItemExecutionOutcome.Emitted);
-            policy.RequestedAttempts.Should().Equal(1, 2);
-        }
-        finally
+    private static RetryBackoff Recording(List<int> requests)
+    {
+        return RetryBackoff.Custom(retry =>
         {
-            await context.DisposeAsync();
-        }
+            requests.Add(retry);
+            return TimeSpan.Zero;
+        });
     }
 
     private static Task<ItemExecutionResult<int>> ExecuteAsync(
         PipelineContext context,
-        Guid pipelineId,
-        IResiliencePolicy policy,
+        PipelineResilienceOptions options,
         int failures,
-        int maxItemRetries,
         CancellationToken cancellationToken = default)
     {
         return PerItemRetryExecutor.Instance.ExecuteWithRetryAsync(
@@ -155,21 +118,20 @@ public sealed class PerItemRetryDelayTests
             node: new FlakyTransform(failures),
             context,
             NodeId,
-            maxItemRetries,
+            options,
             hasLineageIndex: false,
             lineageInputIndex: 0,
-            lineageOutcomeWriter: LineageNodeOutcomeRegistry.GetWriter(pipelineId, NodeId),
+            lineageOutcomeWriter: LineageNodeOutcomeRegistry.GetWriter(context.RunIdentity.PipelineId, NodeId),
             itemActivity: null,
             cancellationToken);
     }
 
-    private static (PipelineContext Context, Guid PipelineId) CreateContext(IResiliencePolicy policy)
+    private static PipelineContext CreateContext()
     {
         var context = new PipelineContext();
         context.RunIdentity.PipelineId = Guid.NewGuid();
         context.RunIdentity.RunId = Guid.NewGuid();
-        context.ExecutionConfiguration.ResiliencePolicy = policy;
-        return (context, context.RunIdentity.PipelineId);
+        return context;
     }
 
     private sealed class FlakyTransform(int failuresBeforeSuccess) : TransformNode<int, int>
@@ -179,54 +141,9 @@ public sealed class PerItemRetryDelayTests
         public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             if (_attempts++ < failuresBeforeSuccess)
-                throw new InvalidOperationException("transient");
+                throw new InvalidOperationException("failure");
 
-            return ValueTask.FromResult<int>(item);
-        }
-    }
-
-    private sealed class RecordingDelayPolicy(TimeSpan delay) : IResiliencePolicy
-    {
-        public List<int> RequestedAttempts { get; } = [];
-
-        public bool ThrowFromDelay { get; init; }
-
-        public CancellationTokenSource? CancellationSource { get; init; }
-
-        public async ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, RetryKind retryKind, int attemptNumber, CancellationToken cancellationToken)
-        {
-            RequestedAttempts.Add(attemptNumber);
-
-            if (ThrowFromDelay)
-                throw new InvalidOperationException("delay strategy is broken");
-
-            if (CancellationSource is not null)
-                await CancellationSource.CancelAsync();
-
-            return delay;
-        }
-
-        public Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(ITransformNode<TIn, TOut> node, TIn failedItem, Exception exception,
-            PipelineContext context, string nodeId, int retryAttempt, CancellationToken cancellationToken)
-        {
-            return Task.FromResult(ResilienceDecision.Retry);
-        }
-
-        public Task<ResilienceDecision> DecideNodeFailureAsync(NodeDefinition nodeDefinition, INode node, Exception exception,
-            PipelineContext context, CancellationToken cancellationToken)
-        {
-            return Task.FromResult(ResilienceDecision.Fail);
-        }
-
-        public Task<ResilienceDecision> DecidePipelineFailureAsync(string nodeId, Exception exception, PipelineContext context,
-            CancellationToken cancellationToken)
-        {
-            return Task.FromResult(ResilienceDecision.Fail);
-        }
-
-        public IResilienceCircuitBreaker? GetCircuitBreaker(PipelineContext context, string nodeId)
-        {
-            return DefaultResiliencePolicy.Instance.GetCircuitBreaker(context, nodeId);
+            return ValueTask.FromResult(item);
         }
     }
 }

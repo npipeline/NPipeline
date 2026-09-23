@@ -309,6 +309,17 @@ public sealed class DeadLetterSinkNotConfiguredException : PipelineException
     }
 
     /// <summary>
+    ///     Initializes a new instance of the <see cref="DeadLetterSinkNotConfiguredException" /> class for a node
+    ///     whose resilience options dead-letter failed items, found before the pipeline ran.
+    /// </summary>
+    /// <param name="nodeId">The ID of the node configured to dead-letter.</param>
+    public DeadLetterSinkNotConfiguredException(string nodeId)
+        : base(ErrorMessages.DeadLetterSinkNotConfiguredForOptions(nodeId))
+    {
+        NodeId = nodeId;
+    }
+
+    /// <summary>
     ///     Gets the ID of the node whose item was dead-lettered.
     /// </summary>
     public string NodeId { get; }

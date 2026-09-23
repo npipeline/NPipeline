@@ -8,7 +8,7 @@ using NPipeline.Graph;
 using NPipeline.Lineage;
 using NPipeline.Observability.Logging;
 using NPipeline.Pipeline;
-using NPipeline.Resilience;
+using NPipeline.Reliability;
 
 namespace NPipeline.Execution.Services;
 

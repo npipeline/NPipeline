@@ -36,10 +36,9 @@ public sealed class DropOldestParallelStrategy : ParallelExecutionStrategyBase
 
         var observabilityScope = BeginNodeObservabilityScope(context, nodeId);
         var currentActivity = context.Observability.Tracer.CurrentActivity;
-        var effectiveRetries = GetRetryOptions(nodeId, context);
-        var cachedContext = CachedNodeExecutionContext.CreateWithRetryOptions(context, nodeId, effectiveRetries);
+        var cachedContext = CachedNodeExecutionContext.Create(context, nodeId);
         var logger = context.Observability.LoggerFactory.CreateLogger(nameof(DropOldestParallelStrategy));
-        ParallelExecutionStrategyLogMessages.FinalMaxRetries(logger, nodeId, effectiveRetries.MaxItemRetries);
+        ParallelExecutionStrategyLogMessages.FinalMaxRetries(logger, nodeId, cachedContext.Resilience.ItemRetry.MaxRetries);
 
         ParallelOptions? parallelOptions = null;
 

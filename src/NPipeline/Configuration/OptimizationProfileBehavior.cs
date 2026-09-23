@@ -1,3 +1,5 @@
+using NPipeline.Reliability;
+
 namespace NPipeline.Configuration
 {
     /// <summary>
@@ -11,15 +13,9 @@ namespace NPipeline.Configuration
         PipelineOptimizationProfile Profile { get; }
 
         /// <summary>
-        ///     Retry options applied by explicit retry shorthand APIs.
+        ///     The resilience options a pipeline built with this profile starts from.
         /// </summary>
-        PipelineRetryOptions RetryDefaults { get; }
-
-        /// <summary>
-        ///     Retry options that should be applied automatically when retry has not been explicitly configured.
-        ///     Null means no automatic retry defaults should be applied.
-        /// </summary>
-        PipelineRetryOptions? AutomaticRetryDefaults { get; }
+        PipelineResilienceOptions ResilienceDefaults { get; }
 
         /// <summary>
         ///     True when context dictionaries should use <see cref="System.Collections.Concurrent.ConcurrentDictionary{TKey, TValue}" />.
@@ -50,9 +46,7 @@ namespace NPipeline.Configuration
         {
             public PipelineOptimizationProfile Profile => PipelineOptimizationProfile.Default;
 
-            public PipelineRetryOptions RetryDefaults => PipelineRetryOptions.ForProfile(PipelineOptimizationProfile.Default);
-
-            public PipelineRetryOptions? AutomaticRetryDefaults => RetryDefaults;
+            public PipelineResilienceOptions ResilienceDefaults => PipelineResilienceOptions.ForProfile(PipelineOptimizationProfile.Default);
 
             public bool UsesThreadSafeContextDictionaries => true;
         }
@@ -61,9 +55,7 @@ namespace NPipeline.Configuration
         {
             public PipelineOptimizationProfile Profile => PipelineOptimizationProfile.HighThroughput;
 
-            public PipelineRetryOptions RetryDefaults => PipelineRetryOptions.ForProfile(PipelineOptimizationProfile.HighThroughput);
-
-            public PipelineRetryOptions? AutomaticRetryDefaults => null;
+            public PipelineResilienceOptions ResilienceDefaults => PipelineResilienceOptions.ForProfile(PipelineOptimizationProfile.HighThroughput);
 
             public bool UsesThreadSafeContextDictionaries => false;
         }
