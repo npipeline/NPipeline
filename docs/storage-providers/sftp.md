@@ -106,7 +106,7 @@ var options = new SftpStorageProviderOptions
 | `MaxPoolSize` | `int` | `10` | Maximum pooled connections |
 | `ConnectionIdleTimeout` | `TimeSpan` | `5 min` | Evict idle connections after this duration |
 | `KeepAliveInterval` | `TimeSpan` | `30s` | SSH keepalive interval |
-| `ConnectionTimeout` | `TimeSpan` | `30s` | Connection timeout |
+| `ConnectionTimeout` | `TimeSpan` | `30s` | Bound on establishing a connection (TCP connect and SSH handshake); failures surface as `SshOperationTimeoutException`. The connect also stops when the pipeline is cancelled |
 | `ValidateOnAcquire` | `bool` | `true` | Health-check connections when borrowed from pool |
 
 ### Security

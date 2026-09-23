@@ -346,7 +346,8 @@ public sealed class KafkaSourceNode<T> : SourceNode<KafkaMessage<T>>
             if (isNull || data.IsEmpty)
                 return default!;
 
-            return serializer.Deserialize<TValue>(data.ToArray());
+            // The real topic and component, so a schema-registry deserializer resolves the right subject.
+            return serializer.Deserialize<TValue>(data.ToArray(), context);
         }
     }
 }

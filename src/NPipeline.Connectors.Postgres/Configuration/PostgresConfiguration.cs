@@ -38,7 +38,8 @@ public class PostgresConfiguration
     public int CommandTimeout { get; set; } = DefaultCommandTimeoutSeconds;
 
     /// <summary>
-    ///     Gets or sets the COPY timeout in seconds.
+    ///     Gets or sets the COPY timeout in seconds: how long each read or write of a COPY import may take, applied to
+    ///     Npgsql's binary importer and text writer.
     /// </summary>
     public int CopyTimeout { get; set; } = DefaultCopyTimeoutSeconds;
 
@@ -126,7 +127,7 @@ public class PostgresConfiguration
     ///     Gets or sets how writes and the source query are retried. Defaults to
     ///     <see cref="PostgresConnectorResilience.Default" />: four attempts with exponential backoff, retrying only the
     ///     errors <see cref="PostgresConnectorResilience.Classifier" /> judges transient. Each attempt is bounded by
-    ///     <see cref="CommandTimeout" />. Use
+    ///     <see cref="CommandTimeout" />, or <see cref="CopyTimeout" /> for COPY. Use
     ///     <see cref="NResilience.Resilience.None" /> to turn retries off.
     /// </summary>
     public NResilience.Resilience Resilience { get; set; } = PostgresConnectorResilience.Default;

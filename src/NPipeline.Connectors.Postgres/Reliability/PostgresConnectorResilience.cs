@@ -22,7 +22,8 @@ namespace NPipeline.Connectors.Postgres.Reliability;
 ///     </para>
 ///     <para>
 ///         The presets have no attempt timeout and no deadline. Each attempt is bounded by
-///         <see cref="Configuration.PostgresConfiguration.CommandTimeout" /> instead. A timeout set on the policy applies to
+///         <see cref="Configuration.PostgresConfiguration.CommandTimeout" /> instead, or
+///         <see cref="Configuration.PostgresConfiguration.CopyTimeout" /> for <c>COPY</c>. A timeout set on the policy applies to
 ///         every operation, <c>COPY</c> included.
 ///     </para>
 /// </remarks>
@@ -41,7 +42,8 @@ public static class PostgresConnectorResilience
     /// <summary>
     ///     Four attempts (three retries) and exponential backoff with full jitter from one second up to 30 seconds, or
     ///     from five seconds when the server has too many connections. There is no attempt timeout or deadline;
-    ///     <see cref="Configuration.PostgresConfiguration.CommandTimeout" /> bounds each attempt. Replaces
+    ///     <see cref="Configuration.PostgresConfiguration.CommandTimeout" /> (or <c>CopyTimeout</c> for <c>COPY</c>) bounds
+    ///     each attempt. Replaces
     ///     <c>MaxRetryAttempts = 3</c> and <c>RetryDelay = 1 s</c>.
     /// </summary>
     public static NResilience.Resilience Default { get; } = new()

@@ -137,6 +137,36 @@ public sealed class KafkaConfiguration
     /// </summary>
     public Acks Acks { get; set; } = Acks.All;
 
+    /// <summary>
+    ///     Gets or sets how long librdkafka keeps retrying a produce before it fails the message, in milliseconds
+    ///     (<c>delivery.timeout.ms</c>, also called <c>message.timeout.ms</c>). Default is 300000 (five minutes), the
+    ///     librdkafka default; 0 retries without limit. Must not be less than <see cref="LingerMs" />.
+    /// </summary>
+    /// <remarks>
+    ///     librdkafka is the only layer that retries a produce, so this bounds how long a produce can take to fail.
+    /// </remarks>
+    public int DeliveryTimeoutMs { get; set; } = 300000;
+
+    /// <summary>
+    ///     Gets or sets the delay before librdkafka's first retry of a failed produce request, in milliseconds
+    ///     (<c>retry.backoff.ms</c>). librdkafka doubles it on each retry, with jitter, up to
+    ///     <see cref="RetryBackoffMaxMs" />. Default is 100, the librdkafka default.
+    /// </summary>
+    public int RetryBackoffMs { get; set; } = 100;
+
+    /// <summary>
+    ///     Gets or sets the longest delay between librdkafka's produce retries, in milliseconds
+    ///     (<c>retry.backoff.max.ms</c>). Default is 1000, the librdkafka default.
+    /// </summary>
+    public int RetryBackoffMaxMs { get; set; } = 1000;
+
+    /// <summary>
+    ///     Gets or sets how long the sink waits for the sink topic's metadata when it starts, in milliseconds.
+    ///     Default is 10000. If the brokers cannot be reached in that time, the sink fails with an
+    ///     <see cref="InvalidOperationException" /> instead of blocking.
+    /// </summary>
+    public int MetadataTimeoutMs { get; set; } = 10000;
+
     // Serialization
     /// <summary>
     ///     Gets or sets the serialization format to use.
@@ -276,6 +306,21 @@ public sealed class KafkaConfiguration
 
         if (MessageMaxBytes <= 0)
             throw new InvalidOperationException("MessageMaxBytes must be greater than zero.");
+
+        if (DeliveryTimeoutMs < 0)
+            throw new InvalidOperationException("DeliveryTimeoutMs cannot be negative.");
+
+        if (DeliveryTimeoutMs > 0 && DeliveryTimeoutMs < LingerMs)
+            throw new InvalidOperationException("DeliveryTimeoutMs must not be less than LingerMs.");
+
+        if (RetryBackoffMs <= 0)
+            throw new InvalidOperationException("RetryBackoffMs must be greater than zero.");
+
+        if (RetryBackoffMaxMs < RetryBackoffMs)
+            throw new InvalidOperationException("RetryBackoffMaxMs must not be less than RetryBackoffMs.");
+
+        if (MetadataTimeoutMs <= 0)
+            throw new InvalidOperationException("MetadataTimeoutMs must be greater than zero.");
 
         ValidateSecurityCredentials();
     }

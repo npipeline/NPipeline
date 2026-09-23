@@ -183,6 +183,7 @@ internal sealed class PostgresCopyWriter<T> : IDatabaseWriter<T>
 
         var importer = await connection.BeginBinaryImportAsync(copyCommand, cancellationToken).ConfigureAwait(false);
         await using var importerScope = importer.ConfigureAwait(false);
+        importer.Timeout = TimeSpan.FromSeconds(_configuration.CopyTimeout);
 
         foreach (var item in _pendingRows)
         {
@@ -217,6 +218,9 @@ internal sealed class PostgresCopyWriter<T> : IDatabaseWriter<T>
         var writer = await connection.BeginTextImportAsync(copyCommand, cancellationToken).ConfigureAwait(false);
         await using var writerScope = writer.ConfigureAwait(false);
 
+        if (writer is NpgsqlCopyTextWriter copyWriter)
+            copyWriter.Timeout = (int)TimeSpan.FromSeconds(_configuration.CopyTimeout).TotalMilliseconds;
+
         foreach (var line in copyData)
         {
             await writer.WriteLineAsync(line).ConfigureAwait(false);
@@ -231,7 +235,8 @@ internal sealed class PostgresCopyWriter<T> : IDatabaseWriter<T>
         if (_mappings.Length == 0)
             throw new InvalidOperationException($"Type '{typeof(T).Name}' does not expose any writable properties to persist.");
 
-        var quotedTableName = DatabaseIdentifierValidator.QuoteIdentifier($"{_schema}.{_tableName}");
+        // Schema and table are quoted separately; one quoted "schema.table" would name a table with a dot in it.
+        var quotedTableName = $"{DatabaseIdentifierValidator.QuoteIdentifier(_schema)}.{DatabaseIdentifierValidator.QuoteIdentifier(_tableName)}";
 
         var quotedColumns = _mappings
             .Select(m => ValidateAndQuoteIdentifier(m.ColumnName, nameof(m.ColumnName)))
@@ -239,8 +244,10 @@ internal sealed class PostgresCopyWriter<T> : IDatabaseWriter<T>
 
         var columnList = string.Join(", ", quotedColumns);
 
-        return
-            $"COPY {quotedTableName} ({columnList}) FROM STDIN (FORMAT {_configuration.UseBinaryCopy switch { true => "BINARY", _ => "CSV" }}, DELIMITER '\t', NULL '\\N')";
+        // DELIMITER and NULL are text-format options; PostgreSQL rejects them in BINARY mode.
+        return _configuration.UseBinaryCopy
+            ? $"COPY {quotedTableName} ({columnList}) FROM STDIN (FORMAT BINARY)"
+            : $"COPY {quotedTableName} ({columnList}) FROM STDIN (FORMAT CSV, DELIMITER '\t', NULL '\\N')";
     }
 
     /// <summary>

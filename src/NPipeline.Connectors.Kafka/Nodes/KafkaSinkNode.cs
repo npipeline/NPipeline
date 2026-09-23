@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.ExceptionServices;
 using System.Text;
 using Confluent.Kafka;
 using Microsoft.Extensions.Logging;
@@ -58,14 +59,13 @@ public sealed class KafkaSinkNode<T> : SinkNode<T>, IAsyncDisposable
     private readonly KafkaConfiguration _configuration;
     private readonly IKafkaMetrics _metrics;
     private readonly bool _ownsProducer;
-    private readonly object _partitionCountLock = new();
     private readonly IPartitionKeyProvider<T> _partitionKeyProvider;
     private readonly IProducer<string, T> _producer;
     private readonly ISerializerProvider _serializer;
     private readonly object _transactionInitLock = new();
     private int? _cachedPartitionCount;
     private ILogger _logger = NullLogger.Instance;
-    private bool _transactionsInitialized;
+    private Task? _transactionInit;
 
     /// <summary>
     ///     Creates a new KafkaSinkNode with the specified configuration.
@@ -97,7 +97,7 @@ public sealed class KafkaSinkNode<T> : SinkNode<T>, IAsyncDisposable
         var producerConfig = BuildProducerConfig(configuration);
 
         _producer = new ProducerBuilder<string, T>(producerConfig)
-            .SetValueSerializer(new MessageSerializer<T>(_serializer))
+            .SetValueSerializer(new KafkaValueSerializer<T>(_serializer))
             .Build();
 
         _ownsProducer = true;
@@ -133,12 +133,12 @@ public sealed class KafkaSinkNode<T> : SinkNode<T>, IAsyncDisposable
     {
         _logger = context.Observability.LoggerFactory.CreateLogger(nameof(KafkaSinkNode<T>));
 
-        // Ensure partition count is cached before processing
-        _ = GetPartitionCount();
+        // Read the partition count once, before producing. Bounded by MetadataTimeoutMs and the pipeline's token.
+        await ResolvePartitionCountAsync(cancellationToken).ConfigureAwait(false);
 
         if (_configuration.EnableTransactions)
         {
-            EnsureTransactionsInitialized(cancellationToken);
+            await EnsureTransactionsInitializedAsync(cancellationToken).ConfigureAwait(false);
             await ExecuteTransactionalAsync(input, _logger, cancellationToken).ConfigureAwait(false);
         }
         else if (_configuration.BatchSize > 1)
@@ -171,6 +171,10 @@ public sealed class KafkaSinkNode<T> : SinkNode<T>, IAsyncDisposable
 
         await foreach (var item in input.WithCancellation(cancellationToken))
         {
+            // A linger flush that failed has stopped its loop; fail the node now rather than at the end.
+            if (flushTask is { IsFaulted: true })
+                await flushTask.ConfigureAwait(false);
+
             var outgoingMessage = CreateOutgoingMessage(item);
 
             var shouldFlush = _batcher.Add(outgoingMessage);
@@ -212,10 +216,10 @@ public sealed class KafkaSinkNode<T> : SinkNode<T>, IAsyncDisposable
             await foreach (var item in input.WithCancellation(cancellationToken))
             {
                 // Collect offset and consumer group metadata from KafkaMessage for exactly-once semantics
-                if (item is KafkaMessage<T> kafkaMessage)
+                if (item is IKafkaOffsetSource offsetSource)
                 {
-                    offsetsToCommit.Add(kafkaMessage.TopicPartitionOffset);
-                    consumerGroupMetadata ??= kafkaMessage.ConsumerGroupMetadata;
+                    offsetsToCommit.Add(offsetSource.TopicPartitionOffset);
+                    consumerGroupMetadata ??= offsetSource.ConsumerGroupMetadata;
                 }
 
                 await ProcessItemAsync(item, logger, cancellationToken).ConfigureAwait(false);
@@ -264,73 +268,75 @@ public sealed class KafkaSinkNode<T> : SinkNode<T>, IAsyncDisposable
 
     private async Task ProcessItemAsync(T item, ILogger logger, CancellationToken cancellationToken)
     {
-        if (item is IAcknowledgableMessage acknowledgableMessage)
-            await ProcessAcknowledgableMessageAsync(acknowledgableMessage, logger, cancellationToken).ConfigureAwait(false);
-        else
-            _ = await SendMessageAsync(item!, null, logger, cancellationToken).ConfigureAwait(false);
+        var ackMessage = item as IAcknowledgableMessage;
+
+        // Produce first, then acknowledge once the broker has the message.
+        var sent = await SendMessageAsync(item, ackMessage, logger, cancellationToken).ConfigureAwait(false);
+
+        if (sent && ackMessage != null)
+            await AcknowledgeAsync(ackMessage, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task ProcessAcknowledgableMessageAsync(IAcknowledgableMessage message, ILogger logger, CancellationToken cancellationToken)
+    private async Task AcknowledgeAsync(IAcknowledgableMessage message, CancellationToken cancellationToken)
     {
-        // Send to sink first, then acknowledge
-        var sendSuccess = await SendMessageAsync(message.Body, message, logger, cancellationToken).ConfigureAwait(false);
-
-        if (sendSuccess && _configuration.AcknowledgmentStrategy == AcknowledgmentStrategy.AutoOnSinkSuccess && !message.IsAcknowledged)
+        if (_configuration.AcknowledgmentStrategy == AcknowledgmentStrategy.AutoOnSinkSuccess && !message.IsAcknowledged)
             await message.AcknowledgeAsync(cancellationToken).ConfigureAwait(false);
     }
 
     private static OutgoingMessage CreateOutgoingMessage(T item)
     {
-        if (item is IAcknowledgableMessage acknowledgableMessage)
-            return new OutgoingMessage(acknowledgableMessage.Body, acknowledgableMessage);
-
-        return new OutgoingMessage(item!, null);
+        return new OutgoingMessage(item, item as IAcknowledgableMessage);
     }
 
-    private async Task<bool> SendMessageAsync(object item, IAcknowledgableMessage? ackMessage, ILogger logger, CancellationToken cancellationToken)
+    /// <summary>
+    ///     Builds the record for <paramref name="item" />. An acknowledgable message is produced as itself; the value
+    ///     serializer writes its <see cref="IAcknowledgableMessage.Body" />, and its metadata becomes headers.
+    /// </summary>
+    private Message<string, T> CreateMessage(T item, IAcknowledgableMessage? ackMessage)
     {
-        var partitionCount = GetPartitionCount();
+        var message = new Message<string, T>
+        {
+            Key = _partitionKeyProvider.GetPartitionKey(item),
+            Value = item,
+            Timestamp = Timestamp.Default,
+        };
 
+        // Add headers if available from metadata
+        if (ackMessage?.Metadata != null)
+        {
+            message.Headers = [];
+
+            foreach (var kvp in ackMessage.Metadata)
+            {
+                if (kvp.Value is string stringValue)
+                    message.Headers.Add(kvp.Key, Encoding.UTF8.GetBytes(stringValue));
+                else if (kvp.Value is byte[] byteValue)
+                    message.Headers.Add(kvp.Key, byteValue);
+            }
+        }
+
+        return message;
+    }
+
+    private Task<DeliveryResult<string, T>> ProduceAsync(T item, Message<string, T> message, CancellationToken cancellationToken)
+    {
+        var partition = _partitionKeyProvider.GetPartition(item, _cachedPartitionCount ?? 0);
+
+        // One produce, with no retry above it: librdkafka has already retried anything retriable, and a new produce
+        // of the same message is a new record that the idempotent producer cannot deduplicate.
+        return partition.HasValue
+            ? _producer.ProduceAsync(new TopicPartition(_configuration.SinkTopic, new Partition(partition.Value)), message, cancellationToken)
+            : _producer.ProduceAsync(_configuration.SinkTopic, message, cancellationToken);
+    }
+
+    private async Task<bool> SendMessageAsync(T item, IAcknowledgableMessage? ackMessage, ILogger logger, CancellationToken cancellationToken)
+    {
         try
         {
-            var typedItem = (T)item;
-            var key = _partitionKeyProvider.GetPartitionKey(typedItem);
-            var partition = _partitionKeyProvider.GetPartition(typedItem, partitionCount);
-
-            var message = new Message<string, T>
-            {
-                Key = key,
-                Value = typedItem,
-                Timestamp = Timestamp.Default,
-            };
-
-            // Add headers if available from metadata
-            if (ackMessage?.Metadata != null)
-            {
-                message.Headers = [];
-
-                foreach (var kvp in ackMessage.Metadata)
-                {
-                    if (kvp.Value is string stringValue)
-                        message.Headers.Add(kvp.Key, Encoding.UTF8.GetBytes(stringValue));
-                    else if (kvp.Value is byte[] byteValue)
-                        message.Headers.Add(kvp.Key, byteValue);
-                }
-            }
-
+            var message = CreateMessage(item, ackMessage);
             var sw = Stopwatch.StartNew();
 
-            // One produce, with no retry above it: librdkafka has already retried anything retriable, and a new
-            // produce of the same message is a new record that the idempotent producer cannot deduplicate.
-            if (partition.HasValue)
-            {
-                _ = await _producer.ProduceAsync(
-                    new TopicPartition(_configuration.SinkTopic, new Partition(partition.Value)),
-                    message,
-                    cancellationToken).ConfigureAwait(false);
-            }
-            else
-                _ = await _producer.ProduceAsync(_configuration.SinkTopic, message, cancellationToken).ConfigureAwait(false);
+            _ = await ProduceAsync(item, message, cancellationToken).ConfigureAwait(false);
 
             sw.Stop();
             _metrics.RecordProduced(_configuration.SinkTopic, 1);
@@ -366,25 +372,27 @@ public sealed class KafkaSinkNode<T> : SinkNode<T>, IAsyncDisposable
             if (messages.Count == 1)
             {
                 var msg = messages[0];
-                var sent = await SendMessageAsync(msg.Payload, msg.AckMessage, logger, cancellationToken).ConfigureAwait(false);
+                var sent = await SendMessageAsync(msg.Item, msg.AckMessage, logger, cancellationToken).ConfigureAwait(false);
 
-                if (sent && msg.AckMessage != null && _configuration.AcknowledgmentStrategy == AcknowledgmentStrategy.AutoOnSinkSuccess &&
-                    !msg.AckMessage.IsAcknowledged)
-                    await msg.AckMessage.AcknowledgeAsync(cancellationToken).ConfigureAwait(false);
+                if (sent && msg.AckMessage != null)
+                    await AcknowledgeAsync(msg.AckMessage, cancellationToken).ConfigureAwait(false);
 
                 return;
             }
 
             // Batch produce
-            var results = await ProduceBatchAsync(messages, logger, cancellationToken).ConfigureAwait(false);
+            var (results, failure) = await ProduceBatchAsync(messages, logger, cancellationToken).ConfigureAwait(false);
 
-            // Acknowledge successful sends
+            // Acknowledge every message the broker has, even when others in the batch failed: leaving them
+            // unacknowledged would redeliver them and produce them again.
             foreach (var (success, ackMessage) in results)
             {
-                if (success && ackMessage != null && _configuration.AcknowledgmentStrategy == AcknowledgmentStrategy.AutoOnSinkSuccess &&
-                    !ackMessage.IsAcknowledged)
-                    await ackMessage.AcknowledgeAsync(cancellationToken).ConfigureAwait(false);
+                if (success && ackMessage != null)
+                    await AcknowledgeAsync(ackMessage, cancellationToken).ConfigureAwait(false);
             }
+
+            if (failure != null && !_configuration.ContinueOnError)
+                failure.Throw();
         }
         finally
         {
@@ -392,106 +400,72 @@ public sealed class KafkaSinkNode<T> : SinkNode<T>, IAsyncDisposable
         }
     }
 
-    private async Task<IReadOnlyList<(bool Success, IAcknowledgableMessage? AckMessage)>> ProduceBatchAsync(
+    /// <summary>
+    ///     Produces the batch concurrently and reports, per message, whether the broker has it, plus the first failure.
+    ///     Every failure is recorded; whether it fails the node is the caller's decision.
+    /// </summary>
+    private async Task<(List<(bool Success, IAcknowledgableMessage? AckMessage)> Results, ExceptionDispatchInfo? Failure)> ProduceBatchAsync(
         IReadOnlyList<OutgoingMessage> messages,
         ILogger logger,
         CancellationToken cancellationToken)
     {
-        var partitionCount = GetPartitionCount();
         var results = new List<(bool Success, IAcknowledgableMessage? AckMessage)>(messages.Count);
         var tasks = new List<Task<DeliveryResult<string, T>>>(messages.Count);
         var taskToMessage = new List<IAcknowledgableMessage?>(messages.Count);
+        ExceptionDispatchInfo? failure = null;
 
         foreach (var msg in messages)
         {
             try
             {
-                var typedItem = (T)msg.Payload;
-                var key = _partitionKeyProvider.GetPartitionKey(typedItem);
-                var partition = _partitionKeyProvider.GetPartition(typedItem, partitionCount);
-
-                var message = new Message<string, T>
-                {
-                    Key = key,
-                    Value = typedItem,
-                };
-
-                if (partition.HasValue)
-                {
-                    tasks.Add(_producer.ProduceAsync(
-                        new TopicPartition(_configuration.SinkTopic, new Partition(partition.Value)),
-                        message,
-                        cancellationToken));
-
-                    taskToMessage.Add(msg.AckMessage);
-                }
-                else
-                {
-                    tasks.Add(_producer.ProduceAsync(_configuration.SinkTopic, message, cancellationToken));
-                    taskToMessage.Add(msg.AckMessage);
-                }
+                tasks.Add(ProduceAsync(msg.Item, CreateMessage(msg.Item, msg.AckMessage), cancellationToken));
+                taskToMessage.Add(msg.AckMessage);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
             {
                 LogBatchPrepareFailed(logger, ex);
+                _metrics.RecordProduceError(_configuration.SinkTopic, ex);
+                failure ??= ExceptionDispatchInfo.Capture(ex);
                 results.Add((false, msg.AckMessage));
             }
         }
 
         try
         {
-            var deliveryResults = await Task.WhenAll(tasks).ConfigureAwait(false);
-            _metrics.RecordProduced(_configuration.SinkTopic, deliveryResults.Length);
-
-            for (var i = 0; i < deliveryResults.Length; i++)
-            {
-                var deliveryResult = deliveryResults[i];
-
-                var ackMessage = i < taskToMessage.Count
-                    ? taskToMessage[i]
-                    : null;
-
-                results.Add((deliveryResult.Status == PersistenceStatus.Persisted, ackMessage));
-            }
+            _ = await Task.WhenAll(tasks).ConfigureAwait(false);
         }
-        catch (Exception ex)
+        catch (Exception) when (!cancellationToken.IsCancellationRequested)
         {
-            LogBatchProduceFailed(logger, ex);
-
-            if (ex is AggregateException aggregateException)
-            {
-                foreach (var innerEx in aggregateException.InnerExceptions)
-                {
-                    _metrics.RecordProduceError(_configuration.SinkTopic, innerEx);
-                }
-            }
-            else
-                _metrics.RecordProduceError(_configuration.SinkTopic, ex);
-
-            for (var i = 0; i < tasks.Count; i++)
-            {
-                var task = tasks[i];
-
-                var ackMessage = i < taskToMessage.Count
-                    ? taskToMessage[i]
-                    : null;
-
-                if (task.IsCompletedSuccessfully)
-                {
-                    var deliveryResult = task.Result;
-                    results.Add((deliveryResult.Status == PersistenceStatus.Persisted, ackMessage));
-                }
-                else
-                {
-                    if (task.Exception != null)
-                        _metrics.RecordProduceError(_configuration.SinkTopic, task.Exception);
-
-                    results.Add((false, ackMessage));
-                }
-            }
+            // Each task is inspected below, so every failure is recorded, not only the first.
         }
 
-        return results;
+        var produced = 0;
+
+        for (var i = 0; i < tasks.Count; i++)
+        {
+            var task = tasks[i];
+
+            if (task.IsCompletedSuccessfully)
+            {
+                var persisted = task.Result.Status == PersistenceStatus.Persisted;
+                produced += persisted ? 1 : 0;
+                results.Add((persisted, taskToMessage[i]));
+                continue;
+            }
+
+            var error = task.Exception?.InnerException ?? task.Exception ?? (Exception)new TaskCanceledException(task);
+            _metrics.RecordProduceError(_configuration.SinkTopic, error);
+            failure ??= ExceptionDispatchInfo.Capture(error);
+            results.Add((false, taskToMessage[i]));
+        }
+
+        if (produced > 0)
+            _metrics.RecordProduced(_configuration.SinkTopic, produced);
+
+        if (failure != null)
+            LogBatchProduceFailed(logger, failure.SourceException);
+
+        return (results, failure);
     }
 
     private void Flush(CancellationToken cancellationToken)
@@ -523,6 +497,9 @@ public sealed class KafkaSinkNode<T> : SinkNode<T>, IAsyncDisposable
             CompressionType = config.CompressionType,
             StatisticsIntervalMs = config.StatisticsIntervalMs,
             Acks = config.Acks,
+            MessageTimeoutMs = config.DeliveryTimeoutMs,
+            RetryBackoffMs = config.RetryBackoffMs,
+            RetryBackoffMaxMs = config.RetryBackoffMaxMs,
         };
 
         if (config.EnableTransactions && !string.IsNullOrWhiteSpace(config.TransactionalId))
@@ -550,25 +527,40 @@ public sealed class KafkaSinkNode<T> : SinkNode<T>, IAsyncDisposable
 
     private static IPartitionKeyProvider<T> CreateDefaultPartitionKeyProvider()
     {
-        // Create a default partition key provider that uses ToString()
-        return new DefaultPartitionKeyProvider<T>(msg => msg?.ToString() ?? string.Empty);
+        // Key by ToString(), of the body for an acknowledgable message
+        return new DefaultPartitionKeyProvider<T>(msg => msg is IAcknowledgableMessage acknowledgable
+            ? acknowledgable.Body?.ToString() ?? string.Empty
+            : msg?.ToString() ?? string.Empty);
     }
 
-    private void EnsureTransactionsInitialized(CancellationToken cancellationToken)
+    /// <summary>
+    ///     Initializes transactions once, bounded by <see cref="KafkaConfiguration.TransactionInitTimeoutMs" />. The
+    ///     pipeline's token cancels the wait, so a cluster that does not answer cannot hold up shutdown.
+    /// </summary>
+    private async Task EnsureTransactionsInitializedAsync(CancellationToken cancellationToken)
     {
-        if (_transactionsInitialized)
-            return;
-
-        cancellationToken.ThrowIfCancellationRequested();
+        Task init;
 
         lock (_transactionInitLock)
         {
-            if (_transactionsInitialized)
-                return;
+            // Reuse an initialization still in flight (never start a second one beside it); start again after a failure.
+            if (_transactionInit is null || _transactionInit.IsFaulted || _transactionInit.IsCanceled)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
 
-            _producer.InitTransactions(TimeSpan.FromMilliseconds(_configuration.TransactionInitTimeoutMs));
-            _transactionsInitialized = true;
+                // InitTransactions blocks and takes no token, so run it aside and stop waiting when the token fires.
+                var timeout = TimeSpan.FromMilliseconds(_configuration.TransactionInitTimeoutMs);
+                _transactionInit = Task.Run(() => _producer.InitTransactions(timeout), CancellationToken.None);
+
+                // Observe an initialization abandoned by cancellation, so its eventual failure is not reported as unobserved.
+                _ = _transactionInit.ContinueWith(static t => _ = t.Exception, CancellationToken.None,
+                    TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+            }
+
+            init = _transactionInit;
         }
+
+        await init.WaitAsync(cancellationToken).ConfigureAwait(false);
     }
 
     private async Task RunBatchFlushLoopAsync(ILogger logger, CancellationToken cancellationToken)
@@ -583,6 +575,20 @@ public sealed class KafkaSinkNode<T> : SinkNode<T>, IAsyncDisposable
     /// <inheritdoc />
     public async ValueTask DisposeAsync()
     {
+        // An initialization abandoned by cancellation may still be running on the producer. Let it finish (it is bounded
+        // by TransactionInitTimeoutMs) before flushing and disposing, so the producer is never disposed under it.
+        if (_transactionInit is { IsCompleted: false } init)
+        {
+            try
+            {
+                await init.ConfigureAwait(false);
+            }
+            catch (Exception)
+            {
+                // Its failure was the node's to report; disposal goes ahead.
+            }
+        }
+
         try
         {
             _producer.Flush(CancellationToken.None);
@@ -599,63 +605,55 @@ public sealed class KafkaSinkNode<T> : SinkNode<T>, IAsyncDisposable
         _batchFlushSemaphore.Dispose();
     }
 
-    private int GetPartitionCount()
+    /// <summary>
+    ///     Reads the sink topic's partition count from the brokers and caches it. The lookup gives up after
+    ///     <see cref="KafkaConfiguration.MetadataTimeoutMs" />, and the pipeline's token cancels the wait, so an
+    ///     unreachable cluster fails the node promptly instead of blocking it.
+    /// </summary>
+    private async Task ResolvePartitionCountAsync(CancellationToken cancellationToken)
     {
         if (_cachedPartitionCount.HasValue)
-            return _cachedPartitionCount.Value;
+            return;
 
-        lock (_partitionCountLock)
+        // AdminClient.GetMetadata blocks and takes no token, so run it aside and stop waiting when the token fires.
+        var lookup = Task.Run(ReadPartitionCount, CancellationToken.None);
+
+        // Observe a lookup abandoned by cancellation, so its eventual failure is not reported as unobserved.
+        _ = lookup.ContinueWith(static t => _ = t.Exception, CancellationToken.None,
+            TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+
+        try
         {
-            if (_cachedPartitionCount.HasValue)
-                return _cachedPartitionCount.Value;
-
-            try
-            {
-                // Use admin client to get partition count from Kafka metadata
-                using var adminClient = new AdminClientBuilder(new AdminClientConfig
-                {
-                    BootstrapServers = _configuration.BootstrapServers,
-                    SecurityProtocol = _configuration.SecurityProtocol,
-                    SaslMechanism = _configuration.SaslMechanism,
-                    SaslUsername = _configuration.SaslUsername,
-                    SaslPassword = _configuration.SaslPassword,
-                }).Build();
-
-                var metadata = adminClient.GetMetadata(_configuration.SinkTopic, TimeSpan.FromSeconds(30));
-                var topicMetadata = metadata.Topics.FirstOrDefault(t => t.Topic == _configuration.SinkTopic);
-
-                if (topicMetadata != null)
-                {
-                    _cachedPartitionCount = topicMetadata.Partitions.Count;
-                    return _cachedPartitionCount.Value;
-                }
-            }
-            catch (Exception)
-            {
-                // If metadata fetch fails, return 0 to indicate unknown partition count
-                // The partitioner should handle this gracefully
-            }
-
-            return 0;
+            _cachedPartitionCount = await lookup.WaitAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (KafkaException ex)
+        {
+            throw new InvalidOperationException(
+                $"Could not read metadata for Kafka topic '{_configuration.SinkTopic}' from '{_configuration.BootstrapServers}' " +
+                $"within {_configuration.MetadataTimeoutMs} ms. Check that the brokers are reachable, or raise MetadataTimeoutMs.",
+                ex);
         }
     }
 
-    private sealed record OutgoingMessage(object Payload, IAcknowledgableMessage? AckMessage);
-
-    /// <summary>
-    ///     Serializer that uses the ISerializerProvider.
-    /// </summary>
-    private sealed class MessageSerializer<TValue>(ISerializerProvider serializer) : ISerializer<TValue>
+    private int ReadPartitionCount()
     {
-        private readonly ISerializerProvider _serializer = serializer;
-
-        public byte[] Serialize(TValue data, SerializationContext context)
+        using var adminClient = new AdminClientBuilder(new AdminClientConfig
         {
-            return data is null
-                ? []
-                : _serializer.Serialize(data);
-        }
+            BootstrapServers = _configuration.BootstrapServers,
+            SecurityProtocol = _configuration.SecurityProtocol,
+            SaslMechanism = _configuration.SaslMechanism,
+            SaslUsername = _configuration.SaslUsername,
+            SaslPassword = _configuration.SaslPassword,
+        }).Build();
+
+        var metadata = adminClient.GetMetadata(_configuration.SinkTopic, TimeSpan.FromMilliseconds(_configuration.MetadataTimeoutMs));
+
+        // A topic that does not exist yet (and may be auto-created) reports no partitions; the partitioner treats
+        // zero as unknown.
+        return metadata.Topics.FirstOrDefault(t => t.Topic == _configuration.SinkTopic)?.Partitions.Count ?? 0;
     }
+
+    private sealed record OutgoingMessage(T Item, IAcknowledgableMessage? AckMessage);
 
     /// <summary>
     ///     Helper class for batching outgoing messages.

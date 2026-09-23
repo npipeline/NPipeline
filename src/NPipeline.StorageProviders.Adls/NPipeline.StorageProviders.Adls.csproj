@@ -16,4 +16,8 @@
         <ProjectReference Include="..\NPipeline.StorageProviders\NPipeline.StorageProviders.csproj"/>
     </ItemGroup>
 
+    <ItemGroup>
+        <InternalsVisibleTo Include="NPipeline.StorageProviders.Adls.Tests"/>
+    </ItemGroup>
+
 </Project>

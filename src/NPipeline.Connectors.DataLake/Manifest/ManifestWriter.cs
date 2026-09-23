@@ -10,11 +10,25 @@ namespace NPipeline.Connectors.DataLake.Manifest;
 
 /// <summary>
 ///     Appends manifest entries to the table's manifest file.
-///     Uses append-only writes to avoid full-file rewrites.
 ///     Manifest is stored at <c>_manifest/manifest.ndjson</c> relative to the table base path.
 ///     Retries the main-manifest append on transient storage errors through
 ///     <see cref="DataLakeConnectorResilience.ManifestWrite" />.
 /// </summary>
+/// <remarks>
+///     <para>
+///         Each flush writes two files: the per-snapshot manifest <c>_manifest/snapshots/{snapshotId}.ndjson</c>, which
+///         holds every entry this writer has flushed and is written only by this writer, and then the main manifest,
+///         which it appends to by reading the file, adding the new entries, and replacing it (by an atomic rename when the
+///         provider implements <see cref="IMoveableStorageProvider" />, otherwise by overwriting it in place).
+///     </para>
+///     <para>
+///         The main manifest is last-writer-wins: there is no conditional write, so when two writers append at the same
+///         time, one writer's entries can be missing from it. <see cref="ManifestReader" /> recovers them by merging every
+///         per-snapshot manifest into what it reads from the main manifest, so readers see all flushed entries. Tools that
+///         read <c>manifest.ndjson</c> directly, without the snapshot files, can miss entries. Use a distinct snapshot ID
+///         per writer (<see cref="GenerateSnapshotId" />): two writers sharing one overwrite each other's snapshot file.
+///     </para>
+/// </remarks>
 public sealed class ManifestWriter : IAsyncDisposable
 {
     private const string ManifestDirectoryName = "_manifest";
@@ -27,6 +41,8 @@ public sealed class ManifestWriter : IAsyncDisposable
     };
 
     private readonly StorageUri _manifestUri;
+    // Entries already written by earlier flushes; the snapshot file is rewritten with these plus the pending ones
+    private readonly List<ManifestEntry> _flushedEntries = [];
     private readonly List<ManifestEntry> _pendingEntries = [];
 
     private readonly IStorageProvider _provider;
@@ -164,6 +180,7 @@ public sealed class ManifestWriter : IAsyncDisposable
             // Append to main manifest, retrying transient storage errors
             await AppendToMainManifestWithRetryAsync(cancellationToken).ConfigureAwait(false);
 
+            _flushedEntries.AddRange(_pendingEntries);
             _pendingEntries.Clear();
         }
         finally
@@ -174,8 +191,9 @@ public sealed class ManifestWriter : IAsyncDisposable
 
     private async Task WriteSnapshotManifestAsync(CancellationToken cancellationToken)
     {
-        // Write all pending entries to a dedicated snapshot file
-        var content = BuildNdJsonContent(_pendingEntries);
+        // Rewrite this writer's snapshot file with everything it has flushed, so it stays complete across flushes: it is
+        // what readers use to recover entries a concurrent writer overwrote in the main manifest
+        var content = BuildNdJsonContent([.. _flushedEntries, .. _pendingEntries]);
 
         var stream = await _provider.OpenWriteAsync(_snapshotManifestUri, cancellationToken)
             .ConfigureAwait(false);

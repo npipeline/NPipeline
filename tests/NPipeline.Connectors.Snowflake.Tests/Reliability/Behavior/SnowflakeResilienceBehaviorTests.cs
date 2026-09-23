@@ -3,10 +3,12 @@ using System.Net;
 using AwesomeAssertions;
 using FakeItEasy;
 using NPipeline.Connectors.Snowflake.Configuration;
+using NPipeline.Connectors.Snowflake.Exceptions;
 using NPipeline.Connectors.Snowflake.Reliability;
 using NPipeline.Connectors.Snowflake.Writers;
 using NPipeline.StorageProviders.Abstractions;
 using NResilience;
+using Snowflake.Data.Client;
 
 namespace NPipeline.Connectors.Snowflake.Tests.Reliability.Behavior;
 
@@ -19,6 +21,9 @@ public sealed class SnowflakeResilienceBehaviorTests
 {
     private const int NetworkError = 200002;
     private const int ObjectDoesNotExist = 2003;
+    private const int DriverRequestTimeout = 270007;
+    private const int DriverPutIoError = 270058;
+    private const int SessionGone = 390111;
 
     // The shipped preset with near-zero backoff, so the tests barely wait between attempts.
     private static readonly NResilience.Resilience Fast = SnowflakeConnectorResilience.Default with
@@ -49,22 +54,58 @@ public sealed class SnowflakeResilienceBehaviorTests
     }
 
     [Fact]
-    public void Classifier_JudgesSnowflakeErrors()
+    public void Classifier_RetriesStatementLevelErrorsTheServerReturns()
     {
         var classifier = SnowflakeConnectorResilience.Classifier;
 
-        classifier.ClassifyException(new FakeSnowflakeException("Request throttled", 0)).Kind.Should().Be(VerdictKind.Throttled);
-        classifier.ClassifyException(new HttpRequestException("busy", null, HttpStatusCode.TooManyRequests)).Kind.Should().Be(VerdictKind.Throttled);
+        classifier.ClassifyException(Server(390144, "Service unavailable")).Kind.Should().Be(VerdictKind.Transient);
+        classifier.ClassifyException(Server(625, "Statement reached its statement or warehouse timeout")).Kind.Should().Be(VerdictKind.Transient);
+        classifier.ClassifyException(Server(604, "SQL execution internal error")).Kind.Should().Be(VerdictKind.Transient);
+        classifier.ClassifyException(Server(1234, "Request throttled")).Kind.Should().Be(VerdictKind.Throttled);
 
-        classifier.ClassifyException(new FakeSnowflakeException("network", NetworkError)).Kind.Should().Be(VerdictKind.Transient);
-        classifier.ClassifyException(new FakeSnowflakeException("maintenance", 390144)).Kind.Should().Be(VerdictKind.Transient);
-        classifier.ClassifyException(new HttpRequestException("reset")).Kind.Should().Be(VerdictKind.Transient);
+        classifier.ClassifyException(Server(ObjectDoesNotExist, "Object does not exist")).Kind.Should().Be(VerdictKind.Permanent);
+        classifier.ClassifyException(Server(1003, "SQL compilation error")).Kind.Should().Be(VerdictKind.Permanent);
+    }
+
+    [Fact]
+    public void Classifier_TreatsFailuresTheDriverAlreadyRetriedAsPermanent()
+    {
+        // Snowflake.Data retries every HTTP request itself (transport errors, timeouts, 5xx, 403, 408, 429). What it
+        // reports after giving up must not be retried again by rerunning the statement.
+        var classifier = SnowflakeConnectorResilience.Classifier;
+
+        classifier.ClassifyException(new HttpRequestException("busy", null, HttpStatusCode.TooManyRequests)).Kind.Should().Be(VerdictKind.Permanent);
+        classifier.ClassifyException(new HttpRequestException("unavailable", null, HttpStatusCode.ServiceUnavailable)).Kind.Should().Be(VerdictKind.Permanent);
+        classifier.ClassifyException(new HttpRequestException("reset")).Kind.Should().Be(VerdictKind.Permanent);
+
+        var requestTimeout = Server(DriverRequestTimeout, "Request reach its timeout");
+        classifier.ClassifyException(requestTimeout).Kind.Should().Be(VerdictKind.Permanent);
+        classifier.ClassifyException(new OperationCanceledException(requestTimeout.Message, requestTimeout)).Kind.Should().Be(VerdictKind.Permanent);
+        classifier.ClassifyException(Server(DriverPutIoError, "IO error on PUT, network unreachable")).Kind.Should().Be(VerdictKind.Permanent);
+        classifier.ClassifyException(Server(SessionGone, "Session no longer exists")).Kind.Should().Be(VerdictKind.Permanent);
+    }
+
+    [Fact]
+    public void Classifier_JudgesOtherExceptions()
+    {
+        var classifier = SnowflakeConnectorResilience.Classifier;
+
         classifier.ClassifyException(new TimeoutException()).Kind.Should().Be(VerdictKind.Transient);
-
-        classifier.ClassifyException(new FakeSnowflakeException("Object does not exist", ObjectDoesNotExist)).Kind.Should().Be(VerdictKind.Permanent);
         classifier.ClassifyException(new InvalidOperationException("Bad mapping.")).Kind.Should().Be(VerdictKind.Permanent);
         classifier.ClassifyException(new ObjectDisposedException("SnowflakeDbConnection")).Kind.Should().Be(VerdictKind.Permanent);
         classifier.ClassifyException(new OperationCanceledException()).Kind.Should().Be(VerdictKind.Permanent);
+    }
+
+    [Fact]
+    public async Task PerRow_DoesNotRerunAStatementWhoseHttpRequestsTheDriverAlreadyRetried()
+    {
+        var connection = new ScriptedConnection((_, _) => new HttpRequestException("unavailable", null, HttpStatusCode.ServiceUnavailable));
+        var writer = new SnowflakePerRowWriter<Row>(connection, "PUBLIC", "ROWS", null, Configuration());
+
+        var act = () => writer.WriteAsync(new Row { Id = 1 });
+
+        _ = await act.Should().ThrowAsync<HttpRequestException>();
+        connection.Executed.Should().ContainSingle();
     }
 
     [Fact]
@@ -100,7 +141,7 @@ public sealed class SnowflakeResilienceBehaviorTests
         var connection = new ScriptedConnection((_, command) =>
             command.Text.StartsWith("COPY INTO", StringComparison.Ordinal) && copies++ == 0
                 ? new FakeSnowflakeException("network", NetworkError)
-                : null);
+                : null, StageResults());
 
         var writer = new SnowflakeStagedCopyWriter<Row>(connection, "PUBLIC", "ROWS", null, Configuration(batchSize: 10));
 
@@ -118,7 +159,8 @@ public sealed class SnowflakeResilienceBehaviorTests
     [Fact]
     public async Task StagedCopy_RetriesAFailedUploadBeforeCopying()
     {
-        var connection = new ScriptedConnection((index, _) => index == 0 ? new FakeSnowflakeException("network", NetworkError) : null);
+        var connection = new ScriptedConnection((index, _) => index == 0 ? new FakeSnowflakeException("network", NetworkError) : null,
+            StageResults());
         var writer = new SnowflakeStagedCopyWriter<Row>(connection, "PUBLIC", "ROWS", null, Configuration(batchSize: 10));
 
         await writer.WriteBatchAsync([new Row { Id = 1 }]);
@@ -131,7 +173,7 @@ public sealed class SnowflakeResilienceBehaviorTests
     {
         var connection = new ScriptedConnection((_, command) => command.Text.StartsWith("COPY INTO", StringComparison.Ordinal)
             ? new FakeSnowflakeException("Object does not exist", ObjectDoesNotExist)
-            : null);
+            : null, StageResults());
 
         var writer = new SnowflakeStagedCopyWriter<Row>(connection, "PUBLIC", "ROWS", null, Configuration(batchSize: 10));
 
@@ -141,6 +183,54 @@ public sealed class SnowflakeResilienceBehaviorTests
         await writer.DisposeAsync();
 
         connection.Executed.Should().HaveCount(2, "one PUT and one COPY INTO; disposing must not load the rows again");
+    }
+
+    [Fact]
+    public async Task StagedCopy_FailsWhenPutReportsAFileItCouldNotUpload_WithoutCopyingOrRetrying()
+    {
+        // The driver reports an upload that failed even after its own retries as a result row, not an exception. Copying
+        // anyway would load nothing and lose the flush without an error.
+        var connection = new ScriptedConnection(results: StageResults(putStatus: "ERROR", putMessage: "Access Denied"));
+        var writer = new SnowflakeStagedCopyWriter<Row>(connection, "PUBLIC", "ROWS", null, Configuration(batchSize: 10));
+
+        var act = () => writer.WriteBatchAsync([new Row { Id = 1 }]);
+
+        var thrown = await act.Should().ThrowAsync<SnowflakeException>();
+        thrown.Which.Message.Should().Contain("ERROR").And.Contain("Access Denied");
+        connection.Executed.Should().ContainSingle("the upload was not retried and nothing was copied")
+            .Which.Text.Should().StartWith("PUT");
+    }
+
+    [Fact]
+    public async Task StagedCopy_FailsWhenTheFirstCopyProcessesNoFiles()
+    {
+        var connection = new ScriptedConnection(results: StageResults(copyLoadsFile: _ => false));
+        var writer = new SnowflakeStagedCopyWriter<Row>(connection, "PUBLIC", "ROWS", null, Configuration(batchSize: 10));
+
+        var act = () => writer.WriteBatchAsync([new Row { Id = 1 }]);
+
+        var thrown = await act.Should().ThrowAsync<SnowflakeException>();
+        thrown.Which.Message.Should().Contain("0 files processed");
+        connection.Executed.Count(c => c.Text.StartsWith("COPY INTO", StringComparison.Ordinal)).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task StagedCopy_AcceptsNoFilesOnARetry_BecauseTheLostAttemptAlreadyLoadedTheFile()
+    {
+        // The first COPY INTO loaded the file but its reply was lost; the retry finds the file already loaded (load
+        // metadata) and processes nothing. That is success, not a missing file.
+        var copies = 0;
+        var connection = new ScriptedConnection(
+            (_, command) => command.Text.StartsWith("COPY INTO", StringComparison.Ordinal) && copies++ == 0
+                ? new FakeSnowflakeException("network", NetworkError)
+                : null,
+            StageResults(copyLoadsFile: _ => false));
+
+        var writer = new SnowflakeStagedCopyWriter<Row>(connection, "PUBLIC", "ROWS", null, Configuration(batchSize: 10));
+
+        await writer.WriteBatchAsync([new Row { Id = 1 }]);
+
+        connection.Executed.Count(c => c.Text.StartsWith("COPY INTO", StringComparison.Ordinal)).Should().Be(2);
     }
 
     [Fact]
@@ -202,6 +292,51 @@ public sealed class SnowflakeResilienceBehaviorTests
     {
         // PUT 'file://...' '@~/npipeline_..._0.csv' ... -> @~/npipeline_..._0.csv
         return putSql.Split('\'')[3];
+    }
+
+    // What Snowflake answers PUT and COPY INTO with. COPY INTO that finds nothing to load answers with a single status row
+    // and no file column.
+    private static Func<ScriptedConnection.ExecutedCommand, IReadOnlyList<IReadOnlyDictionary<string, object?>>> StageResults(
+        string putStatus = "UPLOADED",
+        string? putMessage = "",
+        Func<ScriptedConnection.ExecutedCommand, bool>? copyLoadsFile = null)
+    {
+        copyLoadsFile ??= _ => true;
+
+        return command =>
+        {
+            if (command.Text.StartsWith("PUT", StringComparison.Ordinal))
+            {
+                return
+                [
+                    new Dictionary<string, object?>
+                    {
+                        ["source"] = "npipeline_0.csv",
+                        ["target"] = "npipeline_0.csv.gz",
+                        ["status"] = putStatus,
+                        ["message"] = putMessage,
+                    },
+                ];
+            }
+
+            return copyLoadsFile(command)
+                ?
+                [
+                    new Dictionary<string, object?>
+                    {
+                        ["file"] = "npipeline_0.csv.gz",
+                        ["status"] = "LOADED",
+                        ["rows_parsed"] = 1L,
+                        ["rows_loaded"] = 1L,
+                    },
+                ]
+                : [new Dictionary<string, object?> { ["status"] = "Copy executed with 0 files processed." }];
+        };
+    }
+
+    private static SnowflakeDbException Server(int vendorCode, string message)
+    {
+        return new SnowflakeDbException("XX000", vendorCode, message, "query-id");
     }
 
     private sealed class FakeSnowflakeException(string message, int errorCode) : DbException(message, errorCode);

@@ -132,7 +132,9 @@ public class GcsStorageProviderOptionsTests
     {
         var options = new GcsStorageProviderOptions
         {
+#pragma warning disable NRES003 // The invalid value is the point of the test.
             Resilience = GcsStorageResilience.Default with { Attempts = 0 },
+#pragma warning restore NRES003
         };
 
         _ = Assert.Throws<NResilience.ResilienceConfigurationException>(options.Validate);

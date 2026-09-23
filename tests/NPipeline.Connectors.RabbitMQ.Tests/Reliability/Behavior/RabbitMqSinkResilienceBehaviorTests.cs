@@ -7,6 +7,7 @@ using NPipeline.Connectors.RabbitMQ.Metrics;
 using NPipeline.Connectors.RabbitMQ.Nodes;
 using NPipeline.Connectors.RabbitMQ.Reliability;
 using NPipeline.Connectors.Serialization;
+using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.Pipeline;
 using NResilience;
@@ -87,7 +88,7 @@ public sealed class RabbitMqSinkResilienceBehaviorTests
     };
 
     [Theory]
-    [MemberData(nameof(ClassifiedExceptions))]
+    [MemberData(nameof(ClassifiedExceptions), DisableDiscoveryEnumeration = true)]
     public void Classifier_JudgesRabbitMqExceptions(Exception exception, VerdictKind expected)
     {
         RabbitMqConnectorResilience.Classifier.ClassifyException(exception).Kind.Should().Be(expected);
@@ -118,7 +119,7 @@ public sealed class RabbitMqSinkResilienceBehaviorTests
         A.CallTo(() => fresh.IsOpen).Returns(true);
 
         var connectionManager = A.Fake<IRabbitMqConnectionManager>();
-        A.CallTo(() => connectionManager.GetPooledChannelAsync(A<CancellationToken>._)).ReturnsNextFromSequence(closed, fresh);
+        A.CallTo(() => connectionManager.GetPooledChannelAsync(A<bool>._, A<CancellationToken>._)).ReturnsNextFromSequence(closed, fresh);
 
         var sink = CreateSink(new RabbitMqSinkOptions { ExchangeName = "orders", Resilience = FastRetries }, connectionManager);
 
@@ -269,13 +270,329 @@ public sealed class RabbitMqSinkResilienceBehaviorTests
         bodies.Should().Equal("order-1", "order-2", "order-2");
     }
 
+    // Publisher confirms
+
+    [Fact]
+    public async Task ConfirmThatNeverArrives_FailsEachAttemptAsATimeout_AndIsRetried()
+    {
+        var (channel, connectionManager) = CreateChannel();
+        WaitForeverForConfirm(channel);
+
+        var options = new RabbitMqSinkOptions
+        {
+            ExchangeName = "orders",
+            ConfirmTimeout = TimeSpan.FromMilliseconds(50),
+            Resilience = FastRetries,
+        };
+
+        var sink = CreateSink(options, connectionManager);
+
+        var act = () => RunAsync(sink, "order-1");
+
+        _ = await act.Should().ThrowAsync<TimeoutException>();
+        PublishCount(channel).Should().Be(4, "a missing confirm is transient, so every attempt is spent");
+    }
+
+    [Fact]
+    public async Task ConfirmTimeout_ThenAConfirmedRetry_Succeeds()
+    {
+        var (channel, connectionManager) = CreateChannel();
+        WaitForeverForConfirm(channel, 1);
+
+        var sourceMessage = A.Fake<IAcknowledgableMessage>();
+        A.CallTo(() => sourceMessage.Body).Returns("order-1");
+
+        var options = new RabbitMqSinkOptions
+        {
+            ExchangeName = "orders",
+            ConfirmTimeout = TimeSpan.FromMilliseconds(50),
+            Resilience = FastRetries,
+        };
+
+        var sink = new RabbitMqSinkNode<IAcknowledgableMessage>(options, connectionManager, A.Fake<IMessageSerializer>());
+        await using var input = new InMemoryDataStream<IAcknowledgableMessage>([sourceMessage]);
+        await sink.ConsumeAsync(input, new PipelineContext(), CancellationToken.None);
+
+        PublishCount(channel).Should().Be(2);
+        A.CallTo(() => sourceMessage.AcknowledgeAsync(A<CancellationToken>._)).MustHaveHappenedOnceExactly();
+    }
+
+    // Batching
+
+    [Fact]
+    public async Task LingerFlush_RacingSizeFlushes_NeverOverlaps_AndPublishesEachMessageOnce()
+    {
+        var (channel, connectionManager) = CreateChannel();
+        var published = new System.Collections.Concurrent.ConcurrentBag<string>();
+        var active = 0;
+        var overlapped = false;
+
+        A.CallTo(channel)
+            .Where(call => call.Method.Name == nameof(IChannel.BasicPublishAsync))
+            .WithReturnType<ValueTask>()
+            .ReturnsLazily(call => PublishSlowlyAsync((string)call.Arguments[1]!));
+
+        async ValueTask PublishSlowlyAsync(string routingKey)
+        {
+            if (Interlocked.Increment(ref active) > 1)
+                overlapped = true;
+
+            await Task.Delay(1).ConfigureAwait(false);
+            published.Add(routingKey);
+            _ = Interlocked.Decrement(ref active);
+        }
+
+        var options = new RabbitMqSinkOptions
+        {
+            ExchangeName = "orders",
+            RoutingKeySelector = item => (string)item,
+            Resilience = FastRetries,
+
+            // The linger timer fires constantly, racing the size-triggered flushes of the main loop.
+            Batching = new BatchPublishOptions { BatchSize = 3, LingerTime = TimeSpan.FromMilliseconds(1) },
+        };
+
+        var sink = CreateSink(options, connectionManager);
+        var items = Enumerable.Range(1, 200).Select(i => $"order-{i}").ToList();
+
+        await using var input = new DataStream<string>(TrickleAsync(items), "trickle");
+        await sink.ConsumeAsync(input, new PipelineContext(), CancellationToken.None);
+
+        overlapped.Should().BeFalse("two flushes must never publish at the same time");
+        published.Should().BeEquivalentTo(items, "no message may be lost or published twice");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task BatchFailure_AcknowledgesTheMessagesPublishedBeforeIt(bool continueOnError)
+    {
+        var (channel, connectionManager) = CreateChannel();
+
+        A.CallTo(channel)
+            .Where(call => call.Method.Name == nameof(IChannel.BasicPublishAsync))
+            .WithReturnType<ValueTask>()
+            .ReturnsLazily(call => (string)call.Arguments[1]! == "order-2"
+                ? ValueTask.FromException(Closed(Constants.AccessRefused))
+                : ValueTask.CompletedTask);
+
+        var messages = Enumerable.Range(1, 3).Select(i =>
+        {
+            var message = A.Fake<IAcknowledgableMessage>();
+            A.CallTo(() => message.Body).Returns($"order-{i}");
+            return message;
+        }).ToList();
+
+        var options = new RabbitMqSinkOptions
+        {
+            ExchangeName = "orders",
+            RoutingKeySelector = item => (string)item,
+            Resilience = FastRetries,
+            ContinueOnError = continueOnError,
+            Batching = new BatchPublishOptions { BatchSize = 3, LingerTime = TimeSpan.FromMinutes(1) },
+        };
+
+        var sink = new RabbitMqSinkNode<IAcknowledgableMessage>(options, connectionManager, A.Fake<IMessageSerializer>());
+        await using var input = new InMemoryDataStream<IAcknowledgableMessage>(messages);
+
+        var act = () => sink.ConsumeAsync(input, new PipelineContext(), CancellationToken.None);
+
+        if (continueOnError)
+            await act.Should().NotThrowAsync();
+        else
+            _ = await act.Should().ThrowAsync<AlreadyClosedException>();
+
+        // order-1 reached the exchange; leaving it unacknowledged would redeliver and republish it.
+        A.CallTo(() => messages[0].AcknowledgeAsync(A<CancellationToken>._)).MustHaveHappenedOnceExactly();
+        A.CallTo(() => messages[1].AcknowledgeAsync(A<CancellationToken>._)).MustNotHaveHappened();
+        A.CallTo(() => messages[2].AcknowledgeAsync(A<CancellationToken>._)).MustNotHaveHappened();
+        PublishCalls(channel).Select(call => (string)call.Arguments[1]!).Should().Equal("order-1", "order-2");
+    }
+
+    [Fact]
+    public async Task ConfirmsOff_UsesAChannelWithoutConfirms_AndConfirmTimeoutDoesNotApply()
+    {
+        var (channel, connectionManager) = CreateChannel();
+
+        // Slower than ConfirmTimeout; with confirms off there is no confirm wait to time out.
+        A.CallTo(channel)
+            .Where(call => call.Method.Name == nameof(IChannel.BasicPublishAsync))
+            .WithReturnType<ValueTask>()
+            .ReturnsLazily(call => new ValueTask(Task.Delay(150, (CancellationToken)call.Arguments[5]!)));
+
+        var options = new RabbitMqSinkOptions
+        {
+            ExchangeName = "orders",
+            EnablePublisherConfirms = false,
+            ConfirmTimeout = TimeSpan.FromMilliseconds(20),
+            Resilience = FastRetries,
+        };
+
+        await RunAsync(CreateSink(options, connectionManager), "order-1");
+
+        PublishCount(channel).Should().Be(1);
+        A.CallTo(() => connectionManager.GetPooledChannelAsync(false, A<CancellationToken>._)).MustHaveHappened();
+        A.CallTo(() => connectionManager.GetPooledChannelAsync(true, A<CancellationToken>._)).MustNotHaveHappened();
+    }
+
+    [Fact]
+    public async Task ConfirmsOn_UsesAChannelWithConfirms()
+    {
+        var (_, connectionManager) = CreateChannel();
+
+        await RunAsync(CreateSink(new RabbitMqSinkOptions { ExchangeName = "orders", Resilience = FastRetries }, connectionManager), "order-1");
+
+        A.CallTo(() => connectionManager.GetPooledChannelAsync(true, A<CancellationToken>._)).MustHaveHappened();
+        A.CallTo(() => connectionManager.GetPooledChannelAsync(false, A<CancellationToken>._)).MustNotHaveHappened();
+    }
+
+    // Shutdown
+
+    [Fact]
+    public async Task PipelineCancellation_PublishesAndAcknowledgesWhatIsAlreadyBatched()
+    {
+        var (channel, connectionManager) = CreateChannel();
+        var messages = Enumerable.Range(1, 3).Select(i => AcknowledgableMessage($"order-{i}")).ToList();
+        using var cts = new CancellationTokenSource();
+
+        var sink = new RabbitMqSinkNode<IAcknowledgableMessage>(BatchedOptions(), connectionManager, A.Fake<IMessageSerializer>());
+        await using var input = new DataStream<IAcknowledgableMessage>(ThenCancelAsync(messages, cts), "then-cancel");
+
+        var act = () => sink.ConsumeAsync(input, new PipelineContext(), cts.Token);
+
+        _ = await act.Should().ThrowAsync<OperationCanceledException>();
+        PublishCalls(channel).Select(call => (string)call.Arguments[1]!).Should().Equal("order-1", "order-2", "order-3");
+
+        foreach (var message in messages)
+            A.CallTo(() => message.AcknowledgeAsync(A<CancellationToken>._)).MustHaveHappenedOnceExactly();
+    }
+
+    [Fact]
+    public async Task ShutdownFlush_IsBoundedByShutdownFlushTimeout()
+    {
+        var (channel, connectionManager) = CreateChannel();
+        WaitForeverForConfirm(channel);
+
+        var messages = Enumerable.Range(1, 2).Select(i => AcknowledgableMessage($"order-{i}")).ToList();
+        using var cts = new CancellationTokenSource();
+
+        var options = BatchedOptions() with
+        {
+            ConfirmTimeout = TimeSpan.FromMinutes(5),
+            ShutdownFlushTimeout = TimeSpan.FromMilliseconds(100),
+        };
+
+        var sink = new RabbitMqSinkNode<IAcknowledgableMessage>(options, connectionManager, A.Fake<IMessageSerializer>());
+        await using var input = new DataStream<IAcknowledgableMessage>(ThenCancelAsync(messages, cts), "then-cancel");
+        var started = DateTime.UtcNow;
+
+        var act = () => sink.ConsumeAsync(input, new PipelineContext(), cts.Token);
+
+        _ = await act.Should().ThrowAsync<OperationCanceledException>();
+        (DateTime.UtcNow - started).Should().BeLessThan(TimeSpan.FromSeconds(5));
+
+        foreach (var message in messages)
+            A.CallTo(() => message.AcknowledgeAsync(A<CancellationToken>._)).MustNotHaveHappened();
+    }
+
+    [Fact]
+    public async Task CancellationDuringABatchFlush_DoesNotRepublishWhatWasAlreadyPublished()
+    {
+        var (channel, connectionManager) = CreateChannel();
+        using var cts = new CancellationTokenSource();
+        var blocked = false;
+
+        // order-2's first publish hangs until the pipeline is cancelled mid-flush.
+        A.CallTo(channel)
+            .Where(call => call.Method.Name == nameof(IChannel.BasicPublishAsync))
+            .WithReturnType<ValueTask>()
+            .ReturnsLazily(call =>
+            {
+                if ((string)call.Arguments[1]! != "order-2" || blocked)
+                    return ValueTask.CompletedTask;
+
+                blocked = true;
+                cts.Cancel();
+                return new ValueTask(Task.Delay(Timeout.Infinite, (CancellationToken)call.Arguments[5]!));
+            });
+
+        var messages = Enumerable.Range(1, 3).Select(i => AcknowledgableMessage($"order-{i}")).ToList();
+        var options = BatchedOptions() with { Batching = new BatchPublishOptions { BatchSize = 3, LingerTime = TimeSpan.FromMinutes(1) } };
+
+        var sink = new RabbitMqSinkNode<IAcknowledgableMessage>(options, connectionManager, A.Fake<IMessageSerializer>());
+        await using var input = new InMemoryDataStream<IAcknowledgableMessage>(messages);
+
+        var act = () => sink.ConsumeAsync(input, new PipelineContext(), cts.Token);
+
+        _ = await act.Should().ThrowAsync<OperationCanceledException>();
+        PublishCalls(channel).Select(call => (string)call.Arguments[1]!).Should().Equal("order-1", "order-2", "order-2", "order-3");
+
+        foreach (var message in messages)
+            A.CallTo(() => message.AcknowledgeAsync(A<CancellationToken>._)).MustHaveHappenedOnceExactly();
+    }
+
+    private static RabbitMqSinkOptions BatchedOptions()
+    {
+        return new RabbitMqSinkOptions
+        {
+            ExchangeName = "orders",
+            RoutingKeySelector = item => (string)item,
+            Resilience = FastRetries,
+            Batching = new BatchPublishOptions { BatchSize = 100, LingerTime = TimeSpan.FromMinutes(1) },
+        };
+    }
+
+    private static IAcknowledgableMessage AcknowledgableMessage(string body)
+    {
+        var message = A.Fake<IAcknowledgableMessage>();
+        A.CallTo(() => message.Body).Returns(body);
+        return message;
+    }
+
+    /// <summary>Yields the items, then cancels the pipeline and waits, as an input with nothing more to give would.</summary>
+    private static async IAsyncEnumerable<IAcknowledgableMessage> ThenCancelAsync(
+        IEnumerable<IAcknowledgableMessage> items,
+        CancellationTokenSource cts,
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        foreach (var item in items)
+            yield return item;
+
+        cts.CancelAfter(TimeSpan.FromMilliseconds(50));
+        await Task.Delay(Timeout.Infinite, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static async IAsyncEnumerable<string> TrickleAsync(IEnumerable<string> items)
+    {
+        var count = 0;
+
+        foreach (var item in items)
+        {
+            if (++count % 5 == 0)
+                await Task.Delay(1).ConfigureAwait(false);
+
+            yield return item;
+        }
+    }
+
+    private static void WaitForeverForConfirm(IChannel channel, int? times = null)
+    {
+        var rule = A.CallTo(channel)
+            .Where(call => call.Method.Name == nameof(IChannel.BasicPublishAsync))
+            .WithReturnType<ValueTask>()
+            .ReturnsLazily(call => new ValueTask(Task.Delay(Timeout.Infinite, (CancellationToken)call.Arguments[5]!)));
+
+        if (times is { } count)
+            rule.NumberOfTimes(count);
+    }
+
     private static (IChannel Channel, IRabbitMqConnectionManager ConnectionManager) CreateChannel()
     {
         var channel = A.Fake<IChannel>();
         A.CallTo(() => channel.IsOpen).Returns(true);
 
         var connectionManager = A.Fake<IRabbitMqConnectionManager>();
-        A.CallTo(() => connectionManager.GetPooledChannelAsync(A<CancellationToken>._)).Returns(channel);
+        A.CallTo(() => connectionManager.GetPooledChannelAsync(A<bool>._, A<CancellationToken>._)).Returns(channel);
         return (channel, connectionManager);
     }
 

@@ -39,6 +39,56 @@ public sealed class RabbitMqSinkNodeIntegrationTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task ConnectionManager_PoolsChannelsByConfirmMode()
+    {
+        var unconfirmed = await _connectionManager.GetPooledChannelAsync(false);
+        (await unconfirmed.GetNextPublishSequenceNumberAsync()).Should().Be(0, "a channel without confirms tracks no sequence numbers");
+        _connectionManager.ReturnChannel(unconfirmed);
+
+        var confirmed = await _connectionManager.GetPooledChannelAsync(true);
+        confirmed.Should().NotBeSameAs(unconfirmed, "a node that wants confirms must never get a channel without them");
+        (await confirmed.GetNextPublishSequenceNumberAsync()).Should().BeGreaterThan(0);
+        _connectionManager.ReturnChannel(confirmed);
+
+        (await _connectionManager.GetPooledChannelAsync(false)).Should().BeSameAs(unconfirmed);
+        (await _connectionManager.GetPooledChannelAsync(true)).Should().BeSameAs(confirmed);
+    }
+
+    [Fact]
+    public async Task SinkNode_WithConfirmsOff_Publishes_Messages_To_Queue()
+    {
+        var queueName = $"test-sink-noconfirm-{Guid.NewGuid():N}";
+        var serializer = new RabbitMqJsonSerializer();
+
+        var connection = await _connectionManager.GetConnectionAsync();
+        var setupChannel = await connection.CreateChannelAsync();
+        await setupChannel.QueueDeclareAsync(queueName, true, false, true);
+        await setupChannel.CloseAsync();
+
+        var sinkOptions = new RabbitMqSinkOptions { ExchangeName = "", RoutingKey = queueName, EnablePublisherConfirms = false };
+        var items = Enumerable.Range(0, 3).Select(i => new TestMessage($"Sink-{i}", i)).ToArray();
+
+        var sinkNode = new RabbitMqSinkNode<TestMessage>(sinkOptions, _connectionManager, serializer);
+        await sinkNode.ConsumeAsync(CreateDataStream(items), new PipelineContext(), CancellationToken.None);
+
+        // Without confirms the publish returns before the broker routes the message, so allow it a moment.
+        var consumeChannel = await connection.CreateChannelAsync();
+        var received = 0;
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+
+        while (received < 3 && DateTime.UtcNow < deadline)
+        {
+            if (await consumeChannel.BasicGetAsync(queueName, true) is not null)
+                received++;
+            else
+                await Task.Delay(50);
+        }
+
+        await consumeChannel.CloseAsync();
+        received.Should().Be(3);
+    }
+
+    [Fact]
     public async Task SinkNode_Publishes_Messages_To_Queue()
     {
         // Arrange

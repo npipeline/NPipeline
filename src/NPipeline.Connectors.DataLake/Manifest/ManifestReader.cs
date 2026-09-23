@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using NPipeline.Connectors.DataLake.Reliability;
 using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Models;
 
@@ -9,6 +10,12 @@ namespace NPipeline.Connectors.DataLake.Manifest;
 ///     Reads manifest entries from the table's manifest file.
 ///     Supports filtering by snapshot ID and time-travel queries.
 /// </summary>
+/// <remarks>
+///     Merges every per-snapshot manifest into the main manifest, which recovers entries a concurrent writer overwrote
+///     there. A missing manifest or snapshot directory reads as empty. Any other storage failure is retried through
+///     <see cref="DataLakeConnectorResilience.ManifestRead" /> and then propagates, so a read never silently returns
+///     fewer entries than the table has.
+/// </remarks>
 public sealed class ManifestReader
 {
     private const string ManifestDirectoryName = "_manifest";
@@ -21,6 +28,7 @@ public sealed class ManifestReader
     };
 
     private readonly IStorageProvider _provider;
+    private readonly NResilience.Resilience _resilience;
     private readonly StorageUri _tableBasePath;
 
     /// <summary>
@@ -28,13 +36,18 @@ public sealed class ManifestReader
     /// </summary>
     /// <param name="provider">The storage provider to use for reading.</param>
     /// <param name="tableBasePath">The base path of the table.</param>
-    public ManifestReader(IStorageProvider provider, StorageUri tableBasePath)
+    /// <param name="resilience">
+    ///     The policy for each read. Defaults to <see cref="DataLakeConnectorResilience.ManifestRead" />.
+    /// </param>
+    public ManifestReader(IStorageProvider provider, StorageUri tableBasePath, NResilience.Resilience? resilience = null)
     {
         ArgumentNullException.ThrowIfNull(provider);
         ArgumentNullException.ThrowIfNull(tableBasePath);
 
         _provider = provider;
         _tableBasePath = tableBasePath;
+        _resilience = resilience ?? DataLakeConnectorResilience.ManifestRead;
+        _resilience.Validate();
     }
 
     /// <summary>
@@ -42,7 +55,12 @@ public sealed class ManifestReader
     /// </summary>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A list of all manifest entries.</returns>
-    public async Task<IReadOnlyList<ManifestEntry>> ReadAllAsync(CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<ManifestEntry>> ReadAllAsync(CancellationToken cancellationToken = default)
+    {
+        return RunAsync(ReadAllCoreAsync, cancellationToken);
+    }
+
+    private async Task<IReadOnlyList<ManifestEntry>> ReadAllCoreAsync(CancellationToken cancellationToken)
     {
         var entries = new List<ManifestEntry>();
 
@@ -68,12 +86,18 @@ public sealed class ManifestReader
     /// <param name="snapshotId">The snapshot ID to filter by.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A list of manifest entries for the specified snapshot.</returns>
-    public async Task<IReadOnlyList<ManifestEntry>> ReadBySnapshotAsync(
+    public Task<IReadOnlyList<ManifestEntry>> ReadBySnapshotAsync(
         string snapshotId,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(snapshotId);
+        return RunAsync(ct => ReadBySnapshotCoreAsync(snapshotId, ct), cancellationToken);
+    }
 
+    private async Task<IReadOnlyList<ManifestEntry>> ReadBySnapshotCoreAsync(
+        string snapshotId,
+        CancellationToken cancellationToken)
+    {
         // First, try to read from the dedicated snapshot manifest
         var snapshotManifestUri = BuildSnapshotManifestUri(snapshotId);
 
@@ -84,7 +108,7 @@ public sealed class ManifestReader
         }
 
         // Fallback: filter main manifest by snapshot ID
-        var allEntries = await ReadAllAsync(cancellationToken).ConfigureAwait(false);
+        var allEntries = await ReadAllCoreAsync(cancellationToken).ConfigureAwait(false);
         return allEntries.Where(e => e.SnapshotId == snapshotId).ToList();
     }
 
@@ -157,10 +181,15 @@ public sealed class ManifestReader
     /// </summary>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns><c>true</c> if the manifest exists; otherwise, <c>false</c>.</returns>
-    public async Task<bool> ExistsAsync(CancellationToken cancellationToken = default)
+    public Task<bool> ExistsAsync(CancellationToken cancellationToken = default)
     {
         var manifestUri = BuildManifestUri();
-        return await ExistsAsync(manifestUri, cancellationToken).ConfigureAwait(false);
+        return RunAsync(ct => ExistsAsync(manifestUri, ct), cancellationToken);
+    }
+
+    private async Task<T> RunAsync<T>(Func<CancellationToken, Task<T>> read, CancellationToken cancellationToken)
+    {
+        return await _resilience.RunAsync(read, cancellationToken).ConfigureAwait(false);
     }
 
     private StorageUri BuildManifestUri()
@@ -196,8 +225,9 @@ public sealed class ManifestReader
             var metadata = await _provider.GetMetadataAsync(uri, cancellationToken).ConfigureAwait(false);
             return metadata is not null && !metadata.IsDirectory;
         }
-        catch
+        catch (Exception ex) when (IsNotFound(ex))
         {
+            // Providers return null for a missing file; some report a missing parent as not-found instead
             return false;
         }
     }
@@ -220,11 +250,37 @@ public sealed class ManifestReader
         var snapshotsUri =
             StorageUri.Parse($"{_tableBasePath.Scheme}://{_tableBasePath.Host}{snapshotsPath}");
 
+        // Providers list a missing directory as empty. Any other listing or read failure propagates: skipping a snapshot
+        // file would silently drop the entries it recovers.
+        IAsyncEnumerable<StorageItem> items;
+
         try
         {
-            await foreach (var item in _provider.ListAsync(snapshotsUri, false, cancellationToken)
-                               .ConfigureAwait(false))
+            items = _provider.ListAsync(snapshotsUri, false, cancellationToken);
+        }
+        catch (Exception ex) when (IsNotFound(ex))
+        {
+            return entries;
+        }
+
+        var enumerator = items.GetAsyncEnumerator(cancellationToken);
+
+        try
+        {
+            while (true)
             {
+                try
+                {
+                    if (!await enumerator.MoveNextAsync().ConfigureAwait(false))
+                        break;
+                }
+                catch (Exception ex) when (IsNotFound(ex))
+                {
+                    break;
+                }
+
+                var item = enumerator.Current;
+
                 if (item.IsDirectory || !item.Uri.Path?.EndsWith(".ndjson", StringComparison.OrdinalIgnoreCase) == true)
                     continue;
 
@@ -233,19 +289,21 @@ public sealed class ManifestReader
                     var content = await ReadContentAsync(item.Uri, cancellationToken).ConfigureAwait(false);
                     entries.AddRange(ParseNdJson(content));
                 }
-                catch
+                catch (Exception ex) when (IsNotFound(ex))
                 {
-                    // Skip unreadable snapshot manifests
+                    // Deleted between listing and reading
                 }
             }
         }
-        catch
+        finally
         {
-            // Snapshots directory may not exist
+            await enumerator.DisposeAsync().ConfigureAwait(false);
         }
 
         return entries;
     }
+
+    private static bool IsNotFound(Exception ex) => ex is FileNotFoundException or DirectoryNotFoundException;
 
     private string BuildSnapshotsDirectoryPath()
     {

@@ -10,11 +10,16 @@ namespace NPipeline.Connectors.Snowflake.Tests.Reliability.Behavior;
 internal sealed class ScriptedConnection : IDatabaseConnection
 {
     private readonly Func<int, ExecutedCommand, Exception?> _failure;
+    private readonly Func<ExecutedCommand, IReadOnlyList<IReadOnlyDictionary<string, object?>>> _results;
 
     /// <param name="failure">Given the zero-based execution index and the command, returns the exception to throw, or null to succeed.</param>
-    public ScriptedConnection(Func<int, ExecutedCommand, Exception?>? failure = null)
+    /// <param name="results">Given a command run as a reader, returns the rows it answers with. Defaults to none.</param>
+    public ScriptedConnection(
+        Func<int, ExecutedCommand, Exception?>? failure = null,
+        Func<ExecutedCommand, IReadOnlyList<IReadOnlyDictionary<string, object?>>>? results = null)
     {
         _failure = failure ?? ((_, _) => null);
+        _results = results ?? (_ => []);
     }
 
     /// <summary>Every command executed, including the ones that failed.</summary>
@@ -71,6 +76,12 @@ internal sealed class ScriptedConnection : IDatabaseConnection
         return Task.FromResult(1);
     }
 
+    private async Task<IDatabaseReader> QueryAsync(ExecutedCommand command, CancellationToken cancellationToken)
+    {
+        _ = await ExecuteAsync(command, cancellationToken).ConfigureAwait(false);
+        return new Reader(_results(command));
+    }
+
     internal sealed record ExecutedCommand(string Text, IReadOnlyList<object?> Parameters);
 
     private sealed class Command(ScriptedConnection connection) : IDatabaseCommand
@@ -90,12 +101,58 @@ internal sealed class ScriptedConnection : IDatabaseConnection
 
         public Task<IDatabaseReader> ExecuteReaderAsync(CancellationToken cancellationToken = default)
         {
-            throw new NotSupportedException();
+            return connection.QueryAsync(new ExecutedCommand(CommandText, [.. _parameters]), cancellationToken);
         }
 
         public Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken = default)
         {
             return connection.ExecuteAsync(new ExecutedCommand(CommandText, [.. _parameters]), cancellationToken);
+        }
+
+        public ValueTask DisposeAsync()
+        {
+            return ValueTask.CompletedTask;
+        }
+    }
+
+    private sealed class Reader(IReadOnlyList<IReadOnlyDictionary<string, object?>> rows) : IDatabaseReader
+    {
+        private int _index = -1;
+
+        private IReadOnlyDictionary<string, object?> Current => rows[_index];
+
+        public bool HasRows => rows.Count > 0;
+
+        public int FieldCount => Current.Count;
+
+        public string GetName(int ordinal)
+        {
+            return Current.Keys.ElementAt(ordinal);
+        }
+
+        public Type GetFieldType(int ordinal)
+        {
+            return Current.Values.ElementAt(ordinal)?.GetType() ?? typeof(object);
+        }
+
+        public Task<bool> ReadAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(++_index < rows.Count);
+        }
+
+        public Task<bool> NextResultAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(false);
+        }
+
+        public T? GetFieldValue<T>(int ordinal)
+        {
+            return (T?)Current.Values.ElementAt(ordinal);
+        }
+
+        public bool IsDBNull(int ordinal)
+        {
+            return Current.Values.ElementAt(ordinal) is null;
         }
 
         public ValueTask DisposeAsync()

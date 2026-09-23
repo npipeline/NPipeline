@@ -4,8 +4,9 @@ namespace NPipeline.Connectors.DataLake.Reliability;
 
 /// <summary>
 ///     Resilience presets for the Data Lake connector. <see cref="ManifestWrite" /> is what
-///     <see cref="Manifest.ManifestWriter" /> uses to append to the table's main manifest; pass your own to its constructor,
-///     or derive one with a <c>with</c> expression.
+///     <see cref="Manifest.ManifestWriter" /> uses to append to the table's main manifest, and <see cref="ManifestRead" /> is
+///     what <see cref="Manifest.ManifestReader" /> uses; pass your own to their constructors, or derive one with a
+///     <c>with</c> expression.
 /// </summary>
 /// <remarks>
 ///     <para>
@@ -52,6 +53,15 @@ public static class DataLakeConnectorResilience
         // Declared above so it is initialized first; a static initializer reads fields in declaration order.
         Classifier = ManifestClassifier,
         Adaptive = false,
+    };
+
+    /// <summary>
+    ///     <see cref="ManifestWrite" />'s attempts, backoff, and classifier for reading the manifest and its snapshot files.
+    ///     Reads are idempotent, so each <see cref="Manifest.ManifestReader" /> call is retried as a whole.
+    /// </summary>
+    public static NResilience.Resilience ManifestRead { get; } = ManifestWrite with
+    {
+        Name = "npipeline.datalake.manifest.read",
     };
 
     private static Classifier CreateManifestClassifier()

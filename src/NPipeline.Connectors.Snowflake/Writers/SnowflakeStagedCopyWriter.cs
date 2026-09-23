@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Text;
 using NPipeline.Connectors.Attributes;
 using NPipeline.Connectors.Snowflake.Configuration;
+using NPipeline.Connectors.Snowflake.Exceptions;
 using NPipeline.Connectors.Snowflake.Mapping;
 using NPipeline.Connectors.Snowflake.Reliability;
 using NPipeline.StorageProviders.Abstractions;
@@ -30,6 +31,7 @@ internal sealed class SnowflakeStagedCopyWriter<T> : IDatabaseWriter<T>
     private readonly string _schema;
     private readonly string _tableName;
     private readonly Func<T, object?[]> _valueFactory;
+    private readonly string _writerId = Guid.NewGuid().ToString("N")[..12];
     private int _fileCounter;
 
     /// <summary>
@@ -81,8 +83,10 @@ internal sealed class SnowflakeStagedCopyWriter<T> : IDatabaseWriter<T>
         if (_pendingRows.Count == 0)
             return;
 
-        // One file name per flush, chosen outside the retried steps, so every retry uploads and loads the same file.
-        var fileName = $"{_configuration.StageFilePrefix}{DateTime.UtcNow:yyyyMMddHHmmss}_{_fileCounter++}.csv";
+        // One file name per flush, chosen outside the retried steps, so every retry uploads and loads the same file. The
+        // writer id keeps two writers flushing in the same second from overwriting each other's file, or from having
+        // Snowflake skip one as already loaded.
+        var fileName = $"{_configuration.StageFilePrefix}{DateTime.UtcNow:yyyyMMddHHmmss}_{_writerId}_{_fileCounter++}.csv";
         var tempFilePath = Path.Combine(Path.GetTempPath(), fileName);
 
         var stagePath = _configuration.StageName == "~"
@@ -99,13 +103,14 @@ internal sealed class SnowflakeStagedCopyWriter<T> : IDatabaseWriter<T>
             var putSql =
                 $"PUT 'file://{tempFilePath.Replace("\\", "/")}' '{stagePath}' AUTO_COMPRESS={(_configuration.CopyCompression != "NONE" ? "TRUE" : "FALSE")} OVERWRITE=TRUE";
 
-            await _resilience.RunAsync(ct => ExecuteNonQueryAsync(putSql, ct), cancellationToken).ConfigureAwait(false);
+            await _resilience.RunAsync(ct => PutAsync(putSql, ct), cancellationToken).ConfigureAwait(false);
 
             // Step 3: COPY INTO target table from stage. Retried against the same staged file without uploading it again:
             // Snowflake's load metadata skips a file it has already loaded, so if an attempt loaded the rows and only its
             // reply was lost, the retry loads nothing twice. A new upload would be a new file and load them again.
             var copySql = BuildCopySql(stagePath);
-            await _resilience.RunAsync(ct => ExecuteNonQueryAsync(copySql, ct), cancellationToken).ConfigureAwait(false);
+            var copyAttempt = 0;
+            await _resilience.RunAsync(ct => CopyAsync(copySql, stagePath, copyAttempt++ == 0, ct), cancellationToken).ConfigureAwait(false);
         }
         finally
         {
@@ -134,7 +139,51 @@ internal sealed class SnowflakeStagedCopyWriter<T> : IDatabaseWriter<T>
         await FlushAsync().ConfigureAwait(false);
     }
 
-    private async Task ExecuteNonQueryAsync(string sql, CancellationToken cancellationToken)
+    /// <summary>
+    ///     Runs the PUT and checks each file's status. The driver reports a file it could not upload, even after its own
+    ///     upload retries, as a result row with status ERROR rather than as an exception; without this check COPY INTO would
+    ///     find no file, load nothing, and the flush would be lost without an error.
+    /// </summary>
+    private async Task PutAsync(string sql, CancellationToken cancellationToken)
+    {
+        var rows = await QueryAsync(sql, cancellationToken).ConfigureAwait(false);
+
+        foreach (var row in rows)
+        {
+            var status = row.GetValueOrDefault("status");
+
+            if (string.Equals(status, "UPLOADED", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(status, "SKIPPED", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            // Not retried: the driver's upload retries have already run (see SnowflakeTransientErrorDetector.IsRetriedByDriver).
+            throw new SnowflakeException(
+                $"PUT of '{row.GetValueOrDefault("source")}' to the stage reported status '{status}': {row.GetValueOrDefault("message")}");
+        }
+    }
+
+    /// <summary>
+    ///     Runs COPY INTO and checks that it processed the staged file.
+    /// </summary>
+    /// <remarks>
+    ///     Snowflake answers a COPY INTO that found nothing to load with a single row, <c>Copy executed with 0 files
+    ///     processed.</c>, and no <c>file</c> column. On the first attempt that means the file just uploaded is missing, so
+    ///     the rows would be lost: it fails. On a retry it is the expected answer when an earlier attempt loaded the file and
+    ///     only its reply was lost, because load metadata then skips the file.
+    /// </remarks>
+    private async Task CopyAsync(string sql, string stagePath, bool firstAttempt, CancellationToken cancellationToken)
+    {
+        var rows = await QueryAsync(sql, cancellationToken).ConfigureAwait(false);
+
+        if (firstAttempt && !rows.Any(r => !string.IsNullOrEmpty(r.GetValueOrDefault("file"))))
+        {
+            throw new SnowflakeException(
+                $"COPY INTO from '{stagePath}' processed no files, so the staged rows were not loaded: " +
+                $"{rows.Select(r => r.GetValueOrDefault("status")).FirstOrDefault() ?? "no result"}");
+        }
+    }
+
+    private async Task<List<Dictionary<string, string?>>> QueryAsync(string sql, CancellationToken cancellationToken)
     {
         var command = await _connection.CreateCommandAsync(cancellationToken).ConfigureAwait(false);
 
@@ -143,7 +192,29 @@ internal sealed class SnowflakeStagedCopyWriter<T> : IDatabaseWriter<T>
             command.CommandText = sql;
             command.CommandType = CommandType.Text;
             command.CommandTimeout = _configuration.CommandTimeout;
-            _ = await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+
+            var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+
+            await using (reader.ConfigureAwait(false))
+            {
+                var rows = new List<Dictionary<string, string?>>();
+
+                while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+                {
+                    var row = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+
+                    for (var i = 0; i < reader.FieldCount; i++)
+                    {
+                        row[reader.GetName(i)] = reader.IsDBNull(i)
+                            ? null
+                            : Convert.ToString(reader.GetFieldValue<object>(i), CultureInfo.InvariantCulture);
+                    }
+
+                    rows.Add(row);
+                }
+
+                return rows;
+            }
         }
     }
 

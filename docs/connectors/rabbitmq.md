@@ -128,10 +128,12 @@ var connection = new RabbitMqConnectionOptions
 | `ExchangeName` | `string` | (required) | Exchange to publish to |
 | `RoutingKey` | `string` | `""` | Default routing key |
 | `RoutingKeySelector` | `Func<object, string>?` | `null` | Per-message routing key |
-| `EnablePublisherConfirms` | `bool` | `true` | Wait for broker confirmation |
+| `EnablePublisherConfirms` | `bool` | `true` | Wait for broker confirmation (off: at-most-once, see [Resilience](#resilience)) |
 | `Persistent` | `bool` | `true` | Mark messages as persistent |
 | `Mandatory` | `bool` | `false` | Require at least one queue binding |
 | `ContinueOnError` | `bool` | `false` | Skip a message whose publish fails instead of failing the node |
+| `ConfirmTimeout` | `TimeSpan` | `5s` | How long one publish attempt waits for the broker's confirm |
+| `ShutdownFlushTimeout` | `TimeSpan` | `30s` | How long the batched sink keeps publishing after the pipeline is cancelled |
 | `Resilience` | `Resilience` | `RabbitMqConnectorResilience.Default` | How each publish is retried (see [Resilience](#resilience)) |
 
 ### Batch Publishing - `BatchPublishOptions`
@@ -232,8 +234,28 @@ does the following:
 - Has no attempt timeout and no overall deadline, so the attempt count bounds the call.
 
 A closed channel never reopens, so a retry that finds its channel closed takes a fresh one from the pool. Every
-attempt carries the same `MessageId`, so a consumer can discard a duplicate. With batching on, each message is
-retried on its own; the messages published before it are not published again.
+attempt carries the same `MessageId`, so a consumer can discard a duplicate.
+
+Each attempt waits up to `ConfirmTimeout` (5 seconds) for the broker's publisher confirm. A confirm that doesn't
+arrive in time fails the attempt with a `TimeoutException` and the policy retries it. The
+unconfirmed message may still have reached the broker, so the retry can publish it twice.
+
+With `EnablePublisherConfirms = false`, the sink publishes on channels that don't track confirms, and a publish
+completes once the message is written to the connection; `ConfirmTimeout` doesn't apply. A message lost after that
+(the connection drops, or the broker fails before routing it) goes undetected, and the source message is still
+acknowledged, so delivery is **at-most-once**. Channels with and without confirms are pooled apart, so sinks with
+either setting can share one `IRabbitMqConnectionManager`.
+
+With batching on, messages are published in order and each one is retried on its own; the messages published
+before it are not published again. If a message still fails, the source messages published before it are
+acknowledged, and the failed message and those after it are not. The node then fails, or, with
+`ContinueOnError`, drops the rest of the batch and carries on. Only one flush runs at a time: the linger timer and
+a full batch never publish together.
+
+When the pipeline is cancelled, the batched sink publishes and acknowledges the messages it has already taken from
+the input, for up to `ShutdownFlushTimeout` (30 seconds), and then reports the cancellation. Messages it can't publish
+in that time stay unacknowledged, so the broker redelivers them. A message already published is never published again
+by the shutdown flush.
 
 To change a setting, derive a policy with a `with` expression:
 

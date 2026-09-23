@@ -9,7 +9,7 @@ namespace NPipeline.Connectors.Kafka.Models;
 ///     with acknowledgment capability via offset commit.
 /// </summary>
 /// <typeparam name="T">The deserialized message body type.</typeparam>
-public sealed class KafkaMessage<T> : IAcknowledgableMessage<T>, IKafkaMessageMetadata
+public sealed class KafkaMessage<T> : IAcknowledgableMessage<T>, IKafkaMessageMetadata, IKafkaOffsetSource
 {
     private readonly object _ackLock = new();
     private readonly Func<CancellationToken, Task>? _acknowledgeCallback;

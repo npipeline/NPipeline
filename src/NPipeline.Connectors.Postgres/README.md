@@ -793,7 +793,8 @@ property on `PostgresConfiguration` configures it. The default, `PostgresConnect
 - Treats too many connections (SQLSTATE 53300) as throttling, which waits longer: backoff starts at 5 seconds.
 - Doesn't retry other errors, such as a constraint violation or a missing table.
 - Waits with exponential backoff and full jitter, from 1 second up to 30 seconds.
-- Has no attempt timeout and no deadline. The driver's own timeout bounds each attempt: `CommandTimeout`.
+- Has no attempt timeout and no deadline. The driver's own timeout bounds each attempt: `CommandTimeout`, or `CopyTimeout` for
+  `COPY`.
   A long bulk write isn't cut off by a retry policy's timeout.
 
 Each write strategy retries one unit of work that commits all or nothing, so a retry never inserts rows that an

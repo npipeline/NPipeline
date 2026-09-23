@@ -28,8 +28,14 @@ public sealed record RabbitMqSinkOptions
     public bool Mandatory { get; init; }
 
     /// <summary>
-    ///     Gets or sets whether publisher confirms are enabled. Default is true.
+    ///     Gets or sets whether each publish waits for the broker's publisher confirm. Default is true.
     /// </summary>
+    /// <remarks>
+    ///     With confirms off, a publish completes once the message is written to the connection, and
+    ///     <see cref="ConfirmTimeout" /> does not apply. A message lost after that (the connection drops, or the broker
+    ///     fails before routing it) is not detected, so the source message is still acknowledged: delivery becomes
+    ///     at-most-once. Leave confirms on unless losing messages is acceptable.
+    /// </remarks>
     public bool EnablePublisherConfirms { get; init; } = true;
 
     /// <summary>
@@ -70,13 +76,18 @@ public sealed record RabbitMqSinkOptions
     public bool ContinueOnError { get; init; }
 
     /// <summary>
-    ///     Gets or sets the timeout for waiting for publisher confirms. Default is 5 seconds.
+    ///     Gets or sets how long one publish attempt waits for the broker's publisher confirm. Default is 5 seconds.
+    ///     A confirm that does not arrive in time fails the attempt with a <see cref="TimeoutException" />, which
+    ///     <see cref="Resilience" /> retries. The unconfirmed message may still have reached the broker, so the retry can
+    ///     publish it twice; both copies carry the same message ID.
     /// </summary>
     public TimeSpan ConfirmTimeout { get; init; } = TimeSpan.FromSeconds(5);
 
     /// <summary>
-    ///     Gets or sets the timeout for flushing remaining messages during shutdown.
-    ///     Default is 30 seconds.
+    ///     Gets or sets how long the batched sink keeps publishing after the pipeline is cancelled. Default is 30 seconds.
+    ///     Messages already taken from the input are published and acknowledged within this time; any left unpublished
+    ///     stay unacknowledged, so the broker redelivers them. Applies only with <see cref="Batching" />, since the
+    ///     sequential sink holds no messages.
     /// </summary>
     public TimeSpan ShutdownFlushTimeout { get; init; } = TimeSpan.FromSeconds(30);
 
@@ -90,6 +101,9 @@ public sealed record RabbitMqSinkOptions
 
         if (ConfirmTimeout <= TimeSpan.Zero)
             throw new InvalidOperationException("ConfirmTimeout must be positive.");
+
+        if (ShutdownFlushTimeout < TimeSpan.Zero)
+            throw new InvalidOperationException("ShutdownFlushTimeout must be non-negative.");
 
         ArgumentNullException.ThrowIfNull(Resilience);
         Resilience.Validate();

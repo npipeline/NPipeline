@@ -148,9 +148,11 @@ The sink retries transient failures with [NResilience](https://github.com/nresil
 property on `SnowflakeConfiguration` configures it. The default, `SnowflakeConnectorResilience.Default`, does the following:
 
 - Makes up to four attempts (three retries).
-- Retries network errors (200002), service unavailability (390144), statement timeouts (625), and internal errors (604).
-- Treats throttling (HTTP 429 or a throttling message) as throttling, which waits longer: backoff starts at 10 seconds.
-- Doesn't retry other errors, such as a missing object or a permission error.
+- Retries errors the server returns for a statement: network errors (200002), service unavailability (390144),
+  statement timeouts (625), and internal errors (604).
+- Treats a statement error with a throttling message as throttling, which waits longer: backoff starts at 10 seconds.
+- Doesn't retry failures the driver has already retried (see below), or other errors, such as a missing object or a
+  permission error.
 - Waits with exponential backoff and full jitter, from 2 seconds up to 60 seconds.
 - Has no attempt timeout and no deadline. The driver's own timeout bounds each attempt: `CommandTimeout`.
   A long bulk write isn't cut off by a retry policy's timeout.
@@ -160,7 +162,10 @@ earlier attempt committed:
 
 - `PerRow`: one `INSERT` per row.
 - `Batch`: one multi-row `INSERT` or `MERGE` statement per flush.
-- `StagedCopy`: two steps per flush, each retried on its own: the `PUT` of the staged file, which writes nothing to the table, and then `COPY INTO` from that same file. Snowflake's load metadata skips a file it has already loaded, so a `COPY INTO` retried after a failure that hid its success doesn't load the rows twice.
+- `StagedCopy`: two steps per flush, each retried on its own: the `PUT` of the staged file, which writes nothing to the table, and then `COPY INTO` from that same file. Snowflake's load metadata skips a file it has already loaded, so a `COPY INTO` retried after a failure that hid its success doesn't load the rows twice. The writer
+  also checks both results: a `PUT` whose result reports a file as anything but `UPLOADED` or `SKIPPED` fails the flush
+  (the driver reports an upload it gave up on this way, not as an error), and so does a first `COPY INTO` that processes
+  no files, because the rows would otherwise be lost without an error. Neither failure is retried.
 
 With `DeliverySemantic.ExactlyOnce`, the sink wraps all writes in one transaction. A failure can abort that whole
 transaction, so the writers make one attempt and the sink rolls the transaction back. A batch that fails isn't
@@ -177,10 +182,21 @@ var config = new SnowflakeConfiguration
 
 To turn retries off, use `Resilience.None`.
 
-The Snowflake driver retries failed HTTP requests on its own (`MAXHTTPRETRIES` and `RETRY_TIMEOUT` in the connection
-string) before it reports an error, so a network error reaches the connector only after the driver has given up. The
-connector's retries run on top of the driver's, so lower the driver's settings, or the connector's `Attempts`, if the
-combined wait is too long. Retries aren't logged by the connector. To observe them, attach a listener: `SnowflakeConnectorResilience.Default.WithListener(e => ...)`.
+### Retry Layers
+
+- **The driver retries HTTP requests.** Snowflake.Data retries every HTTP request of a statement on its own:
+  transport errors, HTTP timeouts, and 5xx, 403, 408, and 429 responses, up to `MAXHTTPRETRIES` (default 7) times
+  within `RETRY_TIMEOUT` (default 300 seconds). That includes the polling for a running query's result, which the
+  connector could only repeat by running the whole statement again. Configure these in the connection string.
+- **The connector retries statements.** It retries only errors the server returns for the statement itself, as listed
+  above. What the driver reports after giving up on its own retries is permanent to the connector: an
+  `HttpRequestException`, a request timeout (270007, which can arrive wrapped in an `OperationCanceledException`), an I/O
+  error on `PUT` (270058, after the driver's own upload attempts), any other driver error in the 270000 range, and a
+  lost session (390111).
+
+If you set `DISABLERETRY=true` in the connection string, failed HTTP responses aren't retried by either layer.
+
+Retries aren't logged by the connector. To observe them, attach a listener: `SnowflakeConnectorResilience.Default.WithListener(e => ...)`.
 
 ## Dependency Injection
 

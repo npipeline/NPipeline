@@ -20,26 +20,23 @@ namespace NPipeline.Connectors.Postgres.Tests.Reliability.Behavior;
 [Collection("PostgresTestCollection")]
 public sealed class PostgresRetryIntegrationTests(PostgresTestContainerFixture fixture)
 {
-    // Binary COPY is not covered: its statement specifies DELIMITER, which PostgreSQL rejects in BINARY mode (a separate,
-    // pre-existing defect).
     [Theory]
-    [InlineData(PostgresWriteStrategy.PerRow, false)]
-    [InlineData(PostgresWriteStrategy.Batch, false)]
-    [InlineData(PostgresWriteStrategy.Copy, false)]
-    public async Task ARetriedWriteLeavesEachRowExactlyOnce(PostgresWriteStrategy strategy, bool binaryCopy)
+    [InlineData(PostgresWriteStrategy.PerRow, false, "public")]
+    [InlineData(PostgresWriteStrategy.Batch, false, "public")]
+    [InlineData(PostgresWriteStrategy.Copy, false, "public")]
+    [InlineData(PostgresWriteStrategy.Copy, true, "public")]
+    [InlineData(PostgresWriteStrategy.PerRow, false, "retry_sales")]
+    [InlineData(PostgresWriteStrategy.Batch, false, "retry_sales")]
+    [InlineData(PostgresWriteStrategy.Copy, false, "retry_sales")]
+    [InlineData(PostgresWriteStrategy.Copy, true, "retry_sales")]
+    public async Task ARetriedWriteLeavesEachRowExactlyOnce(PostgresWriteStrategy strategy, bool binaryCopy, string schema)
     {
         // The fifth of six rows clashes with a blocker row once; the retry listener removes the blocker. Only row5 is
         // unique, so any row an earlier attempt committed would show up twice.
         var table = $"retry_{strategy.ToString().ToLowerInvariant()}_{(binaryCopy ? "binary" : "text")}";
-
-        // The writers quote "schema.table" as one identifier (a separate, pre-existing defect), so the test's table carries
-        // that literal name.
-        var quoted = $"\"public.{table}\"";
-        await ExecuteAsync($"DROP TABLE IF EXISTS {table}");
-        await ExecuteAsync($"DROP TABLE IF EXISTS {quoted}");
-        await ExecuteAsync($"CREATE TABLE {quoted} (id INT NOT NULL, name TEXT NOT NULL)");
-        await ExecuteAsync($"CREATE UNIQUE INDEX ux_{table} ON {quoted} (name) WHERE name = 'row5'");
-        await ExecuteAsync($"INSERT INTO {quoted} (id, name) VALUES (0, 'row5')");
+        var qualified = await CreateTableAsync(schema, table);
+        await ExecuteAsync($"CREATE UNIQUE INDEX ON {qualified} (name) WHERE name = 'row5'");
+        await ExecuteAsync($"INSERT INTO {qualified} (id, name) VALUES (0, 'row5')");
 
         var retries = 0;
 
@@ -49,22 +46,77 @@ public sealed class PostgresRetryIntegrationTests(PostgresTestContainerFixture f
                 return;
 
             retries++;
-            Execute($"DELETE FROM {quoted} WHERE id = 0");
+            Execute($"DELETE FROM {qualified} WHERE id = 0");
         });
 
         var configuration = new PostgresConfiguration { Resilience = resilience, BatchSize = 6, UseBinaryCopy = binaryCopy };
 
-        await using (var connection = await OpenAsync())
-        {
-            var writer = CreateWriter(strategy, connection, table, configuration);
-            await writer.WriteBatchAsync(Enumerable.Range(1, 6).Select(i => new Row { Id = i, Name = $"row{i}" }));
-            await writer.DisposeAsync();
-        }
+        await WriteAsync(strategy, schema, table, configuration, 6);
 
         retries.Should().Be(1);
-        (await QueryIdsAsync($"SELECT id FROM {quoted} ORDER BY id")).Should().Equal(1, 2, 3, 4, 5, 6);
+        (await QueryIdsAsync($"SELECT id FROM {qualified} ORDER BY id")).Should().Equal(1, 2, 3, 4, 5, 6);
 
-        await ExecuteAsync($"DROP TABLE {quoted}");
+        await ExecuteAsync($"DROP TABLE {qualified}");
+    }
+
+    [Theory]
+    [InlineData(PostgresWriteStrategy.PerRow, false)]
+    [InlineData(PostgresWriteStrategy.Batch, false)]
+    [InlineData(PostgresWriteStrategy.Copy, false)]
+    [InlineData(PostgresWriteStrategy.Copy, true)]
+    public async Task Writers_QuoteSchemaAndTableSeparately_EscapingEmbeddedQuotes(PostgresWriteStrategy strategy, bool binaryCopy)
+    {
+        // A schema with a space and upper case, and a table with a double quote in its name: each part must be quoted on
+        // its own, with the embedded quote doubled.
+        const string schema = "Retry Sales";
+        var table = $"odd\"{strategy.ToString().ToLowerInvariant()}_{(binaryCopy ? "binary" : "text")}";
+        var qualified = await CreateTableAsync(schema, table);
+
+        var configuration = new PostgresConfiguration
+        {
+            Resilience = NResilience.Resilience.None,
+            BatchSize = 3,
+            UseBinaryCopy = binaryCopy,
+        };
+
+        await WriteAsync(strategy, schema, table, configuration, 3);
+
+        (await QueryIdsAsync($"SELECT id FROM {qualified} ORDER BY id")).Should().Equal(1, 2, 3);
+
+        await ExecuteAsync($"DROP TABLE {qualified}");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Copy_IsBoundedByCopyTimeout(bool binaryCopy)
+    {
+        // A trigger makes the server spend three seconds on the rows; a one-second CopyTimeout must give up first.
+        var table = $"retry_copy_timeout_{(binaryCopy ? "binary" : "text")}";
+        var qualified = await CreateTableAsync("public", table);
+
+        await ExecuteAsync($"""
+                            CREATE OR REPLACE FUNCTION {table}_slow() RETURNS trigger AS $$
+                            BEGIN PERFORM pg_sleep(1); RETURN NEW; END; $$ LANGUAGE plpgsql
+                            """);
+        await ExecuteAsync($"CREATE TRIGGER {table}_slow BEFORE INSERT ON {qualified} FOR EACH ROW EXECUTE FUNCTION {table}_slow()");
+
+        var configuration = new PostgresConfiguration
+        {
+            Resilience = NResilience.Resilience.None,
+            BatchSize = 3,
+            UseBinaryCopy = binaryCopy,
+            CopyTimeout = 1,
+        };
+
+        var started = DateTime.UtcNow;
+        var act = () => WriteAsync(PostgresWriteStrategy.Copy, "public", table, configuration, 3);
+
+        _ = await act.Should().ThrowAsync<Exception>();
+        (DateTime.UtcNow - started).Should().BeLessThan(TimeSpan.FromSeconds(2.9));
+
+        await ExecuteAsync($"DROP TABLE {qualified}");
+        await ExecuteAsync($"DROP FUNCTION {table}_slow()");
     }
 
     [Fact]
@@ -150,15 +202,41 @@ public sealed class PostgresRetryIntegrationTests(PostgresTestContainerFixture f
         return emitted;
     }
 
-    private static IDatabaseWriter<Row> CreateWriter(PostgresWriteStrategy strategy, IDatabaseConnection connection, string table,
-        PostgresConfiguration configuration)
+    private async Task WriteAsync(PostgresWriteStrategy strategy, string schema, string table, PostgresConfiguration configuration,
+        int rows)
     {
-        return strategy switch
+        await using var connection = await OpenAsync();
+
+        IDatabaseWriter<Row> writer = strategy switch
         {
-            PostgresWriteStrategy.PerRow => new PostgresPerRowWriter<Row>(connection, "public", table, null, configuration),
-            PostgresWriteStrategy.Batch => new PostgresBatchWriter<Row>(connection, "public", table, null, configuration),
-            _ => new PostgresCopyWriter<Row>(connection, "public", table, null, configuration),
+            PostgresWriteStrategy.PerRow => new PostgresPerRowWriter<Row>(connection, schema, table, null, configuration),
+            PostgresWriteStrategy.Batch => new PostgresBatchWriter<Row>(connection, schema, table, null, configuration),
+            _ => new PostgresCopyWriter<Row>(connection, schema, table, null, configuration),
         };
+
+        try
+        {
+            await writer.WriteBatchAsync(Enumerable.Range(1, rows).Select(i => new Row { Id = i, Name = $"row{i}" }));
+        }
+        finally
+        {
+            await writer.DisposeAsync();
+        }
+    }
+
+    /// <summary>Creates schema.table, quoting each part, and returns the quoted name.</summary>
+    private async Task<string> CreateTableAsync(string schema, string table)
+    {
+        var qualified = $"{Quote(schema)}.{Quote(table)}";
+        await ExecuteAsync($"CREATE SCHEMA IF NOT EXISTS {Quote(schema)}");
+        await ExecuteAsync($"DROP TABLE IF EXISTS {qualified}");
+        await ExecuteAsync($"CREATE TABLE {qualified} (id INT NOT NULL, name TEXT NOT NULL)");
+        return qualified;
+    }
+
+    private static string Quote(string identifier)
+    {
+        return $"\"{identifier.Replace("\"", "\"\"")}\"";
     }
 
     private async Task<PostgresDatabaseConnection> OpenAsync()

@@ -80,9 +80,7 @@ public class AdlsGen2ClientFactory
         {
             if (serviceUrl is null && !string.IsNullOrEmpty(connectionString))
             {
-                return blobClientOptions is null
-                    ? new BlobServiceClient(connectionString)
-                    : new BlobServiceClient(connectionString, blobClientOptions);
+                return new BlobServiceClient(connectionString, blobClientOptions);
             }
 
             var effectiveServiceUrl = serviceUrl is not null
@@ -93,30 +91,22 @@ public class AdlsGen2ClientFactory
             {
                 var sasCredential = new AzureSasCredential(credentialInfo.SasToken);
 
-                return blobClientOptions is null
-                    ? new BlobServiceClient(effectiveServiceUrl, sasCredential)
-                    : new BlobServiceClient(effectiveServiceUrl, sasCredential, blobClientOptions);
+                return new BlobServiceClient(effectiveServiceUrl, sasCredential, blobClientOptions);
             }
 
             if (credentialInfo?.AccountKey is not null && credentialInfo.AccountName is not null)
             {
                 var keyCredential = new StorageSharedKeyCredential(credentialInfo.AccountName, credentialInfo.AccountKey);
 
-                return blobClientOptions is null
-                    ? new BlobServiceClient(effectiveServiceUrl, keyCredential)
-                    : new BlobServiceClient(effectiveServiceUrl, keyCredential, blobClientOptions);
+                return new BlobServiceClient(effectiveServiceUrl, keyCredential, blobClientOptions);
             }
 
             if (credentialInfo?.TokenCredential is not null)
             {
-                return blobClientOptions is null
-                    ? new BlobServiceClient(effectiveServiceUrl, credentialInfo.TokenCredential)
-                    : new BlobServiceClient(effectiveServiceUrl, credentialInfo.TokenCredential, blobClientOptions);
+                return new BlobServiceClient(effectiveServiceUrl, credentialInfo.TokenCredential, blobClientOptions);
             }
 
-            return blobClientOptions is null
-                ? new BlobServiceClient(effectiveServiceUrl)
-                : new BlobServiceClient(effectiveServiceUrl, blobClientOptions);
+            return new BlobServiceClient(effectiveServiceUrl, blobClientOptions);
         });
 
         return Task.FromResult(client);
@@ -151,9 +141,7 @@ public class AdlsGen2ClientFactory
             // and avoids parsing potentially placeholder connection strings in tests.
             if (serviceUrl is null && !string.IsNullOrEmpty(connectionString))
             {
-                return clientOptions is null
-                    ? new DataLakeServiceClient(connectionString)
-                    : new DataLakeServiceClient(connectionString, clientOptions);
+                return new DataLakeServiceClient(connectionString, clientOptions);
             }
 
             // Build service URL if not provided
@@ -164,9 +152,7 @@ public class AdlsGen2ClientFactory
             {
                 var sasCredential = new AzureSasCredential(credentialInfo.SasToken);
 
-                return clientOptions is null
-                    ? new DataLakeServiceClient(effectiveServiceUrl, sasCredential)
-                    : new DataLakeServiceClient(effectiveServiceUrl, sasCredential, clientOptions);
+                return new DataLakeServiceClient(effectiveServiceUrl, sasCredential, clientOptions);
             }
 
             // Handle account key credential
@@ -174,23 +160,17 @@ public class AdlsGen2ClientFactory
             {
                 var keyCredential = new StorageSharedKeyCredential(credentialInfo.AccountName, credentialInfo.AccountKey);
 
-                return clientOptions is null
-                    ? new DataLakeServiceClient(effectiveServiceUrl, keyCredential)
-                    : new DataLakeServiceClient(effectiveServiceUrl, keyCredential, clientOptions);
+                return new DataLakeServiceClient(effectiveServiceUrl, keyCredential, clientOptions);
             }
 
             // Handle token credential (DefaultAzureCredential or custom TokenCredential)
             if (credentialInfo?.TokenCredential is not null)
             {
-                return clientOptions is null
-                    ? new DataLakeServiceClient(effectiveServiceUrl, credentialInfo.TokenCredential)
-                    : new DataLakeServiceClient(effectiveServiceUrl, credentialInfo.TokenCredential, clientOptions);
+                return new DataLakeServiceClient(effectiveServiceUrl, credentialInfo.TokenCredential, clientOptions);
             }
 
             // No credentials provided - use anonymous access
-            return clientOptions is null
-                ? new DataLakeServiceClient(effectiveServiceUrl)
-                : new DataLakeServiceClient(effectiveServiceUrl, clientOptions);
+            return new DataLakeServiceClient(effectiveServiceUrl, clientOptions);
         });
 
         EnforceCacheLimit();
@@ -355,35 +335,26 @@ public class AdlsGen2ClientFactory
         }
     }
 
-    private DataLakeClientOptions? CreateClientOptions()
+    internal DataLakeClientOptions CreateClientOptions()
     {
         var options = _options.ServiceVersion is null
             ? new DataLakeClientOptions()
             : new DataLakeClientOptions(_options.ServiceVersion.Value);
 
-        options.Retry.Mode = RetryMode.Exponential;
-        options.Retry.MaxRetries = 5;
-        options.Retry.Delay = TimeSpan.FromMilliseconds(800);
-        options.Retry.MaxDelay = TimeSpan.FromSeconds(8);
-        options.Retry.NetworkTimeout = TimeSpan.FromSeconds(100);
+        _options.Retry.ApplyTo(options.Retry);
 
         return options;
     }
 
-    private BlobClientOptions? CreateBlobClientOptions()
+    internal BlobClientOptions CreateBlobClientOptions()
     {
-        if (_options.ServiceVersion is null)
-            return null;
+        // Match the Blob API version to the configured Data Lake version when there is an equivalent
+        var options = _options.ServiceVersion is not null
+                      && Enum.TryParse<BlobClientOptions.ServiceVersion>(_options.ServiceVersion.Value.ToString(), out var blobServiceVersion)
+            ? new BlobClientOptions(blobServiceVersion)
+            : new BlobClientOptions();
 
-        if (!Enum.TryParse<BlobClientOptions.ServiceVersion>(_options.ServiceVersion.Value.ToString(), out var blobServiceVersion))
-            return null;
-
-        var options = new BlobClientOptions(blobServiceVersion);
-        options.Retry.Mode = RetryMode.Exponential;
-        options.Retry.MaxRetries = 5;
-        options.Retry.Delay = TimeSpan.FromMilliseconds(800);
-        options.Retry.MaxDelay = TimeSpan.FromSeconds(8);
-        options.Retry.NetworkTimeout = TimeSpan.FromSeconds(100);
+        _options.Retry.ApplyTo(options.Retry);
 
         return options;
     }

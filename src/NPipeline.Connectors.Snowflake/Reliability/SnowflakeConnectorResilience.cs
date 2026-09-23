@@ -19,6 +19,14 @@ namespace NPipeline.Connectors.Snowflake.Reliability;
 ///         leaves the failure to the transaction's owner.
 ///     </para>
 ///     <para>
+///         Exactly one layer retries each kind of failure. The Snowflake.Data driver retries every HTTP request of a
+///         statement (transport errors, HTTP timeouts, and 5xx, 403, 408, and 429 responses) under its own
+///         <c>MAXHTTPRETRIES</c> and <c>RETRY_TIMEOUT</c> settings, including the polling for a running query's result,
+///         which the connector could only repeat by running the statement again. The connector therefore treats what the
+///         driver reports after those retries as permanent, and retries only errors the server returns for the statement
+///         itself.
+///     </para>
+///     <para>
 ///         The presets have no attempt timeout and no deadline. Each attempt is bounded by
 ///         <see cref="Configuration.SnowflakeConfiguration.CommandTimeout" /> instead, which suits a <c>COPY INTO</c> that
 ///         runs for minutes. A timeout set on the policy applies to every write strategy, staged copy included.
@@ -27,9 +35,11 @@ namespace NPipeline.Connectors.Snowflake.Reliability;
 public static class SnowflakeConnectorResilience
 {
     /// <summary>
-    ///     <see cref="NResilience.Classifier.Default" />, plus <see cref="SnowflakeTransientErrorDetector" />: throttling
-    ///     (HTTP 429 or a throttling message) is throttled, the detector's other transient errors (network errors,
-    ///     service unavailable, statement timeout) are transient, and every other <see cref="DbException" /> is permanent.
+    ///     <see cref="NResilience.Classifier.Default" />, plus <see cref="SnowflakeTransientErrorDetector" />. Failures the
+    ///     driver has already retried (<see cref="SnowflakeTransientErrorDetector.IsRetriedByDriver" />: HTTP errors,
+    ///     request timeouts, PUT upload errors, a lost session) are permanent, so exactly one layer retries them. Of the
+    ///     errors the server returns for a statement, a throttling message is throttled, the detector's transient errors
+    ///     are transient, and every other <see cref="DbException" /> is permanent.
     /// </summary>
     public static Classifier Classifier { get; } = Classifier.Default
         .On<InvalidOperationException>(Judge)
@@ -38,8 +48,8 @@ public static class SnowflakeConnectorResilience
         .On<DbException>(Judge);
 
     /// <summary>
-    ///     Four attempts (three retries) and exponential backoff with full jitter from two seconds up to 60 seconds, or
-    ///     from ten seconds when Snowflake throttles. There is no attempt timeout or deadline;
+    ///     Four attempts (three retries) of statement-level transient errors, with exponential backoff and full jitter
+    ///     from two seconds up to 60 seconds, or from ten seconds when Snowflake throttles. There is no attempt timeout or deadline;
     ///     <see cref="Configuration.SnowflakeConfiguration.CommandTimeout" /> bounds each attempt. Replaces
     ///     <c>MaxRetryAttempts = 3</c> and <c>RetryDelay = 2 s</c>.
     /// </summary>
@@ -62,6 +72,11 @@ public static class SnowflakeConnectorResilience
 
     private static Verdict Judge(Exception exception)
     {
+        // The driver retries each HTTP request of a statement itself; by the time one of these reaches the connector it
+        // has given up, and rerunning the statement would multiply its attempts.
+        if (SnowflakeTransientErrorDetector.IsRetriedByDriver(exception))
+            return Verdict.Permanent;
+
         if (SnowflakeTransientErrorDetector.IsThrottling(exception))
             return Verdict.Throttled();
 

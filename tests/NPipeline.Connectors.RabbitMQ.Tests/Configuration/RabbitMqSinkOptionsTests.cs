@@ -48,9 +48,19 @@ public sealed class RabbitMqSinkOptionsTests
     [Fact]
     public void Validate_Throws_When_Resilience_Is_Invalid()
     {
+#pragma warning disable NRES003 // The invalid value is the point of the test.
         var options = new RabbitMqSinkOptions { ExchangeName = "ex", Resilience = RabbitMqConnectorResilience.Default with { Attempts = 0 } };
+#pragma warning restore NRES003
         var act = () => options.Validate();
         act.Should().Throw<ResilienceConfigurationException>();
+    }
+
+    [Fact]
+    public void Validate_Throws_When_ShutdownFlushTimeout_Is_Negative()
+    {
+        var options = new RabbitMqSinkOptions { ExchangeName = "ex", ShutdownFlushTimeout = TimeSpan.FromSeconds(-1) };
+        var act = () => options.Validate();
+        act.Should().Throw<InvalidOperationException>().WithMessage("*ShutdownFlushTimeout*");
     }
 
     [Fact]

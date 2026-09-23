@@ -51,18 +51,52 @@ public static class SnowflakeTransientErrorDetector
     }
 
     /// <summary>
-    ///     Determines if an exception reports that Snowflake is throttling the client (HTTP 429, or a throttling message),
-    ///     so it should back off for longer than for other transient errors.
+    ///     Determines if a statement-level error reports that Snowflake is throttling the client (a throttling message on
+    ///     an error the server returned), so it should back off for longer than for other transient errors. HTTP 429 is
+    ///     not included: the driver retries it itself (see <see cref="IsRetriedByDriver" />).
     /// </summary>
     /// <param name="exception">The exception to check.</param>
-    /// <returns>True if the exception, or one it wraps, is a throttling error; otherwise, false.</returns>
+    /// <returns>True if the exception is a statement-level throttling error; otherwise, false.</returns>
     public static bool IsThrottling(Exception exception)
+    {
+        return exception is DbException dbEx && !IsRetriedByDriver(dbEx) && IsThrottlingMessage(dbEx.Message);
+    }
+
+    /// <summary>
+    ///     Determines if an exception is a failure the Snowflake.Data driver has already retried, or reports only after
+    ///     giving up on its own retries, so retrying the statement again would only repeat that work.
+    /// </summary>
+    /// <remarks>
+    ///     <para>
+    ///         Snowflake.Data retries every HTTP request of a statement itself: transport errors, HTTP timeouts, and
+    ///         5xx, 403, 408, and 429 responses, up to <c>MAXHTTPRETRIES</c> times within <c>RETRY_TIMEOUT</c>. When it
+    ///         gives up it reports one of these:
+    ///     </para>
+    ///     <list type="bullet">
+    ///         <item>an <see cref="HttpRequestException" /> for the last failed response;</item>
+    ///         <item>
+    ///             an <see cref="OperationCanceledException" /> that the caller did not request, wrapping a driver
+    ///             error (270007, request timeout);
+    ///         </item>
+    ///         <item>
+    ///             a driver-raised error in the 270000-270999 range, such as 270007 (request timeout) or 270058 (I/O
+    ///             error on PUT, after the driver's own five upload attempts).
+    ///         </item>
+    ///     </list>
+    ///     <para>
+    ///         390111 (session gone) is included too: the driver has already discarded the session, and a retry on the
+    ///         same connection would meet the same error.
+    ///     </para>
+    /// </remarks>
+    /// <param name="exception">The exception to check.</param>
+    /// <returns>True if the driver has already retried the failure; otherwise, false.</returns>
+    public static bool IsRetriedByDriver(Exception exception)
     {
         return exception switch
         {
-            HttpRequestException { StatusCode: System.Net.HttpStatusCode.TooManyRequests } => true,
-            DbException dbEx when IsThrottlingMessage(dbEx.Message) => true,
-            _ when exception.InnerException != null => IsThrottling(exception.InnerException),
+            HttpRequestException => true,
+            OperationCanceledException { InnerException: DbException inner } => IsDriverErrorCode(inner.ErrorCode),
+            DbException dbEx => IsDriverErrorCode(dbEx.ErrorCode) || dbEx.ErrorCode == SessionGone,
             _ => false,
         };
     }
@@ -107,6 +141,14 @@ public static class SnowflakeTransientErrorDetector
                || message.Contains("network", StringComparison.OrdinalIgnoreCase)
                || message.Contains("throttled", StringComparison.OrdinalIgnoreCase)
                || message.Contains("429", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private const int SessionGone = 390111;
+
+    private static bool IsDriverErrorCode(int errorCode)
+    {
+        // Snowflake.Data's own client-side errors (SFError) are numbered from 270000.
+        return errorCode is >= 270000 and < 271000;
     }
 
     private static bool IsThrottlingMessage(string message)

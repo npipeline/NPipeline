@@ -164,7 +164,8 @@ internal sealed class PostgresBatchWriter<T> : IDatabaseWriter<T>
         if (_parameterCount == 0)
             throw new InvalidOperationException($"Type '{typeof(T).Name}' does not expose any writable properties to persist.");
 
-        var quotedTableName = DatabaseIdentifierValidator.QuoteIdentifier($"{_schema}.{_tableName}");
+        // Schema and table are quoted separately; one quoted "schema.table" would name a table with a dot in it.
+        var quotedTableName = $"{DatabaseIdentifierValidator.QuoteIdentifier(_schema)}.{DatabaseIdentifierValidator.QuoteIdentifier(_tableName)}";
 
         var quotedColumns = _mappings
             .Select(m => ValidateAndQuoteIdentifier(m.ColumnName, nameof(m.ColumnName)))

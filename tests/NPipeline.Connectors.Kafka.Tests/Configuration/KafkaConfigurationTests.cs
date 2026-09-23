@@ -415,6 +415,52 @@ public class KafkaConfigurationTests
     }
 
     [Fact]
+    public void ProducerRetrySettings_DefaultToLibrdkafkasDefaults()
+    {
+        var config = new KafkaConfiguration();
+
+        config.DeliveryTimeoutMs.Should().Be(300000);
+        config.RetryBackoffMs.Should().Be(100);
+        config.RetryBackoffMaxMs.Should().Be(1000);
+        config.MetadataTimeoutMs.Should().Be(10000);
+    }
+
+    [Theory]
+    [InlineData(-1, 100, 1000, 10000, "DeliveryTimeoutMs cannot be negative.")]
+    [InlineData(1, 100, 1000, 10000, "DeliveryTimeoutMs must not be less than LingerMs.")]
+    [InlineData(300000, 0, 1000, 10000, "RetryBackoffMs must be greater than zero.")]
+    [InlineData(300000, 500, 100, 10000, "RetryBackoffMaxMs must not be less than RetryBackoffMs.")]
+    [InlineData(300000, 100, 1000, 0, "MetadataTimeoutMs must be greater than zero.")]
+    public void ValidateSink_WithInvalidProducerRetrySettings_ShouldThrow(
+        int deliveryTimeoutMs, int retryBackoffMs, int retryBackoffMaxMs, int metadataTimeoutMs, string message)
+    {
+        var config = new KafkaConfiguration
+        {
+            BootstrapServers = "localhost:9092",
+            SinkTopic = "output-topic",
+            LingerMs = 5,
+            DeliveryTimeoutMs = deliveryTimeoutMs,
+            RetryBackoffMs = retryBackoffMs,
+            RetryBackoffMaxMs = retryBackoffMaxMs,
+            MetadataTimeoutMs = metadataTimeoutMs,
+        };
+
+        var act = () => config.ValidateSink();
+
+        act.Should().Throw<InvalidOperationException>().WithMessage(message);
+    }
+
+    [Fact]
+    public void ValidateSink_WithUnlimitedDeliveryTimeout_ShouldNotThrow()
+    {
+        var config = new KafkaConfiguration { BootstrapServers = "localhost:9092", SinkTopic = "output-topic", DeliveryTimeoutMs = 0 };
+
+        var act = () => config.ValidateSink();
+
+        act.Should().NotThrow();
+    }
+
+    [Fact]
     public void ValidateSource_WithInvalidResilience_ShouldThrow()
     {
         // Arrange
@@ -423,7 +469,9 @@ public class KafkaConfigurationTests
             BootstrapServers = "localhost:9092",
             SourceTopic = "input-topic",
             ConsumerGroupId = "test-group",
+#pragma warning disable NRES003 // The invalid value is the point of the test.
             Resilience = KafkaConnectorResilience.Default with { Attempts = 0 },
+#pragma warning restore NRES003
         };
 
         // Act & Assert

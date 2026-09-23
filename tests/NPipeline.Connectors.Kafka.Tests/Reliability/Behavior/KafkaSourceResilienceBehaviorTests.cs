@@ -135,7 +135,7 @@ public sealed class KafkaSourceResilienceBehaviorTests
     };
 
     [Theory]
-    [MemberData(nameof(ClassifiedExceptions))]
+    [MemberData(nameof(ClassifiedExceptions), DisableDiscoveryEnumeration = true)]
     public void Classifier_JudgesKafkaErrors(Exception exception, VerdictKind expected)
     {
         KafkaConnectorResilience.Classifier.ClassifyException(exception).Kind.Should().Be(expected);
@@ -226,7 +226,7 @@ public sealed class KafkaSourceResilienceBehaviorTests
         var next = 0;
 
         A.CallTo(() => consumer.Consume(A<TimeSpan>._))
-            .ReturnsLazily(() => next < steps.Length ? steps[next++]() : null);
+            .ReturnsLazily(() => (next < steps.Length ? steps[next++]() : null)!);
 
         return consumer;
     }

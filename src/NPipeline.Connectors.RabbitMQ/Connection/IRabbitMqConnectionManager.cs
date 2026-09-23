@@ -29,12 +29,25 @@ public interface IRabbitMqConnectionManager : IAsyncDisposable
     Task<IChannel> CreateChannelAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
-    ///     Borrows a channel from the pool. Used by sink nodes for publish operations.
+    ///     Borrows a channel that tracks publisher confirms from the pool. Used by sink nodes for publish operations.
     ///     The caller must return the channel via <see cref="ReturnChannel" />.
     /// </summary>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>A pooled <see cref="IChannel" />.</returns>
     Task<IChannel> GetPooledChannelAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    ///     Borrows a channel from the pool for the given publisher-confirm mode. Channels that track publisher confirms
+    ///     and channels that do not are pooled apart, so nodes with either mode can share one manager.
+    ///     The caller must return the channel via <see cref="ReturnChannel" />.
+    /// </summary>
+    /// <param name="publisherConfirms">
+    ///     Whether the channel tracks publisher confirms. When true, a publish waits for the broker's confirm; when
+    ///     false, a publish completes once the message is written to the connection.
+    /// </param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A pooled <see cref="IChannel" /> in the requested mode.</returns>
+    Task<IChannel> GetPooledChannelAsync(bool publisherConfirms, CancellationToken cancellationToken = default);
 
     /// <summary>
     ///     Returns a borrowed channel to the pool.

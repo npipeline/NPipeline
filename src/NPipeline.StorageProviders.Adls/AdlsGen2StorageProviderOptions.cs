@@ -11,6 +11,7 @@ public class AdlsGen2StorageProviderOptions
 {
     private readonly Lazy<TokenCredential> _defaultCredentialChain = new(() => new DefaultAzureCredential());
     private int _clientCacheSizeLimit = 100;
+    private AdlsGen2RetryOptions _retry = new();
     private long _uploadThresholdBytes = 64 * 1024 * 1024;
 
     /// <summary>
@@ -70,6 +71,17 @@ public class AdlsGen2StorageProviderOptions
     ///     Gets or sets the maximum transfer size in bytes for each upload chunk.
     /// </summary>
     public int? UploadMaximumTransferSizeBytes { get; set; }
+
+    /// <summary>
+    ///     Gets or sets the Azure SDK retry settings for the Data Lake and Blob clients. The SDK retries natively;
+    ///     defaults are exponential backoff, 5 retries, an 800 ms base delay, an 8 s maximum delay, and a 100 s network
+    ///     timeout.
+    /// </summary>
+    public AdlsGen2RetryOptions Retry
+    {
+        get => _retry;
+        set => _retry = value ?? throw new ArgumentNullException(nameof(value));
+    }
 
     /// <summary>
     ///     Gets or sets the maximum number of cached clients before eviction occurs.
