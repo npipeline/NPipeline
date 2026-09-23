@@ -1,3 +1,4 @@
+using NPipeline.Execution;
 using NPipeline.Execution.Annotations;
 using NPipeline.Pipeline;
 
@@ -25,6 +26,24 @@ internal static class ResilienceRuntime
             return nodePolicy;
 
         return context.ExecutionConfiguration.ResiliencePolicy;
+    }
+
+    /// <summary>
+    ///     Raises a retry event for one of the three layers.
+    /// </summary>
+    public static void ReportRetry(PipelineContext context, string nodeId, RetryKind kind, int attempt, Exception failure)
+    {
+        context.Observability.ExecutionObserver.OnRetry(
+            new NodeRetryEvent(nodeId, kind, attempt, failure, context.RunIdentity.PipelineId, context.RunIdentity.PipelineName));
+    }
+
+    /// <summary>
+    ///     Raises the event for a layer that stopped retrying after at least one retry.
+    /// </summary>
+    public static void ReportRetryExhausted(PipelineContext context, string nodeId, RetryKind kind, int attempts, Exception lastFailure)
+    {
+        context.Observability.ExecutionObserver.OnRetryExhausted(
+            new RetryExhaustedEvent(nodeId, kind, attempts, lastFailure, context.RunIdentity.PipelineId, context.RunIdentity.PipelineName));
     }
 
     /// <summary>

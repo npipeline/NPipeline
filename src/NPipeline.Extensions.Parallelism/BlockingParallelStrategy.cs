@@ -68,7 +68,6 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
         var windowSize = parallelOptions?.MaxQueueLength;
         var outputCap = parallelOptions?.OutputBufferCapacity;
         var preserveOrdering = parallelOptions?.PreserveOrdering ?? true;
-        var observer = context.Observability.ExecutionObserver;
 
         // Metrics for retry visibility.
         ParallelExecutionMetrics blockMetrics;
@@ -81,6 +80,8 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
             blockMetrics = new ParallelExecutionMetrics();
             context.NodeEnvironment.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.ParallelMetrics(nodeId), blockMetrics);
         }
+
+        Action<int> onRetry = blockMetrics.RecordRetry;
 
         // Input channels: one dedicated channel per worker (single writer = feeder, single reader = the owning
         // worker). The feeder round-robins items across partitions. Giving each worker its own channel avoids the
@@ -207,19 +208,18 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
                 {
                     await foreach (var work in reader.ReadAllAsync(faultCts.Token).ConfigureAwait(false))
                     {
-                        var result = await ExecuteWithRetryAsync(work.Item, node, context, cachedContext, blockMetrics, observer,
-                            work.LineageInputIndex, work.CorrelationId, work.AncestryInputIndices).ConfigureAwait(false);
+                        var result = await ExecuteItemAsync(work, node, context, cachedContext, onRetry).ConfigureAwait(false);
 
-                        if (result is not null)
+                        if (result.Produced)
                         {
-                            var envelope = new SequencedResult<TOut>(work.Sequence, true, result);
+                            var envelope = new SequencedResult<TOut>(work.Sequence, true, result.Output!);
 
                             if (!outputChannel.Writer.TryWrite(envelope))
                                 await outputChannel.Writer.WriteAsync(envelope, faultCts.Token).ConfigureAwait(false);
                         }
                         else if (preserveOrdering)
                         {
-                            // Skipped item: emit a placeholder so the reorder buffer can advance past this sequence.
+                            // Skipped or dead-lettered item: emit a placeholder so the reorder buffer can advance past this sequence.
                             var placeholder = new SequencedResult<TOut>(work.Sequence, false, default!);
 
                             if (!outputChannel.Writer.TryWrite(placeholder))

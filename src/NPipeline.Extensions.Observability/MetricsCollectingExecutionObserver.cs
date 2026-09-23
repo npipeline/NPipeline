@@ -175,6 +175,28 @@ public sealed class MetricsCollectingExecutionObserver(IObservabilityCollector c
     }
 
     /// <inheritdoc />
+    public void OnRetryExhausted(RetryExhaustedEvent e)
+    {
+        ArgumentNullException.ThrowIfNull(e);
+
+        if (_disposed)
+            return;
+
+        _collector.RecordRetryExhausted(e.NodeId, e.PipelineId, e.PipelineName);
+    }
+
+    /// <inheritdoc />
+    public void OnCircuitStateChanged(CircuitStateChangedEvent e)
+    {
+        ArgumentNullException.ThrowIfNull(e);
+
+        if (_disposed)
+            return;
+
+        _collector.RecordCircuitStateChanged(e.NodeId, e.State, e.PipelineId, e.PipelineName);
+    }
+
+    /// <inheritdoc />
     public void OnDrop(QueueDropEvent e)
     {
         ArgumentNullException.ThrowIfNull(e);

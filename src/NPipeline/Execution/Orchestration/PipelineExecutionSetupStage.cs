@@ -115,7 +115,7 @@ internal sealed class PipelineExecutionSetupStage(
         execution.CircuitBreakerMemoryOptions = memoryOptions;
 
         var managerLogger = context.Observability.LoggerFactory.CreateLogger(nameof(CircuitBreakerManager));
-        var circuitBreakerManager = context.CreateAndRegister(new CircuitBreakerManager(managerLogger, memoryOptions));
+        var circuitBreakerManager = context.CreateAndRegister(new CircuitBreakerManager(managerLogger, memoryOptions, CircuitBreakerResolver.ReportStateChanges(context)));
         execution.CircuitBreakerManager = circuitBreakerManager;
         PipelineRunnerLogMessages.CircuitBreakerManagerCreated(managerLogger);
     }

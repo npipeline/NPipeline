@@ -51,7 +51,10 @@ await using var context = contextFactory.Create();
 | `ItemsProcessed` | `long` | Items consumed |
 | `ItemsEmitted` | `long` | Items produced |
 | `Exception` | `Exception?` | Error, if any |
-| `RetryCount` | `int` | Maximum retry attempts |
+| `RetryCount` | `int` | Highest retry attempt number seen, at any retry layer |
+| `RetryEvents` | `long` | Retries at every layer: item retry, node restart, and node retry |
+| `RetriesExhausted` | `long` | Times a retry layer gave up on the node after retrying it |
+| `CircuitBreakerTrips` | `long` | Times the node's circuit breaker opened |
 | `PeakMemoryUsageMb` | `double?` | Memory delta (optional) |
 | `ProcessorTimeMs` | `double?` | CPU time (optional) |
 | `ThroughputItemsPerSec` | `double?` | Items/sec |
@@ -72,6 +75,19 @@ The built-in `MetricsCollectingExecutionObserver` uses dataflow completion plus 
 Timing breakdown values are captured as best-effort snapshots to avoid lock contention; under concurrent updates, small transient skew between buckets is possible.
 
 If you implement a custom `IExecutionObserver`, handle `OnNodeDataflowCompleted(...)` when you need true stream runtime attribution.
+
+### Resilience Events
+
+The three retry layers report to the same observer, so one counter covers the whole pipeline:
+
+- `OnRetry(NodeRetryEvent)` is raised before every retry. `Kind` says which layer retried: `RetryKind.ItemRetry`,
+  `RetryKind.NodeRestart`, or `RetryKind.NodeRetry`.
+- `OnRetryExhausted(RetryExhaustedEvent)` is raised when a layer gives up after at least one retry, just before the node
+  fails with `RetryExhaustedException`. Failures that are never retried do not raise this event.
+- `OnCircuitStateChanged(CircuitStateChangedEvent)` is raised on every breaker transition. The transition from `Open`
+  to `HalfOpen` comes from a timer thread, not from the node's execution.
+
+`OnRetryExhausted` and `OnCircuitStateChanged` are default interface methods, so existing observers compile unchanged.
 
 ## Pipeline Metrics
 

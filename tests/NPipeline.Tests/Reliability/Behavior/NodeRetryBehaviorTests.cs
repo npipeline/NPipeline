@@ -52,7 +52,9 @@ public sealed class NodeRetryBehaviorTests
 
         sink.Items.Should().Equal([1]);
         observer.Retries.Should().ContainSingle()
-            .Which.Should().Match<NodeRetryEvent>(e => e.NodeId == "source" && e.Attempt == 1 && e.LastException is TimeoutException);
+            .Which.Should().Match<NodeRetryEvent>(e =>
+                e.NodeId == "source" && e.Kind == RetryKind.NodeRetry && e.Attempt == 1 && e.LastException is TimeoutException);
+        observer.Exhaustions.Should().BeEmpty("the retry succeeded");
     }
 
     [Fact]
@@ -111,6 +113,7 @@ public sealed class NodeRetryBehaviorTests
     public async Task ExhaustedNodeRetries_ThrowRetryExhausted()
     {
         var source = new FailsToOpenSource(() => new TimeoutException("still down"));
+        var observer = new RecordingObserver();
 
         var act = () => BehaviorPipeline.RunAsync(b =>
         {
@@ -118,7 +121,7 @@ public sealed class NodeRetryBehaviorTests
             var k = b.AddSink<CollectingSink<int>, int>("sink");
             _ = b.AddPreconfiguredNodeInstance(s.Id, source).AddPreconfiguredNodeInstance(k.Id, new CollectingSink<int>()).Connect(s, k);
             _ = b.WithResilience(o => o with { NodeRetry = new NodeRetryOptions { MaxRetries = 2, Backoff = RetryBackoff.None } });
-        });
+        }, observer: observer);
 
         var thrown = await act.Should().ThrowAsync<Exception>();
 
@@ -128,6 +131,10 @@ public sealed class NodeRetryBehaviorTests
 
         exhausted.Should().BeOfType<RetryExhaustedException>().Which.NodeId.Should().Be("source");
         source.Opens.Should().Be(3);
+        observer.Retries.Should().HaveCount(2).And.OnlyContain(e => e.Kind == RetryKind.NodeRetry);
+        observer.Exhaustions.Should().ContainSingle()
+            .Which.Should().Match<RetryExhaustedEvent>(e =>
+                e.NodeId == "source" && e.Kind == RetryKind.NodeRetry && e.Attempts == 3 && e.LastException is TimeoutException);
     }
 
     private sealed class FailsToOpenSource(Func<Exception> failure) : SourceNode<int>

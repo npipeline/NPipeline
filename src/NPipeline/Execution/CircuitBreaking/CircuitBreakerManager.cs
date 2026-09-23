@@ -16,6 +16,7 @@ internal sealed class CircuitBreakerManager : ICircuitBreakerManager, IDisposabl
     private readonly Timer? _cleanupTimer;
     private readonly ILogger _logger;
     private readonly CircuitBreakerMemoryManagementOptions _memoryOptions;
+    private readonly Action<string, CircuitState, CircuitState, string>? _stateChanged;
     private readonly CircuitBreakerTracker _tracker;
 
     /// <summary>
@@ -23,10 +24,13 @@ internal sealed class CircuitBreakerManager : ICircuitBreakerManager, IDisposabl
     /// </summary>
     /// <param name="logger">The logger for diagnostic information.</param>
     /// <param name="memoryOptions">The memory management options for cleanup.</param>
-    public CircuitBreakerManager(ILogger logger, CircuitBreakerMemoryManagementOptions? memoryOptions = null)
+    /// <param name="stateChanged">Called with the node id, the previous state, the new state, and the reason after every breaker transition.</param>
+    public CircuitBreakerManager(ILogger logger, CircuitBreakerMemoryManagementOptions? memoryOptions = null,
+        Action<string, CircuitState, CircuitState, string>? stateChanged = null)
     {
         ArgumentNullException.ThrowIfNull(logger);
         _logger = logger;
+        _stateChanged = stateChanged;
         _memoryOptions = (memoryOptions ?? CircuitBreakerMemoryManagementOptions.Default).Validate();
         _tracker = new CircuitBreakerTracker();
 
@@ -142,7 +146,10 @@ internal sealed class CircuitBreakerManager : ICircuitBreakerManager, IDisposabl
         }
 
         CircuitBreakerManagerLogMessages.CreatingCircuitBreaker(_logger, nodeId, options);
-        var circuitBreaker = new CircuitBreaker(options, _logger);
+        var stateChanged = _stateChanged;
+
+        var circuitBreaker = new CircuitBreaker(options, _logger,
+            stateChanged is null ? null : (previous, next, reason) => stateChanged(nodeId, previous, next, reason));
 
         // Track the new circuit breaker
         _tracker.UpdateAccessTime(nodeId);

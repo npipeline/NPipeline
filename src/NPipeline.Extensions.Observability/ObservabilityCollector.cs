@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using NPipeline.Execution;
 using NPipeline.Observability.Metrics;
 
 namespace NPipeline.Observability;
@@ -60,6 +61,26 @@ public sealed class ObservabilityCollector : IObservabilityCollector
         var builder = GetOrCreateBuilder(nodeId, pipelineId, pipelineName);
         builder.TrySetPipelineName(pipelineName);
         builder.RecordRetry(retryCount);
+    }
+
+    /// <inheritdoc />
+    public void RecordRetryExhausted(string nodeId, Guid pipelineId, string? pipelineName = null)
+    {
+        ArgumentNullException.ThrowIfNull(nodeId);
+
+        var builder = GetOrCreateBuilder(nodeId, pipelineId, pipelineName);
+        builder.TrySetPipelineName(pipelineName);
+        builder.RecordRetryExhausted();
+    }
+
+    /// <inheritdoc />
+    public void RecordCircuitStateChanged(string nodeId, CircuitState state, Guid pipelineId, string? pipelineName = null)
+    {
+        ArgumentNullException.ThrowIfNull(nodeId);
+
+        var builder = GetOrCreateBuilder(nodeId, pipelineId, pipelineName);
+        builder.TrySetPipelineName(pipelineName);
+        builder.RecordCircuitStateChanged(state);
     }
 
     /// <inheritdoc />
@@ -204,6 +225,9 @@ public sealed class ObservabilityCollector : IObservabilityCollector
         private double? _peakMemoryUsageMb;
         private double? _processorTimeMs;
         private int _retryCount;
+        private long _retryEvents;
+        private long _retriesExhausted;
+        private long _circuitBreakerTrips;
         private DateTimeOffset? _startTime;
         private bool _success = true;
         private int? _threadId;
@@ -293,6 +317,8 @@ public sealed class ObservabilityCollector : IObservabilityCollector
 
         public void RecordRetry(int retryCount)
         {
+            _ = Interlocked.Increment(ref _retryEvents);
+
             int initial, computed;
 
             do
@@ -300,6 +326,17 @@ public sealed class ObservabilityCollector : IObservabilityCollector
                 initial = _retryCount;
                 computed = Math.Max(initial, retryCount);
             } while (Interlocked.CompareExchange(ref _retryCount, computed, initial) != initial);
+        }
+
+        public void RecordRetryExhausted()
+        {
+            _ = Interlocked.Increment(ref _retriesExhausted);
+        }
+
+        public void RecordCircuitStateChanged(CircuitState state)
+        {
+            if (state == CircuitState.Open)
+                _ = Interlocked.Increment(ref _circuitBreakerTrips);
         }
 
         public void RecordPerformanceMetrics(double throughputItemsPerSec, double averageItemProcessingMs)
@@ -390,7 +427,10 @@ public sealed class ObservabilityCollector : IObservabilityCollector
                     durationMs,
                     inputWaitDurationMs,
                     outputBlockDurationMs,
-                    wallDurationMs);
+                    wallDurationMs,
+                    Interlocked.Read(ref _retryEvents),
+                    Interlocked.Read(ref _retriesExhausted),
+                    Interlocked.Read(ref _circuitBreakerTrips));
             }
         }
     }

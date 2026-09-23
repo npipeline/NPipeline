@@ -22,6 +22,15 @@ internal static class CircuitBreakerResolver
     }
 
     /// <summary>
+    ///     Forwards a breaker's state changes to the run's execution observer.
+    /// </summary>
+    public static Action<string, CircuitState, CircuitState, string> ReportStateChanges(PipelineContext context)
+    {
+        return (nodeId, previous, next, reason) => context.Observability.ExecutionObserver.OnCircuitStateChanged(
+            new CircuitStateChangedEvent(nodeId, previous, next, reason, context.RunIdentity.PipelineId, context.RunIdentity.PipelineName));
+    }
+
+    /// <summary>
     ///     Creates the manager when a strategy runs outside a pipeline run, whose setup would otherwise have created it.
     /// </summary>
     private static ICircuitBreakerManager CreateManager(PipelineContext context)
@@ -34,7 +43,7 @@ internal static class CircuitBreakerResolver
                 return existing;
 
             var logger = context.Observability.LoggerFactory.CreateLogger(nameof(CircuitBreakerManager));
-            var manager = context.CreateAndRegister(new CircuitBreakerManager(logger, execution.CircuitBreakerMemoryOptions));
+            var manager = context.CreateAndRegister(new CircuitBreakerManager(logger, execution.CircuitBreakerMemoryOptions, ReportStateChanges(context)));
             execution.CircuitBreakerManager = manager;
             return manager;
         }

@@ -3,6 +3,7 @@ using AwesomeAssertions;
 using FakeItEasy;
 using Microsoft.Extensions.Logging;
 using NPipeline.Configuration;
+using NPipeline.Execution;
 using NPipeline.Execution.CircuitBreaking;
 
 namespace NPipeline.Tests.ErrorHandling;
@@ -38,7 +39,7 @@ public sealed class CircuitBreakerUnitTests : IDisposable
         using var circuitBreaker = new CircuitBreaker(_defaultOptions, _logger);
 
         // Assert
-        _ = circuitBreaker.State.Should().Be(CircuitBreakerState.Closed);
+        _ = circuitBreaker.State.Should().Be(CircuitState.Closed);
         _ = circuitBreaker.Options.Should().Be(_defaultOptions);
     }
 
@@ -114,8 +115,8 @@ public sealed class CircuitBreakerUnitTests : IDisposable
         // Assert
         _ = result.Allowed.Should().BeTrue();
         _ = result.StateChanged.Should().BeFalse();
-        _ = result.NewState.Should().Be(CircuitBreakerState.Closed);
-        _ = circuitBreaker.State.Should().Be(CircuitBreakerState.Closed);
+        _ = result.NewState.Should().Be(CircuitState.Closed);
+        _ = circuitBreaker.State.Should().Be(CircuitState.Closed);
     }
 
     [Fact]
@@ -136,12 +137,12 @@ public sealed class CircuitBreakerUnitTests : IDisposable
         // Assert
         _ = result1.Allowed.Should().BeTrue();
         _ = result1.StateChanged.Should().BeFalse();
-        _ = result1.NewState.Should().Be(CircuitBreakerState.Closed);
+        _ = result1.NewState.Should().Be(CircuitState.Closed);
 
         _ = result2.Allowed.Should().BeFalse();
         _ = result2.StateChanged.Should().BeTrue();
-        _ = result2.NewState.Should().Be(CircuitBreakerState.Open);
-        _ = circuitBreaker.State.Should().Be(CircuitBreakerState.Open);
+        _ = result2.NewState.Should().Be(CircuitState.Open);
+        _ = circuitBreaker.State.Should().Be(CircuitState.Open);
     }
 
     [Fact]
@@ -171,8 +172,8 @@ public sealed class CircuitBreakerUnitTests : IDisposable
 
         _ = result3.Allowed.Should().BeFalse();
         _ = result3.StateChanged.Should().BeTrue();
-        _ = result3.NewState.Should().Be(CircuitBreakerState.Open);
-        _ = circuitBreaker.State.Should().Be(CircuitBreakerState.Open);
+        _ = result3.NewState.Should().Be(CircuitState.Open);
+        _ = circuitBreaker.State.Should().Be(CircuitState.Open);
     }
 
     [Fact]
@@ -197,8 +198,8 @@ public sealed class CircuitBreakerUnitTests : IDisposable
         // Assert
         _ = result3.Allowed.Should().BeFalse();
         _ = result3.StateChanged.Should().BeTrue();
-        _ = result3.NewState.Should().Be(CircuitBreakerState.Open);
-        _ = circuitBreaker.State.Should().Be(CircuitBreakerState.Open);
+        _ = result3.NewState.Should().Be(CircuitState.Open);
+        _ = circuitBreaker.State.Should().Be(CircuitState.Open);
     }
 
     [Fact]
@@ -222,8 +223,8 @@ public sealed class CircuitBreakerUnitTests : IDisposable
         // Assert
         _ = result2.Allowed.Should().BeFalse();
         _ = result2.StateChanged.Should().BeTrue();
-        _ = result2.NewState.Should().Be(CircuitBreakerState.Open);
-        _ = circuitBreaker.State.Should().Be(CircuitBreakerState.Open);
+        _ = result2.NewState.Should().Be(CircuitState.Open);
+        _ = circuitBreaker.State.Should().Be(CircuitState.Open);
     }
 
     [Fact]
@@ -246,13 +247,13 @@ public sealed class CircuitBreakerUnitTests : IDisposable
         var sw = Stopwatch.StartNew();
         const int maxWaitMs = 5000; // Increased timeout to handle slower CI environments
 
-        while (circuitBreaker.State != CircuitBreakerState.HalfOpen && sw.ElapsedMilliseconds < maxWaitMs)
+        while (circuitBreaker.State != CircuitState.HalfOpen && sw.ElapsedMilliseconds < maxWaitMs)
         {
             Thread.Sleep(5);
         }
 
         // Verify the state transition actually happened before proceeding
-        _ = circuitBreaker.State.Should().Be(CircuitBreakerState.HalfOpen,
+        _ = circuitBreaker.State.Should().Be(CircuitState.HalfOpen,
             "Circuit breaker should have transitioned to Half-Open state within timeout");
 
         // Act
@@ -261,7 +262,7 @@ public sealed class CircuitBreakerUnitTests : IDisposable
         // Assert - After first success, should still be in Half-Open state
         _ = result1.Allowed.Should().BeTrue();
         _ = result1.StateChanged.Should().BeFalse();
-        _ = circuitBreaker.State.Should().Be(CircuitBreakerState.HalfOpen);
+        _ = circuitBreaker.State.Should().Be(CircuitState.HalfOpen);
 
         // Act - Second success should trigger transition to Closed
         var result2 = circuitBreaker.RecordSuccess();
@@ -269,8 +270,8 @@ public sealed class CircuitBreakerUnitTests : IDisposable
         // Assert - After second success (reaching threshold), should transition to Closed
         _ = result2.Allowed.Should().BeTrue();
         _ = result2.StateChanged.Should().BeTrue();
-        _ = result2.NewState.Should().Be(CircuitBreakerState.Closed);
-        _ = circuitBreaker.State.Should().Be(CircuitBreakerState.Closed);
+        _ = result2.NewState.Should().Be(CircuitState.Closed);
+        _ = circuitBreaker.State.Should().Be(CircuitState.Closed);
     }
 
     [Fact]
@@ -291,7 +292,7 @@ public sealed class CircuitBreakerUnitTests : IDisposable
         // Poll until the circuit breaker transitions to Half-Open
         var sw = Stopwatch.StartNew();
 
-        while (circuitBreaker.State != CircuitBreakerState.HalfOpen && sw.ElapsedMilliseconds < 1000)
+        while (circuitBreaker.State != CircuitState.HalfOpen && sw.ElapsedMilliseconds < 1000)
         {
             Thread.Sleep(10);
         }
@@ -302,8 +303,8 @@ public sealed class CircuitBreakerUnitTests : IDisposable
         // Assert
         _ = result.Allowed.Should().BeFalse();
         _ = result.StateChanged.Should().BeTrue();
-        _ = result.NewState.Should().Be(CircuitBreakerState.Open);
-        _ = circuitBreaker.State.Should().Be(CircuitBreakerState.Open);
+        _ = result.NewState.Should().Be(CircuitState.Open);
+        _ = circuitBreaker.State.Should().Be(CircuitState.Open);
     }
 
     [Fact]
@@ -326,7 +327,7 @@ public sealed class CircuitBreakerUnitTests : IDisposable
         // Poll until the circuit breaker transitions to Half-Open
         var sw = Stopwatch.StartNew();
 
-        while (circuitBreaker.State != CircuitBreakerState.HalfOpen && sw.ElapsedMilliseconds < 1000)
+        while (circuitBreaker.State != CircuitState.HalfOpen && sw.ElapsedMilliseconds < 1000)
         {
             Thread.Sleep(10);
         }
@@ -420,8 +421,8 @@ public sealed class CircuitBreakerUnitTests : IDisposable
 
         // Assert
         _ = circuitBreaker.State.Should().BeOneOf(
-            CircuitBreakerState.Open,
-            CircuitBreakerState.Closed);
+            CircuitState.Open,
+            CircuitState.Closed);
 
         var stats = circuitBreaker.GetStatistics();
         _ = stats.TotalOperations.Should().Be(15);
@@ -454,7 +455,7 @@ public sealed class CircuitBreakerUnitTests : IDisposable
         // Poll until the circuit breaker transitions to Half-Open
         var sw = Stopwatch.StartNew();
 
-        while (circuitBreaker.State != CircuitBreakerState.HalfOpen && sw.ElapsedMilliseconds < 1000)
+        while (circuitBreaker.State != CircuitState.HalfOpen && sw.ElapsedMilliseconds < 1000)
         {
             Thread.Sleep(10);
         }
@@ -474,7 +475,7 @@ public sealed class CircuitBreakerUnitTests : IDisposable
 
         // Verify that transition actually happened
         _ = transitionResult.StateChanged.Should().BeTrue();
-        _ = transitionResult.NewState.Should().Be(CircuitBreakerState.Closed);
+        _ = transitionResult.NewState.Should().Be(CircuitState.Closed);
     }
 
     [Theory]
@@ -543,12 +544,12 @@ public sealed class CircuitBreakerUnitTests : IDisposable
         _ = circuitBreaker.RecordFailure();
 
         // Act & Assert
-        _ = circuitBreaker.State.Should().Be(CircuitBreakerState.Open);
+        _ = circuitBreaker.State.Should().Be(CircuitState.Open);
         _ = circuitBreaker.CanExecute().Should().BeFalse();
 
         // Should not transition to Half-Open since timer is not started
         Thread.Sleep(100);
-        _ = circuitBreaker.State.Should().Be(CircuitBreakerState.Open);
+        _ = circuitBreaker.State.Should().Be(CircuitState.Open);
     }
 
     [Fact]
@@ -596,6 +597,6 @@ public sealed class CircuitBreakerUnitTests : IDisposable
         // Assert
         _ = result1.StateChanged.Should().BeFalse();
         _ = result2.StateChanged.Should().BeTrue();
-        _ = circuitBreaker.State.Should().Be(CircuitBreakerState.Open);
+        _ = circuitBreaker.State.Should().Be(CircuitState.Open);
     }
 }

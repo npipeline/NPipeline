@@ -167,7 +167,6 @@ public sealed class DropOldestParallelStrategy : ParallelExecutionStrategyBase
             context,
             cachedContext,
             metrics,
-            observer,
             effectiveDop,
             cancellationToken);
 

@@ -1,4 +1,5 @@
 using System.Globalization;
+using Microsoft.Extensions.Logging;
 using NPipeline.Execution.Lineage;
 using NPipeline.ErrorHandling;
 using NPipeline.Lineage;
@@ -25,7 +26,10 @@ internal sealed class PerItemRetryExecutor : IPerItemRetryExecutor
         long lineageInputIndex,
         LineageNodeOutcomeWriter lineageOutcomeWriter,
         IPipelineActivity? itemActivity,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Guid? correlationId = null,
+        int[]? ancestryInputIndices = null,
+        Action<int>? onRetry = null)
     {
         ArgumentNullException.ThrowIfNull(node);
         ArgumentNullException.ThrowIfNull(context);
@@ -52,6 +56,7 @@ internal sealed class PerItemRetryExecutor : IPerItemRetryExecutor
             catch (Exception ex)
             {
                 itemActivity?.RecordException(ex);
+                PerItemRetryExecutorLogMessages.AttemptFailed(CreateLogger(context), ex, nodeId, attempt);
 
                 var policy = ResilienceRuntime.ResolvePolicy(context, nodeId);
 
@@ -81,7 +86,7 @@ internal sealed class PerItemRetryExecutor : IPerItemRetryExecutor
                         {
                             // Dropping the item here would lose it silently while lineage claimed it was dead-lettered.
                             var noSink = new DeadLetterSinkNotConfiguredException(nodeId, ex);
-                            PipelineSampleErrorReporter.TryRecordError(context, nodeId, item, noSink, retries);
+                            PipelineSampleErrorReporter.TryRecordError(context, nodeId, item, noSink, retries, correlationId, ancestryInputIndices);
                             RecordLineageOutcome(hasLineageIndex, lineageInputIndex, in lineageOutcomeWriter, context, nodeId, LineageOutcomeReason.Error, retries);
                             throw noSink;
                         }
@@ -94,15 +99,14 @@ internal sealed class PerItemRetryExecutor : IPerItemRetryExecutor
                         if (attempt > ResilienceRuntime.MaxPolicyRepeats)
                         {
                             var runaway = ResilienceRuntime.RepeatCeilingExceeded(policy, nodeId, decision, ex);
-                            PipelineSampleErrorReporter.TryRecordError(context, nodeId, item, runaway, retries);
+                            PipelineSampleErrorReporter.TryRecordError(context, nodeId, item, runaway, retries, correlationId, ancestryInputIndices);
                             RecordLineageOutcome(hasLineageIndex, lineageInputIndex, in lineageOutcomeWriter, context, nodeId, LineageOutcomeReason.Error, retries);
                             throw runaway;
                         }
 
                         itemActivity?.SetTag("retry.attempt", attempt.ToString(CultureInfo.InvariantCulture));
-
-                        context.Observability.ExecutionObserver.OnRetry(new NodeRetryEvent(nodeId, RetryKind.ItemRetry, attempt, ex,
-                            context.RunIdentity.PipelineId, context.RunIdentity.PipelineName));
+                        onRetry?.Invoke(attempt);
+                        ResilienceRuntime.ReportRetry(context, nodeId, RetryKind.ItemRetry, attempt, ex);
 
                         await WaitBeforeRetryAsync(options, context, nodeId, attempt, cancellationToken).ConfigureAwait(false);
                         attempt++;
@@ -112,12 +116,13 @@ internal sealed class PerItemRetryExecutor : IPerItemRetryExecutor
                         if (retries > 0)
                         {
                             var exhausted = new RetryExhaustedException(nodeId, attempt, ex);
-                            PipelineSampleErrorReporter.TryRecordError(context, nodeId, item, exhausted, retries);
+                            PipelineSampleErrorReporter.TryRecordError(context, nodeId, item, exhausted, retries, correlationId, ancestryInputIndices);
                             RecordLineageOutcome(hasLineageIndex, lineageInputIndex, in lineageOutcomeWriter, context, nodeId, LineageOutcomeReason.Error, retries);
+                            ResilienceRuntime.ReportRetryExhausted(context, nodeId, RetryKind.ItemRetry, attempt, ex);
                             throw exhausted;
                         }
 
-                        PipelineSampleErrorReporter.TryRecordError(context, nodeId, item, ex, retries);
+                        PipelineSampleErrorReporter.TryRecordError(context, nodeId, item, ex, retries, correlationId, ancestryInputIndices);
                         RecordLineageOutcome(hasLineageIndex, lineageInputIndex, in lineageOutcomeWriter, context, nodeId, LineageOutcomeReason.Error, retries);
                         throw;
 
@@ -140,10 +145,14 @@ internal sealed class PerItemRetryExecutor : IPerItemRetryExecutor
         if (delay <= TimeSpan.Zero)
             return;
 
-        var logger = context.Observability.LoggerFactory.CreateLogger(nameof(PerItemRetryExecutor));
-        PerItemRetryExecutorLogMessages.ApplyingRetryDelay(logger, delay.TotalMilliseconds, nodeId, retry);
+        PerItemRetryExecutorLogMessages.ApplyingRetryDelay(CreateLogger(context), delay.TotalMilliseconds, nodeId, retry);
 
         await Task.Delay(delay, options.Time, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static ILogger CreateLogger(PipelineContext context)
+    {
+        return context.Observability.LoggerFactory.CreateLogger(nameof(PerItemRetryExecutor));
     }
 
     private static void RecordLineageOutcome(

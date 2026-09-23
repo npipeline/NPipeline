@@ -110,17 +110,33 @@ internal sealed class FailsToOpenOnceSource(IEnumerable<int> items) : SourceNode
 }
 
 /// <summary>
-///     Records the retry events raised to <see cref="IExecutionObserver.OnRetry" />.
+///     Records the resilience events raised to an <see cref="IExecutionObserver" />.
 /// </summary>
 internal sealed class RecordingObserver : IExecutionObserver
 {
+    private readonly ConcurrentQueue<CircuitStateChangedEvent> _circuitChanges = new();
+    private readonly ConcurrentQueue<RetryExhaustedEvent> _exhaustions = new();
     private readonly ConcurrentQueue<NodeRetryEvent> _retries = new();
 
     public IReadOnlyList<NodeRetryEvent> Retries => [.. _retries];
 
+    public IReadOnlyList<RetryExhaustedEvent> Exhaustions => [.. _exhaustions];
+
+    public IReadOnlyList<CircuitStateChangedEvent> CircuitChanges => [.. _circuitChanges];
+
     public void OnRetry(NodeRetryEvent e)
     {
         _retries.Enqueue(e);
+    }
+
+    public void OnRetryExhausted(RetryExhaustedEvent e)
+    {
+        _exhaustions.Enqueue(e);
+    }
+
+    public void OnCircuitStateChanged(CircuitStateChangedEvent e)
+    {
+        _circuitChanges.Enqueue(e);
     }
 
     public void OnNodeStarted(NodeExecutionStarted e)

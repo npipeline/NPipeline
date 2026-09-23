@@ -142,7 +142,6 @@ public sealed class DropNewestParallelStrategy : ParallelExecutionStrategyBase
             context,
             cachedContext,
             metrics,
-            observer,
             effectiveDop,
             cancellationToken);
 

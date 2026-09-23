@@ -268,6 +268,10 @@ new ParallelOptions { MaxDegreeOfParallelism = 16, MaxQueueLength = 100 }
 | `ItemsWithRetry` | Items that required at least one retry |
 | `MaxItemRetryAttempts` | Highest retry count for a single item |
 
+Parallel workers process each item with the same item executor as the sequential strategy. Item retry, backoff, the
+resilience policy, skipping, and dead-lettering behave identically in both strategies. Every item retry also raises
+`OnRetry` with `RetryKind.ItemRetry` on the pipeline's `IExecutionObserver`.
+
 Metrics are reported to the `IExecutionObserver` at `MetricsInterval`. Adjust the interval based on your monitoring needs:
 
 ```csharp

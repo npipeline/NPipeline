@@ -34,6 +34,27 @@ public interface IExecutionObserver
     void OnRetry(NodeRetryEvent e);
 
     /// <summary>
+    ///     Called when a resilience layer stops retrying after at least one retry, just before the node's
+    ///     <see cref="NPipeline.ErrorHandling.RetryExhaustedException" /> is thrown.
+    /// </summary>
+    /// <param name="e">The event containing the exhausted layer and its last failure.</param>
+    void OnRetryExhausted(RetryExhaustedEvent e)
+    {
+    }
+
+    /// <summary>
+    ///     Called when a node's circuit breaker changes state.
+    /// </summary>
+    /// <param name="e">The event containing the previous and new state.</param>
+    /// <remarks>
+    ///     The transition from <see cref="CircuitState.Open" /> to <see cref="CircuitState.HalfOpen" /> is raised from a
+    ///     timer thread, not from the node's execution.
+    /// </remarks>
+    void OnCircuitStateChanged(CircuitStateChangedEvent e)
+    {
+    }
+
+    /// <summary>
     ///     Called when items are dropped from a queue due to backpressure.
     /// </summary>
     /// <param name="e">The event containing queue drop information.</param>
@@ -111,15 +132,75 @@ public sealed record NodeDataflowCompleted(
 public enum RetryKind
 {
     /// <summary>
-    ///     A single item is being retried.
+    ///     A single item is being retried (item retry, L1).
     /// </summary>
     ItemRetry,
 
     /// <summary>
-    ///     The entire node is being restarted.
+    ///     A transform node's output stream is being restarted (node restart, L2).
     /// </summary>
     NodeRestart,
+
+    /// <summary>
+    ///     The whole node is being executed again (node retry, L3).
+    /// </summary>
+    NodeRetry,
 }
+
+/// <summary>
+///     Event data raised when a resilience layer gives up on a node after retrying it.
+/// </summary>
+/// <param name="NodeId">The unique identifier of the node.</param>
+/// <param name="Kind">The layer that gave up.</param>
+/// <param name="Attempts">The number of attempts made, including the first.</param>
+/// <param name="LastException">The failure of the last attempt.</param>
+/// <param name="PipelineId">The unique pipeline identity for the current execution context.</param>
+/// <param name="PipelineName">The logical pipeline name for the current execution context.</param>
+public sealed record RetryExhaustedEvent(
+    string NodeId,
+    RetryKind Kind,
+    int Attempts,
+    Exception LastException,
+    Guid PipelineId,
+    string? PipelineName = null);
+
+/// <summary>
+///     The state of a node's circuit breaker.
+/// </summary>
+public enum CircuitState
+{
+    /// <summary>
+    ///     Normal operation: every attempt is allowed.
+    /// </summary>
+    Closed,
+
+    /// <summary>
+    ///     Tripped: attempts are refused until the open duration elapses.
+    /// </summary>
+    Open,
+
+    /// <summary>
+    ///     Probing: a limited number of attempts test whether the dependency has recovered.
+    /// </summary>
+    HalfOpen,
+}
+
+/// <summary>
+///     Event data raised when a node's circuit breaker changes state.
+/// </summary>
+/// <param name="NodeId">The unique identifier of the node that owns the breaker.</param>
+/// <param name="PreviousState">The state before the change.</param>
+/// <param name="State">The state after the change.</param>
+/// <param name="Reason">Why the breaker changed state.</param>
+/// <param name="PipelineId">The unique pipeline identity for the current execution context.</param>
+/// <param name="PipelineName">The logical pipeline name for the current execution context.</param>
+public sealed record CircuitStateChangedEvent(
+    string NodeId,
+    CircuitState PreviousState,
+    CircuitState State,
+    string Reason,
+    Guid PipelineId,
+    string? PipelineName = null);
 
 /// <summary>
 ///     Event data for node retry operations.

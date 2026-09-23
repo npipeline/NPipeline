@@ -17,6 +17,9 @@ internal static partial class CircuitBreakerLogMessages
 
     [LoggerMessage(3, LogLevel.Information, "Circuit breaker transitioned from {PreviousState} to Closed: {Reason}. Metrics reset.")]
     public static partial void TransitionedToClosed(ILogger logger, string previousState, string reason);
+
+    [LoggerMessage(4, LogLevel.Warning, "Circuit breaker state-change listener failed for the transition from {PreviousState} to {State}")]
+    public static partial void StateChangeListenerFailed(ILogger logger, Exception exception, string previousState, string state);
 }
 
 /// <summary>
@@ -249,6 +252,9 @@ internal static partial class PerItemRetryExecutorLogMessages
 {
     [LoggerMessage(1, LogLevel.Debug, "Applying retry delay of {Delay}ms for item on node {NodeId} before retry {Retry}")]
     public static partial void ApplyingRetryDelay(ILogger logger, double delay, string nodeId, int retry);
+
+    [LoggerMessage(2, LogLevel.Debug, "Item on node {NodeId} failed on attempt {Attempt}")]
+    public static partial void AttemptFailed(ILogger logger, Exception exception, string nodeId, int attempt);
 }
 
 /// <summary>

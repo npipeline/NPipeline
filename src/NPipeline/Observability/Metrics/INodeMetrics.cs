@@ -68,9 +68,24 @@ public interface INodeMetrics
     Exception? Exception { get; }
 
     /// <summary>
-    ///     The number of retries that occurred during processing.
+    ///     The highest retry attempt number recorded for this node, at any retry layer.
     /// </summary>
     int RetryCount { get; }
+
+    /// <summary>
+    ///     The number of retries recorded for this node, across item retry, node restart, and node retry.
+    /// </summary>
+    long RetryEvents => 0;
+
+    /// <summary>
+    ///     The number of times a retry layer gave up on this node after retrying it.
+    /// </summary>
+    long RetriesExhausted => 0;
+
+    /// <summary>
+    ///     The number of times this node's circuit breaker opened.
+    /// </summary>
+    long CircuitBreakerTrips => 0;
 
     /// <summary>
     ///     The peak memory usage in megabytes during node execution.

@@ -14,22 +14,25 @@ internal sealed class CircuitBreaker : ICircuitBreaker, IDisposable
     private readonly ILogger _logger;
     private readonly Timer? _recoveryTimer;
     private readonly RollingWindow? _rollingWindow;
+    private readonly Action<CircuitState, CircuitState, string>? _stateChanged;
     private int _consecutiveFailures;
     private bool _disposed;
     private int _halfOpenAttempts;
     private int _halfOpenSuccesses;
     private long _lastActivityTicks = DateTime.UtcNow.Ticks;
-    private CircuitBreakerState _state = CircuitBreakerState.Closed;
+    private CircuitState _state = CircuitState.Closed;
 
     /// <summary>
     ///     Initializes a new instance of CircuitBreaker class.
     /// </summary>
     /// <param name="options">The circuit breaker configuration options.</param>
     /// <param name="logger">The logger for diagnostic information.</param>
-    public CircuitBreaker(PipelineCircuitBreakerOptions options, ILogger logger)
+    /// <param name="stateChanged">Called with the previous state, the new state, and the reason after every transition.</param>
+    public CircuitBreaker(PipelineCircuitBreakerOptions options, ILogger logger, Action<CircuitState, CircuitState, string>? stateChanged = null)
     {
         Options = (options ?? throw new ArgumentNullException(nameof(options))).Validate();
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _stateChanged = stateChanged;
 
         _rollingWindow = Options.TrackOperationsInWindow
             ? new RollingWindow(Options.SamplingWindow)
@@ -43,7 +46,7 @@ internal sealed class CircuitBreaker : ICircuitBreaker, IDisposable
     /// <summary>
     ///     Gets current state of circuit breaker.
     /// </summary>
-    public CircuitBreakerState State
+    public CircuitState State
     {
         get
         {
@@ -90,9 +93,9 @@ internal sealed class CircuitBreaker : ICircuitBreaker, IDisposable
 
             return _state switch
             {
-                CircuitBreakerState.Closed => true,
-                CircuitBreakerState.Open => false,
-                CircuitBreakerState.HalfOpen => _halfOpenAttempts < Options.HalfOpenMaxAttempts,
+                CircuitState.Closed => true,
+                CircuitState.Open => false,
+                CircuitState.HalfOpen => _halfOpenAttempts < Options.HalfOpenMaxAttempts,
                 _ => false,
             };
         }
@@ -104,23 +107,30 @@ internal sealed class CircuitBreaker : ICircuitBreaker, IDisposable
     /// <returns>The result of operation recording including any state changes.</returns>
     public CircuitBreakerExecutionResult RecordSuccess()
     {
+        CircuitState previous;
+        CircuitBreakerExecutionResult result;
+
         lock (_gate)
         {
             ThrowIfDisposed();
             MarkActivity();
             TrackOutcome(OperationOutcome.Success);
             _consecutiveFailures = 0;
+            previous = _state;
 
-            return _state switch
+            result = _state switch
             {
-                CircuitBreakerState.Closed => new CircuitBreakerExecutionResult(true, false, CircuitBreakerState.Closed,
+                CircuitState.Closed => new CircuitBreakerExecutionResult(true, false, CircuitState.Closed,
                     "Success recorded, circuit remains closed"),
-                CircuitBreakerState.HalfOpen => HandleHalfOpenSuccess(),
-                CircuitBreakerState.Open => new CircuitBreakerExecutionResult(false, false, CircuitBreakerState.Open,
+                CircuitState.HalfOpen => HandleHalfOpenSuccess(),
+                CircuitState.Open => new CircuitBreakerExecutionResult(false, false, CircuitState.Open,
                     "Success ignored while circuit breaker is open"),
                 _ => new CircuitBreakerExecutionResult(false, false, _state, "Success recorded in unexpected state"),
             };
         }
+
+        NotifyIfChanged(previous, result);
+        return result;
     }
 
     /// <summary>
@@ -129,22 +139,29 @@ internal sealed class CircuitBreaker : ICircuitBreaker, IDisposable
     /// <returns>The result of operation recording including any state changes.</returns>
     public CircuitBreakerExecutionResult RecordFailure()
     {
+        CircuitState previous;
+        CircuitBreakerExecutionResult result;
+
         lock (_gate)
         {
             ThrowIfDisposed();
             MarkActivity();
             TrackOutcome(OperationOutcome.Failure);
             _consecutiveFailures++;
+            previous = _state;
 
-            return _state switch
+            result = _state switch
             {
-                CircuitBreakerState.Closed => HandleClosedFailure(),
-                CircuitBreakerState.HalfOpen => TransitionToOpen("Failure in Half-Open state"),
-                CircuitBreakerState.Open => new CircuitBreakerExecutionResult(false, false, CircuitBreakerState.Open,
+                CircuitState.Closed => HandleClosedFailure(),
+                CircuitState.HalfOpen => TransitionToOpen("Failure in Half-Open state"),
+                CircuitState.Open => new CircuitBreakerExecutionResult(false, false, CircuitState.Open,
                     "Failure recorded while circuit breaker is open"),
                 _ => new CircuitBreakerExecutionResult(false, false, _state, "Failure recorded in unexpected state"),
             };
         }
+
+        NotifyIfChanged(previous, result);
+        return result;
     }
 
     /// <summary>
@@ -201,7 +218,7 @@ internal sealed class CircuitBreaker : ICircuitBreaker, IDisposable
     private CircuitBreakerExecutionResult TransitionToOpen(string reason)
     {
         var previousState = _state;
-        _state = CircuitBreakerState.Open;
+        _state = CircuitState.Open;
         _consecutiveFailures = 0;
         _halfOpenAttempts = 0;
         _halfOpenSuccesses = 0;
@@ -218,7 +235,7 @@ internal sealed class CircuitBreaker : ICircuitBreaker, IDisposable
     private CircuitBreakerExecutionResult TransitionToHalfOpen(string reason)
     {
         var previousState = _state;
-        _state = CircuitBreakerState.HalfOpen;
+        _state = CircuitState.HalfOpen;
         _consecutiveFailures = 0;
         _halfOpenSuccesses = 0;
         _halfOpenAttempts = 0;
@@ -231,7 +248,7 @@ internal sealed class CircuitBreaker : ICircuitBreaker, IDisposable
     private CircuitBreakerExecutionResult TransitionToClosed(string reason)
     {
         var previousState = _state;
-        _state = CircuitBreakerState.Closed;
+        _state = CircuitState.Closed;
 
         _consecutiveFailures = 0;
         _halfOpenAttempts = 0;
@@ -250,13 +267,33 @@ internal sealed class CircuitBreaker : ICircuitBreaker, IDisposable
 
     private void OnRecoveryTimerElapsed(object? state)
     {
+        CircuitBreakerExecutionResult result;
+
         lock (_gate)
         {
-            if (_disposed)
+            if (_disposed || _state != CircuitState.Open)
                 return;
 
-            if (_state == CircuitBreakerState.Open)
-                _ = TransitionToHalfOpen("Recovery timer elapsed");
+            result = TransitionToHalfOpen("Recovery timer elapsed");
+        }
+
+        NotifyIfChanged(CircuitState.Open, result);
+    }
+
+    // Runs outside the lock, so a listener cannot deadlock against the breaker. It also runs on the recovery timer's
+    // thread, where an escaping exception would crash the process, so listener failures are logged, never thrown.
+    private void NotifyIfChanged(CircuitState previous, CircuitBreakerExecutionResult result)
+    {
+        if (_stateChanged is null || !result.StateChanged || result.NewState is not { } next)
+            return;
+
+        try
+        {
+            _stateChanged(previous, next, result.Message);
+        }
+        catch (Exception ex)
+        {
+            CircuitBreakerLogMessages.StateChangeListenerFailed(_logger, ex, previous.ToString(), next.ToString());
         }
     }
 

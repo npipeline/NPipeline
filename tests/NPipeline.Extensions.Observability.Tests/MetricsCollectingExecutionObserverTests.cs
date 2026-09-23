@@ -487,6 +487,57 @@ public sealed class MetricsCollectingExecutionObserverTests
         var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Equal(3, metrics.RetryCount); // Should track maximum
+        Assert.Equal(3, metrics.RetryEvents); // Every retry counts, at every layer
+    }
+
+    [Fact]
+    public void RetriesFromEveryLayer_AreCountedByOneCounter()
+    {
+        var collector = new ObservabilityCollector(new TestObservabilityFactory());
+        var observer = new MetricsCollectingExecutionObserver(collector);
+        var failure = new TimeoutException("transient");
+
+        observer.OnRetry(new NodeRetryEvent("node", RetryKind.ItemRetry, 1, failure, s_pipelineId));
+        observer.OnRetry(new NodeRetryEvent("node", RetryKind.ItemRetry, 1, failure, s_pipelineId));
+        observer.OnRetry(new NodeRetryEvent("node", RetryKind.NodeRestart, 1, failure, s_pipelineId));
+        observer.OnRetry(new NodeRetryEvent("node", RetryKind.NodeRetry, 1, failure, s_pipelineId));
+
+        var metrics = collector.GetNodeMetrics("node", s_pipelineId);
+        Assert.NotNull(metrics);
+        Assert.Equal(4, metrics.RetryEvents);
+        Assert.Equal(1, metrics.RetryCount);
+    }
+
+    [Fact]
+    public void OnRetryExhausted_CountsExhaustions()
+    {
+        var collector = new ObservabilityCollector(new TestObservabilityFactory());
+        var observer = new MetricsCollectingExecutionObserver(collector);
+        var failure = new TimeoutException("still down");
+
+        observer.OnRetryExhausted(new RetryExhaustedEvent("node", RetryKind.ItemRetry, 4, failure, s_pipelineId));
+        observer.OnRetryExhausted(new RetryExhaustedEvent("node", RetryKind.NodeRetry, 2, failure, s_pipelineId));
+
+        var metrics = collector.GetNodeMetrics("node", s_pipelineId);
+        Assert.NotNull(metrics);
+        Assert.Equal(2, metrics.RetriesExhausted);
+    }
+
+    [Fact]
+    public void OnCircuitStateChanged_CountsOnlyTransitionsToOpen()
+    {
+        var collector = new ObservabilityCollector(new TestObservabilityFactory());
+        var observer = new MetricsCollectingExecutionObserver(collector);
+
+        observer.OnCircuitStateChanged(new CircuitStateChangedEvent("node", CircuitState.Closed, CircuitState.Open, "tripped", s_pipelineId));
+        observer.OnCircuitStateChanged(new CircuitStateChangedEvent("node", CircuitState.Open, CircuitState.HalfOpen, "timer", s_pipelineId));
+        observer.OnCircuitStateChanged(new CircuitStateChangedEvent("node", CircuitState.HalfOpen, CircuitState.Open, "probe failed", s_pipelineId));
+        observer.OnCircuitStateChanged(new CircuitStateChangedEvent("node", CircuitState.Open, CircuitState.HalfOpen, "timer", s_pipelineId));
+        observer.OnCircuitStateChanged(new CircuitStateChangedEvent("node", CircuitState.HalfOpen, CircuitState.Closed, "recovered", s_pipelineId));
+
+        var metrics = collector.GetNodeMetrics("node", s_pipelineId);
+        Assert.NotNull(metrics);
+        Assert.Equal(2, metrics.CircuitBreakerTrips);
     }
 
     [Fact]

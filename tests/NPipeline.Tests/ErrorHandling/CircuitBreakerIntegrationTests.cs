@@ -39,29 +39,29 @@ public class CircuitBreakerIntegrationTests
         using var circuitBreaker = new CircuitBreaker(options, _logger);
 
         // Act & Assert
-        circuitBreaker.State.Should().Be(CircuitBreakerState.Closed);
+        circuitBreaker.State.Should().Be(CircuitState.Closed);
         circuitBreaker.CanExecute().Should().BeTrue();
 
         // First failure - should remain closed
         var result1 = circuitBreaker.RecordFailure();
         result1.Allowed.Should().BeTrue();
         result1.StateChanged.Should().BeFalse();
-        result1.NewState.Should().Be(CircuitBreakerState.Closed);
-        circuitBreaker.State.Should().Be(CircuitBreakerState.Closed);
+        result1.NewState.Should().Be(CircuitState.Closed);
+        circuitBreaker.State.Should().Be(CircuitState.Closed);
 
         // Second failure - should remain closed
         var result2 = circuitBreaker.RecordFailure();
         result2.Allowed.Should().BeTrue();
         result2.StateChanged.Should().BeFalse();
-        result2.NewState.Should().Be(CircuitBreakerState.Closed);
-        circuitBreaker.State.Should().Be(CircuitBreakerState.Closed);
+        result2.NewState.Should().Be(CircuitState.Closed);
+        circuitBreaker.State.Should().Be(CircuitState.Closed);
 
         // Third failure - should trip to open
         var result3 = circuitBreaker.RecordFailure();
         result3.Allowed.Should().BeFalse(); // Not allowed when tripping to Open
         result3.StateChanged.Should().BeTrue();
-        result3.NewState.Should().Be(CircuitBreakerState.Open);
-        circuitBreaker.State.Should().Be(CircuitBreakerState.Open);
+        result3.NewState.Should().Be(CircuitState.Open);
+        circuitBreaker.State.Should().Be(CircuitState.Open);
         circuitBreaker.CanExecute().Should().BeFalse();
     }
 
@@ -81,29 +81,29 @@ public class CircuitBreakerIntegrationTests
         circuitBreaker.RecordFailure();
         circuitBreaker.RecordFailure();
 
-        circuitBreaker.State.Should().Be(CircuitBreakerState.Open);
+        circuitBreaker.State.Should().Be(CircuitState.Open);
         circuitBreaker.CanExecute().Should().BeFalse();
 
         // Act - Wait for recovery timeout
         var maxRetries = 10;
         var retryCount = 0;
 
-        while (retryCount < maxRetries && circuitBreaker.State != CircuitBreakerState.HalfOpen)
+        while (retryCount < maxRetries && circuitBreaker.State != CircuitState.HalfOpen)
         {
             await Task.Delay(50);
             retryCount++;
         }
 
         // Should now be in half-open state
-        circuitBreaker.State.Should().Be(CircuitBreakerState.HalfOpen);
+        circuitBreaker.State.Should().Be(CircuitState.HalfOpen);
         circuitBreaker.CanExecute().Should().BeTrue();
 
         // Act - Record success to close the circuit
         var result = circuitBreaker.RecordSuccess();
         result.Allowed.Should().BeTrue();
         result.StateChanged.Should().BeTrue();
-        result.NewState.Should().Be(CircuitBreakerState.Closed);
-        circuitBreaker.State.Should().Be(CircuitBreakerState.Closed);
+        result.NewState.Should().Be(CircuitState.Closed);
+        circuitBreaker.State.Should().Be(CircuitState.Closed);
         circuitBreaker.CanExecute().Should().BeTrue();
     }
 
@@ -156,7 +156,7 @@ public class CircuitBreakerIntegrationTests
         circuitBreaker.RecordSuccess();
 
         // Should still be closed as we don't have 3 consecutive failures
-        circuitBreaker.State.Should().Be(CircuitBreakerState.Closed);
+        circuitBreaker.State.Should().Be(CircuitState.Closed);
         circuitBreaker.CanExecute().Should().BeTrue();
 
         // Now record 3 consecutive failures
@@ -167,8 +167,8 @@ public class CircuitBreakerIntegrationTests
         // Should trip now
         result.Allowed.Should().BeFalse(); // Not allowed when tripping to Open
         result.StateChanged.Should().BeTrue();
-        result.NewState.Should().Be(CircuitBreakerState.Open);
-        circuitBreaker.State.Should().Be(CircuitBreakerState.Open);
+        result.NewState.Should().Be(CircuitState.Open);
+        circuitBreaker.State.Should().Be(CircuitState.Open);
     }
 
     [Fact]
@@ -192,8 +192,8 @@ public class CircuitBreakerIntegrationTests
         // Should trip on third failure
         result.Allowed.Should().BeFalse(); // Not allowed when tripping to Open
         result.StateChanged.Should().BeTrue();
-        result.NewState.Should().Be(CircuitBreakerState.Open);
-        circuitBreaker.State.Should().Be(CircuitBreakerState.Open);
+        result.NewState.Should().Be(CircuitState.Open);
+        circuitBreaker.State.Should().Be(CircuitState.Open);
     }
 
     [Fact]
@@ -218,7 +218,7 @@ public class CircuitBreakerIntegrationTests
         circuitBreaker.RecordSuccess();
 
         // Should not trip yet as we have 40% failure rate (2 failures out of 5 operations)
-        circuitBreaker.State.Should().Be(CircuitBreakerState.Closed);
+        circuitBreaker.State.Should().Be(CircuitState.Closed);
 
         // Add two more failures to exceed threshold (now 57% failure rate)
         var result1 = circuitBreaker.RecordFailure();
@@ -227,7 +227,7 @@ public class CircuitBreakerIntegrationTests
         // Should still not trip as we're at 57% (4 failures out of 7 operations) and need 60%
         result1.Allowed.Should().BeTrue();
         result2.Allowed.Should().BeTrue();
-        circuitBreaker.State.Should().Be(CircuitBreakerState.Closed);
+        circuitBreaker.State.Should().Be(CircuitState.Closed);
 
         // Add one more failure to exceed threshold (now 62.5% failure rate)
         var result3 = circuitBreaker.RecordFailure();
@@ -235,8 +235,8 @@ public class CircuitBreakerIntegrationTests
         // Should trip now (5 failures out of 8 operations = 62.5% failure rate)
         result3.Allowed.Should().BeFalse(); // Not allowed when tripping to Open
         result3.StateChanged.Should().BeTrue();
-        result3.NewState.Should().Be(CircuitBreakerState.Open);
-        circuitBreaker.State.Should().Be(CircuitBreakerState.Open);
+        result3.NewState.Should().Be(CircuitState.Open);
+        circuitBreaker.State.Should().Be(CircuitState.Open);
     }
 
     [Fact]
@@ -259,16 +259,16 @@ public class CircuitBreakerIntegrationTests
         // Assert - Should trip on third consecutive failure
         result1.Allowed.Should().BeTrue();
         result1.StateChanged.Should().BeFalse();
-        result1.NewState.Should().Be(CircuitBreakerState.Closed);
+        result1.NewState.Should().Be(CircuitState.Closed);
 
         result2.Allowed.Should().BeTrue();
         result2.StateChanged.Should().BeFalse();
-        result2.NewState.Should().Be(CircuitBreakerState.Closed);
+        result2.NewState.Should().Be(CircuitState.Closed);
 
         result3.Allowed.Should().BeFalse(); // Not allowed when tripping to Open
         result3.StateChanged.Should().BeTrue();
-        result3.NewState.Should().Be(CircuitBreakerState.Open);
-        circuitBreaker.State.Should().Be(CircuitBreakerState.Open);
+        result3.NewState.Should().Be(CircuitState.Open);
+        circuitBreaker.State.Should().Be(CircuitState.Open);
     }
 
     #region Resilient Execution Strategy Integration Tests
@@ -402,7 +402,7 @@ public class CircuitBreakerIntegrationTests
         var maxRetries = 5;
         var retryCount = 0;
 
-        while (retryCount < maxRetries && circuitBreaker?.State != CircuitBreakerState.HalfOpen)
+        while (retryCount < maxRetries && circuitBreaker?.State != CircuitState.HalfOpen)
         {
             await Task.Delay(50);
             retryCount++;

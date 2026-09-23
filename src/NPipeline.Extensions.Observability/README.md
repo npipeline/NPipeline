@@ -198,7 +198,10 @@ services.AddNPipelineObservability<CustomCollector, CustomMetricsSink, CustomPip
 - **DurationMs**: Execution duration in milliseconds (fractional values supported)
 - **Success**: Whether execution succeeded
 - **ItemsProcessed/ItemsEmitted**: Item counts (automatically tracked when observability is enabled)
-- **RetryCount**: Number of retry attempts (thread-safe, uses atomic operations)
+- **RetryCount**: Highest retry attempt number seen, at any retry layer
+- **RetryEvents**: Retries at every layer (item retry, node restart, and node retry)
+- **RetriesExhausted**: Times a retry layer gave up on the node after retrying it
+- **CircuitBreakerTrips**: Times the node's circuit breaker opened
 - **ThroughputItemsPerSec**: Processing throughput
 - **AverageItemProcessingMs**: Average time per item in milliseconds
 - **PeakMemoryUsageMb**: Peak memory usage during node execution (per-node delta, not global process memory)

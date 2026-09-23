@@ -48,5 +48,8 @@ internal interface IPerItemRetryExecutor
         long lineageInputIndex,
         LineageNodeOutcomeWriter lineageOutcomeWriter,
         IPipelineActivity? itemActivity,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken,
+        Guid? correlationId = null,
+        int[]? ancestryInputIndices = null,
+        Action<int>? onRetry = null);
 }

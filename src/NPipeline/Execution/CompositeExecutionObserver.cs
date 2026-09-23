@@ -118,6 +118,42 @@ public sealed class CompositeExecutionObserver : IExecutionObserver
     /// <summary>
     ///     Forwards the event to all aggregated observers.
     /// </summary>
+    public void OnRetryExhausted(RetryExhaustedEvent e)
+    {
+        foreach (var observer in _observers)
+        {
+            try
+            {
+                observer.OnRetryExhausted(e);
+            }
+            catch (Exception ex)
+            {
+                LogObserverFailure(observer, nameof(OnRetryExhausted), ex);
+            }
+        }
+    }
+
+    /// <summary>
+    ///     Forwards the event to all aggregated observers.
+    /// </summary>
+    public void OnCircuitStateChanged(CircuitStateChangedEvent e)
+    {
+        foreach (var observer in _observers)
+        {
+            try
+            {
+                observer.OnCircuitStateChanged(e);
+            }
+            catch (Exception ex)
+            {
+                LogObserverFailure(observer, nameof(OnCircuitStateChanged), ex);
+            }
+        }
+    }
+
+    /// <summary>
+    ///     Forwards the event to all aggregated observers.
+    /// </summary>
     public void OnDrop(QueueDropEvent e)
     {
         foreach (var observer in _observers)

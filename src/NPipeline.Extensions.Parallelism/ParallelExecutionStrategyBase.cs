@@ -1,24 +1,19 @@
-using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
-using Microsoft.Extensions.Logging;
 using NPipeline.DataFlow;
-using NPipeline.ErrorHandling;
 using NPipeline.Execution;
-using NPipeline.Execution.Lineage;
-using NPipeline.Lineage;
+using NPipeline.Execution.Services;
 using NPipeline.Nodes;
 using NPipeline.Observability;
 using NPipeline.Observability.Tracing;
 using NPipeline.Pipeline;
-using NPipeline.Reliability;
-using NPipeline.Sampling;
 
 namespace NPipeline.Extensions.Parallelism
 {
 
     /// <summary>
-    ///     Base class for parallel execution strategies with common retry and handler logic.
+    ///     Base class for parallel execution strategies. Items are transformed by the same item executor as the
+    ///     sequential strategy, so retry, backoff, and failure handling behave identically.
     /// </summary>
     public abstract class ParallelExecutionStrategyBase(int? maxDegreeOfParallelism = null) : IExecutionStrategy
     {
@@ -54,214 +49,55 @@ namespace NPipeline.Extensions.Parallelism
             string nodeId, CancellationToken cancellationToken);
 
         /// <summary>
-        ///     Executes a transform node on an item with retry logic and error handling using a cached execution context.
+        ///     Transforms one work item through the core item executor, which applies the node's item retry, backoff,
+        ///     resilience policy, dead-lettering, and lineage outcome.
         /// </summary>
-        /// <typeparam name="TIn">The type of input data.</typeparam>
-        /// <typeparam name="TOut">The type of output data.</typeparam>
-        /// <param name="item">The item to process.</param>
-        /// <param name="node">The transform node to execute.</param>
-        /// <param name="context">The pipeline execution context.</param>
-        /// <param name="cached">The cached execution context with pre-resolved configuration.</param>
-        /// <param name="metrics">Optional metrics for tracking execution.</param>
-        /// <param name="observer">Optional observer for execution events.</param>
-        /// <param name="lineageInputIndex">Optional lineage input index used to correlate per-item outcomes.</param>
-        /// <param name="correlationId">Optional correlation identifier used to correlate per-item errors.</param>
-        /// <param name="ancestryInputIndices">Optional contributor indices associated with the current item.</param>
-        /// <returns>A task representing the asynchronous operation with the processed item, or null if skipped.</returns>
-        /// <remarks>
-        ///     This overload accepts a pre-created <see cref="CachedNodeExecutionContext" /> to avoid
-        ///     per-item dictionary lookups and allocations, improving performance for high-throughput scenarios.
-        /// </remarks>
-        protected static async Task<TOut?> ExecuteWithRetryAsync<TIn, TOut>(
-            TIn item,
+        private protected static Task<ItemExecutionResult<TOut>> ExecuteItemAsync<TIn, TOut>(
+            IndexedWorkItem<TIn> work,
             ITransformNode<TIn, TOut> node,
             PipelineContext context,
             CachedNodeExecutionContext cached,
-            ParallelExecutionMetrics? metrics = null,
-            IExecutionObserver? observer = null,
-            long? lineageInputIndex = null,
-            Guid? correlationId = null,
-            int[]? ancestryInputIndices = null)
+            Action<int>? onRetry)
         {
-            var logger = cached.LoggingEnabled
-                ? context.Observability.LoggerFactory.CreateLogger(nameof(ParallelExecutionStrategyBase))
-                : null;
-
-            using var itemActivity = cached.TracingEnabled
-                ? context.Observability.Tracer.StartActivity("Item.Transform")
-                : null;
-
-            var options = cached.Resilience;
-
-            // attempt is the 1-based number of the attempt being made; retries so far is attempt - 1.
-            var attempt = 1;
-
-            while (true)
-            {
-                cached.CancellationToken.ThrowIfCancellationRequested();
-
-                try
-                {
-                    var output = await ExecuteNodeAsync(node, item, context, cached.CancellationToken).ConfigureAwait(false);
-                    RecordLineageOutcome(lineageInputIndex, context, in cached, LineageOutcomeReason.Emitted, attempt - 1);
-                    return output;
-                }
-                catch (OperationCanceledException) when (cached.CancellationToken.IsCancellationRequested)
-                {
-                    // Cancelling the pipeline is not an item failure: it must not be retried, skipped, or dead-lettered.
-                    throw;
-                }
-                catch (Exception ex)
-                {
-                    itemActivity?.RecordException(ex);
-
-                    if (logger is not null)
-                    {
-                        ParallelExecutionStrategyLogMessages.NodeFailure(logger, ex, cached.NodeId, attempt);
-                    }
-
-                    var policy = ResilienceRuntime.ResolvePolicy(context, cached.NodeId);
-
-                    var failure = new ItemFailure<TIn>
-                    {
-                        Item = item,
-                        Node = node,
-                        NodeId = cached.NodeId,
-                        Exception = ex,
-                        Attempt = attempt,
-                        MaxRetries = options.ItemRetry.MaxRetries,
-                        IsTransient = options.ItemRetry.Classifier.IsTransient(ex, cached.CancellationToken),
-                        Context = context,
-                    };
-
-                    var decision = await policy.DecideItemFailureAsync(failure, cached.CancellationToken).ConfigureAwait(false);
-                    var retries = attempt - 1;
-
-                    switch (decision)
-                    {
-                        case ResilienceDecision.Skip:
-                            RecordLineageOutcome(lineageInputIndex, context, in cached, LineageOutcomeReason.FilteredOut, retries);
-                            return default;
-                        case ResilienceDecision.DeadLetter:
-                            if (context.DeadLetterSink is null)
-                            {
-                                // Dropping the item here would lose it silently while lineage claimed it was dead-lettered.
-                                var noSink = new DeadLetterSinkNotConfiguredException(cached.NodeId, ex);
-                                PipelineSampleErrorReporter.TryRecordError(context, cached.NodeId, item, noSink, retries, correlationId, ancestryInputIndices);
-                                RecordLineageOutcome(lineageInputIndex, context, in cached, LineageOutcomeReason.Error, retries);
-                                throw noSink;
-                            }
-
-                            await DispatchDeadLetterAsync(context.DeadLetterSink, item, ex, context, cached.NodeId, retries, cached.CancellationToken)
-                                .ConfigureAwait(false);
-                            RecordLineageOutcome(lineageInputIndex, context, in cached, LineageOutcomeReason.DeadLettered, retries);
-                            return default;
-                        case ResilienceDecision.Retry:
-                            if (attempt > ResilienceRuntime.MaxPolicyRepeats)
-                            {
-                                var runaway = ResilienceRuntime.RepeatCeilingExceeded(policy, cached.NodeId, decision, ex);
-                                PipelineSampleErrorReporter.TryRecordError(context, cached.NodeId, item, runaway, retries, correlationId, ancestryInputIndices);
-                                RecordLineageOutcome(lineageInputIndex, context, in cached, LineageOutcomeReason.Error, retries);
-                                throw runaway;
-                            }
-
-                            itemActivity?.SetTag("retry.attempt", attempt.ToString(CultureInfo.InvariantCulture));
-                            PublishRetryInstrumentation(metrics, observer, context, cached.NodeId, attempt, ex);
-
-                            // Back off before retrying, as the sequential path does. Without it the workers spin against
-                            // an already-struggling dependency as fast as the CPU allows.
-                            await WaitBeforeRetryAsync(options, cached.NodeId, attempt, logger, cached.CancellationToken).ConfigureAwait(false);
-                            attempt++;
-                            continue;
-                        case ResilienceDecision.Fail:
-                            if (retries > 0)
-                            {
-                                var exhausted = new RetryExhaustedException(cached.NodeId, attempt, ex);
-                                PipelineSampleErrorReporter.TryRecordError(context, cached.NodeId, item, exhausted, retries, correlationId, ancestryInputIndices);
-                                RecordLineageOutcome(lineageInputIndex, context, in cached, LineageOutcomeReason.Error, retries);
-                                throw exhausted;
-                            }
-
-                            PipelineSampleErrorReporter.TryRecordError(context, cached.NodeId, item, ex, retries, correlationId, ancestryInputIndices);
-                            RecordLineageOutcome(lineageInputIndex, context, in cached, LineageOutcomeReason.Error, retries);
-                            throw;
-                        default:
-                            throw new InvalidOperationException($"Error handling failed for node {cached.NodeId} with decision {decision}.", ex);
-                    }
-                }
-            }
+            // Without tracing there is no activity to dispose, so return the executor's task and skip a state machine per item.
+            return cached.TracingEnabled
+                ? ExecuteTracedAsync(work, node, context, cached, onRetry)
+                : ExecuteCoreAsync(work, node, context, cached, null, onRetry);
         }
 
-        private static async Task WaitBeforeRetryAsync(
-            PipelineResilienceOptions options,
-            string nodeId,
-            int retry,
-            ILogger? logger,
-            CancellationToken cancellationToken)
-        {
-            var delay = options.ItemRetry.Backoff.DelayFor(retry);
-
-            if (delay <= TimeSpan.Zero)
-            {
-                return;
-            }
-
-            if (logger is not null)
-            {
-                ParallelExecutionStrategyLogMessages.ApplyingRetryDelay(logger, delay.TotalMilliseconds, nodeId, retry);
-            }
-
-            await Task.Delay(delay, options.Time, cancellationToken).ConfigureAwait(false);
-        }
-
-        private static ValueTask<TOut> ExecuteNodeAsync<TIn, TOut>(ITransformNode<TIn, TOut> node, TIn item, PipelineContext context,
-            CancellationToken cancellationToken)
-        {
-            return node.TransformAsync(item, context, cancellationToken);
-        }
-
-        private static void PublishRetryInstrumentation(ParallelExecutionMetrics? metrics, IExecutionObserver? observer, PipelineContext context,
-            string nodeId, int attempt, Exception exception)
-        {
-            metrics?.RecordRetry(attempt);
-            observer?.OnRetry(new NodeRetryEvent(nodeId, RetryKind.ItemRetry, attempt, exception, context.RunIdentity.PipelineId, context.RunIdentity.PipelineName));
-        }
-
-        private static void RecordLineageOutcome(long? lineageInputIndex, PipelineContext context, in CachedNodeExecutionContext cached,
-            LineageOutcomeReason outcomeReason, int retryCount)
-        {
-            if (lineageInputIndex is null)
-            {
-                return;
-            }
-
-            var writer = cached.LineageOutcomeWriter;
-
-            if (writer.IsActive)
-            {
-                // Fast path: the node's outcome store was resolved once when the cached context was created,
-                // so this avoids the per-item (pipeline, node) lookup that is otherwise multiplied by the
-                // degree of parallelism on the worker threads.
-                writer.Record(lineageInputIndex.Value, outcomeReason, retryCount);
-                return;
-            }
-
-            // Fallback preserves behavior when the outcome store was not pre-resolved.
-            LineageNodeOutcomeRegistry.Record(context.RunIdentity.PipelineId, cached.NodeId, lineageInputIndex.Value, outcomeReason, retryCount);
-        }
-
-        private static async Task DispatchDeadLetterAsync<TIn>(
-            IDeadLetterSink deadLetterSink,
-            TIn failedItem,
-            Exception exception,
+        private static async Task<ItemExecutionResult<TOut>> ExecuteTracedAsync<TIn, TOut>(
+            IndexedWorkItem<TIn> work,
+            ITransformNode<TIn, TOut> node,
             PipelineContext context,
-            string nodeId,
-            int retryAttempt,
-            CancellationToken cancellationToken)
+            CachedNodeExecutionContext cached,
+            Action<int>? onRetry)
         {
-            var attribution = FailureAttributionResolver.Resolve(exception, context, nodeId, retryAttempt);
-            var envelope = new DeadLetterEnvelope(failedItem!, exception, attribution);
-            await deadLetterSink.HandleAsync(envelope, context, cancellationToken).ConfigureAwait(false);
+            using var itemActivity = context.Observability.Tracer.StartActivity("Item.Transform");
+            return await ExecuteCoreAsync(work, node, context, cached, itemActivity, onRetry).ConfigureAwait(false);
+        }
+
+        private static Task<ItemExecutionResult<TOut>> ExecuteCoreAsync<TIn, TOut>(
+            IndexedWorkItem<TIn> work,
+            ITransformNode<TIn, TOut> node,
+            PipelineContext context,
+            CachedNodeExecutionContext cached,
+            IPipelineActivity? itemActivity,
+            Action<int>? onRetry)
+        {
+            return PerItemRetryExecutor.Instance.ExecuteWithRetryAsync(
+                work.Item,
+                node,
+                context,
+                cached.NodeId,
+                cached.Resilience,
+                work.LineageInputIndex.HasValue,
+                work.LineageInputIndex.GetValueOrDefault(),
+                cached.LineageOutcomeWriter,
+                itemActivity,
+                cached.CancellationToken,
+                work.CorrelationId,
+                work.AncestryInputIndices,
+                onRetry);
         }
 
         /// <summary>
@@ -274,7 +110,6 @@ namespace NPipeline.Extensions.Parallelism
         /// <param name="context">The pipeline execution context.</param>
         /// <param name="cachedContext">The cached execution context with pre-resolved configuration.</param>
         /// <param name="metrics">The metrics tracker.</param>
-        /// <param name="observer">The execution observer.</param>
         /// <param name="effectiveDop">The effective degree of parallelism.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns>A tuple containing the output channel and the list of worker tasks.</returns>
@@ -284,12 +119,12 @@ namespace NPipeline.Extensions.Parallelism
             PipelineContext context,
             CachedNodeExecutionContext cachedContext,
             ParallelExecutionMetrics metrics,
-            IExecutionObserver? observer,
             int effectiveDop,
             CancellationToken cancellationToken)
         {
             var outChannel = Channel.CreateUnbounded<TOut>();
             var workers = new List<Task>(effectiveDop);
+            Action<int> onRetry = metrics.RecordRetry;
 
             for (var i = 0; i < effectiveDop; i++)
             {
@@ -297,13 +132,12 @@ namespace NPipeline.Extensions.Parallelism
                 {
                     await foreach (var next in reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
                     {
-                        var result = await ExecuteWithRetryAsync(next.Item, node, context, cachedContext, metrics, observer, next.LineageInputIndex,
-                            next.CorrelationId, next.AncestryInputIndices).ConfigureAwait(false);
+                        var result = await ExecuteItemAsync(next, node, context, cachedContext, onRetry).ConfigureAwait(false);
 
-                        if (result is not null)
+                        if (result.Produced)
                         {
                             _ = metrics.IncrementProcessed();
-                            await outChannel.Writer.WriteAsync(result, cancellationToken).ConfigureAwait(false);
+                            await outChannel.Writer.WriteAsync(result.Output!, cancellationToken).ConfigureAwait(false);
                         }
                     }
                 }, cancellationToken));

@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using NPipeline.Configuration;
+using NPipeline.Execution;
 using NPipeline.Execution.CircuitBreaking;
 
 namespace NPipeline.Tests.Reliability.Behavior;
@@ -59,5 +60,46 @@ public sealed class CircuitBreakerBehaviorTests
         var act = () => breaker.RecordSuccess();
 
         act.Should().NotThrow("eviction forgets the breaker; it must not dispose one a stream still holds");
+    }
+
+    [Fact]
+    public async Task EveryTransition_IsReported_IncludingTheTimerDrivenHalfOpen()
+    {
+        var changes = new System.Collections.Concurrent.ConcurrentQueue<(CircuitState From, CircuitState To)>();
+        var halfOpen = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        using var breaker = new CircuitBreaker(
+            new PipelineCircuitBreakerOptions(1, TimeSpan.FromMilliseconds(20), TimeSpan.FromMinutes(1)),
+            NullLogger.Instance,
+            (from, to, reason) =>
+            {
+                changes.Enqueue((from, to));
+
+                if (to == CircuitState.HalfOpen)
+                    _ = halfOpen.TrySetResult();
+            });
+
+        _ = breaker.RecordFailure();
+        await halfOpen.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        _ = breaker.RecordSuccess();
+
+        changes.Should().Equal(
+            (CircuitState.Closed, CircuitState.Open),
+            (CircuitState.Open, CircuitState.HalfOpen),
+            (CircuitState.HalfOpen, CircuitState.Closed));
+    }
+
+    [Fact]
+    public void AThrowingListener_DoesNotBreakTheBreaker()
+    {
+        using var breaker = new CircuitBreaker(
+            new PipelineCircuitBreakerOptions(1, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1)),
+            NullLogger.Instance,
+            (_, _, _) => throw new InvalidOperationException("observer bug"));
+
+        var act = () => breaker.RecordFailure();
+
+        act.Should().NotThrow().Which.NewState.Should().Be(CircuitState.Open);
+        breaker.State.Should().Be(CircuitState.Open);
     }
 }

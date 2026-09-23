@@ -220,15 +220,17 @@ public sealed class ErrorHandlingService : IErrorHandlingService
             }, cancellationToken).ConfigureAwait(false);
 
             if (decision != ResilienceDecision.Retry)
+            {
+                if (attempt > 1 && failure is not OperationCanceledException)
+                    ResilienceRuntime.ReportRetryExhausted(context, nodeDefinition.Id, RetryKind.NodeRetry, attempt, failure);
+
                 ThrowFinalFailure(nodeDefinition.Id, failure, attempt);
+            }
 
             if (attempt > ResilienceRuntime.MaxPolicyRepeats)
                 throw new NodeExecutionException(nodeDefinition.Id, failure.Message, ResilienceRuntime.RepeatCeilingExceeded(policy, nodeDefinition.Id, decision, failure));
 
-            // Phase 3 of the resilience plan gives node retries their own RetryKind; until then they share the kind
-            // their delay used to.
-            context.Observability.ExecutionObserver.OnRetry(new NodeRetryEvent(nodeDefinition.Id, RetryKind.NodeRestart, attempt, failure,
-                context.RunIdentity.PipelineId, context.RunIdentity.PipelineName));
+            ResilienceRuntime.ReportRetry(context, nodeDefinition.Id, RetryKind.NodeRetry, attempt, failure);
 
             var delay = options.NodeRetry.Backoff.DelayFor(attempt);
 

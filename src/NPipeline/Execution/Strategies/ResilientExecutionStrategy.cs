@@ -271,6 +271,7 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
 
                         var exhausted = new RetryExhaustedException(nodeId, restarts + 1, ex);
                         ResilientExecutionStrategyLogMessages.RetryExhausted(logger, nodeId, restarts + 1);
+                        ResilienceRuntime.ReportRetryExhausted(context, nodeId, RetryKind.NodeRestart, restarts + 1, ex);
                         throw exhausted;
                     }
 
@@ -287,9 +288,7 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
                         await Task.Delay(delay, options.Time, cancellationToken).ConfigureAwait(false);
                     }
 
-                    context.Observability.ExecutionObserver.OnRetry(new NodeRetryEvent(nodeId, RetryKind.NodeRestart, restarts, ex,
-                        context.RunIdentity.PipelineId,
-                        context.RunIdentity.PipelineName));
+                    ResilienceRuntime.ReportRetry(context, nodeId, RetryKind.NodeRestart, restarts, ex);
 
                     restartRequested = true;
                     break;

@@ -14,10 +14,4 @@ internal static partial class ParallelExecutionStrategyLogMessages
 
     [LoggerMessage(2, LogLevel.Warning, "Node {NodeId}, Failed to enqueue item {Item} after {MaxAttempts} drop attempts")]
     public static partial void EnqueueFailed(ILogger logger, string nodeId, string? item, int maxAttempts);
-
-    [LoggerMessage(6, LogLevel.Debug, "Node {NodeId} failed on attempt {Attempt}.")]
-    public static partial void NodeFailure(ILogger logger, Exception exception, string nodeId, int attempt);
-
-    [LoggerMessage(7, LogLevel.Debug, "Applying retry delay of {Delay}ms for item on node {NodeId} before retry {Retry}")]
-    public static partial void ApplyingRetryDelay(ILogger logger, double delay, string nodeId, int retry);
 }

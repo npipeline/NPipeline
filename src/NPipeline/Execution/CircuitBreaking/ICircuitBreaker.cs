@@ -10,7 +10,7 @@ internal interface ICircuitBreaker
     /// <summary>
     ///     Gets current state of circuit breaker.
     /// </summary>
-    CircuitBreakerState State { get; }
+    CircuitState State { get; }
 
     /// <summary>
     ///     Gets circuit breaker configuration options.

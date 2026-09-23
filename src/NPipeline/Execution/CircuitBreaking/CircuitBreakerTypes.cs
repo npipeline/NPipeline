@@ -46,5 +46,5 @@ internal record WindowStatistics(
 internal record CircuitBreakerExecutionResult(
     bool Allowed,
     bool StateChanged,
-    CircuitBreakerState? NewState,
+    CircuitState? NewState,
     string Message);
