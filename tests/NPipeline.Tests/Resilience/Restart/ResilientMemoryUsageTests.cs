@@ -18,8 +18,7 @@ using NPipeline.Reliability;
 namespace NPipeline.Tests.Resilience.Restart;
 
 /// <summary>
-///     Tests for verifying memory usage stays within acceptable bounds when using resilience caps.
-///     These tests simulate large data streams with caps to ensure memory doesn't grow unbounded.
+///     Memory stays bounded by the replay window when a restartable node streams a large input.
 /// </summary>
 
 // Use a collection to avoid parallel execution with other stateful tests (shared resources & GC pressure)
@@ -38,77 +37,23 @@ public sealed class ResilientMemoryUsageTests
     }
 
     [Fact]
-    public async Task LargeStream_WithSmallCap_ShouldLimitMemoryUsage()
+    public async Task LargeStream_WithASmallReplayWindow_StreamsWithBoundedMemory()
     {
-        // Arrange
-        const long maxMemoryIncrease = 100 * 1024; // 100KB
-
+        // The replay window bounds what is held for a restart; it no longer limits the input's length (R2).
         var services = new ServiceCollection();
         services.AddNPipeline(Assembly.GetExecutingAssembly());
         var sp = services.BuildServiceProvider();
         var runner = sp.GetRequiredService<IPipelineRunner>();
         var ctx = PipelineContext.CreateDefault();
 
-        // Baseline memory
         var memoryBefore = ForceAndGetMemory();
 
-        // Act & Assert - Should throw due to cap being exceeded
-        var act = async () => await runner.RunAsync<LargeStreamSmallCapPipeline>(ctx);
+        await runner.RunAsync<LargeStreamSmallCapPipeline>(ctx);
 
-        await act.Should().ThrowAsync<NodeExecutionException>()
-            .WithMessage("*Resilience materialization exceeded NodeRestart.MaxReplayWindow*");
+        var memoryIncrease = ForceAndGetMemory() - memoryBefore;
 
-        // Measure memory after failure
-        var memoryAfter = ForceAndGetMemory();
-        var memoryIncrease = memoryAfter - memoryBefore;
-
-        // Assert - Memory usage should be limited by the cap
-        // The cap should prevent excessive materialization
-        // Allow for some overhead in test infrastructure
-        // Increase buffer to account for runtime and GC variability on different platforms
-        var adjustedMaxMemory = maxMemoryIncrease + 5120 * 1024; // Add 5MB buffer for test overhead (increased for configuration object overhead)
-        memoryIncrease.Should().BeLessThan(adjustedMaxMemory);
-    }
-
-    [Fact]
-    public async Task MemoryUsage_ShouldScaleWithCapSize()
-    {
-        // Arrange
-        var services = new ServiceCollection();
-        services.AddNPipeline(Assembly.GetExecutingAssembly());
-        var sp = services.BuildServiceProvider();
-        var runner = sp.GetRequiredService<IPipelineRunner>();
-
-        // Test with small cap
-        var smallCapCtx = PipelineContext.CreateDefault();
-
-        var memoryBeforeSmallCap = ForceAndGetMemory();
-
-        var smallCapAct = async () => await runner.RunAsync<SmallCapPipeline>(smallCapCtx);
-
-        await smallCapAct.Should().ThrowAsync<NodeExecutionException>()
-            .WithMessage("*Resilience materialization exceeded NodeRestart.MaxReplayWindow*");
-
-        var memoryAfterSmallCap = ForceAndGetMemory();
-        var smallCapMemoryUsage = memoryAfterSmallCap - memoryBeforeSmallCap;
-
-        // Test with large cap
-        var largeCapCtx = PipelineContext.CreateDefault();
-
-        var memoryBeforeLargeCap = ForceAndGetMemory();
-
-        var largeCapAct = async () => await runner.RunAsync<LargeCapPipeline>(largeCapCtx);
-
-        await largeCapAct.Should().ThrowAsync<NodeExecutionException>()
-            .WithMessage("*Resilience materialization exceeded NodeRestart.MaxReplayWindow*");
-
-        var memoryAfterLargeCap = ForceAndGetMemory();
-        var largeCapMemoryUsage = memoryAfterLargeCap - memoryBeforeLargeCap;
-
-        // Memory usage should be reasonable (allowing for negative values due to GC)
-        // The important thing is that the exceptions are thrown, indicating caps work
-        smallCapMemoryUsage.Should().BeLessThan(10 * 1024 * 1024); // Less than 10MB
-        largeCapMemoryUsage.Should().BeLessThan(10 * 1024 * 1024); // Less than 10MB
+        // 10,000 items flow through a 100-item window. Allow generous overhead for the runtime and GC variability.
+        memoryIncrease.Should().BeLessThan(10 * 1024 * 1024);
     }
 
     [Fact]
@@ -137,27 +82,6 @@ public sealed class ResilientMemoryUsageTests
         // GC behavior varies significantly between versions
         var maxExpectedMemory = streamSize * 200 * 1024;
         memoryUsage.Should().BeLessThan(maxExpectedMemory);
-    }
-
-    [Fact]
-    public async Task ResourceDisposal_WhenCapReached_ShouldBeProper()
-    {
-        // Arrange
-        var services = new ServiceCollection();
-        services.AddNPipeline(Assembly.GetExecutingAssembly());
-        var sp = services.BuildServiceProvider();
-        var runner = sp.GetRequiredService<IPipelineRunner>();
-        var ctx = PipelineContext.CreateDefault();
-
-        // Act & Assert
-        var act = async () => await runner.RunAsync<ResourceDisposalTestPipeline>(ctx);
-
-        await act.Should().ThrowAsync<NodeExecutionException>()
-            .WithMessage("*Resilience materialization exceeded NodeRestart.MaxReplayWindow*");
-
-        // The test passes if the exception is thrown, which indicates that
-        // the cap was reached and the pipeline was properly terminated
-        // without resource leaks
     }
 
     // Helper classes for the tests
@@ -191,25 +115,6 @@ public sealed class ResilientMemoryUsageTests
                 await Task.Yield();
 
                 for (var i = 0; i < 10000; i++)
-                {
-                    ct.ThrowIfCancellationRequested();
-                    yield return i;
-                }
-            }
-        }
-    }
-
-    private sealed class MediumStreamSource : SourceNode<int>
-    {
-        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
-        {
-            return new DataStream<int>(Stream(cancellationToken));
-
-            static async IAsyncEnumerable<int> Stream([EnumeratorCancellation] CancellationToken ct)
-            {
-                await Task.Yield();
-
-                for (var i = 0; i < 1000; i++)
                 {
                     ct.ThrowIfCancellationRequested();
                     yield return i;
@@ -255,36 +160,7 @@ public sealed class ResilientMemoryUsageTests
             var t = builder.AddTransform<MemoryIntensiveTransform, int, int>("memTx");
             var k = builder.AddInMemorySink<int>("testSink");
             builder.Connect(s, t).Connect(t, k);
-            builder.WithResilience(t);
             builder.WithResilience(o => o with { NodeRestart = new NodeRestartOptions { MaxRestarts = 1, MaxReplayWindow = 100, Backoff = RetryBackoff.None } });
-            builder.AddResiliencePolicy<MemoryTestResiliencePolicy>();
-        }
-    }
-
-    private sealed class SmallCapPipeline : IPipelineDefinition
-    {
-        public void Define(PipelineBuilder builder, PipelineContext context)
-        {
-            var s = builder.AddSource<MediumStreamSource, int>("medSrc");
-            var t = builder.AddTransform<MemoryIntensiveTransform, int, int>("memTx");
-            var k = builder.AddInMemorySink<int>("testSink");
-            builder.Connect(s, t).Connect(t, k);
-            builder.WithResilience(t);
-            builder.WithResilience(o => o with { NodeRestart = new NodeRestartOptions { MaxRestarts = 1, MaxReplayWindow = 50, Backoff = RetryBackoff.None } });
-            builder.AddResiliencePolicy<MemoryTestResiliencePolicy>();
-        }
-    }
-
-    private sealed class LargeCapPipeline : IPipelineDefinition
-    {
-        public void Define(PipelineBuilder builder, PipelineContext context)
-        {
-            var s = builder.AddSource<MediumStreamSource, int>("medSrc");
-            var t = builder.AddTransform<MemoryIntensiveTransform, int, int>("memTx");
-            var k = builder.AddInMemorySink<int>("testSink");
-            builder.Connect(s, t).Connect(t, k);
-            builder.WithResilience(t);
-            builder.WithResilience(o => o with { NodeRestart = new NodeRestartOptions { MaxRestarts = 1, MaxReplayWindow = 500, Backoff = RetryBackoff.None } });
             builder.AddResiliencePolicy<MemoryTestResiliencePolicy>();
         }
     }
@@ -297,22 +173,7 @@ public sealed class ResilientMemoryUsageTests
             var t = builder.AddTransform<MemoryIntensiveTransform, int, int>("memTx");
             var k = builder.AddInMemorySink<int>("testSink");
             builder.Connect(s, t).Connect(t, k);
-            builder.WithResilience(t);
             builder.WithResilience(o => o with { NodeRestart = new NodeRestartOptions { MaxRestarts = 1, MaxReplayWindow = 200, Backoff = RetryBackoff.None } });
-            builder.AddResiliencePolicy<MemoryTestResiliencePolicy>();
-        }
-    }
-
-    private sealed class ResourceDisposalTestPipeline : IPipelineDefinition
-    {
-        public void Define(PipelineBuilder builder, PipelineContext context)
-        {
-            var s = builder.AddSource<MediumStreamSource, int>("medSrc");
-            var t = builder.AddTransform<MemoryIntensiveTransform, int, int>("memTx");
-            var k = builder.AddInMemorySink<int>("testSink");
-            builder.Connect(s, t).Connect(t, k);
-            builder.WithResilience(t);
-            builder.WithResilience(o => o with { NodeRestart = new NodeRestartOptions { MaxRestarts = 1, MaxReplayWindow = 100, Backoff = RetryBackoff.None } });
             builder.AddResiliencePolicy<MemoryTestResiliencePolicy>();
         }
     }

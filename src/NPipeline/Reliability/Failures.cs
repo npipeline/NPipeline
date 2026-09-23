@@ -88,6 +88,16 @@ public readonly record struct StreamFailure
     public int MaxRestarts { get; init; }
 
     /// <summary>
+    ///     The index of the first input item whose outcome has not been delivered. A restart resumes here.
+    /// </summary>
+    public long Checkpoint { get; init; }
+
+    /// <summary>
+    ///     The outputs the node has delivered downstream so far, across all its runs.
+    /// </summary>
+    public long Delivered { get; init; }
+
+    /// <summary>
     ///     The pipeline context.
     /// </summary>
     public required PipelineContext Context { get; init; }
@@ -139,12 +149,23 @@ public readonly record struct NodeFailure
     public bool IsTransient { get; init; }
 
     /// <summary>
+    ///     Whether the node received an input item before it failed.
+    /// </summary>
+    /// <remarks>
+    ///     Node retry covers setup only. A node that has read input is not executed again, whatever the policy answers:
+    ///     its input cannot be read again from the start, so a second execution would lose or duplicate items. A
+    ///     transform recovers mid-stream through node restart, and a sink or source through its connector's retries.
+    /// </remarks>
+    public bool InputConsumed { get; init; }
+
+    /// <summary>
     ///     The pipeline context.
     /// </summary>
     public required PipelineContext Context { get; init; }
 
     /// <summary>
-    ///     Whether the node's options allow another execution: the failure is transient and retries remain.
+    ///     Whether the node can be executed again: the failure is transient, retries remain, and the node has not
+    ///     consumed input.
     /// </summary>
-    public bool CanRetry => IsTransient && Attempt <= MaxRetries;
+    public bool CanRetry => IsTransient && !InputConsumed && Attempt <= MaxRetries;
 }

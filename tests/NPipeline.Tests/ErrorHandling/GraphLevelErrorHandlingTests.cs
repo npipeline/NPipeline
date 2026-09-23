@@ -92,8 +92,7 @@ public sealed class GraphLevelErrorHandlingTests
             var sink = builder.AddInMemorySink<int>("sink");
 
             builder.Connect(source, flaky)
-                .Connect(flaky, sink)
-                .WithResilience(flaky);
+                .Connect(flaky, sink);
 
             builder.AddResiliencePolicy<RestartingResiliencePolicy>();
             builder.WithResilience(o => o with { NodeRestart = new NodeRestartOptions { MaxRestarts = 3, MaxReplayWindow = 1000, Backoff = RetryBackoff.None } });

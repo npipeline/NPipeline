@@ -50,8 +50,8 @@ public sealed partial class PipelineBuilder
         // Build configuration objects from builder state
         var (errorHandlingConfig, lineageConfig, executionConfig) = BuildConfigurations();
 
-        // Create the immutable nodes array
-        var nodesList = NodeState.Nodes.Values.ToImmutableArray();
+        // Create the immutable nodes array, with node restart applied to the transforms that configure it
+        var nodesList = WithNodeRestart(NodeState.Nodes.Values, errorHandlingConfig);
 
         // Create a cached frozen dictionary for O(1) node lookups during execution
         var nodeDefinitionMap = nodesList.ToFrozenDictionary(n => n.Id);
@@ -139,8 +139,8 @@ public sealed partial class PipelineBuilder
         // Build configuration objects from builder state
         var (errorHandlingConfig, lineageConfig, executionConfig) = BuildConfigurations();
 
-        // Create the immutable nodes array
-        var nodesList = NodeState.Nodes.Values.ToImmutableArray();
+        // Create the immutable nodes array, with node restart applied to the transforms that configure it
+        var nodesList = WithNodeRestart(NodeState.Nodes.Values, errorHandlingConfig);
 
         // Create a cached frozen dictionary for O(1) node lookups during execution
         var nodeDefinitionMap = nodesList.ToFrozenDictionary(n => n.Id);

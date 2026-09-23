@@ -57,7 +57,7 @@ NPipeline error codes follow the pattern `NPxxxx` where the first two digits ind
 |------|------|-------------|
 | NP0401 | ExecutionStrategyCannotBeSetForNonTransformNode | Execution strategies can only be applied to transform nodes. |
 | NP0402 | NodeNotFoundInBuilder | The referenced node was not found in the pipeline builder. |
-| NP0403 | ResilienceCannotBeAppliedToNonTransformNode | Resilience policies can only be applied to transform nodes. |
+| NP0403 | *Retired* | Belonged to `WithResilience(NodeHandle)`, which node restart options replaced. Not reused. |
 | NP0404 | InvalidErrorHandlerType | The error handler type doesn't implement the required interface. |
 | NP0405 | PreConfiguredInstanceAlreadyAdded | A pre-configured instance for this node has already been registered. |
 | NP0406 | PreConfiguredInstanceNodeNotFound | The node for the pre-configured instance was not found in the builder. |
@@ -76,6 +76,7 @@ NPipeline error codes follow the pattern `NPxxxx` where the first two digits ind
 | NP0421 | StreamTransformNodeRequiresStreamStrategy | A stream transform node was configured with a strategy that cannot execute streams. |
 | NP0422 | NodeCannotSupplyExecutionStrategy | A node scheduled as a transform does not implement the transform interface. |
 | NP0424 | DeadLetterSinkNotConfigured | A resilience policy dead-lettered an item, but the pipeline has no dead-letter sink. Add one with `AddDeadLetterSink`, or have the policy return `Skip` or `Fail`. |
+| NP0425 | NodeRestartRequiresResumableStrategy | A transform has `NodeRestart.MaxRestarts` above zero, but its execution strategy does not implement `IResumableExecutionStrategy`. Use a resumable strategy, or set `MaxRestarts` to 0 for that node. |
 
 ## NP05xx - Resource Management Errors
 

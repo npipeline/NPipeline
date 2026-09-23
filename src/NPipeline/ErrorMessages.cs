@@ -284,14 +284,6 @@ internal static class ErrorMessages
             $"See: {DocsBaseUrl}#{ErrorCodes.NodeNotFoundInBuilder}";
     }
 
-    public static string ResilienceCannotBeAppliedToNonTransformNode(string nodeName, string nodeKind)
-    {
-        return $"[{ErrorCodes.ResilienceCannotBeAppliedToNonTransformNode}] Resilience can only be applied to transform nodes. " +
-               $"Node '{nodeName}' is a {nodeKind} node. " +
-               $"Remove resilience configuration or change the node type. " +
-               $"See: {DocsBaseUrl}#{ErrorCodes.ResilienceCannotBeAppliedToNonTransformNode}";
-    }
-
     public static string InvalidErrorHandlerType(string typeName)
     {
         return $"[{ErrorCodes.InvalidErrorHandlerType}] The provided type '{typeName}' does not implement INodeErrorHandler<,>. " +
@@ -452,6 +444,15 @@ internal static class ErrorMessages
                $"but no dead-letter sink is configured, so the pipeline was not started. " +
                $"Configure one with builder.AddDeadLetterSink(...), or set OnItemFailure to Skip or Fail. " +
                $"See: {DocsBaseUrl}#{ErrorCodes.DeadLetterSinkNotConfigured}";
+    }
+
+    public static string NodeRestartRequiresResumableStrategy(string nodeName, string strategyType)
+    {
+        return $"[{ErrorCodes.NodeRestartRequiresResumableStrategy}] Node '{nodeName}' has NodeRestart.MaxRestarts above zero, " +
+               $"but its execution strategy {strategyType} does not implement IResumableExecutionStrategy, so it cannot resume after a restart. " +
+               $"Use a resumable strategy (SequentialExecutionStrategy or a parallel strategy), implement IResumableExecutionStrategy, " +
+               $"or set NodeRestart.MaxRestarts to 0 for this node. " +
+               $"See: {DocsBaseUrl}#{ErrorCodes.NodeRestartRequiresResumableStrategy}";
     }
 
     #endregion

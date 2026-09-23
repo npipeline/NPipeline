@@ -48,28 +48,32 @@ public sealed partial class PipelineBuilder
     }
 
     /// <summary>
-    ///     Method for applying resilience wrapping to nodes. Use fluent extension methods on node handles instead.
+    ///     Wraps each transform whose resilience options allow restarts in the node restart strategy.
     /// </summary>
     /// <remarks>
-    ///     This method is public to support fluent extensions in separate assemblies,
-    ///     but is hidden from IntelliSense to discourage direct use. Always use the fluent extension methods on node handles.
+    ///     A transform whose configured strategy cannot resume is left as it is; <c>ResilienceOptionsRule</c> reports it
+    ///     as a build error. The builder's own node definitions are not changed, so a build that fails validation can be
+    ///     corrected and built again.
     /// </remarks>
-    [EditorBrowsable(EditorBrowsableState.Never)]
-    public PipelineBuilder WithResilience(NodeHandle handle)
+    private static ImmutableArray<NodeDefinition> WithNodeRestart(IEnumerable<NodeDefinition> nodes, ErrorHandlingConfiguration errorHandling)
     {
-        if (!NodeState.Nodes.TryGetValue(handle.Id, out var nodeDef))
-            throw new InvalidOperationException(ErrorMessages.NodeNotFoundInBuilder(handle.Id, "WithResilience"));
+        var pipelineOptions = errorHandling.Resilience ?? PipelineResilienceOptions.None;
+        var result = ImmutableArray.CreateBuilder<NodeDefinition>();
 
-        if (!typeof(ITransformNode).IsAssignableFrom(nodeDef.NodeType))
-            throw new InvalidOperationException(ErrorMessages.ResilienceCannotBeAppliedToNonTransformNode(nodeDef.Name, nodeDef.Kind.ToString()));
+        foreach (var node in nodes)
+        {
+            var options = errorHandling.NodeResilience?.GetValueOrDefault(node.Id) ?? pipelineOptions;
 
-        var currentStrategy = nodeDef.ExecutionStrategy ?? new SequentialExecutionStrategy();
+            var restartable = options.NodeRestart.MaxRestarts > 0
+                              && typeof(ITransformNode).IsAssignableFrom(node.NodeType)
+                              && node.ExecutionStrategy is null or IResumableExecutionStrategy;
 
-        if (currentStrategy is not ResilientExecutionStrategy)
-            currentStrategy = new ResilientExecutionStrategy(currentStrategy);
+            result.Add(restartable
+                ? node.WithExecutionStrategy(new ResilientExecutionStrategy(node.ExecutionStrategy))
+                : node);
+        }
 
-        NodeState.Nodes[handle.Id] = nodeDef.WithExecutionStrategy(currentStrategy);
-        return this;
+        return result.ToImmutable();
     }
 
     /// <summary>

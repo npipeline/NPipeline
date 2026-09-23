@@ -209,17 +209,30 @@ public sealed record NodeRestartOptions
         RetryBackoff.Exponential(TimeSpan.FromSeconds(1), maxDelay: TimeSpan.FromSeconds(30));
 
     /// <summary>
-    ///     The most input items held so that a restart can replay them. Default: 10,000.
+    ///     The most input items held so that a restart can process them again. Default: 10,000.
     /// </summary>
     /// <remarks>
-    ///     A node restart currently replays its whole input, so a streaming input longer than this fails the node.
+    ///     A restart resumes at the node's checkpoint, the first input item whose outcome has not been delivered, so
+    ///     only the items between the checkpoint and the last item read are held. When this many are held, the node
+    ///     stops reading its input until the checkpoint advances. It is a backpressure bound, never an error, and it
+    ///     does not limit the length of the input.
     /// </remarks>
     public int MaxReplayWindow { get; init; } = 10_000;
+
+    /// <summary>
+    ///     When set, the restart count starts again after this many outputs are delivered following a restart, so a
+    ///     long-running stream with rare faults does not use up its restarts over hours. Default: never.
+    /// </summary>
+    public int? ResetAfterItems { get; init; }
 
     internal void Validate()
     {
         ArgumentOutOfRangeException.ThrowIfNegative(MaxRestarts);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(MaxReplayWindow);
+
+        if (ResetAfterItems is { } resetAfter)
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(resetAfter, nameof(ResetAfterItems));
+
         Backoff.Validate();
     }
 }

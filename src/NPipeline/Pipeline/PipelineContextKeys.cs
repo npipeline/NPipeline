@@ -187,17 +187,10 @@ public static class PipelineContextKeys
 
     // ===== DIAGNOSTICS & RESILIENCE =====
     /// <summary>Diagnostics - resilience failures - format: "diag.resilience.{nodeId}.failures" (value: int)</summary>
-    /// <remarks>Tracks total failures observed during resilient execution of a node.</remarks>
+    /// <remarks>The restarts a node made before its restart policy stopped restarting it.</remarks>
     public static string DiagnosticsResilienceFailures(string nodeId)
     {
         return $"diag.resilience.{nodeId}.failures";
-    }
-
-    /// <summary>Diagnostics - resilience consecutive failures - format: "diag.resilience.{nodeId}.consecutiveFailures" (value: int)</summary>
-    /// <remarks>Tracks consecutive failures observed during resilient execution of a node.</remarks>
-    public static string DiagnosticsResilienceConsecutiveFailures(string nodeId)
-    {
-        return $"diag.resilience.{nodeId}.consecutiveFailures";
     }
 
     /// <summary>Diagnostics - resilience throwing on failure - format: "diag.resilience.{nodeId}.throwingOnFailure" (value: bool)</summary>

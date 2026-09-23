@@ -137,6 +137,97 @@ public sealed class NodeRetryBehaviorTests
                 e.NodeId == "source" && e.Kind == RetryKind.NodeRetry && e.Attempts == 3 && e.LastException is TimeoutException);
     }
 
+    [Fact]
+    public async Task NodeRetry_DoesNotReExecuteASinkThatHasConsumedInput()
+    {
+        // C15: a sink that fails mid-stream cannot be executed again. Its forward-only input has already been partly
+        // read, so a second execution would lose the items consumed so far or read them twice.
+        var sink = new FailsAfterItemsSink(failAfter: 2);
+        var observer = new RecordingObserver();
+
+        var act = () => BehaviorPipeline.RunAsync(b =>
+        {
+            var s = b.AddSource<StreamingSource<int>, int>("source");
+            var k = b.AddSink<FailsAfterItemsSink, int>("sink");
+            _ = b.AddPreconfiguredNodeInstance(s.Id, StreamingSource<int>.Of([1, 2, 3, 4, 5])).AddPreconfiguredNodeInstance(k.Id, sink).Connect(s, k);
+            _ = b.WithResilience(o => o with { NodeRetry = new NodeRetryOptions { MaxRetries = 3, Backoff = RetryBackoff.None } });
+        }, observer: observer);
+
+        var thrown = await act.Should().ThrowAsync<Exception>();
+
+        thrown.Which.Should().NotBeOfType<RetryExhaustedException>();
+        sink.Executions.Should().Be(1, "node retry covers setup only; a sink that has read input is not run again");
+        sink.Items.Should().Equal([1, 2]);
+        observer.Retries.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task NodeRetry_ReExecutesASinkThatFailedBeforeConsumingInput()
+    {
+        var sink = new FailsToStartOnceSink();
+
+        await BehaviorPipeline.RunAsync(b =>
+        {
+            var s = b.AddSource<StreamingSource<int>, int>("source");
+            var k = b.AddSink<FailsToStartOnceSink, int>("sink");
+            _ = b.AddPreconfiguredNodeInstance(s.Id, StreamingSource<int>.Of([1, 2, 3])).AddPreconfiguredNodeInstance(k.Id, sink).Connect(s, k);
+            _ = b.WithResilience(o => o with { NodeRetry = new NodeRetryOptions { MaxRetries = 1, Backoff = RetryBackoff.None } });
+        });
+
+        sink.Executions.Should().Be(2);
+        sink.Items.Should().Equal([1, 2, 3]);
+    }
+
+    /// <summary>
+    ///     Records items, and fails with a transient exception once it has received <c>failAfter</c> of them.
+    /// </summary>
+    private sealed class FailsAfterItemsSink(int failAfter) : SinkNode<int>
+    {
+        private readonly List<int> _items = [];
+        private int _executions;
+
+        public int Executions => _executions;
+
+        public IReadOnlyList<int> Items => _items;
+
+        public override async Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken cancellationToken)
+        {
+            _ = Interlocked.Increment(ref _executions);
+
+            await foreach (var item in input.WithCancellation(cancellationToken).ConfigureAwait(false))
+            {
+                _items.Add(item);
+
+                if (_items.Count == failAfter)
+                    throw new TimeoutException("transient write failure");
+            }
+        }
+    }
+
+    /// <summary>
+    ///     Fails its first execution before reading any input, as a sink that cannot open its connection would.
+    /// </summary>
+    private sealed class FailsToStartOnceSink : SinkNode<int>
+    {
+        private readonly List<int> _items = [];
+        private int _executions;
+
+        public int Executions => _executions;
+
+        public IReadOnlyList<int> Items => _items;
+
+        public override async Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken cancellationToken)
+        {
+            if (Interlocked.Increment(ref _executions) == 1)
+                throw new TimeoutException("transient failure opening the connection");
+
+            await foreach (var item in input.WithCancellation(cancellationToken).ConfigureAwait(false))
+            {
+                _items.Add(item);
+            }
+        }
+    }
+
     private sealed class FailsToOpenSource(Func<Exception> failure) : SourceNode<int>
     {
         private int _opens;

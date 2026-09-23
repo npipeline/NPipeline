@@ -24,7 +24,7 @@ An entire node fails - typically because its stream is exhausted or an unrecover
 
 **Example:** A source node's HTTP connection times out after the stream has started.
 
-**Recovery options:** Restart the node (replaying materialized items), continue without the node, or fail the pipeline.
+**Recovery options:** Restart a transform from its checkpoint, continue without the node, or fail the pipeline. Node retry runs a node again only if it failed before reading any input.
 
 ### Pipeline-Level Failures
 
@@ -44,7 +44,7 @@ When a failure occurs, NPipeline consults your **resilience policy** to decide w
 | `Retry` | Retry the failed operation, after the layer's backoff. |
 | `Skip` | Discard the failed item and continue processing. |
 | `DeadLetter` | Route the failed item to a dead-letter sink for later inspection. |
-| `RestartNode` | Restart the entire failed node from its materialized input. |
+| `RestartNode` | Restart the failed transform from its checkpoint, the first item whose outcome wasn't delivered. |
 | `ContinueWithoutNode` | Remove the failed node and continue the pipeline without it. |
 
 These decisions are defined in the `ResilienceDecision` enum (`NPipeline.Reliability` namespace).
@@ -125,21 +125,14 @@ flowchart TD
     F -->|Retry| G[Wait for the layer's backoff → retry]
     F -->|Skip| H[Discard item → continue]
     F -->|DeadLetter| I[Route to sink → continue]
-    F -->|RestartNode| J[Replay materialized input]
+    F -->|RestartNode| J[Resume at the checkpoint]
     F -->|Fail| K[Pipeline stops]
     F -->|ContinueWithoutNode| L[Remove node → continue]
 ```
 
 ## Enabling Resilience on a Node
 
-To enable retry/restart behavior on a specific transform node, call `.WithResilience()`:
-
-```csharp
-var transform = builder.AddTransform<MyTransform, string, string>("my-transform");
-transform.WithResilience(builder);
-```
-
-This wraps the node's execution strategy with `ResilientExecutionStrategy`. The node restarts only as often as its `NodeRestart.MaxRestarts` allows (or a custom policy asks), waiting `NodeRestart.Backoff` between runs:
+To make a transform restartable, set its `NodeRestart.MaxRestarts` above zero. The builder then wraps the node for restart; there's no separate call. The node restarts as often as the policy answers `RestartNode` (the default policy follows `MaxRestarts`), waiting `NodeRestart.Backoff` between runs:
 
 ```csharp
 builder.WithResilience(transform, options => options with
@@ -148,7 +141,9 @@ builder.WithResilience(transform, options => options with
 });
 ```
 
-> **Note:** Resilience is only applicable to transform nodes. Source and sink nodes handle errors through the node-level and pipeline-level decision methods.
+A restart resumes at the node's checkpoint, so it doesn't deliver items twice or buffer the whole input. For more information, see [Node restart and the replay window](materialization.md).
+
+> **Note:** Item retry and node restart apply only to transform nodes. Node retry (`NodeRetry`) applies to any node, but covers setup only: once a node has read input, it isn't executed again. Sinks and sources recover from mid-stream failures through their connector's retries.
 
 ## Key Namespaces
 
@@ -163,4 +158,4 @@ builder.WithResilience(transform, options => options with
 - [Retry Strategies](retry-strategies.md) - configure exponential, linear, or fixed backoff with jitter
 - [Circuit Breakers](circuit-breakers.md) - stop calling a dependency that keeps failing, and fail or pause until it recovers
 - [Dead-Letter Queues](dead-letter-queues.md) - capture and inspect failed items
-- [Materialization](materialization.md) - buffer streaming inputs to enable node restart
+- [Node restart and the replay window](materialization.md) - how a transform resumes from its checkpoint, and what a restart guarantees

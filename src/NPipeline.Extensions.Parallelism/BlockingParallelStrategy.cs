@@ -39,6 +39,41 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
         string nodeId,
         CancellationToken cancellationToken)
     {
+        return Execute(input, 0, null, node, context, nodeId, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    ///     With <see cref="ParallelOptions.PreserveOrdering" /> (the default) the checkpoint advances in input order, so
+    ///     each output is delivered exactly once across restarts. Without it, the checkpoint is the oldest item still
+    ///     in flight, and outputs delivered ahead of it are delivered again after a restart.
+    /// </remarks>
+    public override Task<IDataStream<TOut>> ExecuteFromAsync<TIn, TOut>(
+        IDataStream<TIn> input,
+        long offset,
+        RestartCheckpoint checkpoint,
+        ITransformNode<TIn, TOut> node,
+        PipelineContext context,
+        string nodeId,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(checkpoint);
+        return Execute(input, offset, checkpoint, node, context, nodeId, cancellationToken);
+    }
+
+    /// <summary>
+    ///     Executes the node over an input whose first item has index <c>offset</c>, reporting delivered items to
+    ///     <c>checkpoint</c> when the node is restartable (otherwise it is <see langword="null" />).
+    /// </summary>
+    private Task<IDataStream<TOut>> Execute<TIn, TOut>(
+        IDataStream<TIn> input,
+        long offset,
+        RestartCheckpoint? checkpoint,
+        ITransformNode<TIn, TOut> node,
+        PipelineContext context,
+        string nodeId,
+        CancellationToken cancellationToken)
+    {
         // Set the parallel execution flag to help ErrorHandlingService preserve original exception types
         context.ExecutionConfiguration.IsParallelExecution = true;
 
@@ -227,8 +262,10 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
                         }
                         else
                         {
-                            // Unordered mode never sees this sequence again; release its window slot directly.
+                            // Unordered mode never sees this sequence again; release its window slot directly. The item
+                            // has no output, so its outcome is delivered now.
                             _ = window?.Release();
+                            checkpoint?.Complete(offset + work.Sequence);
                         }
                     }
                 }
@@ -308,6 +345,10 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
                             yield return current.Value;
                         }
 
+                        // Reached once the consumer asks for the next output (or at once for a placeholder), so every
+                        // item below nextSequence has been delivered.
+                        checkpoint?.Advance(offset + nextSequence);
+
                         if (!pending.Remove(nextSequence, out current))
                             break;
                     }
@@ -332,6 +373,9 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
                     _ = window?.Release();
                     observabilityScope.IncrementEmitted();
                     yield return result.Value;
+
+                    // Reached once the consumer asks for the next output, so this one has been delivered.
+                    checkpoint?.Complete(offset + result.Sequence);
                 }
             }
             finally

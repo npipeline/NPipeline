@@ -109,56 +109,18 @@ public sealed class ErrorHandlingService : IErrorHandlingService
         }
         catch (Exception ex)
         {
-            // Check if this is a parallel execution scenario where we want to preserve the original exception
-            var isParallelExecution = IsParallelExecution(context);
-
-            // FIRST PRIORITY: Check if there's a RetryExhaustedException in the context that might be related to this failure
-            // This handles cases where an upstream node failed with RetryExhaustedException but the current node
-            // is seeing a different exception (like InvalidOperationException) when trying to process the data
-
-            // Taken, not read: leaving it set would attribute this node's root cause to every later failure too.
-            if (context.ExecutionConfiguration.TakeLastRetryExhaustedException() is { } contextRetryEx)
-                throw new NodeExecutionException(nodeDef.Id, contextRetryEx.Message, contextRetryEx);
-
-            // SECOND PRIORITY: Check if the exception or any of its inner exceptions is a RetryExhaustedException
-            var currentException = ex;
-
-            while (currentException is not null)
+            // A retry-exhausted failure, here or from an upstream node whose stream this node was reading, names the
+            // node and attempts it belongs to, so it is reported as the cause.
+            for (var current = ex; current is not null; current = current.InnerException)
             {
-                if (currentException is RetryExhaustedException)
-                {
-                    // Wrap the RetryExhaustedException in NodeExecutionException with RetryExhaustedException as inner exception
-                    throw new NodeExecutionException(nodeDef.Id, currentException.Message, currentException);
-                }
-
-                currentException = currentException.InnerException;
+                if (current is RetryExhaustedException)
+                    throw new NodeExecutionException(nodeDef.Id, current.Message, current);
             }
 
-            // THIRD PRIORITY: If the exception is a NodeExecutionException, check if it has a RetryExhaustedException as inner exception
-            if (ex is NodeExecutionException nodeEx)
-            {
-                if (nodeEx.InnerException is RetryExhaustedException innerRetryEx)
-                    throw;
-            }
-
-            // FOURTH PRIORITY: If the exception is a RetryExhaustedException, wrap it in NodeExecutionException with RetryExhaustedException as inner exception
-            if (ex is RetryExhaustedException retryEx)
-                throw new NodeExecutionException(nodeDef.Id, retryEx.Message, retryEx);
-
-            // FIFTH PRIORITY: Check if the exception message contains "Retry attempts exhausted" which indicates it's a RetryExhaustedException
-            if (ex.Message.Contains("Retry attempts exhausted"))
-            {
-                // The exception is already a RetryExhaustedException, just wrap it in NodeExecutionException
-                throw new NodeExecutionException(nodeDef.Id, ex.Message, ex);
-            }
-
-            if (isParallelExecution)
-            {
-                // For parallel execution, preserve the original exception type for correct exception propagation semantics
+            // For parallel execution, preserve the original exception type for correct exception propagation semantics
+            if (IsParallelExecution(context))
                 throw;
-            }
 
-            // Wrap other exceptions in NodeExecutionException
             throw new NodeExecutionException(nodeDef.Id, ex.Message, ex);
         }
     }
@@ -182,11 +144,19 @@ public sealed class ErrorHandlingService : IErrorHandlingService
         ArgumentNullException.ThrowIfNull(executeAsync);
 
         var options = context.ExecutionConfiguration.GetResilienceOptions(nodeDefinition.Id);
+        var policy = ResilienceRuntime.ResolvePolicy(context, nodeDefinition.Id);
+
+        // Only a node that could be executed again needs to know whether input reached it; the tracking costs a
+        // wrapper around each of its inputs.
+        var inputFlow = options.NodeRetry.MaxRetries > 0 || policy is not DefaultResiliencePolicy
+            ? context.ExecutionConfiguration.TrackInputFlow(nodeDefinition.Id)
+            : null;
 
         // attempt is the 1-based number of the execution being made; retries so far is attempt - 1.
         for (var attempt = 1;; attempt++)
         {
             Exception failure;
+            inputFlow?.Reset();
 
             try
             {
@@ -200,13 +170,9 @@ public sealed class ErrorHandlingService : IErrorHandlingService
             catch (Exception ex)
             {
                 failure = ex;
-
-                // Check whether a node exhausted its retries and left the root cause for us to report.
-                if (context.ExecutionConfiguration.TakeLastRetryExhaustedException() is { } contextRetryEx)
-                    throw new NodeExecutionException(nodeDefinition.Id, contextRetryEx.Message, contextRetryEx);
             }
 
-            var policy = ResilienceRuntime.ResolvePolicy(context, nodeDefinition.Id);
+            var inputConsumed = inputFlow?.HasFlowed == true;
 
             var decision = await policy.DecideNodeFailureAsync(new NodeFailure
             {
@@ -216,10 +182,14 @@ public sealed class ErrorHandlingService : IErrorHandlingService
                 Attempt = attempt,
                 MaxRetries = options.NodeRetry.MaxRetries,
                 IsTransient = options.NodeRetry.Classifier.IsTransient(failure, cancellationToken),
+                InputConsumed = inputConsumed,
                 Context = context,
             }, cancellationToken).ConfigureAwait(false);
 
-            if (decision != ResilienceDecision.Retry)
+            // Node retry covers setup only. Once the node has read input, executing it again would read a forward-only
+            // input from wherever it stopped, or from its start, losing or duplicating items, so a Retry is refused.
+            // Transforms recover mid-stream through node restart; sinks and sources through their connector's retries.
+            if (decision != ResilienceDecision.Retry || inputConsumed)
             {
                 if (attempt > 1 && failure is not OperationCanceledException)
                     ResilienceRuntime.ReportRetryExhausted(context, nodeDefinition.Id, RetryKind.NodeRetry, attempt, failure);

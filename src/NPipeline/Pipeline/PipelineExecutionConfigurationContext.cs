@@ -1,5 +1,7 @@
+using System.Collections.Concurrent;
 using NPipeline.Configuration;
 using NPipeline.ErrorHandling;
+using NPipeline.Execution;
 using NPipeline.Execution.CircuitBreaking;
 using NPipeline.Reliability;
 
@@ -11,6 +13,9 @@ namespace NPipeline.Pipeline;
 public sealed class PipelineExecutionConfigurationContext
 {
     private readonly Dictionary<string, PipelineResilienceOptions> _nodeResilience = new();
+
+    // Terminal nodes below a fan-out execute concurrently, so this is written from several threads.
+    private readonly ConcurrentDictionary<string, InputFlow> _inputFlow = new(StringComparer.Ordinal);
 
     internal PipelineExecutionConfigurationContext(PipelineOptimizationProfile optimizationProfile)
     {
@@ -51,6 +56,23 @@ public sealed class PipelineExecutionConfigurationContext
     {
         Resilience = PipelineResilienceOptions.None;
         _nodeResilience.Clear();
+        _inputFlow.Clear();
+    }
+
+    /// <summary>
+    ///     Starts tracking whether <paramref name="nodeId" /> receives input, for node retry to consult.
+    /// </summary>
+    internal InputFlow TrackInputFlow(string nodeId)
+    {
+        return _inputFlow.GetOrAdd(nodeId, static _ => new InputFlow());
+    }
+
+    /// <summary>
+    ///     The input tracking for <paramref name="nodeId" />, if node retry asked for it.
+    /// </summary>
+    internal InputFlow? GetInputFlow(string nodeId)
+    {
+        return _inputFlow.GetValueOrDefault(nodeId);
     }
 
     /// <summary>
@@ -71,36 +93,6 @@ public sealed class PipelineExecutionConfigurationContext
     ///     Indicates the current run uses parallel execution behavior.
     /// </summary>
     public bool IsParallelExecution { get; internal set; }
-
-    private RetryExhaustedException? _lastRetryExhaustedException;
-
-    /// <summary>
-    ///     The most recent retry-exhausted exception reported by a node, awaiting consumption by error handling.
-    /// </summary>
-    /// <remarks>
-    ///     This is a hand-off slot, not a run-scoped record. It is written when a node exhausts its retries and taken
-    ///     by the first error handler that reports a failure, so that the downstream failure caused by the truncated
-    ///     stream carries the real root cause. Leaving it set would attribute the earlier node's message and inner
-    ///     exception to every later failure in the run. Use <see cref="TakeLastRetryExhaustedException" /> to consume
-    ///     it; reading this property does not clear it.
-    /// </remarks>
-    public RetryExhaustedException? LastRetryExhaustedException
-    {
-        get => Volatile.Read(ref _lastRetryExhaustedException);
-        internal set => Volatile.Write(ref _lastRetryExhaustedException, value);
-    }
-
-    /// <summary>
-    ///     Atomically takes the pending retry-exhausted exception, clearing the slot.
-    /// </summary>
-    /// <returns>The pending exception, or <see langword="null" /> if none is pending.</returns>
-    /// <remarks>
-    ///     Atomic so that two nodes failing concurrently cannot both report the same root cause.
-    /// </remarks>
-    internal RetryExhaustedException? TakeLastRetryExhaustedException()
-    {
-        return Interlocked.Exchange(ref _lastRetryExhaustedException, null);
-    }
 
     /// <summary>
     ///     The circuit breakers for this run's nodes. A run started by <see cref="PipelineFactory" /> uses the

@@ -157,7 +157,6 @@ public sealed class RetryOptionsTests
             var k = builder.AddInMemorySink<int>("k2");
             builder.Connect(s, t).Connect(t, k);
             builder.AddResiliencePolicy<NodeRestartingErrorHandler>();
-            builder.WithResilience(t);
 
             // One restart: the transform fails twice, so the restarted run fails too and the restarts are exhausted.
             builder.WithResilience(o => o with { NodeRestart = new NodeRestartOptions { MaxRestarts = 1, MaxReplayWindow = 128, Backoff = RetryBackoff.None } });

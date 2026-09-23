@@ -149,7 +149,7 @@ public sealed class ResilientCancellationTests
 
     private static IDataStream<int> Input()
     {
-        // Not IForwardOnlyDataStream, so the strategy skips materialization and the test exercises only the loops.
+        // The stub strategy ignores its input, so the test exercises only the restart loop.
         return new NPipeline.DataFlow.DataStreams.InMemoryDataStream<int>([0], "input");
     }
 
@@ -198,7 +198,7 @@ public sealed class ResilientCancellationTests
         ct.ThrowIfCancellationRequested();
     }
 
-    private sealed class StubInnerStrategy(Func<CancellationToken, IAsyncEnumerable<int>> produce) : IExecutionStrategy
+    private sealed class StubInnerStrategy(Func<CancellationToken, IAsyncEnumerable<int>> produce) : IResumableExecutionStrategy
     {
         public int Attempts { get; private set; }
 
@@ -208,6 +208,12 @@ public sealed class ResilientCancellationTests
             Attempts++;
             var stream = new DataStream<int>(produce(cancellationToken), "stub");
             return Task.FromResult((IDataStream<TOut>)(object)stream);
+        }
+
+        public Task<IDataStream<TOut>> ExecuteFromAsync<TIn, TOut>(IDataStream<TIn> input, long offset, RestartCheckpoint checkpoint,
+            ITransformNode<TIn, TOut> node, PipelineContext context, string nodeId, CancellationToken cancellationToken)
+        {
+            return ExecuteAsync(input, node, context, nodeId, cancellationToken);
         }
     }
 

@@ -134,8 +134,8 @@ public sealed class NodeExecutor(
     {
         // Gather inputs and merge using existing merge service (still reflection-free path)
         var joinInputPipes = inputLookup[plan.NodeId]
-            .Select(edge => nodeOutputs[edge.SourceNodeId] ??
-                            throw new InvalidOperationException(ErrorMessages.OutputNotFoundForSourceNode(edge.SourceNodeId)))
+            .Select(edge => TrackInputFlow(context, plan.NodeId, nodeOutputs[edge.SourceNodeId] ??
+                                                                 throw new InvalidOperationException(ErrorMessages.OutputNotFoundForSourceNode(edge.SourceNodeId))))
             .ToList();
 
         var merged = await pipeMergeService.MergeAsync(nodeDef, instance, joinInputPipes, context.CancellationToken).ConfigureAwait(false);
@@ -198,8 +198,9 @@ public sealed class NodeExecutor(
         NodeDefinition nodeDef,
         INode instance)
     {
-        var input = await GetNodeInputAsync(plan.NodeId, graph, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, context.CancellationToken)
-            .ConfigureAwait(false);
+        var input = TrackInputFlow(context, plan.NodeId,
+            await GetNodeInputAsync(plan.NodeId, graph, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, context.CancellationToken)
+                .ConfigureAwait(false));
 
         IDataStream output;
 
@@ -258,8 +259,9 @@ public sealed class NodeExecutor(
         NodeDefinition nodeDef,
         INode instance)
     {
-        var input = await GetNodeInputAsync(plan.NodeId, graph, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, context.CancellationToken)
-            .ConfigureAwait(false);
+        var input = TrackInputFlow(context, plan.NodeId,
+            await GetNodeInputAsync(plan.NodeId, graph, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, context.CancellationToken)
+                .ConfigureAwait(false));
 
         var effectiveInput = input;
 
@@ -300,6 +302,20 @@ public sealed class NodeExecutor(
         }
 
         nodeOutputs[plan.NodeId] = null; // sinks produce no downstream pipe
+    }
+
+    /// <summary>
+    ///     Wraps a node's input so that node retry can tell whether the node consumed any, when node retry asked.
+    /// </summary>
+    /// <remarks>
+    ///     Only nodes that drain their input while executing need this: sinks, aggregates, and joins. A transform
+    ///     returns its output stream without reading its input, so its execution never consumes input.
+    /// </remarks>
+    private static IDataStream TrackInputFlow(PipelineContext context, string nodeId, IDataStream input)
+    {
+        return context.ExecutionConfiguration.GetInputFlow(nodeId) is { } flow
+            ? InputFlowTracking.Wrap(input, flow)
+            : input;
     }
 
     private async Task<IDataStream> GetNodeInputAsync(string nodeId, PipelineGraph graph, ILookup<string, Edge> inputLookup,

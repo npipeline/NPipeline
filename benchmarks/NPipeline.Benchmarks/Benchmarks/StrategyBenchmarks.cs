@@ -82,18 +82,8 @@ public class StrategyBenchmarks
             var t = b.AddTransform<PassThrough, int, int>("t");
             var sink = b.AddSink<BlackHoleSink, int>("sink");
 
-            // Wrap transform with resilient execution strategy. A forward-only input needs a replay window that covers
-            // the whole run.
-            b.WithResilience(t);
-
-            var count = c.Parameters.TryGetValue("count", out var v)
-                ? Convert.ToInt32(v)
-                : 0;
-
-            b.WithResilience(t, o => o with
-            {
-                NodeRestart = new NodeRestartOptions { MaxRestarts = 1, MaxReplayWindow = Math.Max(count, 1) },
-            });
+            // Restarts wrap the transform in the node restart strategy, which streams its input through a replay window.
+            b.WithResilience(t, o => o with { NodeRestart = new NodeRestartOptions { MaxRestarts = 1 } });
 
             b.Connect(src, t).Connect(t, sink);
         }

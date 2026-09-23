@@ -69,8 +69,8 @@ internal static partial class ResilientExecutionStrategyLogMessages
     public static partial void RetryExhausted(ILogger logger, string nodeId, int attempts);
 
     [LoggerMessage(7, LogLevel.Debug,
-        "Resilience policy returned decision {Decision} for node {NodeId}. Restarts so far: {Failures}, Consecutive failures: {ConsecutiveFailures}.")]
-    public static partial void ErrorHandlerDecision(ILogger logger, string decision, string nodeId, int failures, int consecutiveFailures);
+        "Resilience policy returned decision {Decision} for node {NodeId}. Restarts so far: {Restarts}, checkpoint: {Checkpoint}.")]
+    public static partial void ErrorHandlerDecision(ILogger logger, string decision, string nodeId, int restarts, long checkpoint);
 
     [LoggerMessage(9, LogLevel.Debug, "Applying restart delay of {Delay}ms for node {NodeId} before restart {Restart}")]
     public static partial void ApplyingRetryDelay(ILogger logger, double delay, string nodeId, int restart);

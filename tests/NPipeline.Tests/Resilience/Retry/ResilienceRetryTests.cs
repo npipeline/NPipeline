@@ -85,7 +85,6 @@ public sealed class ResilienceRetryTests
             var k = builder.AddInMemorySink<int>("snkR");
             builder.Connect(s, t).Connect(t, k);
             builder.AddResiliencePolicy<RestartResiliencePolicy>();
-            builder.WithResilience(t);
             builder.WithResilience(o => o with { NodeRestart = new NodeRestartOptions { MaxRestarts = 3, MaxReplayWindow = 1000, Backoff = RetryBackoff.None } });
         }
     }

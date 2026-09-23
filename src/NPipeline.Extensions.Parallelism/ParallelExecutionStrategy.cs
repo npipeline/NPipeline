@@ -62,6 +62,35 @@ public sealed class ParallelExecutionStrategy : BlockingParallelStrategy
     }
 
     /// <summary>
+    ///     Resumes the node through the implementation for its queue policy, as <see cref="ExecuteAsync{TIn,TOut}" /> selects it.
+    /// </summary>
+    public override async Task<IDataStream<TOut>> ExecuteFromAsync<TIn, TOut>(
+        IDataStream<TIn> input,
+        long offset,
+        RestartCheckpoint checkpoint,
+        ITransformNode<TIn, TOut> node,
+        PipelineContext context,
+        string nodeId,
+        CancellationToken cancellationToken)
+    {
+        var queuePolicy = BoundedQueuePolicy.Block;
+
+        if (context.NodeEnvironment.NodeExecutionScopeRegistry.TryGetNodeExecutionAnnotation(nodeId, out var opt) && opt is ParallelOptions po)
+            queuePolicy = po.QueuePolicy;
+
+        return queuePolicy switch
+        {
+            BoundedQueuePolicy.DropOldest =>
+                await (_dropOldest ??= new DropOldestParallelStrategy(ConfiguredMaxDop))
+                    .ExecuteFromAsync(input, offset, checkpoint, node, context, nodeId, cancellationToken).ConfigureAwait(false),
+            BoundedQueuePolicy.DropNewest =>
+                await (_dropNewest ??= new DropNewestParallelStrategy(ConfiguredMaxDop))
+                    .ExecuteFromAsync(input, offset, checkpoint, node, context, nodeId, cancellationToken).ConfigureAwait(false),
+            _ => await base.ExecuteFromAsync(input, offset, checkpoint, node, context, nodeId, cancellationToken).ConfigureAwait(false),
+        };
+    }
+
+    /// <summary>
     ///     Creates a new parallel execution strategy based on the provided options.
     /// </summary>
     /// <param name="options">Configuration options for the strategy, or null to use defaults (blocking policy, processor count DOP).</param>

@@ -232,50 +232,6 @@ public sealed class NodeConfigurationExtensionsTests
 
     #endregion
 
-    #region WithResilience Tests
-
-    [Fact]
-    public void WithResilience_ConfiguresResilientStrategy()
-    {
-        // Arrange
-        var builder = new PipelineBuilder();
-        var handle = builder.AddTransform<TestTransformNode, int, string>();
-
-        // Act
-        handle.WithResilience(builder);
-
-        // Assert
-        _ = builder.NodeState.Nodes.Should().ContainKey(handle.Id);
-        var nodeDef = builder.NodeState.Nodes[handle.Id];
-        _ = nodeDef.ExecutionStrategy.Should().NotBeNull();
-    }
-
-    [Fact]
-    public void WithResilience_ReturnsHandle()
-    {
-        // Arrange
-        var builder = new PipelineBuilder();
-        var handle = builder.AddTransform<TestTransformNode, int, string>();
-
-        // Act
-        var result = handle.WithResilience(builder);
-
-        // Assert
-        _ = result.Should().Be(handle);
-    }
-
-    [Fact]
-    public void WithResilience_WithNullBuilder_ThrowsArgumentNullException()
-    {
-        // Arrange
-        var handle = new TransformNodeHandle<int, string>("test");
-
-        // Act & Assert
-        _ = Assert.Throws<ArgumentNullException>(() => handle.WithResilience(null!));
-    }
-
-    #endregion
-
     #region Fluent Chaining Tests
 
     [Fact]
@@ -306,8 +262,7 @@ public sealed class NodeConfigurationExtensionsTests
 
         // Act
         var result = originalHandle
-            .WithExecutionStrategy(builder, new SequentialExecutionStrategy())
-            .WithResilience(builder);
+            .WithExecutionStrategy(builder, new SequentialExecutionStrategy());
 
         // Assert
         _ = result.Should().Be(originalHandle);

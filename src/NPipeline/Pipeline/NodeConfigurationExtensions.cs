@@ -40,23 +40,4 @@ public static class NodeConfigurationExtensions
         builder.WithExecutionStrategy(handle, strategy);
         return handle;
     }
-
-    /// <summary>
-    ///     Enables resilient execution for a transform node, wrapping the current execution strategy with retry/fallback logic.
-    /// </summary>
-    /// <typeparam name="TIn">The input type of the transform node.</typeparam>
-    /// <typeparam name="TOut">The output type of the transform node.</typeparam>
-    /// <param name="handle">The transform node handle.</param>
-    /// <param name="builder">The pipeline builder.</param>
-    /// <returns>The same transform node handle for method chaining.</returns>
-    /// <exception cref="ArgumentNullException">Thrown when builder is null.</exception>
-    public static TransformNodeHandle<TIn, TOut> WithResilience<TIn, TOut>(
-        this TransformNodeHandle<TIn, TOut> handle,
-        PipelineBuilder builder)
-    {
-        ArgumentNullException.ThrowIfNull(builder);
-
-        builder.WithResilience(handle);
-        return handle;
-    }
 }

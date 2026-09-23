@@ -15,7 +15,11 @@ namespace NPipeline.Execution.Strategies;
 /// <summary>
 ///     Sequential single-threaded execution strategy: one item at a time, in order.
 /// </summary>
-public sealed class SequentialExecutionStrategy : IExecutionStrategy
+/// <remarks>
+///     Resumable: a restarted node resumes after the last item whose outcome was delivered, so across restarts each
+///     output is delivered exactly once, and no item is skipped or dead-lettered twice.
+/// </remarks>
+public sealed class SequentialExecutionStrategy : IResumableExecutionStrategy
 {
     /// <summary>
     ///     The strategy used when a node's graph definition configures none. The type holds no per-run state, so one
@@ -45,6 +49,32 @@ public sealed class SequentialExecutionStrategy : IExecutionStrategy
         string nodeId,
         CancellationToken cancellationToken)
     {
+        return Execute(input, 0, null, node, context, nodeId, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public Task<IDataStream<TOut>> ExecuteFromAsync<TIn, TOut>(
+        IDataStream<TIn> input,
+        long offset,
+        RestartCheckpoint checkpoint,
+        ITransformNode<TIn, TOut> node,
+        PipelineContext context,
+        string nodeId,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(checkpoint);
+        return Execute(input, offset, checkpoint, node, context, nodeId, cancellationToken);
+    }
+
+    private Task<IDataStream<TOut>> Execute<TIn, TOut>(
+        IDataStream<TIn> input,
+        long offset,
+        RestartCheckpoint? checkpoint,
+        ITransformNode<TIn, TOut> node,
+        PipelineContext context,
+        string nodeId,
+        CancellationToken cancellationToken)
+    {
 
         // Create cached execution context once per node (optimization: reduces per-item dictionary lookups)
         var cached = CachedNodeExecutionContext.Create(context, nodeId);
@@ -60,7 +90,8 @@ public sealed class SequentialExecutionStrategy : IExecutionStrategy
             var tracer = context.Observability.Tracer;
             var nodeId = cached.NodeId;
             var lineageTrackingEnabled = LineageNodeOutcomeRegistry.IsTracking(context.RunIdentity.PipelineId, nodeId);
-            long fallbackInputIndex = -1;
+            // The index of the last item read. A resumed run starts part-way through the input.
+            var fallbackInputIndex = offset - 1;
             using var observabilityScope = context.NodeEnvironment.NodeExecutionScopeRegistry.BeginNodeScope(nodeId);
             var timedInput = NPipeline.Execution.NodeTimingDataStreamWrapper.WrapInputWait(input, observabilityScope);
 
@@ -140,12 +171,16 @@ public sealed class SequentialExecutionStrategy : IExecutionStrategy
                     throw;
                 }
 
-                if (!produced)
-                    continue;
+                if (produced)
+                {
+                    // Track item emitted
+                    observabilityScope.IncrementEmitted();
+                    yield return output!;
+                }
 
-                // Track item emitted
-                observabilityScope.IncrementEmitted();
-                yield return output!;
+                // Reached once the consumer asks for the next item, so the item's output has been delivered. A skipped
+                // or dead-lettered item has no output and is delivered at once.
+                checkpoint?.Advance(fallbackInputIndex + 1);
             }
 
             // Validate context immutability after processing all items (DEBUG-only, zero overhead in RELEASE)

@@ -130,7 +130,6 @@ public sealed class ResilienceEventBehaviorTests
                 ItemRetry = ItemRetryOptions.None,
                 NodeRestart = new NodeRestartOptions { MaxRestarts = 1, MaxReplayWindow = 100, Backoff = RetryBackoff.None },
             });
-            _ = t.WithResilience(b);
         }, observer: observer);
 
         _ = await act.Should().ThrowAsync<Exception>();

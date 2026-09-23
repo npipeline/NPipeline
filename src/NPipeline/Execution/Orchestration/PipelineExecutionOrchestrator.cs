@@ -149,6 +149,5 @@ internal sealed class PipelineExecutionOrchestrator : IPipelineExecutionOrchestr
         execution.ResetResilienceOptions();
         nodeEnvironment.NodeExecutionScopeRegistry.Clear();
         execution.IsParallelExecution = false;
-        execution.LastRetryExhaustedException = null;
     }
 }

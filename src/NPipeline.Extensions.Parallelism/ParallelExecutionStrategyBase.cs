@@ -15,7 +15,13 @@ namespace NPipeline.Extensions.Parallelism
     ///     Base class for parallel execution strategies. Items are transformed by the same item executor as the
     ///     sequential strategy, so retry, backoff, and failure handling behave identically.
     /// </summary>
-    public abstract class ParallelExecutionStrategyBase(int? maxDegreeOfParallelism = null) : IExecutionStrategy
+    /// <remarks>
+    ///     Parallel strategies are resumable, so node restart works with them. An ordered strategy delivers each output
+    ///     exactly once across restarts. An unordered or dropping strategy delivers at least once: after a restart,
+    ///     outputs that were delivered ahead of the checkpoint are delivered again, at most the number in flight at the
+    ///     failure.
+    /// </remarks>
+    public abstract class ParallelExecutionStrategyBase(int? maxDegreeOfParallelism = null) : IResumableExecutionStrategy
     {
         /// <summary>
         /// Work item wrapper carrying optional lineage input index for per-item outcome correlation.
@@ -28,6 +34,14 @@ namespace NPipeline.Extensions.Parallelism
         /// <param name="Sequence">Monotonically increasing input sequence number used to restore ordering.</param>
         protected readonly record struct IndexedWorkItem<T>(T Item, long? LineageInputIndex, Guid? CorrelationId = null,
             int[]? AncestryInputIndices = null, long Sequence = 0);
+
+        /// <summary>
+        ///     A worker's output, carrying the input sequence number of the item it came from.
+        /// </summary>
+        /// <typeparam name="T">The output item type.</typeparam>
+        /// <param name="Sequence">The <see cref="IndexedWorkItem{T}.Sequence" /> of the item that produced the output.</param>
+        /// <param name="Value">The output.</param>
+        protected readonly record struct IndexedResult<T>(long Sequence, T Value);
 
         /// <summary>
         ///     Gets the configured maximum degree of parallelism for the strategy.
@@ -47,6 +61,10 @@ namespace NPipeline.Extensions.Parallelism
         /// <returns>A task representing the asynchronous operation with the output data pipe.</returns>
         public abstract Task<IDataStream<TOut>> ExecuteAsync<TIn, TOut>(IDataStream<TIn> input, ITransformNode<TIn, TOut> node, PipelineContext context,
             string nodeId, CancellationToken cancellationToken);
+
+        /// <inheritdoc />
+        public abstract Task<IDataStream<TOut>> ExecuteFromAsync<TIn, TOut>(IDataStream<TIn> input, long offset, RestartCheckpoint checkpoint,
+            ITransformNode<TIn, TOut> node, PipelineContext context, string nodeId, CancellationToken cancellationToken);
 
         /// <summary>
         ///     Transforms one work item through the core item executor, which applies the node's item retry, backoff,
@@ -112,18 +130,28 @@ namespace NPipeline.Extensions.Parallelism
         /// <param name="cachedContext">The cached execution context with pre-resolved configuration.</param>
         /// <param name="metrics">The metrics tracker.</param>
         /// <param name="effectiveDop">The effective degree of parallelism.</param>
+        /// <param name="checkpoint">
+        ///     Where to report items that produce no output (skipped or dead-lettered), when the node is restartable;
+        ///     otherwise <see langword="null" />. Item sequence numbers are indexes in the node's input.
+        /// </param>
         /// <param name="cancellationToken">The cancellation token.</param>
+        /// <param name="onFault">
+        ///     Called with a worker's failure before the worker's task faults, so the caller can stop the feeder and the
+        ///     other workers instead of waiting for the input to drain.
+        /// </param>
         /// <returns>A tuple containing the output channel and the list of worker tasks.</returns>
-        protected static (Channel<TOut> OutChannel, List<Task> Workers) CreateWorkerTasks<TIn, TOut>(
+        protected static (Channel<IndexedResult<TOut>> OutChannel, List<Task> Workers) CreateWorkerTasks<TIn, TOut>(
             ChannelReader<IndexedWorkItem<TIn>> reader,
             ITransformNode<TIn, TOut> node,
             PipelineContext context,
             CachedNodeExecutionContext cachedContext,
             ParallelExecutionMetrics metrics,
             int effectiveDop,
-            CancellationToken cancellationToken)
+            RestartCheckpoint? checkpoint,
+            CancellationToken cancellationToken,
+            Action<Exception>? onFault = null)
         {
-            var outChannel = Channel.CreateUnbounded<TOut>();
+            var outChannel = Channel.CreateUnbounded<IndexedResult<TOut>>();
             var workers = new List<Task>(effectiveDop);
             Action<int> onRetry = metrics.RecordRetry;
 
@@ -131,15 +159,25 @@ namespace NPipeline.Extensions.Parallelism
             {
                 workers.Add(Task.Run(async () =>
                 {
-                    await foreach (var next in reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
+                    try
                     {
-                        var result = await ExecuteItemAsync(next, node, context, cachedContext, onRetry).ConfigureAwait(false);
-
-                        if (result.Produced)
+                        await foreach (var next in reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
                         {
-                            _ = metrics.IncrementProcessed();
-                            await outChannel.Writer.WriteAsync(result.Output!, cancellationToken).ConfigureAwait(false);
+                            var result = await ExecuteItemAsync(next, node, context, cachedContext, onRetry).ConfigureAwait(false);
+
+                            if (result.Produced)
+                            {
+                                _ = metrics.IncrementProcessed();
+                                await outChannel.Writer.WriteAsync(new IndexedResult<TOut>(next.Sequence, result.Output!), cancellationToken).ConfigureAwait(false);
+                            }
+                            else
+                                checkpoint?.Complete(next.Sequence);
                         }
+                    }
+                    catch (Exception ex)
+                    {
+                        onFault?.Invoke(ex);
+                        throw;
                     }
                 }, cancellationToken));
             }
@@ -157,15 +195,17 @@ namespace NPipeline.Extensions.Parallelism
         /// <param name="metrics">The metrics tracker.</param>
         /// <param name="currentActivity">The current tracing activity.</param>
         /// <param name="observabilityScope">Observability scope handle for recording item counts and scope disposal.</param>
+        /// <param name="checkpoint">Where to report delivered outputs when the node is restartable; otherwise <see langword="null" />.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns>An async enumerable of output items.</returns>
         protected static async IAsyncEnumerable<TOut> CreateOutputEnumerable<TOut>(
-            Channel<TOut> outChannel,
+            Channel<IndexedResult<TOut>> outChannel,
             string nodeId,
             PipelineContext context,
             ParallelExecutionMetrics metrics,
             IPipelineActivity? currentActivity,
             IAutoObservabilityScope observabilityScope,
+            RestartCheckpoint? checkpoint,
             [EnumeratorCancellation] CancellationToken cancellationToken)
         {
             using var scope = observabilityScope;
@@ -175,7 +215,10 @@ namespace NPipeline.Extensions.Parallelism
                 await foreach (var item in outChannel.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
                 {
                     scope.IncrementEmitted();
-                    yield return item;
+                    yield return item.Value;
+
+                    // Reached once the consumer asks for the next output, so this one has been delivered.
+                    checkpoint?.Complete(item.Sequence);
                 }
             }
             finally

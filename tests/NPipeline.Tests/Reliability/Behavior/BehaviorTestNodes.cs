@@ -11,16 +11,6 @@ using NPipeline.Reliability;
 namespace NPipeline.Tests.Reliability.Behavior;
 
 /// <summary>
-///     Skip reasons for behavior tests that pin a known defect. Each test fails against today's code; the phase that
-///     fixes the defect removes the skip. IDs refer to the defect register in <c>plans/resilience-improvements.md</c>.
-/// </summary>
-internal static class Defects
-{
-    public const string R1 = "R1 (Phase 5): a resilient node buffers its whole streaming input before processing";
-    public const string R2 = "R2 (Phase 5): a resilient node fails with zero errors once its input exceeds MaxMaterializedItems";
-}
-
-/// <summary>
 ///     Runs a pipeline whose shape is supplied by the test, so each test can hand the builder node instances it
 ///     keeps a reference to and inspect afterwards.
 /// </summary>
@@ -54,7 +44,7 @@ internal sealed class BehaviorPipeline(Action<PipelineBuilder> define) : IPipeli
 
 /// <summary>
 ///     A forward-only source, which is what every real connector produces. Unlike the in-memory test source it cannot
-///     be re-enumerated, so the resilient strategy has to buffer it to support restarts.
+///     be re-enumerated, so a restarted node has to hold what it may need to process again.
 /// </summary>
 internal sealed class StreamingSource<T>(Func<CancellationToken, IAsyncEnumerable<T>> produce) : SourceNode<T>
 {

@@ -70,7 +70,6 @@ public sealed class RetryKindTests
             {
                 // A restart only happens when the stream itself fails, so the item layer must not absorb the failure.
                 _ = b.WithResilience(t, o => o with { ItemRetry = ItemRetryOptions.None });
-                _ = b.WithResilience(t);
             }
         }), context, CancellationToken.None);
     }

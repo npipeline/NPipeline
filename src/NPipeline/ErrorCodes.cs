@@ -213,8 +213,8 @@ public static class ErrorCodes
     /// <summary>Node not found in builder for the requested operation.</summary>
     public const string NodeNotFoundInBuilder = "NP0402";
 
-    /// <summary>Resilience can only be applied to transform nodes.</summary>
-    public const string ResilienceCannotBeAppliedToNonTransformNode = "NP0403";
+    // NP0403 is retired: it belonged to PipelineBuilder.WithResilience(NodeHandle), which node restart options
+    // replaced. Don't reuse it.
 
     /// <summary>Invalid error handler type (doesn't implement required interface).</summary>
     public const string InvalidErrorHandlerType = "NP0404";
@@ -272,6 +272,9 @@ public static class ErrorCodes
 
     /// <summary>A resilience policy dead-lettered an item but the pipeline has no dead-letter sink.</summary>
     public const string DeadLetterSinkNotConfigured = "NP0424";
+
+    /// <summary>Node restart is configured for a transform whose execution strategy cannot resume.</summary>
+    public const string NodeRestartRequiresResumableStrategy = "NP0425";
 
     #endregion
 

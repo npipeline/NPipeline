@@ -175,7 +175,7 @@ public sealed class PipelineBuilderTests(ITestOutputHelper output)
     }
 
     [Fact]
-    public void WithResilience_ShouldWrapStrategyInResilientStrategy()
+    public void NodeRestartOptions_WrapTheTransformForRestart()
     {
         _ = output; // Parameter is unused but required for test infrastructure
 
@@ -186,12 +186,42 @@ public sealed class PipelineBuilderTests(ITestOutputHelper output)
         builder.Connect(source, transform);
 
         // Act
-        builder.WithResilience(transform);
+        builder.WithResilience(transform, o => o with { NodeRestart = new NodeRestartOptions { MaxRestarts = 2 } });
         var pipeline = builder.Build();
 
         // Assert
         var nodeDef = pipeline.Graph.Nodes.Single(n => n.Id == "transform");
-        nodeDef.ExecutionStrategy.Should().BeOfType<ResilientExecutionStrategy>();
+        nodeDef.ExecutionStrategy.Should().BeOfType<ResilientExecutionStrategy>()
+            .Which.InnerStrategy.Should().BeNull("the node had no strategy of its own, so its default is resolved when it runs");
+    }
+
+    [Fact]
+    public void NodeRestartOptions_KeepTheConfiguredStrategyAsTheInnerOne()
+    {
+        var builder = new PipelineBuilder().WithoutExtendedValidation();
+        var source = builder.AddSource<TestSourceNode, string>("source");
+        var strategy = new SequentialExecutionStrategy();
+        var transform = builder.AddTransform<TestTransformNode, string, int>("transform").WithExecutionStrategy(builder, strategy);
+        builder.Connect(source, transform);
+
+        builder.WithResilience(transform, o => o with { NodeRestart = new NodeRestartOptions { MaxRestarts = 1 } });
+        var pipeline = builder.Build();
+
+        pipeline.Graph.Nodes.Single(n => n.Id == "transform").ExecutionStrategy.Should().BeOfType<ResilientExecutionStrategy>()
+            .Which.InnerStrategy.Should().BeSameAs(strategy);
+    }
+
+    [Fact]
+    public void WithoutRestarts_TheTransformIsNotWrapped()
+    {
+        var builder = new PipelineBuilder().WithoutExtendedValidation();
+        var source = builder.AddSource<TestSourceNode, string>("source");
+        var transform = builder.AddTransform<TestTransformNode, string, int>("transform");
+        builder.Connect(source, transform);
+
+        var pipeline = builder.Build();
+
+        pipeline.Graph.Nodes.Single(n => n.Id == "transform").ExecutionStrategy.Should().BeNull();
     }
 
     [Fact]

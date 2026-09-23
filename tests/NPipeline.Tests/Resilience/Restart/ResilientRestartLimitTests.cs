@@ -105,7 +105,6 @@ public sealed class ResilientRestartLimitTests
             var k = builder.AddInMemorySink<int>("snkRL");
             _ = builder.Connect(s, t).Connect(t, k);
             builder.AddResiliencePolicy<RestartingPolicy>();
-            builder.WithResilience(t);
             builder.WithResilience(o => o with { NodeRestart = new NodeRestartOptions { MaxRestarts = 2, MaxReplayWindow = 128, Backoff = RetryBackoff.None } }); // gate at 2 failures
         }
     }

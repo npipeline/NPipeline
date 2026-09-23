@@ -27,7 +27,6 @@ public static class PipelineGraphValidator
         new SelfLoopRule(),
         new DuplicateEdgeRule(),
         new TypeCompatibilityRule(),
-        new ResilienceConfigurationRule(),
         new ParallelConfigurationRule(),
     ];
 

@@ -16,47 +16,60 @@ namespace NPipeline.Tests.Validation.GraphRules;
 public sealed class ResilienceConfigurationRuleTests
 {
     [Fact]
-    public void ResilientNode_WithNoRestartsAndTheDefaultPolicy_ShouldWarn()
+    public void NodeRestart_OnAStrategyThatCannotResume_FailsTheBuild()
     {
         var builder = new PipelineBuilder();
         var transform = Wire(builder);
 
-        builder.WithResilience(transform);
+        // D-5: restarting from the beginning instead of the checkpoint would deliver items twice, so there is no fallback.
+        builder.WithExecutionStrategy(transform, new NonResumableStrategy());
+        builder.WithResilience(transform, o => o with { NodeRestart = new NodeRestartOptions { MaxRestarts = 3 } });
 
         var ok = builder.TryBuild(out _, out var result);
 
-        ok.Should().BeTrue("Build should succeed, validation issues are warnings");
-        result.Issues.Should().Contain(i => i.Category == "Resilience" && i.Message.Contains("MaxRestarts is 0"));
+        ok.Should().BeFalse();
+        result.Issues.Should().ContainSingle(i => i.Severity == ValidationSeverity.Error && i.Category == "Resilience")
+            .Which.Message.Should().Contain(ErrorCodes.NodeRestartRequiresResumableStrategy).And.Contain(nameof(NonResumableStrategy));
     }
 
     [Fact]
-    public void ResilientNode_WithNoRestartsButACustomPolicy_ShouldNotWarn()
+    public void NodeRestart_FromThePipelineOptions_OnAStrategyThatCannotResume_FailsTheBuild()
     {
         var builder = new PipelineBuilder();
         var transform = Wire(builder);
 
-        // The custom policy may restart the node whatever its options say.
-        builder.AddResiliencePolicy<DummyResiliencePolicy>();
-        builder.WithResilience(transform);
+        builder.WithExecutionStrategy(transform, new NonResumableStrategy());
+        builder.WithResilience(o => o with { NodeRestart = new NodeRestartOptions { MaxRestarts = 1 } });
 
-        var ok = builder.TryBuild(out _, out var result);
+        builder.TryBuild(out _, out var result).Should().BeFalse();
+        result.Issues.Should().Contain(i => i.Message.Contains(ErrorCodes.NodeRestartRequiresResumableStrategy));
+    }
+
+    [Fact]
+    public void NodeRestart_OnAResumableStrategy_Builds()
+    {
+        var builder = new PipelineBuilder();
+        var transform = Wire(builder);
+
+        builder.WithExecutionStrategy(transform, new NPipeline.Extensions.Parallelism.ParallelExecutionStrategy(2));
+        builder.WithResilience(transform, o => o with { NodeRestart = new NodeRestartOptions { MaxRestarts = 3 } });
+
+        var ok = builder.TryBuild(out var pipeline, out var result);
 
         ok.Should().BeTrue();
         result.Issues.Should().NotContain(i => i.Category == "Resilience");
+        pipeline!.Graph.Nodes.Single(n => n.Id == "transform").ExecutionStrategy.Should().BeOfType<ResilientExecutionStrategy>();
     }
 
     [Fact]
-    public void ResilientNode_WithRestarts_ShouldNotWarn()
+    public void AStrategyThatCannotResume_IsFineWithoutRestarts()
     {
         var builder = new PipelineBuilder();
         var transform = Wire(builder);
 
-        builder.WithResilience(transform, o => o with { NodeRestart = new NodeRestartOptions { MaxRestarts = 3 } });
-        builder.WithResilience(transform);
+        builder.WithExecutionStrategy(transform, new NonResumableStrategy());
 
-        var ok = builder.TryBuild(out _, out var result);
-
-        ok.Should().BeTrue();
+        builder.TryBuild(out _, out var result).Should().BeTrue();
         result.Issues.Should().NotContain(i => i.Category == "Resilience");
     }
 
@@ -67,7 +80,6 @@ public sealed class ResilienceConfigurationRuleTests
         var transform = Wire(builder);
 
         builder.WithResilience(transform, o => o with { NodeRestart = new NodeRestartOptions { MaxRestarts = 3, MaxReplayWindow = 0 } });
-        builder.WithResilience(transform);
 
         var act = () => builder.TryBuild(out _, out _);
 
@@ -166,23 +178,13 @@ public sealed class ResilienceConfigurationRuleTests
         }
     }
 
-    private sealed class DummyResiliencePolicy : IResiliencePolicy
+    private sealed class NonResumableStrategy : IExecutionStrategy
     {
-        public ValueTask<ResilienceDecision> DecideNodeFailureAsync(NodeFailure failure, CancellationToken cancellationToken)
+        public Task<NPipeline.DataFlow.IDataStream<TOut>> ExecuteAsync<TIn, TOut>(NPipeline.DataFlow.IDataStream<TIn> input,
+            ITransformNode<TIn, TOut> node, PipelineContext context, string nodeId, CancellationToken cancellationToken)
         {
-            return ValueTask.FromResult(ResilienceDecision.Fail);
+            return SequentialExecutionStrategy.Instance.ExecuteAsync(input, node, context, nodeId, cancellationToken);
         }
-
-        public ValueTask<ResilienceDecision> DecideRestartAsync(StreamFailure failure, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult(ResilienceDecision.Fail);
-        }
-
-        public ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult(ResilienceDecision.Fail);
-        }
-
     }
 }
 
