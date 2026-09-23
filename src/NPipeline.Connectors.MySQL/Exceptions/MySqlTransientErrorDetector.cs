@@ -10,6 +10,7 @@ public static class MySqlTransientErrorDetector
     /// </summary>
     /// <remarks>
     ///     1040: Too many connections
+    ///     1203: User already has more than max_user_connections active connections
     ///     1205: Lock wait timeout exceeded
     ///     1213: Deadlock found when trying to get lock
     ///     2006: MySQL server has gone away
@@ -18,10 +19,20 @@ public static class MySqlTransientErrorDetector
     private static readonly HashSet<int> TransientErrorCodes = new()
     {
         1040, // Too many connections
+        1203, // User already has more than max_user_connections active connections
         1205, // Lock wait timeout exceeded
         1213, // Deadlock found when trying to get lock
         2006, // MySQL server has gone away
         2013, // Lost connection to MySQL server during query
+    };
+
+    /// <summary>
+    ///     MySQL error codes that mean the server is refusing work until load drops.
+    /// </summary>
+    private static readonly HashSet<int> ThrottlingErrorCodes = new()
+    {
+        1040, // Too many connections
+        1203, // User already has more than max_user_connections active connections
     };
 
     /// <summary>
@@ -55,5 +66,14 @@ public static class MySqlTransientErrorDetector
     public static bool IsTransientError(int errorCode)
     {
         return TransientErrorCodes.Contains(errorCode);
+    }
+
+    /// <summary>
+    ///     Determines if a specific MySQL error number means the server is throttling the client, so it should back off for
+    ///     longer than for other transient errors.
+    /// </summary>
+    public static bool IsThrottlingError(int errorCode)
+    {
+        return ThrottlingErrorCodes.Contains(errorCode);
     }
 }

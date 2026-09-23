@@ -2,6 +2,8 @@ using System.Net;
 using System.Runtime.CompilerServices;
 using Google;
 using Google.Apis.Storage.v1.Data;
+using Google.Cloud.Storage.V1;
+using NPipeline.StorageProviders.Gcp.Reliability;
 using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Models;
 
@@ -27,9 +29,12 @@ namespace NPipeline.StorageProviders.Gcp;
 /// </remarks>
 public sealed class GcsStorageProvider : IStorageProvider, IStorageProviderMetadataProvider
 {
+    // The SDK's own retry of metadata calls is off, so NResilience is the only layer that retries them.
+    private static readonly GetObjectOptions GetObjectOnce = new() { RetryOptions = RetryOptions.Never };
+
     private readonly GcsClientFactory _clientFactory;
     private readonly GcsStorageProviderOptions _options;
-    private readonly GcsRetryPolicy _retryPolicy;
+    private readonly NResilience.Resilience _resilience;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="GcsStorageProvider" /> class.
@@ -40,7 +45,7 @@ public sealed class GcsStorageProvider : IStorageProvider, IStorageProviderMetad
     {
         _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
         _options = options ?? throw new ArgumentNullException(nameof(options));
-        _retryPolicy = new GcsRetryPolicy(_options.RetrySettings);
+        _resilience = _options.Resilience ?? throw new ArgumentException("Resilience must not be null.", nameof(options));
     }
 
     /// <summary>
@@ -84,8 +89,13 @@ public sealed class GcsStorageProvider : IStorageProvider, IStorageProviderMetad
                 81920,
                 FileOptions.Asynchronous | FileOptions.DeleteOnClose);
 
-            await _retryPolicy.ExecuteAsync(
-                token => client.DownloadObjectAsync(bucket, objectName, tempFileStream, cancellationToken: token),
+            _ = await RunAsync(
+                token =>
+                {
+                    // A failed attempt can leave part of the object in the buffer, so each attempt starts empty.
+                    tempFileStream.SetLength(0);
+                    return client.DownloadObjectAsync(bucket, objectName, tempFileStream, cancellationToken: token);
+                },
                 cancellationToken).ConfigureAwait(false);
 
             tempFileStream.Position = 0;
@@ -130,7 +140,7 @@ public sealed class GcsStorageProvider : IStorageProvider, IStorageProviderMetad
             objectName,
             contentType,
             _options.UploadChunkSizeBytes,
-            _retryPolicy,
+            _resilience,
             cancellationToken);
     }
 
@@ -149,8 +159,8 @@ public sealed class GcsStorageProvider : IStorageProvider, IStorageProviderMetad
 
         try
         {
-            _ = await _retryPolicy.ExecuteAsync(
-                token => client.GetObjectAsync(bucket, objectName, cancellationToken: token),
+            _ = await RunAsync(
+                token => client.GetObjectAsync(bucket, objectName, GetObjectOnce, token),
                 cancellationToken).ConfigureAwait(false);
 
             return true;
@@ -196,8 +206,8 @@ public sealed class GcsStorageProvider : IStorageProvider, IStorageProviderMetad
 
         try
         {
-            var obj = await _retryPolicy.ExecuteAsync(
-                token => client.GetObjectAsync(bucket, objectName, cancellationToken: token),
+            var obj = await RunAsync(
+                token => client.GetObjectAsync(bucket, objectName, GetObjectOnce, token),
                 cancellationToken).ConfigureAwait(false);
 
             var customMetadata = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -298,7 +308,7 @@ public sealed class GcsStorageProvider : IStorageProvider, IStorageProviderMetad
 
             try
             {
-                response = await _retryPolicy.ExecuteAsync(
+                response = await RunAsync(
                     token => request.ExecuteAsync(token),
                     cancellationToken).ConfigureAwait(false);
             }
@@ -357,7 +367,33 @@ public sealed class GcsStorageProvider : IStorageProvider, IStorageProviderMetad
         } while (!string.IsNullOrWhiteSpace(pageToken));
     }
 
-    private static Exception TranslateGcsException(
+    private ValueTask<T> RunAsync<T>(Func<CancellationToken, Task<T>> operation, CancellationToken cancellationToken)
+    {
+        return _resilience.RunAsync(
+            static (operation, token) => GcsRetryAfter.CaptureAsync(operation, token),
+            operation,
+            cancellationToken);
+    }
+
+    internal static Exception TranslateGcsException(
+        GoogleApiException ex,
+        string bucket,
+        string objectName,
+        string operation)
+    {
+        var translated = TranslateGcsExceptionCore(ex, bucket, objectName, operation);
+
+        // Keeps NResilience's record that this failure was already retried, so a pipeline-level retry does not
+        // multiply the provider's attempts.
+        foreach (System.Collections.DictionaryEntry entry in ex.Data)
+        {
+            translated.Data[entry.Key] = entry.Value;
+        }
+
+        return translated;
+    }
+
+    private static Exception TranslateGcsExceptionCore(
         GoogleApiException ex,
         string bucket,
         string objectName,

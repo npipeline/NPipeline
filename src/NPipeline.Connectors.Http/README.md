@@ -9,7 +9,8 @@ pagination strategies, authentication schemes, rate limiting, retry, and OpenTel
 - **Multiple Pagination Strategies**: Offset/page, cursor-based, RFC 5988 Link headers, or custom
 - **Authentication Providers**: Bearer token, API key, Basic auth, or custom schemes
 - **Batching & Idempotency**: Buffer items before flush and prevent duplicate requests with idempotency keys
-- **Retry with Exponential Backoff**: Automatic retry with `Retry-After` header support for rate-limited APIs
+- **Resilience**: NResilience retries with exponential backoff, `Retry-After` support, per-host circuit breakers, and
+  no retries of POST or PATCH without an idempotency key
 - **Token-Bucket Rate Limiting**: Builtin rate limiter for request throttling
 - **Request Customization**: Hooks for dynamic headers, correlation IDs, and query parameters
 - **OpenTelemetry Integration**: Activity source for distributed tracing and monitoring

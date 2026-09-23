@@ -1,4 +1,6 @@
 using NPipeline.Connectors.RabbitMQ.Configuration;
+using NPipeline.Connectors.RabbitMQ.Reliability;
+using NResilience;
 
 namespace NPipeline.Connectors.RabbitMQ.Tests.Configuration;
 
@@ -29,8 +31,7 @@ public sealed class RabbitMqSinkOptionsTests
         options.Mandatory.Should().BeFalse();
         options.EnablePublisherConfirms.Should().BeTrue();
         options.Persistent.Should().BeTrue();
-        options.MaxRetries.Should().Be(3);
-        options.RetryBaseDelayMs.Should().Be(100);
+        options.Resilience.Should().BeSameAs(RabbitMqConnectorResilience.Default);
         options.ContinueOnError.Should().BeFalse();
         options.ConfirmTimeout.Should().Be(TimeSpan.FromSeconds(5));
         options.ShutdownFlushTimeout.Should().Be(TimeSpan.FromSeconds(30));
@@ -45,10 +46,18 @@ public sealed class RabbitMqSinkOptionsTests
     }
 
     [Fact]
-    public void Validate_Throws_When_MaxRetries_Is_Negative()
+    public void Validate_Throws_When_Resilience_Is_Invalid()
     {
-        var options = new RabbitMqSinkOptions { ExchangeName = "ex", MaxRetries = -1 };
+        var options = new RabbitMqSinkOptions { ExchangeName = "ex", Resilience = RabbitMqConnectorResilience.Default with { Attempts = 0 } };
         var act = () => options.Validate();
-        act.Should().Throw<InvalidOperationException>().WithMessage("*MaxRetries*");
+        act.Should().Throw<ResilienceConfigurationException>();
+    }
+
+    [Fact]
+    public void Validate_Throws_When_Resilience_Is_Null()
+    {
+        var options = new RabbitMqSinkOptions { ExchangeName = "ex", Resilience = null! };
+        var act = () => options.Validate();
+        act.Should().Throw<ArgumentNullException>();
     }
 }

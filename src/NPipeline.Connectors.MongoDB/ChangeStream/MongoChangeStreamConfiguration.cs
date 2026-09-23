@@ -1,5 +1,6 @@
 using MongoDB.Bson;
 using MongoDB.Driver;
+using NPipeline.Connectors.MongoDB.Reliability;
 
 namespace NPipeline.Connectors.MongoDB.ChangeStream;
 
@@ -54,11 +55,8 @@ public class MongoChangeStreamConfiguration
     /// </summary>
     internal void ValidateResilienceSettings()
     {
-        if (MaxRetryAttempts < 0)
-            throw new ArgumentException("MaxRetryAttempts cannot be negative.", nameof(MaxRetryAttempts));
-
-        if (RetryDelay < TimeSpan.Zero)
-            throw new ArgumentException("RetryDelay cannot be negative.", nameof(RetryDelay));
+        ArgumentNullException.ThrowIfNull(Resilience);
+        Resilience.Validate();
     }
 
     /// <summary>
@@ -79,8 +77,7 @@ public class MongoChangeStreamConfiguration
             BatchSize = BatchSize,
             MaxAwaitTime = MaxAwaitTime,
             StartAtOperationTime = StartAtOperationTime,
-            MaxRetryAttempts = MaxRetryAttempts,
-            RetryDelay = RetryDelay,
+            Resilience = Resilience,
             ContinueOnError = ContinueOnError,
             DocumentErrorHandler = DocumentErrorHandler,
             CaseInsensitiveMapping = CaseInsensitiveMapping,
@@ -137,16 +134,17 @@ public class MongoChangeStreamConfiguration
     #region Resilience Properties
 
     /// <summary>
-    ///     Gets or sets the maximum number of retry attempts for transient errors.
-    ///     Default is 3.
+    ///     Gets or sets how opening the change stream is retried. Defaults to
+    ///     <see cref="MongoConnectorResilience.ChangeStream" />: four attempts with jittered exponential backoff from two
+    ///     seconds up to 30 seconds. Use <see cref="NResilience.Resilience.None" /> to turn retries off.
     /// </summary>
-    public int MaxRetryAttempts { get; set; } = 3;
-
-    /// <summary>
-    ///     Gets or sets the delay between retry attempts.
-    ///     Default is 2 seconds.
-    /// </summary>
-    public TimeSpan RetryDelay { get; set; } = TimeSpan.FromSeconds(2);
+    /// <remarks>
+    ///     Once the stream is open, the driver resumes it by itself after a resumable error (a network error, a primary
+    ///     step-down, and similar), from the last change it returned. A failure that the driver can't resume ends the
+    ///     stream with that exception. <see cref="Nodes.MongoChangeStreamSourceNode{T}.ResumeToken" /> then holds the
+    ///     token of the last change the node emitted, and opening the same node again resumes after it.
+    /// </remarks>
+    public NResilience.Resilience Resilience { get; set; } = MongoConnectorResilience.ChangeStream;
 
     /// <summary>
     ///     Gets or sets whether to continue when an error occurs.

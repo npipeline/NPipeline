@@ -128,7 +128,7 @@ var connectionString = ((IDatabaseStorageProvider)provider).GetConnectionString(
 - **Connection pooling** - Efficient connection management via dependency injection
 - **Convention-based mapping** - Automatic `PascalCase` to `snake_case` conversion
 - **Custom mappers** - Full control over row-to-object mapping
-- **Retry logic** - Automatic retry for transient errors
+- **Retry logic** - NResilience retries for transient errors, never re-inserting committed rows (see Resilience)
 - **SSL/TLS support** - Secure database connections
 - **SQL injection prevention** - Identifier validation enabled by default
 - **Binary COPY support** - High-performance binary format for bulk loading
@@ -154,8 +154,7 @@ var configuration = new PostgresConfiguration
     UseBinaryCopy = false,
     DeliverySemantic = DeliverySemantic.AtLeastOnce,
     CheckpointStrategy = CheckpointStrategy.None,
-    MaxRetryAttempts = 3,
-    RetryDelay = TimeSpan.FromSeconds(1),
+    Resilience = PostgresConnectorResilience.Default,
     ValidateIdentifiers = true,
     CommandTimeout = 30,
     CopyTimeout = 300
@@ -183,8 +182,7 @@ var configuration = new PostgresConfiguration
 | `FetchSize`             | `int`                   | `1000`        | Rows to fetch per round-trip when streaming    |
 | `CommandTimeout`        | `int`                   | `30`          | Command timeout in seconds                     |
 | `CopyTimeout`           | `int`                   | `300`         | COPY operation timeout in seconds              |
-| `MaxRetryAttempts`      | `int`                   | `3`           | Maximum retry attempts for transient errors    |
-| `RetryDelay`            | `TimeSpan`              | `1 second`    | Delay between retry attempts                   |
+| `Resilience` | `Resilience` | `PostgresConnectorResilience.Default` | How transient failures are retried (see Resilience) |
 | `ValidateIdentifiers`   | `bool`                  | `true`        | Validate SQL identifiers to prevent injection  |
 | `UsePreparedStatements` | `bool`                  | `true`        | Use prepared statements for writes             |
 
@@ -785,17 +783,44 @@ the [PostgreSQL Analyzer documentation](https://github.com/npipeline/NPipeline/b
 
 ## Error Handling
 
-### Retry Configuration
+### Resilience
 
-Configure retries for transient failures:
+The sink retries transient failures with [NResilience](https://github.com/nresilience/NResilience). The `Resilience`
+property on `PostgresConfiguration` configures it. The default, `PostgresConnectorResilience.Default`, does the following:
+
+- Makes up to four attempts (three retries). It replaces `MaxRetryAttempts = 3` and `RetryDelay = 1 s`.
+- Retries connection failures (08xxx), serialization failures (40001), deadlocks (40P01), resource errors (53xxx), server shutdowns (57P01-57P03), and client-side network errors that Npgsql reports as transient.
+- Treats too many connections (SQLSTATE 53300) as throttling, which waits longer: backoff starts at 5 seconds.
+- Doesn't retry other errors, such as a constraint violation or a missing table.
+- Waits with exponential backoff and full jitter, from 1 second up to 30 seconds.
+- Has no attempt timeout and no deadline. The driver's own timeout bounds each attempt: `CommandTimeout`.
+  A long bulk write isn't cut off by a retry policy's timeout.
+
+Each write strategy retries one unit of work that commits all or nothing, so a retry never inserts rows that an
+earlier attempt committed:
+
+- `PerRow`: one `INSERT` per row.
+- `Batch`: one multi-row `INSERT` statement per flush.
+- `Copy`: one `COPY ... FROM STDIN` per flush, which PostgreSQL commits all or nothing.
+
+The source node retries getting a connection and opening the query's reader, using the same `Resilience`. Once rows are flowing, a failure is not retried, because the rows already emitted would be emitted again.
+
+With `DeliverySemantic.ExactlyOnce`, the sink wraps all writes in one transaction. A failure can abort that whole
+transaction, so the writers make one attempt and the sink rolls the transaction back. A batch that fails isn't
+written again when the writer is disposed.
+
+To change a setting, derive a policy with a `with` expression:
 
 ```csharp
-var configuration = new PostgresConfiguration
+var config = new PostgresConfiguration
 {
-    MaxRetryAttempts = 3,
-    RetryDelay = TimeSpan.FromSeconds(2)
+    Resilience = PostgresConnectorResilience.Default with { Attempts = 6 },
 };
 ```
+
+To turn retries off, use `Resilience.None`.
+
+The connector is the only layer that retries; Npgsql doesn't retry commands. Retries aren't logged by the connector. To observe them, attach a listener: `PostgresConnectorResilience.Default.WithListener(e => ...)`.
 
 ### Custom Exception Handling
 

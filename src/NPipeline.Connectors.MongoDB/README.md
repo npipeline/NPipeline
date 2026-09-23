@@ -137,6 +137,7 @@ The `MongoConfiguration` class provides configuration options:
 | `OrderedWrites`         | `bool`                | false      | Execute writes in order                         |
 | `OnDuplicate`           | `OnDuplicateAction`   | Fail       | Action on duplicate key (Fail, Skip, Overwrite) |
 | `UpsertKeyFields`       | `string[]`            | ["_id"]    | Key fields for upsert operations                |
+| `Resilience`            | `Resilience`          | `MongoConnectorResilience.Default` | How the sink retries a batch. See [Resilience](#resilience) |
 
 ### MongoWriteStrategy
 
@@ -153,6 +154,52 @@ The `OnDuplicateAction` enum specifies handling for duplicate key conflicts:
 - **Fail** - Throw an exception (default)
 - **Skip** - Skip the duplicate document
 - **Overwrite** - Replace the existing document
+
+## Resilience
+
+The sink and the change stream source retry through [NResilience](https://github.com/nresilience/NResilience). The
+`Resilience` property configures each one.
+
+**Sink.** `MongoConfiguration.Resilience` defaults to `MongoConnectorResilience.Default`, which does the following:
+
+- Makes up to four attempts per batch (three retries), the same count as the old `MaxRetryAttempts = 3`.
+- Retries connection failures, server selection timeouts, and server errors that MongoDB marks as retryable (the
+  `RetryableWriteError` label, primary step-downs, shutdowns, and network errors). An error labelled
+  `SystemOverloadedError` takes the longer throttled backoff. Other errors, including authorization failures and
+  duplicate keys, are not retried.
+- Waits with exponential backoff and full jitter, from 1 second up to 30 seconds.
+- Has no attempt timeout and no overall deadline, because a large batch can take a long time. The driver's own
+  server selection and socket timeouts still bound each command.
+
+A retried write never duplicates documents. The sink maps each batch once and gives every inserted document an `_id`
+before the first attempt, so each attempt sends the same documents. If an earlier attempt was applied but its reply
+was lost, the retry finds those documents already there: with `OnDuplicate = Ignore` they are skipped, and with
+`OnDuplicate = Fail` the sink reports a duplicate key instead of writing them twice. A bulk write that reported write
+errors, which means part of it may already be applied, is never retried. Upserts replace by key, so a retry of an
+upsert is harmless.
+
+**Change stream.** `MongoChangeStreamConfiguration.Resilience` defaults to `MongoConnectorResilience.ChangeStream`: up
+to four attempts to open the stream, with backoff from 2 seconds up to 30 seconds. Only the open is retried. Once the
+stream is open, the driver resumes it by itself after a resumable error (a network error, a primary step-down, and
+similar), from the last change it returned, so nothing is emitted twice. A failure the driver can't resume ends the
+stream with that exception. The node's `ResumeToken` then holds the token of the last change it emitted, and opening
+the same node again resumes after it.
+
+To change a setting, derive a policy with a `with` expression. To turn retries off, use `Resilience.None`:
+
+```csharp
+var config = new MongoConfiguration
+{
+    DatabaseName = "shop",
+    CollectionName = "orders",
+    Resilience = MongoConnectorResilience.Default with { Attempts = 6 },
+};
+```
+
+The driver's retryable writes and reads (`retryWrites` and `retryReads` in the connection string, on by default) stay
+on. They retry a single command once, immediately, and the server discards a retried write it already applied, so
+they are part of the protocol's exactly-once machinery rather than a second retry policy. The connector's policy
+handles what they can't: outages longer than one immediate retry, with backoff in between.
 
 ## Advanced Usage
 

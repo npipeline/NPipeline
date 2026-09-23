@@ -2,6 +2,7 @@ using Npgsql;
 using NPipeline.Connectors.Checkpointing;
 using NPipeline.Connectors.Configuration;
 using NPipeline.Connectors.Postgres.Mapping;
+using NPipeline.Connectors.Postgres.Reliability;
 
 namespace NPipeline.Connectors.Postgres.Configuration;
 
@@ -122,14 +123,13 @@ public class PostgresConfiguration
     public bool ValidateIdentifiers { get; set; } = true;
 
     /// <summary>
-    ///     Gets or sets the maximum number of retry attempts for transient errors.
+    ///     Gets or sets how writes and the source query are retried. Defaults to
+    ///     <see cref="PostgresConnectorResilience.Default" />: four attempts with exponential backoff, retrying only the
+    ///     errors <see cref="PostgresConnectorResilience.Classifier" /> judges transient. Each attempt is bounded by
+    ///     <see cref="CommandTimeout" />. Use
+    ///     <see cref="NResilience.Resilience.None" /> to turn retries off.
     /// </summary>
-    public int MaxRetryAttempts { get; set; } = 3;
-
-    /// <summary>
-    ///     Gets or sets the delay between retry attempts.
-    /// </summary>
-    public TimeSpan RetryDelay { get; set; } = TimeSpan.FromSeconds(1);
+    public NResilience.Resilience Resilience { get; set; } = PostgresConnectorResilience.Default;
 
     /// <summary>
     ///     Gets or sets whether to perform case-insensitive column matching.
@@ -246,11 +246,10 @@ public class PostgresConfiguration
         if (BatchSize > MaxBatchSize)
             throw new ArgumentException("BatchSize cannot exceed MaxBatchSize.", nameof(BatchSize));
 
-        if (MaxRetryAttempts < 0)
-            throw new ArgumentException("MaxRetryAttempts cannot be negative.", nameof(MaxRetryAttempts));
+        if (Resilience is null)
+            throw new ArgumentException("Resilience cannot be null.", nameof(Resilience));
 
-        if (RetryDelay < TimeSpan.Zero)
-            throw new ArgumentException("RetryDelay cannot be negative.", nameof(RetryDelay));
+        Resilience.Validate();
 
         if (UseUpsert && (UpsertConflictColumns == null || UpsertConflictColumns.Length == 0))
             throw new ArgumentException("UpsertConflictColumns must be provided when UseUpsert is enabled.", nameof(UpsertConflictColumns));

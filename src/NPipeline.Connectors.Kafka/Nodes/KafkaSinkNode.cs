@@ -9,7 +9,6 @@ using NPipeline.Connectors.Kafka.Configuration;
 using NPipeline.Connectors.Kafka.Metrics;
 using NPipeline.Connectors.Kafka.Models;
 using NPipeline.Connectors.Kafka.Partitioning;
-using NPipeline.Connectors.Kafka.Retry;
 using NPipeline.Connectors.Kafka.Serialization;
 using NPipeline.DataFlow;
 using NPipeline.Nodes;
@@ -21,6 +20,11 @@ namespace NPipeline.Connectors.Kafka.Nodes;
 ///     Sink node that produces messages to a Kafka topic with support for batching,
 ///     idempotence, and transactions.
 /// </summary>
+/// <remarks>
+///     The node produces each message once and does not retry. librdkafka retries every produce until
+///     <c>delivery.timeout.ms</c>, and the idempotent producer removes the duplicates its retries would cause, so a
+///     produce error means librdkafka has already given up or the error is not retriable.
+/// </remarks>
 /// <typeparam name="T">The type of messages to produce.</typeparam>
 public sealed class KafkaSinkNode<T> : SinkNode<T>, IAsyncDisposable
 {
@@ -36,10 +40,6 @@ public sealed class KafkaSinkNode<T> : SinkNode<T>, IAsyncDisposable
     private static readonly Action<ILogger, Exception?> LogProduceFailed =
         LoggerMessage.Define(LogLevel.Error, new EventId(3, nameof(LogProduceFailed)),
             "Failed to produce message");
-
-    private static readonly Action<ILogger, double, int, Exception?> LogProduceRetrying =
-        LoggerMessage.Define<double, int>(LogLevel.Warning, new EventId(4, nameof(LogProduceRetrying)),
-            "Produce failed, retrying in {Delay}ms (attempt {Attempt})");
 
     private static readonly Action<ILogger, Exception?> LogBatchPrepareFailed =
         LoggerMessage.Define(LogLevel.Error, new EventId(5, nameof(LogBatchPrepareFailed)),
@@ -61,7 +61,6 @@ public sealed class KafkaSinkNode<T> : SinkNode<T>, IAsyncDisposable
     private readonly object _partitionCountLock = new();
     private readonly IPartitionKeyProvider<T> _partitionKeyProvider;
     private readonly IProducer<string, T> _producer;
-    private readonly IRetryStrategy _retryStrategy;
     private readonly ISerializerProvider _serializer;
     private readonly object _transactionInitLock = new();
     private int? _cachedPartitionCount;
@@ -73,7 +72,7 @@ public sealed class KafkaSinkNode<T> : SinkNode<T>, IAsyncDisposable
     /// </summary>
     /// <param name="configuration">The Kafka configuration.</param>
     public KafkaSinkNode(KafkaConfiguration configuration)
-        : this(configuration, NullKafkaMetrics.Instance, new ExponentialBackoffRetryStrategy())
+        : this(configuration, NullKafkaMetrics.Instance)
     {
     }
 
@@ -82,19 +81,16 @@ public sealed class KafkaSinkNode<T> : SinkNode<T>, IAsyncDisposable
     /// </summary>
     /// <param name="configuration">The Kafka configuration.</param>
     /// <param name="metrics">The metrics recorder.</param>
-    /// <param name="retryStrategy">The retry strategy for transient errors.</param>
     /// <param name="partitionKeyProvider">Optional custom partition key provider.</param>
     public KafkaSinkNode(
         KafkaConfiguration configuration,
         IKafkaMetrics metrics,
-        IRetryStrategy retryStrategy,
         IPartitionKeyProvider<T>? partitionKeyProvider = null)
     {
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         _configuration.ValidateSink();
 
         _metrics = metrics ?? throw new ArgumentNullException(nameof(metrics));
-        _retryStrategy = retryStrategy ?? throw new ArgumentNullException(nameof(retryStrategy));
         _partitionKeyProvider = partitionKeyProvider ?? CreateDefaultPartitionKeyProvider();
         _serializer = CreateSerializer(configuration, metrics);
 
@@ -114,13 +110,11 @@ public sealed class KafkaSinkNode<T> : SinkNode<T>, IAsyncDisposable
     /// <param name="producer">The Kafka producer to use.</param>
     /// <param name="configuration">The Kafka configuration.</param>
     /// <param name="metrics">The metrics recorder.</param>
-    /// <param name="retryStrategy">The retry strategy for transient errors.</param>
     /// <param name="partitionKeyProvider">Optional custom partition key provider.</param>
     public KafkaSinkNode(
         IProducer<string, T> producer,
         KafkaConfiguration configuration,
         IKafkaMetrics metrics,
-        IRetryStrategy retryStrategy,
         IPartitionKeyProvider<T>? partitionKeyProvider = null)
     {
         _producer = producer ?? throw new ArgumentNullException(nameof(producer));
@@ -128,7 +122,6 @@ public sealed class KafkaSinkNode<T> : SinkNode<T>, IAsyncDisposable
         _configuration.ValidateSink();
 
         _metrics = metrics ?? throw new ArgumentNullException(nameof(metrics));
-        _retryStrategy = retryStrategy ?? throw new ArgumentNullException(nameof(retryStrategy));
         _partitionKeyProvider = partitionKeyProvider ?? CreateDefaultPartitionKeyProvider();
         _serializer = CreateSerializer(configuration, metrics);
         _ownsProducer = false;
@@ -296,94 +289,64 @@ public sealed class KafkaSinkNode<T> : SinkNode<T>, IAsyncDisposable
 
     private async Task<bool> SendMessageAsync(object item, IAcknowledgableMessage? ackMessage, ILogger logger, CancellationToken cancellationToken)
     {
-        var attempt = 0;
         var partitionCount = GetPartitionCount();
 
-        while (true)
+        try
         {
-            try
+            var typedItem = (T)item;
+            var key = _partitionKeyProvider.GetPartitionKey(typedItem);
+            var partition = _partitionKeyProvider.GetPartition(typedItem, partitionCount);
+
+            var message = new Message<string, T>
             {
-                var typedItem = (T)item;
-                var key = _partitionKeyProvider.GetPartitionKey(typedItem);
-                var partition = _partitionKeyProvider.GetPartition(typedItem, partitionCount);
+                Key = key,
+                Value = typedItem,
+                Timestamp = Timestamp.Default,
+            };
 
-                var message = new Message<string, T>
-                {
-                    Key = key,
-                    Value = typedItem,
-                    Timestamp = Timestamp.Default,
-                };
-
-                // Add headers if available from metadata
-                if (ackMessage?.Metadata != null)
-                {
-                    message.Headers = [];
-
-                    foreach (var kvp in ackMessage.Metadata)
-                    {
-                        if (kvp.Value is string stringValue)
-                            message.Headers.Add(kvp.Key, Encoding.UTF8.GetBytes(stringValue));
-                        else if (kvp.Value is byte[] byteValue)
-                            message.Headers.Add(kvp.Key, byteValue);
-                    }
-                }
-
-                var sw = Stopwatch.StartNew();
-
-                if (partition.HasValue)
-                {
-                    _ = await _producer.ProduceAsync(
-                        new TopicPartition(_configuration.SinkTopic, new Partition(partition.Value)),
-                        message,
-                        cancellationToken).ConfigureAwait(false);
-                }
-                else
-                    _ = await _producer.ProduceAsync(_configuration.SinkTopic, message, cancellationToken).ConfigureAwait(false);
-
-                sw.Stop();
-                _metrics.RecordProduced(_configuration.SinkTopic, 1);
-                _metrics.RecordProduceLatency(_configuration.SinkTopic, sw.Elapsed);
-
-                return true;
-            }
-            catch (ProduceException<string, T> ex)
+            // Add headers if available from metadata
+            if (ackMessage?.Metadata != null)
             {
-                attempt++;
-                _metrics.RecordProduceError(_configuration.SinkTopic, ex);
+                message.Headers = [];
 
-                if (!_retryStrategy.ShouldRetry(ex, attempt))
+                foreach (var kvp in ackMessage.Metadata)
                 {
-                    LogProduceFailed(logger, ex);
-
-                    if (_configuration.ContinueOnError)
-                        return false;
-
-                    throw;
+                    if (kvp.Value is string stringValue)
+                        message.Headers.Add(kvp.Key, Encoding.UTF8.GetBytes(stringValue));
+                    else if (kvp.Value is byte[] byteValue)
+                        message.Headers.Add(kvp.Key, byteValue);
                 }
-
-                var delay = _retryStrategy.GetDelay(attempt);
-                LogProduceRetrying(logger, delay.TotalMilliseconds, attempt, null);
-                await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
             }
-            catch (KafkaException ex)
+
+            var sw = Stopwatch.StartNew();
+
+            // One produce, with no retry above it: librdkafka has already retried anything retriable, and a new
+            // produce of the same message is a new record that the idempotent producer cannot deduplicate.
+            if (partition.HasValue)
             {
-                attempt++;
-                _metrics.RecordProduceError(_configuration.SinkTopic, ex);
-
-                if (!_retryStrategy.ShouldRetry(ex, attempt))
-                {
-                    LogProduceFailed(logger, ex);
-
-                    if (_configuration.ContinueOnError)
-                        return false;
-
-                    throw;
-                }
-
-                var delay = _retryStrategy.GetDelay(attempt);
-                LogProduceRetrying(logger, delay.TotalMilliseconds, attempt, null);
-                await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+                _ = await _producer.ProduceAsync(
+                    new TopicPartition(_configuration.SinkTopic, new Partition(partition.Value)),
+                    message,
+                    cancellationToken).ConfigureAwait(false);
             }
+            else
+                _ = await _producer.ProduceAsync(_configuration.SinkTopic, message, cancellationToken).ConfigureAwait(false);
+
+            sw.Stop();
+            _metrics.RecordProduced(_configuration.SinkTopic, 1);
+            _metrics.RecordProduceLatency(_configuration.SinkTopic, sw.Elapsed);
+
+            return true;
+        }
+        catch (KafkaException ex)
+        {
+            _metrics.RecordProduceError(_configuration.SinkTopic, ex);
+            LogProduceFailed(logger, ex);
+
+            if (_configuration.ContinueOnError)
+                return false;
+
+            throw;
         }
     }
 

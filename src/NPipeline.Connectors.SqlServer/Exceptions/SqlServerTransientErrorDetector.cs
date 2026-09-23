@@ -16,6 +16,8 @@ public static class SqlServerTransientErrorDetector
     ///     64: Named Pipes Provider error (network disconnected)
     ///     121: Named Pipes Provider error (network timeout)
     ///     1205: Deadlock victim
+    ///     10928: Azure SQL Database resource limit reached
+    ///     10929: Azure SQL Database minimum resource guarantee not met
     ///     40501: Azure SQL Database service busy
     ///     40613: Azure SQL Database service unavailable
     ///     49918: Azure SQL Database insufficient resources
@@ -29,11 +31,26 @@ public static class SqlServerTransientErrorDetector
         64, // Named Pipes Provider error (network disconnected)
         121, // Named Pipes Provider error (network timeout)
         1205, // Deadlock victim
+        10928, // Azure SQL Database resource limit reached
+        10929, // Azure SQL Database minimum resource guarantee not met
         40501, // Azure SQL Database service busy
         40613, // Azure SQL Database service unavailable
         49918, // Azure SQL Database insufficient resources
         49919, // Azure SQL Database insufficient resources
         49920, // Azure SQL Database insufficient resources
+    };
+
+    /// <summary>
+    ///     SQL Server error codes that mean the server is throttling the client and wants it to back off for longer.
+    /// </summary>
+    private static readonly HashSet<int> ThrottlingErrorCodes = new()
+    {
+        10928, // Azure SQL Database resource limit reached
+        10929, // Azure SQL Database minimum resource guarantee not met
+        40501, // Azure SQL Database service busy
+        49918, // Azure SQL Database insufficient resources
+        49919, // Azure SQL Database too many create or update operations
+        49920, // Azure SQL Database too many operations
     };
 
     /// <summary>
@@ -55,6 +72,30 @@ public static class SqlServerTransientErrorDetector
                 invalidOpEx.Message.Contains("connection", StringComparison.OrdinalIgnoreCase) => true,
             _ => false,
         };
+    }
+
+    /// <summary>
+    ///     Determines if a SqlException reports that the server is throttling the client.
+    /// </summary>
+    /// <param name="exception">The SqlException to check.</param>
+    /// <returns>True if any of its errors is a throttling error; otherwise, false.</returns>
+    public static bool IsThrottling(SqlException exception)
+    {
+        ArgumentNullException.ThrowIfNull(exception);
+
+        return exception.Errors.Count > 0
+            ? exception.Errors.Cast<SqlError>().Any(e => IsThrottlingError(e.Number))
+            : IsThrottlingError(exception.Number);
+    }
+
+    /// <summary>
+    ///     Determines if a specific SQL Server error code means the server is throttling the client.
+    /// </summary>
+    /// <param name="errorCode">The SQL Server error code.</param>
+    /// <returns>True if the error code is a throttling error; otherwise, false.</returns>
+    public static bool IsThrottlingError(int errorCode)
+    {
+        return ThrottlingErrorCodes.Contains(errorCode);
     }
 
     /// <summary>

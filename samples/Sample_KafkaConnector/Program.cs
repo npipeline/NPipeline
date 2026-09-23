@@ -3,7 +3,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using NPipeline.Connectors.Kafka.Metrics;
 using NPipeline.Connectors.Kafka.Partitioning;
-using NPipeline.Connectors.Kafka.Retry;
 using NPipeline.Extensions.DependencyInjection;
 
 namespace Sample_KafkaConnector;
@@ -27,7 +26,6 @@ public sealed class Program
 
                     services.AddSingleton(KafkaConnectorPipeline.CreateConfiguration());
                     services.AddSingleton<IKafkaMetrics, ConsoleKafkaMetrics>();
-                    services.AddSingleton<IRetryStrategy>(KafkaConnectorPipeline.CreateRetryStrategy());
 
                     services.AddSingleton<IPartitionKeyProvider<SampleMessage>>(
                         PartitionKeyProvider.FromProperty<SampleMessage, string>(message => message.CustomerId));

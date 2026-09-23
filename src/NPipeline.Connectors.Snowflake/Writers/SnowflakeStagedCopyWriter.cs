@@ -5,8 +5,8 @@ using System.Reflection;
 using System.Text;
 using NPipeline.Connectors.Attributes;
 using NPipeline.Connectors.Snowflake.Configuration;
-using NPipeline.Connectors.Snowflake.Exceptions;
 using NPipeline.Connectors.Snowflake.Mapping;
+using NPipeline.Connectors.Snowflake.Reliability;
 using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Models;
 
@@ -25,6 +25,7 @@ internal sealed class SnowflakeStagedCopyWriter<T> : IDatabaseWriter<T>
     private readonly IDatabaseConnection _connection;
     private readonly PropertyMapping[] _mappings;
     private readonly Func<T, IEnumerable<DatabaseParameter>>? _parameterMapper;
+    private readonly ConnectionResilience _resilience;
     private readonly List<object?[]> _pendingRows;
     private readonly string _schema;
     private readonly string _tableName;
@@ -50,6 +51,7 @@ internal sealed class SnowflakeStagedCopyWriter<T> : IDatabaseWriter<T>
         _mappings = BuildMappings();
         _valueFactory = BuildValueFactory(_mappings);
         _pendingRows = new List<object?[]>(_configuration.BatchSize);
+        _resilience = new ConnectionResilience(_configuration.Resilience, _connection);
     }
 
     /// <inheritdoc />
@@ -79,99 +81,38 @@ internal sealed class SnowflakeStagedCopyWriter<T> : IDatabaseWriter<T>
         if (_pendingRows.Count == 0)
             return;
 
-        var attempt = 0;
-        var maxAttempts = _configuration.MaxRetryAttempts + 1;
-
-        while (attempt < maxAttempts)
-        {
-            try
-            {
-                await ExecuteStagedCopyAsync(cancellationToken).ConfigureAwait(false);
-                return;
-            }
-            catch (Exception ex) when (attempt < maxAttempts - 1 && SnowflakeExceptionHandler.ShouldRetry(ex, _configuration))
-            {
-                attempt++;
-                var delay = SnowflakeExceptionHandler.GetRetryDelay(ex, attempt, _configuration);
-                await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
-            }
-        }
-
-        // All retries failed
-        await ExecuteStagedCopyAsync(cancellationToken).ConfigureAwait(false);
-    }
-
-    /// <inheritdoc />
-    public async ValueTask DisposeAsync()
-    {
-        await FlushAsync().ConfigureAwait(false);
-    }
-
-    /// <summary>
-    ///     Executes the staged copy: write CSV to temp file, PUT to stage, COPY INTO table.
-    /// </summary>
-    private async Task ExecuteStagedCopyAsync(CancellationToken cancellationToken)
-    {
+        // One file name per flush, chosen outside the retried steps, so every retry uploads and loads the same file.
         var fileName = $"{_configuration.StageFilePrefix}{DateTime.UtcNow:yyyyMMddHHmmss}_{_fileCounter++}.csv";
         var tempFilePath = Path.Combine(Path.GetTempPath(), fileName);
+
+        var stagePath = _configuration.StageName == "~"
+            ? $"@~/{fileName}"
+            : $"@{_configuration.StageName}/{fileName}";
 
         try
         {
             // Step 1: Write CSV data to temp file
             await WriteCsvFileAsync(tempFilePath, cancellationToken).ConfigureAwait(false);
 
-            // Step 2: PUT file to Snowflake internal stage
-            var stagePath = _configuration.StageName == "~"
-                ? $"@~/{fileName}"
-                : $"@{_configuration.StageName}/{fileName}";
-
+            // Step 2: PUT file to Snowflake internal stage. This writes nothing to the table, and OVERWRITE=TRUE lets a
+            // retry replace a partial upload, so it is retried on its own.
             var putSql =
                 $"PUT 'file://{tempFilePath.Replace("\\", "/")}' '{stagePath}' AUTO_COMPRESS={(_configuration.CopyCompression != "NONE" ? "TRUE" : "FALSE")} OVERWRITE=TRUE";
 
-            var putCommand = await _connection.CreateCommandAsync(cancellationToken).ConfigureAwait(false);
+            await _resilience.RunAsync(ct => ExecuteNonQueryAsync(putSql, ct), cancellationToken).ConfigureAwait(false);
 
-            await using (putCommand.ConfigureAwait(false))
-            {
-                putCommand.CommandText = putSql;
-                putCommand.CommandType = CommandType.Text;
-                putCommand.CommandTimeout = _configuration.CommandTimeout;
-                _ = await putCommand.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-            }
-
-            // Step 3: COPY INTO target table from stage
-            var quotedTableName = QuoteIdentifier($"{_schema}.{_tableName}");
-            var quotedColumns = _mappings.Select(m => QuoteIdentifier(m.ColumnName)).ToArray();
-
-            var copySql = new StringBuilder();
-            copySql.Append($"COPY INTO {quotedTableName} ({string.Join(", ", quotedColumns)})");
-            copySql.Append($" FROM '{stagePath}'");
-            copySql.Append($" FILE_FORMAT = (TYPE = '{_configuration.FileFormat}'");
-
-            if (_configuration.FileFormat.Equals("CSV", StringComparison.OrdinalIgnoreCase))
-                copySql.Append(" FIELD_OPTIONALLY_ENCLOSED_BY = '\"' SKIP_HEADER = 0 ESCAPE_UNENCLOSED_FIELD = NONE");
-
-            if (!string.IsNullOrWhiteSpace(_configuration.CopyCompression) &&
-                !_configuration.CopyCompression.Equals("NONE", StringComparison.OrdinalIgnoreCase))
-                copySql.Append($" COMPRESSION = '{_configuration.CopyCompression}'");
-
-            copySql.Append(')');
-            copySql.Append($" ON_ERROR = '{_configuration.OnErrorAction}'");
-            copySql.Append($" PURGE = {(_configuration.PurgeAfterCopy ? "TRUE" : "FALSE")}");
-
-            var copyCommand = await _connection.CreateCommandAsync(cancellationToken).ConfigureAwait(false);
-
-            await using (copyCommand.ConfigureAwait(false))
-            {
-                copyCommand.CommandText = copySql.ToString();
-                copyCommand.CommandType = CommandType.Text;
-                copyCommand.CommandTimeout = _configuration.CommandTimeout;
-                _ = await copyCommand.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-            }
-
-            _pendingRows.Clear();
+            // Step 3: COPY INTO target table from stage. Retried against the same staged file without uploading it again:
+            // Snowflake's load metadata skips a file it has already loaded, so if an attempt loaded the rows and only its
+            // reply was lost, the retry loads nothing twice. A new upload would be a new file and load them again.
+            var copySql = BuildCopySql(stagePath);
+            await _resilience.RunAsync(ct => ExecuteNonQueryAsync(copySql, ct), cancellationToken).ConfigureAwait(false);
         }
         finally
         {
+            // Loaded, or reported to the caller as failed: either way the rows must not ride along in the next flush or
+            // be sent again when the writer is disposed.
+            _pendingRows.Clear();
+
             // Clean up temp file
             if (File.Exists(tempFilePath))
             {
@@ -185,6 +126,48 @@ internal sealed class SnowflakeStagedCopyWriter<T> : IDatabaseWriter<T>
                 }
             }
         }
+    }
+
+    /// <inheritdoc />
+    public async ValueTask DisposeAsync()
+    {
+        await FlushAsync().ConfigureAwait(false);
+    }
+
+    private async Task ExecuteNonQueryAsync(string sql, CancellationToken cancellationToken)
+    {
+        var command = await _connection.CreateCommandAsync(cancellationToken).ConfigureAwait(false);
+
+        await using (command.ConfigureAwait(false))
+        {
+            command.CommandText = sql;
+            command.CommandType = CommandType.Text;
+            command.CommandTimeout = _configuration.CommandTimeout;
+            _ = await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private string BuildCopySql(string stagePath)
+    {
+        var quotedTableName = QuoteIdentifier($"{_schema}.{_tableName}");
+        var quotedColumns = _mappings.Select(m => QuoteIdentifier(m.ColumnName)).ToArray();
+
+        var copySql = new StringBuilder();
+        copySql.Append($"COPY INTO {quotedTableName} ({string.Join(", ", quotedColumns)})");
+        copySql.Append($" FROM '{stagePath}'");
+        copySql.Append($" FILE_FORMAT = (TYPE = '{_configuration.FileFormat}'");
+
+        if (_configuration.FileFormat.Equals("CSV", StringComparison.OrdinalIgnoreCase))
+            copySql.Append(" FIELD_OPTIONALLY_ENCLOSED_BY = '\"' SKIP_HEADER = 0 ESCAPE_UNENCLOSED_FIELD = NONE");
+
+        if (!string.IsNullOrWhiteSpace(_configuration.CopyCompression) &&
+            !_configuration.CopyCompression.Equals("NONE", StringComparison.OrdinalIgnoreCase))
+            copySql.Append($" COMPRESSION = '{_configuration.CopyCompression}'");
+
+        copySql.Append(')');
+        copySql.Append($" ON_ERROR = '{_configuration.OnErrorAction}'");
+        copySql.Append($" PURGE = {(_configuration.PurgeAfterCopy ? "TRUE" : "FALSE")}");
+        return copySql.ToString();
     }
 
     /// <summary>

@@ -1,6 +1,8 @@
 using System.Reflection;
 using System.Runtime.ExceptionServices;
 using NPipeline.Connectors.Http.Configuration;
+using NPipeline.Connectors.Http.Reliability;
+using NResilience;
 
 namespace NPipeline.Connectors.Http.Tests.Configuration;
 
@@ -59,18 +61,19 @@ public class HttpSinkConfigurationTests
     }
 
     [Fact]
-    public void Validate_WithZeroTimeout_ThrowsArgumentException()
+    public void Validate_WithInvalidResilience_ThrowsResilienceConfigurationException()
     {
         var config = new HttpSinkConfiguration
         {
             Uri = new Uri("https://api.example.com"),
-            Timeout = TimeSpan.Zero,
+#pragma warning disable NRES003 // The invalid value is the point of the test.
+            Resilience = HttpConnectorResilience.Default with { Attempts = 0 },
+#pragma warning restore NRES003
         };
 
         var act = () => InvokeValidate(config);
 
-        act.Should().Throw<ArgumentException>()
-            .WithMessage("*Timeout*");
+        act.Should().Throw<ResilienceConfigurationException>();
     }
 
     [Fact]

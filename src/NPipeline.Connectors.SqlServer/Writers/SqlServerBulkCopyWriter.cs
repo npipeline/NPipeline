@@ -8,6 +8,7 @@ using NPipeline.Connectors.SqlServer.Configuration;
 using NPipeline.Connectors.SqlServer.Connection;
 using NPipeline.Connectors.SqlServer.Exceptions;
 using NPipeline.Connectors.SqlServer.Mapping;
+using NPipeline.Connectors.SqlServer.Reliability;
 using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Models;
 
@@ -26,6 +27,7 @@ internal sealed class SqlServerBulkCopyWriter<T> : IDatabaseWriter<T>
     private readonly PropertyMapping[] _mappings;
     private readonly Func<T, IEnumerable<DatabaseParameter>>? _parameterMapper;
     private readonly List<T> _pendingRows;
+    private readonly ConnectionResilience _resilience;
     private readonly string _schema;
     private readonly string _tableName;
     private readonly Func<T, object?[]> _valueFactory;
@@ -55,6 +57,7 @@ internal sealed class SqlServerBulkCopyWriter<T> : IDatabaseWriter<T>
         _valueFactory = BuildValueFactory(_mappings);
         _flushThreshold = Math.Clamp(_configuration.BulkCopyBatchSize, 1, _configuration.MaxBatchSize);
         _pendingRows = new List<T>(_flushThreshold);
+        _resilience = new ConnectionResilience(_configuration.Resilience, _connection);
     }
 
     /// <summary>
@@ -102,26 +105,16 @@ internal sealed class SqlServerBulkCopyWriter<T> : IDatabaseWriter<T>
         if (_pendingRows.Count == 0)
             return;
 
-        var attempt = 0;
-        var maxAttempts = _configuration.MaxRetryAttempts + 1;
-
-        while (attempt < maxAttempts)
+        try
         {
-            try
-            {
-                await ExecuteBulkCopyAsync(cancellationToken).ConfigureAwait(false);
-                return;
-            }
-            catch (Exception ex) when (attempt < maxAttempts - 1 && SqlServerExceptionHandler.ShouldRetry(ex, _configuration))
-            {
-                attempt++;
-                var delay = SqlServerExceptionHandler.GetRetryDelay(ex, attempt, _configuration);
-                await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
-            }
+            await _resilience.RunAsync(ExecuteBulkCopyAsync, cancellationToken).ConfigureAwait(false);
         }
-
-        // If we get here, all retries failed
-        await ExecuteBulkCopyAsync(cancellationToken).ConfigureAwait(false);
+        finally
+        {
+            // Written, or reported to the caller as failed: either way the rows must not ride along in the next flush
+            // or be sent again when the writer is disposed.
+            _pendingRows.Clear();
+        }
     }
 
     /// <summary>
@@ -169,17 +162,32 @@ internal sealed class SqlServerBulkCopyWriter<T> : IDatabaseWriter<T>
         var sqlTransaction = GetSqlTransaction();
         var dataTable = BuildDataTable();
 
-        // Pass transaction to SqlBulkCopy to enlist in active transaction for ExactlyOnce semantics
-        using var bulkCopy = sqlTransaction != null
-            ? new SqlBulkCopy(sqlConnection, SqlBulkCopyOptions.Default, sqlTransaction)
-            : new SqlBulkCopy(sqlConnection);
+        if (sqlTransaction != null)
+        {
+            // Enlist in the sink's transaction (ExactlyOnce); its owner commits or rolls back.
+            await CopyAsync(sqlConnection, sqlTransaction, dataTable, cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        // Without a transaction SqlBulkCopy commits every BulkCopyBatchSize rows on its own, so a failure part-way through
+        // would leave the earlier batches committed and a retry would insert them again. A flush holds at most
+        // BulkCopyBatchSize rows today, so it is one batch anyway, but one transaction per flush keeps it all-or-nothing,
+        // and so safe to retry, whatever the flush size.
+        var transaction = (SqlTransaction)await sqlConnection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+        await using var transactionScope = transaction.ConfigureAwait(false);
+
+        await CopyAsync(sqlConnection, transaction, dataTable, cancellationToken).ConfigureAwait(false);
+        await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task CopyAsync(SqlConnection sqlConnection, SqlTransaction transaction, DataTable dataTable, CancellationToken cancellationToken)
+    {
+        using var bulkCopy = new SqlBulkCopy(sqlConnection, SqlBulkCopyOptions.Default, transaction);
 
         ConfigureBulkCopy(bulkCopy);
         ConfigureColumnMappings(bulkCopy);
 
         await bulkCopy.WriteToServerAsync(dataTable, cancellationToken).ConfigureAwait(false);
-
-        _pendingRows.Clear();
     }
 
     /// <summary>

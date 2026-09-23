@@ -1,11 +1,10 @@
 using System.Text.Json;
-using Amazon;
-using Amazon.Runtime.CredentialManagement;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using Microsoft.Extensions.Logging;
 using NPipeline.Connectors.Abstractions;
 using NPipeline.Connectors.Aws.Sqs.Configuration;
+using NPipeline.Connectors.Aws.Sqs.Internal;
 using NPipeline.Connectors.Aws.Sqs.Models;
 using NPipeline.Connectors.Configuration;
 using NPipeline.DataFlow;
@@ -39,7 +38,7 @@ public sealed class SqsSinkNode<T> : SinkNode<T>, IAsyncDisposable
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         _configuration.ValidateSink();
 
-        _sqsClient = CreateSqsClient(configuration);
+        _sqsClient = SqsClientFactory.Create(configuration);
         _serializerOptions = CreateSerializerOptions(configuration);
         _acknowledgmentStrategy = configuration.AcknowledgmentStrategy;
         _batchOptions = configuration.BatchAcknowledgment ?? new BatchAcknowledgmentOptions();
@@ -381,34 +380,6 @@ public sealed class SqsSinkNode<T> : SinkNode<T>, IAsyncDisposable
             SqsSinkNodeLogMessages.SendMessageBatchFailed(logger, ex);
             return [];
         }
-    }
-
-    private static IAmazonSQS CreateSqsClient(SqsConfiguration configuration)
-    {
-        var config = new AmazonSQSConfig
-        {
-            RegionEndpoint = RegionEndpoint.GetBySystemName(configuration.Region),
-        };
-
-        if (!string.IsNullOrWhiteSpace(configuration.AccessKeyId) &&
-            !string.IsNullOrWhiteSpace(configuration.SecretAccessKey))
-        {
-            return new AmazonSQSClient(
-                configuration.AccessKeyId,
-                configuration.SecretAccessKey,
-                config);
-        }
-
-        if (!string.IsNullOrWhiteSpace(configuration.ProfileName))
-        {
-            var chain = new CredentialProfileStoreChain();
-
-            if (chain.TryGetProfile(configuration.ProfileName, out var profile))
-                return new AmazonSQSClient(profile.GetAWSCredentials(chain), config);
-        }
-
-        // Use default credential chain
-        return new AmazonSQSClient(config);
     }
 
     private static JsonSerializerOptions CreateSerializerOptions(SqsConfiguration configuration)

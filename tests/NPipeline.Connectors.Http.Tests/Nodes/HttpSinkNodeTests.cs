@@ -3,7 +3,7 @@ using System.Text;
 using System.Text.Json;
 using NPipeline.Connectors.Http.Configuration;
 using NPipeline.Connectors.Http.Nodes;
-using NPipeline.Connectors.Http.Retry;
+using NPipeline.Connectors.Http.Reliability;
 using NPipeline.Connectors.Http.Tests.Helpers;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.Pipeline;
@@ -201,7 +201,7 @@ public class HttpSinkNodeTests
         var config = new HttpSinkConfiguration
         {
             Uri = new Uri("https://api.example.com/items"),
-            RetryStrategy = new ExponentialBackoffHttpRetryStrategy { MaxRetries = 0 },
+            Resilience = NResilience.Resilience.None,
         };
 
         var node = new HttpSinkNode<Item>(config, httpClient);
@@ -222,7 +222,7 @@ public class HttpSinkNodeTests
         {
             Uri = new Uri("https://api.example.com/items"),
             CaptureErrorResponses = true,
-            RetryStrategy = new ExponentialBackoffHttpRetryStrategy { MaxRetries = 0 },
+            Resilience = NResilience.Resilience.None,
         };
 
         var node = new HttpSinkNode<Item>(config, httpClient);
@@ -258,15 +258,14 @@ public class HttpSinkNodeTests
     }
 
     [Fact]
-    public async Task ExecuteAsync_WhenRequestExceedsTimeout_ThrowsTaskCanceledException()
+    public async Task ExecuteAsync_WhenRequestExceedsAttemptTimeout_ThrowsTimeoutException()
     {
         using var httpClient = new HttpClient(new DelayedResponseHandler(TimeSpan.FromMilliseconds(250)));
 
         var config = new HttpSinkConfiguration
         {
             Uri = new Uri("https://api.example.com/items"),
-            Timeout = TimeSpan.FromMilliseconds(50),
-            RetryStrategy = new ExponentialBackoffHttpRetryStrategy { MaxRetries = 0 },
+            Resilience = NResilience.Resilience.None with { AttemptTimeout = TimeSpan.FromMilliseconds(50) },
         };
 
         var node = new HttpSinkNode<Item>(config, httpClient);
@@ -274,7 +273,7 @@ public class HttpSinkNodeTests
         await using var pipe = PipeOf(new Item(1, "slow"));
         var act = async () => await node.ConsumeAsync(pipe, new PipelineContext(), CancellationToken.None);
 
-        await act.Should().ThrowAsync<TaskCanceledException>();
+        await act.Should().ThrowAsync<TimeoutException>();
     }
 
     private sealed record Item(int Id, string Name);

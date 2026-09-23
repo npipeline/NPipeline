@@ -170,46 +170,31 @@ public class MongoChangeStreamSourceNode<T> : SourceNode<T>, IAsyncDisposable
         var options = BuildChangeStreamOptions();
         var pipeline = BuildPipeline();
 
-        var attempt = 0;
-        var maxAttempts = _configuration.MaxRetryAttempts + 1;
+        IAsyncCursor<ChangeStreamDocument<BsonDocument>>? cursor = null;
+        Exception? openFailure = null;
 
-        while (attempt < maxAttempts)
+        // Only opening the stream is retried here. Once it is open, the driver resumes it by itself after a resumable
+        // error, from the last change it returned.
+        try
         {
-            // Cancellation surfaces as OperationCanceledException rather than ending the stream as if it had drained.
-            cancellationToken.ThrowIfCancellationRequested();
-            attempt++;
-
-            try
-            {
-                // Watch collection or entire database
-                if (!string.IsNullOrWhiteSpace(_configuration.CollectionName))
-                {
-                    var collection = database.GetCollection<BsonDocument>(_configuration.CollectionName);
-                    _cursor = await collection.WatchAsync(pipeline, options, cancellationToken).ConfigureAwait(false);
-                }
-                else
-                    _cursor = await database.WatchAsync(pipeline, options, cancellationToken).ConfigureAwait(false);
-
-                break;
-            }
-            catch (Exception ex) when (IsTransientError(ex) && attempt < maxAttempts)
-            {
-                await Task.Delay(_configuration.RetryDelay, cancellationToken).ConfigureAwait(false);
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
-            {
-                if (_configuration.ContinueOnError)
-                {
-                    if (_configuration.DocumentErrorHandler?.Invoke(ex, null) == true)
-                        yield break;
-                }
-
-                throw;
-            }
+            cursor = await _configuration.Resilience.RunAsync(
+                token => OpenCursorAsync(database, pipeline, options, token),
+                cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+        {
+            openFailure = ex;
         }
 
-        if (_cursor == null)
-            yield break;
+        if (openFailure != null)
+        {
+            if (_configuration.ContinueOnError && _configuration.DocumentErrorHandler?.Invoke(openFailure, null) == true)
+                yield break;
+
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw(openFailure);
+        }
+
+        _cursor = cursor!;
 
         var mapper = _mapper ?? BuildDefaultMapper();
 
@@ -245,6 +230,22 @@ public class MongoChangeStreamSourceNode<T> : SourceNode<T>, IAsyncDisposable
         }
     }
 
+    private async Task<IAsyncCursor<ChangeStreamDocument<BsonDocument>>> OpenCursorAsync(
+        IMongoDatabase database,
+        PipelineDefinition<ChangeStreamDocument<BsonDocument>, ChangeStreamDocument<BsonDocument>> pipeline,
+        ChangeStreamOptions options,
+        CancellationToken cancellationToken)
+    {
+        // Watch collection or entire database
+        if (!string.IsNullOrWhiteSpace(_configuration.CollectionName))
+        {
+            var collection = database.GetCollection<BsonDocument>(_configuration.CollectionName);
+            return await collection.WatchAsync(pipeline, options, cancellationToken).ConfigureAwait(false);
+        }
+
+        return await database.WatchAsync(pipeline, options, cancellationToken).ConfigureAwait(false);
+    }
+
     private ChangeStreamOptions BuildChangeStreamOptions()
     {
         var options = new ChangeStreamOptions
@@ -253,14 +254,22 @@ public class MongoChangeStreamSourceNode<T> : SourceNode<T>, IAsyncDisposable
             MaxAwaitTime = _configuration.MaxAwaitTime,
         };
 
-        if (_configuration.ResumeToken != null)
-            options.ResumeAfter = _configuration.ResumeToken;
+        if (_currentResumeToken != null)
+        {
+            // Opened again after emitting changes: resume after the last one, so nothing is emitted twice.
+            options.ResumeAfter = _currentResumeToken;
+        }
+        else
+        {
+            if (_configuration.ResumeToken != null)
+                options.ResumeAfter = _configuration.ResumeToken;
+
+            if (_configuration.StartAtOperationTime != null)
+                options.StartAtOperationTime = _configuration.StartAtOperationTime;
+        }
 
         if (_configuration.BatchSize.HasValue)
             options.BatchSize = _configuration.BatchSize.Value;
-
-        if (_configuration.StartAtOperationTime != null)
-            options.StartAtOperationTime = _configuration.StartAtOperationTime;
 
         return options;
     }
@@ -365,37 +374,5 @@ public class MongoChangeStreamSourceNode<T> : SourceNode<T>, IAsyncDisposable
             var row = new MongoRow(changeEvent.FullDocument);
             return rowMapper(row);
         };
-    }
-
-    private static bool IsTransientError(Exception ex)
-    {
-        // Check for MongoDB connection/timeout exceptions
-        return ex is TimeoutException ||
-               ex is MongoConnectionException ||
-               (ex is MongoCommandException cmdEx && IsRetryableCommandError(cmdEx)) ||
-               (ex.InnerException != null && IsTransientError(ex.InnerException));
-    }
-
-    /// <summary>
-    ///     Determines if a MongoDB command error is retryable.
-    /// </summary>
-    /// <param name="exception">The command exception.</param>
-    /// <returns>True if the error is retryable.</returns>
-    private static bool IsRetryableCommandError(MongoCommandException exception)
-    {
-        // Common retryable error codes
-        var retryableCodes = new HashSet<int>
-        {
-            6, // HostUnreachable
-            7, // HostNotFound
-            89, // NetworkTimeout
-            91, // ShutdownInProgress
-            189, // PrimarySteppedDown
-            262, // ExceededTimeLimit
-            9001, // SocketException
-            10107, // NotWritablePrimary
-        };
-
-        return retryableCodes.Contains(exception.Code);
     }
 }

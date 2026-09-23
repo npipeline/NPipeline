@@ -51,6 +51,23 @@ public static class SnowflakeTransientErrorDetector
     }
 
     /// <summary>
+    ///     Determines if an exception reports that Snowflake is throttling the client (HTTP 429, or a throttling message),
+    ///     so it should back off for longer than for other transient errors.
+    /// </summary>
+    /// <param name="exception">The exception to check.</param>
+    /// <returns>True if the exception, or one it wraps, is a throttling error; otherwise, false.</returns>
+    public static bool IsThrottling(Exception exception)
+    {
+        return exception switch
+        {
+            HttpRequestException { StatusCode: System.Net.HttpStatusCode.TooManyRequests } => true,
+            DbException dbEx when IsThrottlingMessage(dbEx.Message) => true,
+            _ when exception.InnerException != null => IsThrottling(exception.InnerException),
+            _ => false,
+        };
+    }
+
+    /// <summary>
     ///     Gets the Snowflake error code from a DbException.
     /// </summary>
     /// <param name="exception">The DbException to extract the error code from.</param>
@@ -90,5 +107,15 @@ public static class SnowflakeTransientErrorDetector
                || message.Contains("network", StringComparison.OrdinalIgnoreCase)
                || message.Contains("throttled", StringComparison.OrdinalIgnoreCase)
                || message.Contains("429", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsThrottlingMessage(string message)
+    {
+        if (string.IsNullOrWhiteSpace(message))
+            return false;
+
+        return message.Contains("throttled", StringComparison.OrdinalIgnoreCase)
+               || message.Contains("429", StringComparison.OrdinalIgnoreCase)
+               || message.Contains("too many requests", StringComparison.OrdinalIgnoreCase);
     }
 }

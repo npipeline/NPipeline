@@ -6,6 +6,7 @@ using NPipeline.Connectors.Attributes;
 using NPipeline.Connectors.SqlServer.Configuration;
 using NPipeline.Connectors.SqlServer.Exceptions;
 using NPipeline.Connectors.SqlServer.Mapping;
+using NPipeline.Connectors.SqlServer.Reliability;
 using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Models;
 
@@ -28,6 +29,7 @@ internal sealed class SqlServerBatchWriter<T> : IDatabaseWriter<T>
     private readonly int _parameterCount;
     private readonly Func<T, IEnumerable<DatabaseParameter>>? _parameterMapper;
     private readonly List<object?[]> _pendingRows;
+    private readonly ConnectionResilience _resilience;
     private readonly string _schema;
     private readonly string _tableName;
     private readonly Func<T, object?[]> _valueFactory;
@@ -66,6 +68,7 @@ internal sealed class SqlServerBatchWriter<T> : IDatabaseWriter<T>
         _pendingRows = new List<object?[]>(_flushThreshold);
         _insertSql = BuildInsertSql();
         _mergeSqlTemplate = BuildMergeSqlTemplate();
+        _resilience = new ConnectionResilience(_configuration.Resilience, _connection);
     }
 
     /// <summary>
@@ -112,26 +115,17 @@ internal sealed class SqlServerBatchWriter<T> : IDatabaseWriter<T>
         if (_pendingRows.Count == 0)
             return;
 
-        var attempt = 0;
-        var maxAttempts = _configuration.MaxRetryAttempts + 1;
-
-        while (attempt < maxAttempts)
+        try
         {
-            try
-            {
-                await ExecuteFlushAsync(cancellationToken).ConfigureAwait(false);
-                return;
-            }
-            catch (Exception ex) when (attempt < maxAttempts - 1 && SqlServerExceptionHandler.ShouldRetry(ex, _configuration))
-            {
-                attempt++;
-                var delay = SqlServerExceptionHandler.GetRetryDelay(ex, attempt, _configuration);
-                await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
-            }
+            // The flush is one INSERT or MERGE statement, which commits every row or none, so it is safe to retry.
+            await _resilience.RunAsync(ExecuteFlushAsync, cancellationToken).ConfigureAwait(false);
         }
-
-        // If we get here, all retries failed
-        await ExecuteFlushAsync(cancellationToken).ConfigureAwait(false);
+        finally
+        {
+            // Written, or reported to the caller as failed: either way the rows must not ride along in the next flush
+            // or be sent again when the writer is disposed.
+            _pendingRows.Clear();
+        }
     }
 
     /// <summary>
@@ -148,7 +142,7 @@ internal sealed class SqlServerBatchWriter<T> : IDatabaseWriter<T>
     /// </summary>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
-    private async Task ExecuteFlushAsync(CancellationToken cancellationToken = default)
+    private async Task ExecuteFlushAsync(CancellationToken cancellationToken)
     {
         var valueClauses = new List<string>(_pendingRows.Count);
         var paramIndex = 0;
@@ -180,7 +174,6 @@ internal sealed class SqlServerBatchWriter<T> : IDatabaseWriter<T>
             : _insertSql + string.Join(", ", valueClauses);
 
         _ = await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-        _pendingRows.Clear();
     }
 
     /// <summary>

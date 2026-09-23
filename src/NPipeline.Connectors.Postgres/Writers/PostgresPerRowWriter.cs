@@ -4,6 +4,7 @@ using System.Reflection;
 using NPipeline.Connectors.Attributes;
 using NPipeline.Connectors.Postgres.Configuration;
 using NPipeline.Connectors.Postgres.Mapping;
+using NPipeline.Connectors.Postgres.Reliability;
 using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Models;
 using NPipeline.StorageProviders.Utilities;
@@ -21,6 +22,7 @@ internal sealed class PostgresPerRowWriter<T> : IDatabaseWriter<T>
     private readonly string _insertSql;
     private readonly PropertyMapping[] _mappings;
     private readonly Func<T, IEnumerable<DatabaseParameter>>? _parameterMapper;
+    private readonly ConnectionResilience _resilience;
     private readonly string[] _parameterNames;
     private readonly string _schema;
     private readonly string _tableName;
@@ -51,6 +53,7 @@ internal sealed class PostgresPerRowWriter<T> : IDatabaseWriter<T>
         _parameterNames = BuildParameterNames(_mappings.Length);
         _valueFactory = BuildValueFactory(_mappings);
         _insertSql = BuildInsertSql();
+        _resilience = new ConnectionResilience(_configuration.Resilience, _connection);
     }
 
     /// <summary>
@@ -61,13 +64,19 @@ internal sealed class PostgresPerRowWriter<T> : IDatabaseWriter<T>
     /// <returns>A task representing the asynchronous operation.</returns>
     public async Task WriteAsync(T item, CancellationToken cancellationToken = default)
     {
+        var values = GetValues(item);
+
+        // One INSERT commits one row or none, so it is safe to retry on its own.
+        await _resilience.RunAsync(ct => InsertAsync(values, ct), cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task InsertAsync(object?[] values, CancellationToken cancellationToken)
+    {
         var command = await _connection.CreateCommandAsync(cancellationToken).ConfigureAwait(false);
         await using var commandScope = command.ConfigureAwait(false);
         command.CommandText = _insertSql;
         command.CommandType = CommandType.Text;
         command.CommandTimeout = _configuration.CommandTimeout;
-
-        var values = GetValues(item);
 
         for (var i = 0; i < values.Length; i++)
         {

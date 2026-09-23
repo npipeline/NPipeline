@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using NPipeline.Connectors.DataLake.Reliability;
 using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Models;
 
@@ -11,14 +12,13 @@ namespace NPipeline.Connectors.DataLake.Manifest;
 ///     Appends manifest entries to the table's manifest file.
 ///     Uses append-only writes to avoid full-file rewrites.
 ///     Manifest is stored at <c>_manifest/manifest.ndjson</c> relative to the table base path.
-///     Implements retry logic for concurrent write safety.
+///     Retries the main-manifest append on transient storage errors through
+///     <see cref="DataLakeConnectorResilience.ManifestWrite" />.
 /// </summary>
 public sealed class ManifestWriter : IAsyncDisposable
 {
     private const string ManifestDirectoryName = "_manifest";
     private const string ManifestFileName = "manifest.ndjson";
-    private const int MaxRetryAttempts = 3;
-    private static readonly TimeSpan RetryDelay = TimeSpan.FromMilliseconds(100);
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -30,6 +30,7 @@ public sealed class ManifestWriter : IAsyncDisposable
     private readonly List<ManifestEntry> _pendingEntries = [];
 
     private readonly IStorageProvider _provider;
+    private readonly NResilience.Resilience _resilience;
     private readonly StorageUri _snapshotManifestUri;
     private readonly SemaphoreSlim _writeLock = new(1, 1);
     private bool _disposed;
@@ -40,7 +41,14 @@ public sealed class ManifestWriter : IAsyncDisposable
     /// <param name="provider">The storage provider to use for writing.</param>
     /// <param name="tableBasePath">The base path of the table.</param>
     /// <param name="snapshotId">The snapshot ID for this write session.</param>
-    public ManifestWriter(IStorageProvider provider, StorageUri tableBasePath, string snapshotId)
+    /// <param name="resilience">
+    ///     The policy for appending to the main manifest. Defaults to <see cref="DataLakeConnectorResilience.ManifestWrite" />.
+    /// </param>
+    public ManifestWriter(
+        IStorageProvider provider,
+        StorageUri tableBasePath,
+        string snapshotId,
+        NResilience.Resilience? resilience = null)
     {
         ArgumentNullException.ThrowIfNull(provider);
         ArgumentNullException.ThrowIfNull(tableBasePath);
@@ -48,6 +56,8 @@ public sealed class ManifestWriter : IAsyncDisposable
 
         _provider = provider;
         SnapshotId = snapshotId;
+        _resilience = resilience ?? DataLakeConnectorResilience.ManifestWrite;
+        _resilience.Validate();
 
         // Build manifest URIs
         var manifestPath = BuildManifestPath(tableBasePath);
@@ -133,7 +143,7 @@ public sealed class ManifestWriter : IAsyncDisposable
     /// <summary>
     ///     Flushes all pending entries to storage.
     ///     Writes to both the per-snapshot manifest and appends to the main manifest.
-    ///     Implements retry logic to handle concurrent write conflicts.
+    ///     Retries the main-manifest append on transient storage errors.
     /// </summary>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
@@ -151,7 +161,7 @@ public sealed class ManifestWriter : IAsyncDisposable
             // Write to per-snapshot manifest
             await WriteSnapshotManifestAsync(cancellationToken).ConfigureAwait(false);
 
-            // Append to main manifest with retry logic for concurrent write safety
+            // Append to main manifest, retrying transient storage errors
             await AppendToMainManifestWithRetryAsync(cancellationToken).ConfigureAwait(false);
 
             _pendingEntries.Clear();
@@ -181,30 +191,10 @@ public sealed class ManifestWriter : IAsyncDisposable
     {
         var newContent = BuildNdJsonContent(_pendingEntries);
 
-        for (var attempt = 0; attempt < MaxRetryAttempts; attempt++)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            try
-            {
-                await AppendToMainManifestAtomicAsync(newContent, cancellationToken).ConfigureAwait(false);
-                return; // Success
-            }
-            catch (Exception ex) when (IsRetryableException(ex) && attempt < MaxRetryAttempts - 1)
-            {
-                // Concurrent modification or transient error detected, retry after delay
-                await Task.Delay(RetryDelay, cancellationToken).ConfigureAwait(false);
-            }
-        }
-    }
-
-    private static bool IsRetryableException(Exception ex)
-    {
-        // IOException covers file locking and concurrent access scenarios
-        // Include other transient storage errors that may occur with different providers
-        return ex is IOException ||
-               ex is UnauthorizedAccessException || // Can occur during brief locking windows
-               (ex is AggregateException ae && ae.InnerExceptions.Any(IsRetryableException));
+        await _resilience.RunAsync(
+                (Func<CancellationToken, Task>)(ct => AppendToMainManifestAtomicAsync(newContent, ct)),
+                cancellationToken)
+            .ConfigureAwait(false);
     }
 
     private async Task AppendToMainManifestAtomicAsync(string newContent, CancellationToken cancellationToken)
@@ -212,12 +202,14 @@ public sealed class ManifestWriter : IAsyncDisposable
         // Check if main manifest exists
         bool manifestExists;
 
+        // Providers return null for a missing file. Any other failure must propagate: treating it as "missing" would
+        // overwrite the manifest with only the new entries.
         try
         {
             var metadata = await _provider.GetMetadataAsync(_manifestUri, cancellationToken).ConfigureAwait(false);
             manifestExists = metadata is not null;
         }
-        catch
+        catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
         {
             manifestExists = false;
         }
@@ -266,6 +258,10 @@ public sealed class ManifestWriter : IAsyncDisposable
             existingContent = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
         }
 
+        // An earlier attempt may have committed before it failed; don't append the same entries twice
+        if (ContainsEntries(existingContent, newContent))
+            return;
+
         // Build combined content
         var combinedContent = existingContent;
 
@@ -304,6 +300,10 @@ public sealed class ManifestWriter : IAsyncDisposable
             existingContent = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
         }
 
+        // An earlier attempt may have committed before it failed; don't append the same entries twice
+        if (ContainsEntries(existingContent, newContent))
+            return;
+
         var combinedContent = existingContent;
 
         if (!existingContent.EndsWith('\n') && !string.IsNullOrEmpty(existingContent))
@@ -319,6 +319,12 @@ public sealed class ManifestWriter : IAsyncDisposable
         await using var writerScope = writer.ConfigureAwait(false);
         await writer.WriteAsync(combinedContent).ConfigureAwait(false);
         await writer.FlushAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    private static bool ContainsEntries(string existingContent, string newContent)
+    {
+        // Every entry carries this flush's snapshot ID and write timestamps, so the serialized block is unique to it
+        return newContent.Length > 0 && existingContent.Contains(newContent, StringComparison.Ordinal);
     }
 
     private StorageUri CreateTempManifestUri()

@@ -6,11 +6,12 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NPipeline.Connectors.Http.Configuration;
 using NPipeline.Connectors.Http.Metrics;
-using NPipeline.Connectors.Http.Retry;
+using NPipeline.Connectors.Http.Reliability;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
+using NResilience;
 
 namespace NPipeline.Connectors.Http.Nodes;
 
@@ -21,13 +22,15 @@ namespace NPipeline.Connectors.Http.Nodes;
 /// <typeparam name="T">The item type to deserialise from the API response.</typeparam>
 public sealed partial class HttpSourceNode<T> : SourceNode<T>, IAsyncDisposable
 {
-    private static readonly ActivitySource ActivitySource = new("NPipeline.Connectors.Http");
-
     private readonly HttpSourceConfiguration _configuration;
     private readonly HttpClient _httpClient;
     private readonly ILogger<HttpSourceNode<T>> _logger;
     private readonly IHttpConnectorMetrics _metrics;
     private readonly bool _ownsClient;
+    private readonly ResilientHttpSender _sender;
+
+    // The node fetches one page at a time, so the retry listener reads the request in flight from here.
+    private Uri? _currentUri;
 
     /// <summary>Creates a new instance sourcing an <see cref="HttpClient" /> from the provided factory.</summary>
     public HttpSourceNode(HttpSourceConfiguration configuration, IHttpClientFactory httpClientFactory)
@@ -77,6 +80,10 @@ public sealed partial class HttpSourceNode<T> : SourceNode<T>, IAsyncDisposable
         _metrics = metrics ?? throw new ArgumentNullException(nameof(metrics));
         _logger = logger ?? NullLogger<HttpSourceNode<T>>.Instance;
         _ownsClient = ownsClient;
+
+        // The source reads every page whole, so the body is read inside the attempt: a body that breaks off
+        // part-way is retried like any other transient failure.
+        _sender = new ResilientHttpSender(_httpClient, _configuration.Resilience, true, _metrics, OnResilienceEvent);
     }
 
     /// <inheritdoc />
@@ -116,7 +123,7 @@ public sealed partial class HttpSourceNode<T> : SourceNode<T>, IAsyncDisposable
 
             try
             {
-                response = await SendWithRetryAsync(uri, cancellationToken).ConfigureAwait(false);
+                response = await SendAsync(uri, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -170,94 +177,54 @@ public sealed partial class HttpSourceNode<T> : SourceNode<T>, IAsyncDisposable
         }
     }
 
-    private async Task<HttpResponseMessage> SendWithRetryAsync(Uri uri, CancellationToken cancellationToken)
+    private async Task<HttpResponseMessage> SendAsync(Uri uri, CancellationToken cancellationToken)
     {
-        var attempt = 0;
-        var delayBudget = new RetryDelayBudget(_configuration.RetryStrategy.MaxTotalRetryDelay);
+        using var request = BuildRequest(uri);
 
-        while (true)
+        // A source only reads, so its request is safe to repeat even when it is a POST that carries a query.
+        _ = request.MarkRepeatable();
+
+        await _configuration.Auth.ApplyAsync(request, cancellationToken).ConfigureAwait(false);
+
+        if (_configuration.RequestCustomizer != null)
+            await _configuration.RequestCustomizer(request, cancellationToken).ConfigureAwait(false);
+
+        LogSendingRequest(_logger, typeof(T).Name, _configuration.RequestMethod.Method, uri);
+        _currentUri = uri;
+
+        var response = await _sender.SendAsync(request, cancellationToken).ConfigureAwait(false);
+
+        if (response.IsSuccessStatusCode)
         {
-            attempt++;
-            HttpResponseMessage? response = null;
-            Exception? lastException = null;
-
-            using var activity = ActivitySource.StartActivity(
-                $"HTTP {_configuration.RequestMethod.Method} {uri.GetLeftPart(UriPartial.Path)}");
-
-            activity?.SetTag("http.method", _configuration.RequestMethod.Method);
-            activity?.SetTag("http.url", uri.ToString());
-            activity?.SetTag("http.attempt", attempt);
-
-            var sw = Stopwatch.StartNew();
-
-            try
-            {
-                using var request = BuildRequest(uri);
-                await _configuration.Auth.ApplyAsync(request, cancellationToken).ConfigureAwait(false);
-
-                if (_configuration.RequestCustomizer != null)
-                    await _configuration.RequestCustomizer(request, cancellationToken).ConfigureAwait(false);
-
-                _metrics.RecordRequest(uri.ToString(), _configuration.RequestMethod.Method);
-                LogSendingRequest(_logger, typeof(T).Name, _configuration.RequestMethod.Method, uri, attempt);
-
-                using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                timeoutCts.CancelAfter(_configuration.Timeout);
-
-                response = await _httpClient.SendAsync(
-                    request,
-                    HttpCompletionOption.ResponseContentRead,
-                    timeoutCts.Token).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                lastException = ex;
-            }
-
-            sw.Stop();
-
-            if (response != null)
-            {
-                _metrics.RecordResponse(
-                    uri.ToString(),
-                    _configuration.RequestMethod.Method,
-                    (int)response.StatusCode,
-                    sw.Elapsed);
-
-                activity?.SetTag("http.status_code", (int)response.StatusCode);
-
-                if (response.IsSuccessStatusCode)
-                    return response;
-
-                if (delayBudget.IsSpent || !_configuration.RetryStrategy.ShouldRetry(response, null, attempt))
-                {
-                    var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-                    response.Dispose();
-
-                    throw new HttpRequestException(
-                        $"HttpSourceNode<{typeof(T).Name}>: request to {uri} failed with " +
-                        $"{(int)response.StatusCode} {response.ReasonPhrase}. Body: {Truncate(body, 512)}");
-                }
-            }
-            else
-            {
-                _metrics.RecordError(uri.ToString(), _configuration.RequestMethod.Method, lastException!);
-
-                if (delayBudget.IsSpent || !_configuration.RetryStrategy.ShouldRetry(null, lastException, attempt))
-                    throw lastException!;
-            }
-
-            _metrics.RecordRetry(uri.ToString(), _configuration.RequestMethod.Method, attempt);
-            LogRetrying(_logger, typeof(T).Name, attempt, uri);
-
-            var delay = delayBudget.Spend(_configuration.RetryStrategy.GetDelay(response, attempt));
-            response?.Dispose();
-            await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+            // The resilience handler has already read the body into memory, but as a stream that can be read once.
+            // Deserialization and pagination strategies both read it, so make it re-readable. This copies from memory.
+#if NET9_0_OR_GREATER
+            await response.Content.LoadIntoBufferAsync(cancellationToken).ConfigureAwait(false);
+#else
+            await response.Content.LoadIntoBufferAsync().ConfigureAwait(false);
+#endif
+            return response;
         }
+
+        using (response)
+        {
+            var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+
+            throw new HttpRequestException(
+                $"HttpSourceNode<{typeof(T).Name}>: request to {uri} failed with " +
+                $"{(int)response.StatusCode} {response.ReasonPhrase}. Body: {Truncate(body, 512)}",
+                null,
+                response.StatusCode);
+        }
+    }
+
+    private void OnResilienceEvent(CallEvent callEvent)
+    {
+        if (callEvent.Kind != CallEventKind.Retrying || _currentUri is not { } uri)
+            return;
+
+        _metrics.RecordRetry(uri.ToString(), _configuration.RequestMethod.Method, callEvent.AttemptNumber);
+        LogRetrying(_logger, typeof(T).Name, callEvent.AttemptNumber, uri);
     }
 
     private HttpRequestMessage BuildRequest(Uri uri)
@@ -383,10 +350,14 @@ public sealed partial class HttpSourceNode<T> : SourceNode<T>, IAsyncDisposable
     }
 
     /// <inheritdoc />
-    public async ValueTask DisposeAsync()
+    public ValueTask DisposeAsync()
     {
+        _sender.Dispose();
+
         if (_ownsClient)
             _httpClient.Dispose();
+
+        return ValueTask.CompletedTask;
     }
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "HttpSourceNode<{TypeName}>: reached MaxPages limit of {MaxPages}, stopping.")]
@@ -395,8 +366,8 @@ public sealed partial class HttpSourceNode<T> : SourceNode<T>, IAsyncDisposable
     [LoggerMessage(Level = LogLevel.Debug, Message = "HttpSourceNode<{TypeName}>: page {Page} fetched {Count} items from {Uri}.")]
     private static partial void LogPageFetched(ILogger logger, string typeName, int page, int count, Uri uri);
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "HttpSourceNode<{TypeName}>: sending {Method} {Uri} (attempt {Attempt}).")]
-    private static partial void LogSendingRequest(ILogger logger, string typeName, string method, Uri uri, int attempt);
+    [LoggerMessage(Level = LogLevel.Debug, Message = "HttpSourceNode<{TypeName}>: sending {Method} {Uri}.")]
+    private static partial void LogSendingRequest(ILogger logger, string typeName, string method, Uri uri);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "HttpSourceNode<{TypeName}>: attempt {Attempt} failed for {Uri}, retrying.")]
     private static partial void LogRetrying(ILogger logger, string typeName, int attempt, Uri uri);

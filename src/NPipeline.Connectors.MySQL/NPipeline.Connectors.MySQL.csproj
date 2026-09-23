@@ -34,6 +34,7 @@
 
     <ItemGroup>
         <PackageReference Include="MySqlConnector"/>
+        <PackageReference Include="NResilience"/>
     </ItemGroup>
 
     <ItemGroup>

@@ -290,6 +290,13 @@ var config = new CosmosConfiguration
 };
 ```
 
+## Resilience
+
+The Cosmos DB SDK retries rate-limited (429) requests natively, and NPipeline adds no retry layer on top.
+`MaxRetryAttempts` (default 9) and `MaxRetryWaitTime` (default 30 s) on `CosmosConfiguration`, or a shared
+`AzureRetryConfiguration` in `RetryConfiguration`, map to the SDK's `MaxRetryAttemptsOnRateLimitedRequests` and
+`MaxRetryWaitTimeOnRateLimitedRequests` (SQL API).
+
 ## Custom Mapping
 
 ```csharp

@@ -3,8 +3,8 @@ using System.Linq.Expressions;
 using System.Reflection;
 using NPipeline.Connectors.Attributes;
 using NPipeline.Connectors.MySql.Configuration;
-using NPipeline.Connectors.MySql.Exceptions;
 using NPipeline.Connectors.MySql.Mapping;
+using NPipeline.Connectors.MySql.Reliability;
 using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Models;
 
@@ -22,6 +22,7 @@ internal sealed class MySqlPerRowWriter<T> : IDatabaseWriter<T>
     private readonly string _insertSql;
     private readonly PropertyMapping[] _mappings;
     private readonly Func<T, IEnumerable<DatabaseParameter>>? _parameterMapper;
+    private readonly ConnectionResilience _resilience;
     private readonly string[] _parameterNames;
     private readonly string _tableName;
     private readonly Func<T, object?[]> _valueFactory;
@@ -41,31 +42,14 @@ internal sealed class MySqlPerRowWriter<T> : IDatabaseWriter<T>
         _parameterNames = BuildParameterNames(_mappings.Length);
         _valueFactory = BuildValueFactory(_mappings);
         _insertSql = BuildInsertSql();
+        _resilience = new ConnectionResilience(_configuration.Resilience, _connection);
     }
 
     /// <inheritdoc />
     public async Task WriteAsync(T item, CancellationToken cancellationToken = default)
     {
-        var attempt = 0;
-        var maxAttempts = _configuration.MaxRetryAttempts + 1;
-
-        while (attempt < maxAttempts - 1)
-        {
-            try
-            {
-                await ExecuteWriteAsync(item, cancellationToken).ConfigureAwait(false);
-                return;
-            }
-            catch (Exception ex) when (MySqlExceptionHandler.ShouldRetry(ex, _configuration))
-            {
-                attempt++;
-                var delay = MySqlExceptionHandler.GetRetryDelay(ex, attempt, _configuration);
-                await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
-            }
-        }
-
-        // Final attempt - let exceptions propagate
-        await ExecuteWriteAsync(item, cancellationToken).ConfigureAwait(false);
+        // One INSERT commits one row or none, so it is safe to retry on its own.
+        await _resilience.RunAsync(ct => ExecuteWriteAsync(item, ct), cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc />

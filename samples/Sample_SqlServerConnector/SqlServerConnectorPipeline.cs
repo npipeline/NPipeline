@@ -1,6 +1,7 @@
 using Microsoft.Data.SqlClient;
 using NPipeline.Connectors.SqlServer.Configuration;
 using NPipeline.Connectors.SqlServer.Nodes;
+using NPipeline.Connectors.SqlServer.Reliability;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.Pipeline;
 using NPipeline.StorageProviders.Models;
@@ -679,8 +680,7 @@ public sealed class SqlServerConnectorPipeline
         {
             WriteStrategy = SqlServerWriteStrategy.PerRow,
             UseTransaction = false, // Disable transaction to allow partial success
-            MaxRetryAttempts = 3,
-            RetryDelay = TimeSpan.FromSeconds(1),
+            Resilience = SqlServerConnectorResilience.Default, // Four attempts for transient errors; a foreign key violation is not retried
             ContinueOnError = false, // Stop on first error
             Schema = "Sales",
         };
@@ -695,7 +695,7 @@ public sealed class SqlServerConnectorPipeline
         Console.WriteLine("  - Order 2: Invalid customer ID (999) - will fail");
         Console.WriteLine("  - Order 3: Valid customer ID (2)");
         Console.WriteLine("  - ContinueOnError: false (stop on first error)");
-        Console.WriteLine("  - MaxRetryAttempts: 3");
+        Console.WriteLine("  - Resilience: SqlServerConnectorResilience.Default (four attempts, transient errors only)");
 
         try
         {

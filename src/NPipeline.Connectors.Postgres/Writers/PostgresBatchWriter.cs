@@ -5,6 +5,7 @@ using NPipeline.Connectors.Attributes;
 using NPipeline.Connectors.Postgres.Configuration;
 using NPipeline.Connectors.Postgres.Exceptions;
 using NPipeline.Connectors.Postgres.Mapping;
+using NPipeline.Connectors.Postgres.Reliability;
 using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Models;
 using NPipeline.StorageProviders.Utilities;
@@ -24,6 +25,7 @@ internal sealed class PostgresBatchWriter<T> : IDatabaseWriter<T>
     private readonly PropertyMapping[] _mappings;
     private readonly int _parameterCount;
     private readonly Func<T, IEnumerable<DatabaseParameter>>? _parameterMapper;
+    private readonly ConnectionResilience _resilience;
     private readonly List<object?[]> _pendingRows;
     private readonly string _schema;
     private readonly string _tableName;
@@ -56,6 +58,7 @@ internal sealed class PostgresBatchWriter<T> : IDatabaseWriter<T>
         _flushThreshold = Math.Clamp(_configuration.BatchSize, 1, _configuration.MaxBatchSize);
         _pendingRows = new List<object?[]>(_flushThreshold);
         _insertSql = BuildInsertSql();
+        _resilience = new ConnectionResilience(_configuration.Resilience, _connection);
     }
 
     /// <summary>
@@ -99,6 +102,21 @@ internal sealed class PostgresBatchWriter<T> : IDatabaseWriter<T>
         if (_pendingRows.Count == 0)
             return;
 
+        try
+        {
+            // The flush is one INSERT statement, which commits every row or none, so it is safe to retry.
+            await _resilience.RunAsync(ExecuteFlushAsync, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            // Written, or reported to the caller as failed: either way the rows must not ride along in the next flush
+            // or be sent again when the writer is disposed.
+            _pendingRows.Clear();
+        }
+    }
+
+    private async Task ExecuteFlushAsync(CancellationToken cancellationToken)
+    {
         var valueClauses = new List<string>(_pendingRows.Count);
         var paramIndex = 0;
 
@@ -126,7 +144,6 @@ internal sealed class PostgresBatchWriter<T> : IDatabaseWriter<T>
         command.CommandText = _insertSql + string.Join(", ", valueClauses);
 
         _ = await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-        _pendingRows.Clear();
     }
 
     /// <summary>

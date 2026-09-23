@@ -50,8 +50,8 @@ internal static partial class LogMessages
     public static partial void BatchPublished(ILogger logger, int count, string exchange);
 
     [LoggerMessage(14, LogLevel.Warning,
-        "Publish retrying in {DelayMs}ms (attempt {Attempt}/{MaxRetries}) to exchange '{Exchange}'")]
-    public static partial void PublishRetrying(ILogger logger, int delayMs, int attempt, int maxRetries, string exchange);
+        "Publish to exchange '{Exchange}' failed; retrying in {DelayMs}ms (attempt {Attempt} of {Attempts})")]
+    public static partial void PublishRetrying(ILogger logger, Exception? exception, string exchange, double delayMs, int attempt, int attempts);
 
     // Connection
 

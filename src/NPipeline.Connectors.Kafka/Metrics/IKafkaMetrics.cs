@@ -51,6 +51,13 @@ public interface IKafkaMetrics
     void RecordPollLatency(string topic, TimeSpan latency);
 
     /// <summary>
+    ///     Records a failed consume (poll), including one that is then retried.
+    /// </summary>
+    /// <param name="topic">The topic name.</param>
+    /// <param name="ex">The exception that occurred.</param>
+    void RecordConsumeError(string topic, Exception ex);
+
+    /// <summary>
     ///     Records the latency of a commit operation.
     /// </summary>
     /// <param name="topic">The topic name.</param>

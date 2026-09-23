@@ -1,5 +1,7 @@
 using Confluent.Kafka;
 using NPipeline.Connectors.Kafka.Configuration;
+using NPipeline.Connectors.Kafka.Reliability;
+using NResilience;
 
 namespace NPipeline.Connectors.Kafka.Tests.Configuration;
 
@@ -24,8 +26,7 @@ public class KafkaConfigurationTests
         config.EnableAutoOffsetStore.Should().BeTrue();
         config.BatchSize.Should().Be(16384);
         config.LingerMs.Should().Be(5);
-        config.MaxRetries.Should().Be(3);
-        config.RetryBaseDelayMs.Should().Be(100);
+        config.Resilience.Should().BeSameAs(KafkaConnectorResilience.Default);
         config.SerializationFormat.Should().Be(SerializationFormat.Json);
         config.AutoOffsetReset.Should().Be(AutoOffsetReset.Latest);
         config.Acks.Should().Be(Acks.All);
@@ -414,23 +415,21 @@ public class KafkaConfigurationTests
     }
 
     [Fact]
-    public void Validate_WithInvalidMaxRetries_ShouldThrow()
+    public void ValidateSource_WithInvalidResilience_ShouldThrow()
     {
         // Arrange
         var config = new KafkaConfiguration
         {
             BootstrapServers = "localhost:9092",
             SourceTopic = "input-topic",
-            SinkTopic = "output-topic",
             ConsumerGroupId = "test-group",
-            MaxRetries = -1,
+            Resilience = KafkaConnectorResilience.Default with { Attempts = 0 },
         };
 
         // Act & Assert
-        var act = () => config.Validate();
+        var act = () => config.ValidateSource();
 
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("MaxRetries cannot be negative.");
+        act.Should().Throw<ResilienceConfigurationException>();
     }
 
     #endregion

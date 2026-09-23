@@ -296,6 +296,22 @@ Console.WriteLine($"Bytes: {result.BytesBefore:N0} → {result.BytesAfter:N0}");
 
 Compaction merges small files into fewer, larger files while preserving data and updating the manifest.
 
+## Resilience
+
+The manifest writer appends to `_manifest/manifest.ndjson` through an NResilience policy,
+`DataLakeConnectorResilience.ManifestWrite`: three attempts (two retries) with exponential backoff and full jitter from
+100 ms, no attempt timeout, and no deadline. Only transient storage errors are retried (`IOException`,
+`TimeoutException`, socket errors). Access denied (`UnauthorizedAccessException`), missing paths, and invalid arguments
+fail at once. Pass a different policy to the `ManifestWriter` constructor to change this.
+
+A manifest append is a read-modify-write with no conditional write, so a retry recovers from a transient error, not from
+a conflict with a concurrent writer. Each attempt re-reads the manifest and skips the append when its entries are already
+present, so a retry after an attempt that committed doesn't duplicate entries. Each flush also writes a per-snapshot
+manifest under `_manifest/snapshots/`, which readers merge with the main manifest.
+
+The cloud storage providers' SDKs (Azure, AWS, Google) retry individual requests natively; this policy retries the whole
+append.
+
 ## Format Adapter Interface
 
 Implement [`ITableFormatAdapter`](FormatAdapters/ITableFormatAdapter.cs:11) to support alternative table formats:

@@ -39,6 +39,7 @@
 
     <ItemGroup>
         <PackageReference Include="Npgsql"/>
+        <PackageReference Include="NResilience"/>
     </ItemGroup>
 
     <ItemGroup>

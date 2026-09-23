@@ -1,15 +1,18 @@
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Runtime.ExceptionServices;
 using Confluent.Kafka;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using NPipeline.Connectors.Kafka.Configuration;
 using NPipeline.Connectors.Kafka.Metrics;
 using NPipeline.Connectors.Kafka.Models;
-using NPipeline.Connectors.Kafka.Retry;
 using NPipeline.Connectors.Kafka.Serialization;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
+using NResilience;
 
 namespace NPipeline.Connectors.Kafka.Nodes;
 
@@ -19,38 +22,41 @@ namespace NPipeline.Connectors.Kafka.Nodes;
 /// <typeparam name="T">The type of messages to consume.</typeparam>
 public sealed class KafkaSourceNode<T> : SourceNode<KafkaMessage<T>>
 {
+    private static readonly Action<ILogger, double, int, int, Exception?> LogConsumeRetrying =
+        LoggerMessage.Define<double, int, int>(LogLevel.Warning, new EventId(1, nameof(LogConsumeRetrying)),
+            "Consume failed, retrying in {Delay}ms (attempt {Attempt} of {Attempts})");
+
     private readonly KafkaConfiguration _configuration;
     private readonly IConsumer<string, T> _consumer;
+    private readonly NResilience.Resilience _consumePolicy;
     private readonly IKafkaMetrics _metrics;
     private readonly bool _ownsConsumer;
-    private readonly IRetryStrategy _retryStrategy;
     private readonly ISerializerProvider _serializer;
+    private ILogger _logger = NullLogger.Instance;
 
     /// <summary>
     ///     Creates a new KafkaSourceNode with the specified configuration.
     /// </summary>
     /// <param name="configuration">The Kafka configuration.</param>
     public KafkaSourceNode(KafkaConfiguration configuration)
-        : this(configuration, NullKafkaMetrics.Instance, new ExponentialBackoffRetryStrategy())
+        : this(configuration, NullKafkaMetrics.Instance)
     {
     }
 
     /// <summary>
     ///     Creates a new KafkaSourceNode with the specified configuration and metrics.
     /// </summary>
-    /// <param name="configuration">The Kafka configuration.</param>
+    /// <param name="configuration">The Kafka configuration. <see cref="KafkaConfiguration.Resilience" /> sets how a failed consume is retried.</param>
     /// <param name="metrics">The metrics recorder.</param>
-    /// <param name="retryStrategy">The retry strategy for transient errors.</param>
     public KafkaSourceNode(
         KafkaConfiguration configuration,
-        IKafkaMetrics metrics,
-        IRetryStrategy retryStrategy)
+        IKafkaMetrics metrics)
     {
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         _configuration.ValidateSource();
 
         _metrics = metrics ?? throw new ArgumentNullException(nameof(metrics));
-        _retryStrategy = retryStrategy ?? throw new ArgumentNullException(nameof(retryStrategy));
+        _consumePolicy = _configuration.Resilience.WithListener(OnResilienceEvent);
         _serializer = CreateSerializer(configuration, metrics);
 
         var consumerConfig = BuildConsumerConfig(configuration);
@@ -68,19 +74,17 @@ public sealed class KafkaSourceNode<T> : SourceNode<KafkaMessage<T>>
     /// <param name="consumer">The Kafka consumer to use.</param>
     /// <param name="configuration">The Kafka configuration.</param>
     /// <param name="metrics">The metrics recorder.</param>
-    /// <param name="retryStrategy">The retry strategy for transient errors.</param>
     public KafkaSourceNode(
         IConsumer<string, T> consumer,
         KafkaConfiguration configuration,
-        IKafkaMetrics metrics,
-        IRetryStrategy retryStrategy)
+        IKafkaMetrics metrics)
     {
         _consumer = consumer ?? throw new ArgumentNullException(nameof(consumer));
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         _configuration.ValidateSource();
 
         _metrics = metrics ?? throw new ArgumentNullException(nameof(metrics));
-        _retryStrategy = retryStrategy ?? throw new ArgumentNullException(nameof(retryStrategy));
+        _consumePolicy = _configuration.Resilience.WithListener(OnResilienceEvent);
         _serializer = CreateSerializer(configuration, metrics);
         _ownsConsumer = false;
     }
@@ -88,6 +92,8 @@ public sealed class KafkaSourceNode<T> : SourceNode<KafkaMessage<T>>
     /// <inheritdoc />
     public override IDataStream<KafkaMessage<T>> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
+        _logger = context.Observability.LoggerFactory.CreateLogger(nameof(KafkaSourceNode<T>));
+
         var stream = ConsumeMessagesAsync(cancellationToken);
         return new DataStream<KafkaMessage<T>>(stream, $"KafkaSourceNode<{typeof(T).Name}>");
     }
@@ -98,54 +104,49 @@ public sealed class KafkaSourceNode<T> : SourceNode<KafkaMessage<T>>
         // Subscribe to the topic
         _consumer.Subscribe(_configuration.SourceTopic);
 
-        var attempt = 0;
         var maxPollRecords = _configuration.MaxPollRecords;
         var pollTimeout = TimeSpan.FromMilliseconds(_configuration.PollTimeoutMs);
 
         while (!cancellationToken.IsCancellationRequested)
         {
             List<KafkaMessage<T>>? messagesToYield = null;
-            var batchHadError = false;
+            ExceptionDispatchInfo? failure = null;
 
             try
             {
                 // Batch consume up to MaxPollRecords messages per poll cycle
                 var sw = Stopwatch.StartNew();
-                var batchStartTime = sw.ElapsedMilliseconds;
                 messagesToYield = new List<KafkaMessage<T>>(maxPollRecords);
 
                 for (var i = 0; i < maxPollRecords; i++)
                 {
+                    ConsumeResult<string, T>? consumeResult;
+
                     try
                     {
-                        var consumeResult = _consumer.Consume(pollTimeout);
-
-                        if (consumeResult == null || consumeResult.IsPartitionEOF)
-                        {
-                            // No more messages available in this poll cycle
-                            break;
-                        }
-
-                        // Create KafkaMessage with acknowledgment callback
-                        var message = CreateKafkaMessage(consumeResult);
-                        messagesToYield.Add(message);
+                        // Each consume is one call to the policy, so its attempt count applies to that consume: an error
+                        // that clears restarts the count, and one that persists surfaces once the attempts are spent.
+                        consumeResult = await _consumePolicy.RunAsync(
+                            static (state, _) => state.Node.ConsumeOnce(state.PollTimeout),
+                            (Node: this, PollTimeout: pollTimeout),
+                            cancellationToken).ConfigureAwait(false);
                     }
-                    catch (ConsumeException ex)
+                    catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
                     {
-                        // Handle consume errors within the batch
-                        batchHadError = true;
-                        attempt++;
-
-                        if (!_retryStrategy.ShouldRetry(ex, attempt))
-                        {
-                            _metrics.RecordCommitError(_configuration.SourceTopic, ex);
-                            throw;
-                        }
-
-                        var delay = _retryStrategy.GetDelay(attempt);
-                        await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
-                        break; // Exit batch on error
+                        // Hand over the messages already consumed in this batch before failing, so none are lost.
+                        failure = ExceptionDispatchInfo.Capture(ex);
+                        break;
                     }
+
+                    if (consumeResult == null || consumeResult.IsPartitionEOF)
+                    {
+                        // No more messages available in this poll cycle
+                        break;
+                    }
+
+                    // Create KafkaMessage with acknowledgment callback
+                    var message = CreateKafkaMessage(consumeResult);
+                    messagesToYield.Add(message);
                 }
 
                 sw.Stop();
@@ -153,11 +154,6 @@ public sealed class KafkaSourceNode<T> : SourceNode<KafkaMessage<T>>
 
                 if (messagesToYield.Count > 0)
                     _metrics.RecordConsumed(_configuration.SourceTopic, messagesToYield.Count);
-
-                // Only an error-free batch proves the error cleared. Resetting after a batch cut short by a consume
-                // error would restart the count on every failure, so a persistent error would retry forever.
-                if (!batchHadError)
-                    attempt = 0;
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
@@ -165,30 +161,60 @@ public sealed class KafkaSourceNode<T> : SourceNode<KafkaMessage<T>>
                 await ShutdownAsync().ConfigureAwait(false);
                 break;
             }
-            catch (KafkaException ex)
-            {
-                attempt++;
-
-                if (!_retryStrategy.ShouldRetry(ex, attempt))
-                {
-                    _metrics.RecordCommitError(_configuration.SourceTopic, ex);
-                    throw;
-                }
-
-                var delay = _retryStrategy.GetDelay(attempt);
-                await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
-                continue;
-            }
 
             // Yield messages outside the try-catch block
             foreach (var message in messagesToYield)
             {
                 yield return message;
             }
+
+            if (failure is not null)
+            {
+                // Leave the consumer group now rather than when the session times out, so the partitions move on.
+                try
+                {
+                    await ShutdownAsync().ConfigureAwait(false);
+                }
+                catch (Exception)
+                {
+                    // Closing a failed consumer can fail too; the consume failure is the one to surface.
+                }
+
+                failure.Throw();
+            }
         }
 
         // Final cleanup
         await ShutdownAsync().ConfigureAwait(false);
+    }
+
+    /// <summary>
+    ///     One consume attempt. Every failure is recorded, including one the policy then retries.
+    /// </summary>
+    private ValueTask<ConsumeResult<string, T>?> ConsumeOnce(TimeSpan pollTimeout)
+    {
+        try
+        {
+            return ValueTask.FromResult<ConsumeResult<string, T>?>(_consumer.Consume(pollTimeout));
+        }
+        catch (Exception ex)
+        {
+            _metrics.RecordConsumeError(_configuration.SourceTopic, ex);
+            throw;
+        }
+    }
+
+    private void OnResilienceEvent(CallEvent callEvent)
+    {
+        if (callEvent.Kind != CallEventKind.Retrying)
+            return;
+
+        LogConsumeRetrying(
+            _logger,
+            (callEvent.Delay ?? TimeSpan.Zero).TotalMilliseconds,
+            callEvent.AttemptNumber,
+            _configuration.Resilience.Attempts,
+            callEvent.Exception);
     }
 
     private KafkaMessage<T> CreateKafkaMessage(ConsumeResult<string, T> consumeResult)

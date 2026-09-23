@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Google.Apis.Auth.OAuth2;
+using NPipeline.StorageProviders.Gcp.Reliability;
 
 namespace NPipeline.StorageProviders.Gcp.Tests;
 
@@ -19,7 +20,7 @@ public class GcsStorageProviderOptionsTests
         options.UploadChunkSizeBytes.Should().Be(16 * 1024 * 1024); // 16 MB
         options.UploadBufferThresholdBytes.Should().Be(64 * 1024 * 1024); // 64 MB
         options.ClientCacheSizeLimit.Should().Be(100);
-        options.RetrySettings.Should().BeNull();
+        options.Resilience.Should().BeSameAs(GcsStorageResilience.Default);
     }
 
     [Fact]
@@ -106,24 +107,35 @@ public class GcsStorageProviderOptionsTests
     }
 
     [Fact]
-    public void RetrySettings_CanBeSet()
+    public void Resilience_CanBeSet()
     {
         // Arrange
         var options = new GcsStorageProviderOptions();
 
-        var retrySettings = new GcsRetrySettings
-        {
-            MaxAttempts = 5,
-            InitialDelay = TimeSpan.FromSeconds(2),
-        };
-
         // Act
-        options.RetrySettings = retrySettings;
+        options.Resilience = NResilience.Resilience.None;
 
         // Assert
-        options.RetrySettings.Should().Be(retrySettings);
-        options.RetrySettings!.MaxAttempts.Should().Be(5);
-        options.RetrySettings.InitialDelay.Should().Be(TimeSpan.FromSeconds(2));
+        options.Resilience.Should().BeSameAs(NResilience.Resilience.None);
+    }
+
+    [Fact]
+    public void Validate_WithNullResilience_Throws()
+    {
+        var options = new GcsStorageProviderOptions { Resilience = null! };
+
+        _ = Assert.Throws<ArgumentNullException>(options.Validate);
+    }
+
+    [Fact]
+    public void Validate_WithImpossibleResilience_Throws()
+    {
+        var options = new GcsStorageProviderOptions
+        {
+            Resilience = GcsStorageResilience.Default with { Attempts = 0 },
+        };
+
+        _ = Assert.Throws<NResilience.ResilienceConfigurationException>(options.Validate);
     }
 
     [Fact]
@@ -408,189 +420,5 @@ public class GcsStorageProviderOptionsTests
 
         // Act & Assert
         options.UseDefaultCredentials.Should().BeTrue();
-    }
-}
-
-public class GcsRetrySettingsTests
-{
-    [Fact]
-    public void DefaultValues_AreCorrect()
-    {
-        // Act
-        var settings = new GcsRetrySettings();
-
-        // Assert
-        settings.InitialDelay.Should().Be(TimeSpan.FromSeconds(1));
-        settings.MaxDelay.Should().Be(TimeSpan.FromSeconds(32));
-        settings.DelayMultiplier.Should().Be(2.0);
-        settings.MaxAttempts.Should().Be(3);
-        settings.RetryOnRateLimit.Should().BeTrue();
-        settings.RetryOnServerErrors.Should().BeTrue();
-    }
-
-    [Fact]
-    public void InitialDelay_CanBeSet()
-    {
-        // Arrange
-        var settings = new GcsRetrySettings();
-
-        // Act
-        settings.InitialDelay = TimeSpan.FromSeconds(5);
-
-        // Assert
-        settings.InitialDelay.Should().Be(TimeSpan.FromSeconds(5));
-    }
-
-    [Fact]
-    public void MaxDelay_CanBeSet()
-    {
-        // Arrange
-        var settings = new GcsRetrySettings();
-
-        // Act
-        settings.MaxDelay = TimeSpan.FromMinutes(2);
-
-        // Assert
-        settings.MaxDelay.Should().Be(TimeSpan.FromMinutes(2));
-    }
-
-    [Fact]
-    public void DelayMultiplier_CanBeSet()
-    {
-        // Arrange
-        var settings = new GcsRetrySettings();
-
-        // Act
-        settings.DelayMultiplier = 1.5;
-
-        // Assert
-        settings.DelayMultiplier.Should().Be(1.5);
-    }
-
-    [Fact]
-    public void MaxAttempts_CanBeSet()
-    {
-        // Arrange
-        var settings = new GcsRetrySettings();
-
-        // Act
-        settings.MaxAttempts = 10;
-
-        // Assert
-        settings.MaxAttempts.Should().Be(10);
-    }
-
-    [Fact]
-    public void RetryOnRateLimit_CanBeSet()
-    {
-        // Arrange
-        var settings = new GcsRetrySettings();
-
-        // Act
-        settings.RetryOnRateLimit = false;
-
-        // Assert
-        settings.RetryOnRateLimit.Should().BeFalse();
-    }
-
-    [Fact]
-    public void RetryOnServerErrors_CanBeSet()
-    {
-        // Arrange
-        var settings = new GcsRetrySettings();
-
-        // Act
-        settings.RetryOnServerErrors = false;
-
-        // Assert
-        settings.RetryOnServerErrors.Should().BeFalse();
-    }
-
-    [Fact]
-    public void MultipleRetrySettingsInstances_AreIndependent()
-    {
-        // Arrange
-        var settings1 = new GcsRetrySettings();
-        var settings2 = new GcsRetrySettings();
-
-        // Act
-        settings1.MaxAttempts = 5;
-        settings1.RetryOnRateLimit = false;
-        settings2.MaxAttempts = 10;
-        settings2.RetryOnServerErrors = false;
-
-        // Assert
-        settings1.MaxAttempts.Should().Be(5);
-        settings1.RetryOnRateLimit.Should().BeFalse();
-        settings2.MaxAttempts.Should().Be(10);
-        settings2.RetryOnServerErrors.Should().BeFalse();
-    }
-
-    [Fact]
-    public void Validate_WithNegativeMaxAttempts_ThrowsInvalidOperationException()
-    {
-        // Arrange
-        var settings = new GcsRetrySettings
-        {
-            MaxAttempts = -1,
-        };
-
-        // Act & Assert
-        var exception = settings.Invoking(s => s.Validate())
-            .Should().Throw<InvalidOperationException>()
-            .Which;
-
-        exception.Message.Should().Contain("RetrySettings.MaxAttempts must be non-negative");
-    }
-
-    [Fact]
-    public void Validate_WithDelayMultiplierBelowOne_ThrowsInvalidOperationException()
-    {
-        // Arrange
-        var settings = new GcsRetrySettings
-        {
-            DelayMultiplier = 0.9,
-        };
-
-        // Act & Assert
-        var exception = settings.Invoking(s => s.Validate())
-            .Should().Throw<InvalidOperationException>()
-            .Which;
-
-        exception.Message.Should().Contain("RetrySettings.DelayMultiplier must be greater than or equal to 1.0");
-    }
-
-    [Fact]
-    public void Validate_WithMaxDelayLessThanInitialDelay_ThrowsInvalidOperationException()
-    {
-        // Arrange
-        var settings = new GcsRetrySettings
-        {
-            InitialDelay = TimeSpan.FromSeconds(2),
-            MaxDelay = TimeSpan.FromSeconds(1),
-        };
-
-        // Act & Assert
-        var exception = settings.Invoking(s => s.Validate())
-            .Should().Throw<InvalidOperationException>()
-            .Which;
-
-        exception.Message.Should().Contain("RetrySettings.MaxDelay must be greater than or equal to InitialDelay");
-    }
-
-    [Fact]
-    public void Validate_WithValidValues_DoesNotThrow()
-    {
-        // Arrange
-        var settings = new GcsRetrySettings
-        {
-            InitialDelay = TimeSpan.Zero,
-            MaxDelay = TimeSpan.FromSeconds(5),
-            DelayMultiplier = 1.0,
-            MaxAttempts = 0,
-        };
-
-        // Act & Assert
-        settings.Invoking(s => s.Validate()).Should().NotThrow();
     }
 }

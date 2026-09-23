@@ -423,61 +423,34 @@ public class SqsSourceNodeTests
         }
 
         [Fact]
-        public async Task PollMessagesAsync_WithTransientError_Retries()
+        public async Task PollMessagesAsync_WithTransientError_FailsWithoutRetryingOnTopOfTheSdk()
         {
-            // Arrange
+            // Arrange: the SDK client owns retries, so an error that reaches the node has already been retried.
             var configuration = CreateValidConfiguration();
-            configuration.RetryBaseDelayMs = 10;
             var sqsClientFake = A.Fake<IAmazonSQS>();
             var node = new SqsSourceNode<TestModel>(sqsClientFake, configuration);
-            var context = new PipelineContext();
-            var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
-
             var callCount = 0;
-            var secondCallSignal = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
-            // Setup fake to fail once, then succeed
             A.CallTo(() => sqsClientFake.ReceiveMessageAsync(
                     A<ReceiveMessageRequest>._,
                     A<CancellationToken>._))
-                .ReturnsLazily(() =>
+                .ReturnsLazily(ReceiveMessageResponse () =>
                 {
                     callCount++;
-
-                    if (callCount == 2)
-                        secondCallSignal.TrySetResult();
-
-                    if (callCount == 1)
-                        throw new AmazonSQSException("Service unavailable", ErrorType.Unknown, "ServiceUnavailable", null, HttpStatusCode.ServiceUnavailable);
-
-                    return new ReceiveMessageResponse { Messages = new List<Message>() };
+                    throw new AmazonSQSException("Service unavailable", ErrorType.Unknown, "ServiceUnavailable", null, HttpStatusCode.ServiceUnavailable);
                 });
 
             // Act
-            var dataStream = node.OpenStream(context, cts.Token);
-            var enumerator = dataStream.GetAsyncEnumerator(cts.Token);
-
-            // Start polling
-            var pollTask = enumerator.MoveNextAsync().AsTask();
-
-            // Wait for retry to happen
-            var completedTask = await Task.WhenAny(secondCallSignal.Task, Task.Delay(500, cts.Token));
-            completedTask.Should().Be(secondCallSignal.Task);
-
-            // Cancel
-            await cts.CancelAsync();
-
-            try
+            var act = async () =>
             {
-                await pollTask;
-            }
-            catch (OperationCanceledException)
-            {
-                // Expected
-            }
+                await foreach (var _ in node.OpenStream(new PipelineContext(), CancellationToken.None))
+                {
+                }
+            };
 
-            // Assert - Should have been called twice (initial + retry)
-            callCount.Should().BeGreaterThanOrEqualTo(2);
+            // Assert
+            _ = await act.Should().ThrowAsync<AmazonSQSException>();
+            callCount.Should().Be(1);
         }
 
         [Fact]

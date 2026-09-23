@@ -1,7 +1,7 @@
 using System.Text.Json;
 using NPipeline.Connectors.Http.Auth;
 using NPipeline.Connectors.Http.RateLimiting;
-using NPipeline.Connectors.Http.Retry;
+using NPipeline.Connectors.Http.Reliability;
 
 namespace NPipeline.Connectors.Http.Configuration;
 
@@ -31,9 +31,6 @@ public sealed class HttpSinkConfiguration
     ///     Leave <c>null</c> to use the unnamed default client.
     /// </summary>
     public string? HttpClientName { get; init; }
-
-    /// <summary>Per-request timeout. Defaults to 30 seconds.</summary>
-    public TimeSpan Timeout { get; init; } = TimeSpan.FromSeconds(30);
 
     /// <summary>
     ///     Maximum number of items to buffer before flushing as a batch.
@@ -67,8 +64,12 @@ public sealed class HttpSinkConfiguration
     /// <summary>Rate limiter. Defaults to <see cref="NullRateLimiter" />.</summary>
     public IRateLimiter RateLimiter { get; init; } = NullRateLimiter.Instance;
 
-    /// <summary>Retry strategy. Defaults to <see cref="ExponentialBackoffHttpRetryStrategy.Default" />.</summary>
-    public IHttpRetryStrategy RetryStrategy { get; init; } = ExponentialBackoffHttpRetryStrategy.Default;
+    /// <summary>
+    ///     How each request is retried and timed out. Defaults to <see cref="HttpConnectorResilience.Default" />: four
+    ///     attempts, a 30-second timeout on each, and exponential backoff that honors <c>Retry-After</c>.
+    ///     <see cref="NResilience.Resilience.AttemptTimeout" /> is the per-request timeout.
+    /// </summary>
+    public NResilience.Resilience Resilience { get; init; } = HttpConnectorResilience.Default;
 
     /// <summary>
     ///     Optional mutator invoked immediately before each send.
@@ -100,8 +101,8 @@ public sealed class HttpSinkConfiguration
         if (BatchSize < 1)
             throw new ArgumentException("HttpSinkConfiguration.BatchSize must be at least 1.", nameof(BatchSize));
 
-        if (Timeout <= TimeSpan.Zero)
-            throw new ArgumentException("HttpSinkConfiguration.Timeout must be a positive duration.", nameof(Timeout));
+        ArgumentNullException.ThrowIfNull(Resilience);
+        Resilience.Validate();
 
         if (IdempotencyKeyFactory != null &&
             string.IsNullOrWhiteSpace(IdempotencyHeaderName))

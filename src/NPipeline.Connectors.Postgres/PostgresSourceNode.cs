@@ -129,61 +129,11 @@ namespace NPipeline.Connectors.Postgres
             return new DataStream<T>(stream, $"PostgresSourceNode<{typeof(T).Name}>");
         }
 
-        private async IAsyncEnumerable<T> ReadAsync([EnumeratorCancellation] CancellationToken cancellationToken)
+        // Retries the query until it yields its first row, then passes rows through: once a row has been emitted, running
+        // the query again would emit it twice, so a later failure surfaces instead.
+        private IAsyncEnumerable<T> ReadAsync(CancellationToken cancellationToken)
         {
-            var attempts = 0;
-            var maxAttempts = Math.Max(1, _configuration.MaxRetryAttempts);
-            var retryDelay = _configuration.RetryDelay <= TimeSpan.Zero ? TimeSpan.FromSeconds(1) : _configuration.RetryDelay;
-
-            while (true)
-            {
-                attempts++;
-                var yielded = false;
-                Exception? failure = null;
-
-                var enumerator = ReadOnceAsync(cancellationToken).GetAsyncEnumerator(cancellationToken);
-                try
-                {
-                    while (true)
-                    {
-                        bool moved;
-                        try
-                        {
-                            moved = await enumerator.MoveNextAsync().ConfigureAwait(false);
-                        }
-                        catch (Exception ex)
-                        {
-                            failure = ex;
-                            break;
-                        }
-
-                        if (!moved)
-                        {
-                            break;
-                        }
-
-                        yielded = true;
-                        yield return enumerator.Current;
-                    }
-                }
-                finally
-                {
-                    await enumerator.DisposeAsync().ConfigureAwait(false);
-                }
-
-                if (failure == null)
-                {
-                    yield break;
-                }
-
-                if (!yielded && attempts < maxAttempts && PostgresExceptionHandler.IsTransient(failure))
-                {
-                    await Task.Delay(retryDelay, cancellationToken).ConfigureAwait(false);
-                    continue;
-                }
-
-                throw failure;
-            }
+            return _configuration.Resilience.RunAsync(ReadOnceAsync, cancellationToken);
         }
 
         private async IAsyncEnumerable<T> ReadOnceAsync([EnumeratorCancellation] CancellationToken cancellationToken)

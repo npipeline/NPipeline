@@ -4,7 +4,7 @@ using NPipeline.Connectors.Kafka.Configuration;
 using NPipeline.Connectors.Kafka.Metrics;
 using NPipeline.Connectors.Kafka.Models;
 using NPipeline.Connectors.Kafka.Nodes;
-using NPipeline.Connectors.Kafka.Retry;
+using NPipeline.Connectors.Kafka.Reliability;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 using DeliverySemantic = NPipeline.Connectors.Kafka.Configuration.DeliverySemantic;
@@ -53,20 +53,13 @@ public sealed class KafkaConnectorPipeline : IPipelineDefinition
             DeliverySemantic = DeliverySemantic.AtLeastOnce,
             AcknowledgmentStrategy = AcknowledgmentStrategy.AutoOnSinkSuccess,
             ContinueOnError = false,
-        };
-    }
 
-    /// <summary>
-    ///     Creates the retry strategy used by the sample.
-    /// </summary>
-    public static IRetryStrategy CreateRetryStrategy()
-    {
-        return new ExponentialBackoffRetryStrategy
-        {
-            MaxRetries = 3,
-            BaseDelayMs = 100,
-            MaxDelayMs = 5000,
-            JitterFactor = 0.2,
+            // Retries a retriable consume error up to three times, waiting at most five seconds between attempts.
+            // The sink does not retry: librdkafka and the idempotent producer already do.
+            Resilience = KafkaConnectorResilience.Default with
+            {
+                Backoff = KafkaConnectorResilience.Default.Backoff with { MaximumDelay = TimeSpan.FromSeconds(5) },
+            },
         };
     }
 
@@ -89,7 +82,7 @@ public sealed class KafkaConnectorPipeline : IPipelineDefinition
                - Kafka consumer group processing from input-events
                - Simple enrichment transform with metadata
                - Batched Kafka production to output-events
-               - Configurable retry strategy and partitioning
+               - Consume retries through NResilience, and configurable partitioning
                """;
     }
 }
@@ -171,6 +164,11 @@ public sealed class ConsoleKafkaMetrics : IKafkaMetrics
     public void RecordPollLatency(string topic, TimeSpan latency)
     {
         Log("PollLatency", topic, latency.TotalMilliseconds);
+    }
+
+    public void RecordConsumeError(string topic, Exception ex)
+    {
+        Log("ConsumeError", topic, ex.Message);
     }
 
     public void RecordCommitLatency(string topic, TimeSpan latency)

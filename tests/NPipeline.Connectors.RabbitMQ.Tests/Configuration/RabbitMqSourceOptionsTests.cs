@@ -39,8 +39,6 @@ public sealed class RabbitMqSourceOptionsTests
         options.Exclusive.Should().BeFalse();
         options.ConsumerDispatchConcurrency.Should().Be(1);
         options.InternalBufferCapacity.Should().Be(1000);
-        options.MaxRetries.Should().Be(3);
-        options.RetryBaseDelayMs.Should().Be(100);
         options.ContinueOnDeserializationError.Should().BeFalse();
         options.MaxDeliveryAttempts.Should().Be(5);
         options.RejectOnMaxDeliveryAttempts.Should().BeTrue();

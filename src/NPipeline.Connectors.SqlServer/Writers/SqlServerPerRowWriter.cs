@@ -3,8 +3,8 @@ using System.Linq.Expressions;
 using System.Reflection;
 using NPipeline.Connectors.Attributes;
 using NPipeline.Connectors.SqlServer.Configuration;
-using NPipeline.Connectors.SqlServer.Exceptions;
 using NPipeline.Connectors.SqlServer.Mapping;
+using NPipeline.Connectors.SqlServer.Reliability;
 using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Models;
 
@@ -21,6 +21,7 @@ internal sealed class SqlServerPerRowWriter<T> : IDatabaseWriter<T>
     private readonly IDatabaseConnection _connection;
     private readonly string _insertSql;
     private readonly PropertyMapping[] _mappings;
+    private readonly ConnectionResilience _resilience;
     private readonly Func<T, IEnumerable<DatabaseParameter>>? _parameterMapper;
     private readonly string[] _parameterNames;
     private readonly string _schema;
@@ -52,6 +53,7 @@ internal sealed class SqlServerPerRowWriter<T> : IDatabaseWriter<T>
         _parameterNames = BuildParameterNames(_mappings.Length);
         _valueFactory = BuildValueFactory(_mappings);
         _insertSql = BuildInsertSql();
+        _resilience = new ConnectionResilience(_configuration.Resilience, _connection);
     }
 
     /// <summary>
@@ -62,52 +64,26 @@ internal sealed class SqlServerPerRowWriter<T> : IDatabaseWriter<T>
     /// <returns>A task representing the asynchronous operation.</returns>
     public async Task WriteAsync(T item, CancellationToken cancellationToken = default)
     {
-        var attempt = 0;
-        var maxAttempts = _configuration.MaxRetryAttempts + 1;
+        var values = GetValues(item);
 
-        while (attempt < maxAttempts)
+        // One INSERT commits one row or none, so it is safe to retry on its own.
+        await _resilience.RunAsync(ct => InsertAsync(values, ct), cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task InsertAsync(object?[] values, CancellationToken cancellationToken)
+    {
+        var command = await _connection.CreateCommandAsync(cancellationToken).ConfigureAwait(false);
+        await using var commandScope = command.ConfigureAwait(false);
+        command.CommandText = _insertSql;
+        command.CommandType = CommandType.Text;
+        command.CommandTimeout = _configuration.CommandTimeout;
+
+        for (var i = 0; i < values.Length; i++)
         {
-            try
-            {
-                var command = await _connection.CreateCommandAsync(cancellationToken).ConfigureAwait(false);
-                await using var commandScope = command.ConfigureAwait(false);
-                command.CommandText = _insertSql;
-                command.CommandType = CommandType.Text;
-                command.CommandTimeout = _configuration.CommandTimeout;
-
-                var values = GetValues(item);
-
-                for (var i = 0; i < values.Length; i++)
-                {
-                    command.AddParameter(_parameterNames[i], values[i] ?? DBNull.Value);
-                }
-
-                _ = await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-                return;
-            }
-            catch (Exception ex) when (attempt < maxAttempts - 1 && SqlServerExceptionHandler.ShouldRetry(ex, _configuration))
-            {
-                attempt++;
-                var delay = SqlServerExceptionHandler.GetRetryDelay(ex, attempt, _configuration);
-                await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
-            }
+            command.AddParameter(_parameterNames[i], values[i] ?? DBNull.Value);
         }
 
-        // If we get here, all retries failed
-        var finalCommand = await _connection.CreateCommandAsync(cancellationToken).ConfigureAwait(false);
-        await using var finalCommandScope = finalCommand.ConfigureAwait(false);
-        finalCommand.CommandText = _insertSql;
-        finalCommand.CommandType = CommandType.Text;
-        finalCommand.CommandTimeout = _configuration.CommandTimeout;
-
-        var finalValues = GetValues(item);
-
-        for (var i = 0; i < finalValues.Length; i++)
-        {
-            finalCommand.AddParameter(_parameterNames[i], finalValues[i] ?? DBNull.Value);
-        }
-
-        _ = await finalCommand.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+        _ = await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>

@@ -33,6 +33,7 @@
 
     <ItemGroup>
         <PackageReference Include="MongoDB.Driver"/>
+        <PackageReference Include="NResilience"/>
         <!-- Override transitive SharpCompress to address security vulnerability in v0.30.1 -->
         <PackageReference Include="SharpCompress"/>
         <!-- Override transitive Snappier from MongoDB.Driver to address security vulnerability -->

@@ -4,8 +4,8 @@ using System.Reflection;
 using System.Text;
 using NPipeline.Connectors.Attributes;
 using NPipeline.Connectors.MySql.Configuration;
-using NPipeline.Connectors.MySql.Exceptions;
 using NPipeline.Connectors.MySql.Mapping;
+using NPipeline.Connectors.MySql.Reliability;
 using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Models;
 
@@ -29,6 +29,7 @@ internal sealed class MySqlBatchWriter<T> : IDatabaseWriter<T>
     private readonly string _insertPrefix;
     private readonly PropertyMapping[] _mappings;
     private readonly Func<T, IEnumerable<DatabaseParameter>>? _parameterMapper;
+    private readonly ConnectionResilience _resilience;
     private readonly List<object?[]> _pendingRows;
     private readonly string _tableName;
     private readonly Func<T, object?[]> _valueFactory;
@@ -55,6 +56,7 @@ internal sealed class MySqlBatchWriter<T> : IDatabaseWriter<T>
         _flushThreshold = Math.Clamp(_configuration.BatchSize, 1, maxBatch);
         _pendingRows = new List<object?[]>(_flushThreshold);
         _insertPrefix = BuildInsertPrefix();
+        _resilience = new ConnectionResilience(_configuration.Resilience, _connection);
     }
 
     /// <inheritdoc />
@@ -85,25 +87,17 @@ internal sealed class MySqlBatchWriter<T> : IDatabaseWriter<T>
         if (_pendingRows.Count == 0)
             return;
 
-        var attempt = 0;
-        var maxAttempts = _configuration.MaxRetryAttempts + 1;
-
-        while (attempt < maxAttempts - 1)
+        try
         {
-            try
-            {
-                await ExecuteFlushAsync(cancellationToken).ConfigureAwait(false);
-                return;
-            }
-            catch (Exception ex) when (MySqlExceptionHandler.ShouldRetry(ex, _configuration))
-            {
-                attempt++;
-                var delay = MySqlExceptionHandler.GetRetryDelay(ex, attempt, _configuration);
-                await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
-            }
+            // The flush is one statement, which on a transactional engine commits every row or none, so it is safe to retry.
+            await _resilience.RunAsync(ExecuteFlushAsync, cancellationToken).ConfigureAwait(false);
         }
-
-        await ExecuteFlushAsync(cancellationToken).ConfigureAwait(false);
+        finally
+        {
+            // Written, or reported to the caller as failed: either way the rows must not ride along in the next flush
+            // or be sent again when the writer is disposed.
+            _pendingRows.Clear();
+        }
     }
 
     /// <inheritdoc />
@@ -142,7 +136,6 @@ internal sealed class MySqlBatchWriter<T> : IDatabaseWriter<T>
 
         command.CommandText = BuildSql(valueClauses);
         _ = await command.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
-        _pendingRows.Clear();
     }
 
     private string BuildSql(List<string> valueClauses)

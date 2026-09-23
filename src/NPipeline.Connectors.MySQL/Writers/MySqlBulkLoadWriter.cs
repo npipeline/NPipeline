@@ -9,6 +9,7 @@ using NPipeline.Connectors.MySql.Configuration;
 using NPipeline.Connectors.MySql.Connection;
 using NPipeline.Connectors.MySql.Exceptions;
 using NPipeline.Connectors.MySql.Mapping;
+using NPipeline.Connectors.MySql.Reliability;
 using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Models;
 using MySqlException = NPipeline.Connectors.MySql.Exceptions.MySqlException;
@@ -27,6 +28,7 @@ internal sealed class MySqlBulkLoadWriter<T> : IDatabaseWriter<T>
     private readonly int _flushThreshold;
     private readonly PropertyMapping[] _mappings;
     private readonly Func<T, IEnumerable<DatabaseParameter>>? _parameterMapper;
+    private readonly ConnectionResilience _resilience;
     private readonly List<T> _pendingRows;
     private readonly string _tableName;
     private readonly Func<T, object?[]> _valueFactory;
@@ -46,6 +48,7 @@ internal sealed class MySqlBulkLoadWriter<T> : IDatabaseWriter<T>
         _valueFactory = BuildValueFactory(_mappings);
         _flushThreshold = Math.Clamp(_configuration.BulkLoadBatchSize, 1, _configuration.MaxBatchSize);
         _pendingRows = new List<T>(_flushThreshold);
+        _resilience = new ConnectionResilience(_configuration.Resilience, _connection);
     }
 
     /// <inheritdoc />
@@ -79,25 +82,17 @@ internal sealed class MySqlBulkLoadWriter<T> : IDatabaseWriter<T>
         if (_pendingRows.Count == 0)
             return;
 
-        var attempt = 0;
-        var maxAttempts = _configuration.MaxRetryAttempts + 1;
-
-        while (attempt < maxAttempts - 1)
+        try
         {
-            try
-            {
-                await ExecuteBulkLoadAsync(cancellationToken).ConfigureAwait(false);
-                return;
-            }
-            catch (Exception ex) when (MySqlExceptionHandler.ShouldRetry(ex, _configuration))
-            {
-                attempt++;
-                var delay = MySqlExceptionHandler.GetRetryDelay(ex, attempt, _configuration);
-                await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
-            }
+            // LOAD DATA is one statement, which on a transactional engine commits every row or none, so it is safe to retry.
+            await _resilience.RunAsync(ExecuteBulkLoadAsync, cancellationToken).ConfigureAwait(false);
         }
-
-        await ExecuteBulkLoadAsync(cancellationToken).ConfigureAwait(false);
+        finally
+        {
+            // Written, or reported to the caller as failed: either way the rows must not ride along in the next flush
+            // or be sent again when the writer is disposed.
+            _pendingRows.Clear();
+        }
     }
 
     /// <inheritdoc />
@@ -145,7 +140,6 @@ internal sealed class MySqlBulkLoadWriter<T> : IDatabaseWriter<T>
             loader.Timeout = _configuration.BulkLoadTimeout;
 
         _ = await loader.LoadAsync(ct).ConfigureAwait(false);
-        _pendingRows.Clear();
     }
 
     private MemoryStream BuildDataStream()

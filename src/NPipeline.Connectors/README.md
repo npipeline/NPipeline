@@ -295,21 +295,6 @@ public enum CheckpointStrategy
 
 #### Utilities
 
-**DatabaseRetryPolicy** - Retry policy for transient errors:
-
-```csharp
-var retryPolicy = new DatabaseRetryPolicy
-{
-    MaxRetryAttempts = 3,
-    InitialDelay = TimeSpan.FromSeconds(1),
-    MaxDelay = TimeSpan.FromSeconds(30),
-    ShouldRetry = ex => DatabaseErrorClassifier.IsTransientError(ex)
-};
-
-var result = await retryPolicy.ExecuteAsync(async ct =>
-    await ExecuteDatabaseOperation(ct));
-```
-
 **DatabaseErrorClassifier** - Error classification:
 
 ```csharp

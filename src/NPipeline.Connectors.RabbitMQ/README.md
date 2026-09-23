@@ -11,6 +11,11 @@ confirms, and dead-letter handling.
 - **Topology auto-declaration** - Exchanges, queues, and bindings declared at startup
 - **Dead-letter handling** - Both broker-level (DLX) and pipeline-level with enriched headers
 - **Thread-safe acknowledgment** - Atomic ack/nack state machine
+- **Resilient publishing** - Each publish is retried through [NResilience](https://github.com/nresilience/NResilience)
+  (`RabbitMqSinkOptions.Resilience`, default four attempts with jittered backoff from 100 ms). Lost connections and
+  closed channels are retried on a fresh channel; access, routing, and precondition failures are not. The source
+  message is acknowledged only after its publish succeeds, outside the retried call. The sink is the only layer
+  that retries a publish; the client's connection recovery only reconnects
 - **Pluggable metrics** - Implement `IRabbitMqMetrics` for observability
 - **Pluggable serialization** - Default `System.Text.Json`, override with `IMessageSerializer`
 

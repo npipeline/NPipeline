@@ -88,6 +88,13 @@ var config = new ServiceBusConfiguration
 };
 ```
 
+## Resilience
+
+The Azure Service Bus SDK retries each operation natively, and NPipeline adds no retry layer on top. `Retry`
+(`ServiceBusRetryConfiguration`) maps directly to the SDK's `ServiceBusRetryOptions`: `Mode` (default `Exponential`),
+`MaxRetries` (default 3), `Delay` (default 1 s), `MaxDelay` (default 30 s), and `TryTimeout` (default 1 minute).
+Failures the SDK gives up on surface to the pipeline, where node-level resilience and message settlement apply.
+
 ## Settlement
 
 Each message received by a source node is wrapped in a `ServiceBusMessage<T>` that exposes explicit settlement:

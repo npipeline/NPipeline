@@ -1,3 +1,5 @@
+using NPipeline.Connectors.RabbitMQ.Reliability;
+
 namespace NPipeline.Connectors.RabbitMQ.Configuration;
 
 /// <summary>
@@ -56,14 +58,11 @@ public sealed record RabbitMqSinkOptions
     public RabbitMqTopologyOptions? Topology { get; init; }
 
     /// <summary>
-    ///     Gets or sets the maximum number of retries for transient errors. Default is 3.
+    ///     Gets or sets how each publish is retried. Defaults to <see cref="RabbitMqConnectorResilience.Default" />: four
+    ///     attempts with exponential backoff from 100 milliseconds, retrying lost connections and closed channels but
+    ///     not access, routing, or precondition failures. Use <see cref="NResilience.Resilience.None" /> to publish once.
     /// </summary>
-    public int MaxRetries { get; init; } = 3;
-
-    /// <summary>
-    ///     Gets or sets the base delay for retry backoff in milliseconds. Default is 100.
-    /// </summary>
-    public int RetryBaseDelayMs { get; init; } = 100;
+    public NResilience.Resilience Resilience { get; init; } = RabbitMqConnectorResilience.Default;
 
     /// <summary>
     ///     Gets or sets whether to continue past publish errors. Default is false.
@@ -92,11 +91,8 @@ public sealed record RabbitMqSinkOptions
         if (ConfirmTimeout <= TimeSpan.Zero)
             throw new InvalidOperationException("ConfirmTimeout must be positive.");
 
-        if (MaxRetries < 0)
-            throw new InvalidOperationException("MaxRetries must be non-negative.");
-
-        if (RetryBaseDelayMs < 0)
-            throw new InvalidOperationException("RetryBaseDelayMs must be non-negative.");
+        ArgumentNullException.ThrowIfNull(Resilience);
+        Resilience.Validate();
 
         Batching?.Validate();
     }

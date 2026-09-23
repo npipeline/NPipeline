@@ -30,8 +30,15 @@ public static class HttpConnectorServiceCollectionExtensions
 
     /// <summary>
     ///     Configures a named <see cref="HttpClient" /> with sensible defaults for use with HTTP connector nodes.
-    ///     Returns an <see cref="IHttpClientBuilder" /> so the caller can attach delegating handlers, Polly policies, etc.
+    ///     Returns an <see cref="IHttpClientBuilder" /> so the caller can attach delegating handlers such as
+    ///     authentication or logging.
     /// </summary>
+    /// <remarks>
+    ///     Do not add a retry or resilience handler to this client. The HTTP connector nodes already run every request
+    ///     through NResilience's <c>HttpResilienceHandler</c>, configured by the node configuration's <c>Resilience</c>
+    ///     property. A second retrying layer multiplies attempts: four attempts at each of two layers make up to 16
+    ///     requests.
+    /// </remarks>
     /// <param name="services">The <see cref="IServiceCollection" />.</param>
     /// <param name="name">The named client identifier.</param>
     /// <param name="configure">Optional additional <see cref="HttpClient" /> configuration.</param>

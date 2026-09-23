@@ -1,5 +1,6 @@
 using Confluent.Kafka;
 using NPipeline.Connectors.Configuration;
+using NPipeline.Connectors.Kafka.Reliability;
 
 namespace NPipeline.Connectors.Kafka.Configuration;
 
@@ -202,14 +203,17 @@ public sealed class KafkaConfiguration
 
     // Error Handling
     /// <summary>
-    ///     Gets or sets the maximum number of retries for failed operations.
+    ///     Gets or sets how the source retries a failed consume. Defaults to <see cref="KafkaConnectorResilience.Default" />:
+    ///     four attempts with exponential backoff from 100 milliseconds, retrying only errors Kafka reports as retriable.
+    ///     A fatal error, a deserialization error, and any other non-retriable error surface on the first attempt.
     /// </summary>
-    public int MaxRetries { get; set; } = 3;
-
-    /// <summary>
-    ///     Gets or sets the base delay in milliseconds for retry backoff.
-    /// </summary>
-    public int RetryBaseDelayMs { get; set; } = 100;
+    /// <remarks>
+    ///     The sink does not use this policy. librdkafka already retries every produce until
+    ///     <c>delivery.timeout.ms</c>, and the idempotent producer removes the duplicates those retries would cause; a
+    ///     second retry layer above it cannot be deduplicated. A produce error therefore surfaces as soon as librdkafka
+    ///     gives up.
+    /// </remarks>
+    public NResilience.Resilience Resilience { get; init; } = KafkaConnectorResilience.Default;
 
     /// <summary>
     ///     Gets or sets whether to continue processing on errors.
@@ -245,6 +249,9 @@ public sealed class KafkaConfiguration
 
         if (MaxPartitionFetchBytes <= 0)
             throw new InvalidOperationException("MaxPartitionFetchBytes must be greater than zero.");
+
+        ArgumentNullException.ThrowIfNull(Resilience);
+        Resilience.Validate();
 
         ValidateSecurityCredentials();
     }
@@ -360,11 +367,5 @@ public sealed class KafkaConfiguration
 
         if (MaxConnectionPoolSize <= 0)
             throw new InvalidOperationException("MaxConnectionPoolSize must be greater than zero.");
-
-        if (MaxRetries < 0)
-            throw new InvalidOperationException("MaxRetries cannot be negative.");
-
-        if (RetryBaseDelayMs <= 0)
-            throw new InvalidOperationException("RetryBaseDelayMs must be greater than zero.");
     }
 }

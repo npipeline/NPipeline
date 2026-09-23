@@ -1,6 +1,8 @@
 using AwesomeAssertions;
 using NPipeline.Connectors.Configuration;
 using NPipeline.Connectors.Snowflake.Configuration;
+using NPipeline.Connectors.Snowflake.Reliability;
+using NResilience;
 
 namespace NPipeline.Connectors.Snowflake.Tests.Configuration;
 
@@ -26,8 +28,7 @@ public sealed class SnowflakeConfigurationTests
         config.UseUpsert.Should().BeFalse();
         config.ContinueOnError.Should().BeFalse();
         config.ValidateIdentifiers.Should().BeTrue();
-        config.MaxRetryAttempts.Should().Be(3);
-        config.RetryDelay.Should().Be(TimeSpan.FromSeconds(2));
+        config.Resilience.Should().BeSameAs(SnowflakeConnectorResilience.Default);
         config.CaseInsensitiveMapping.Should().BeTrue();
         config.CacheMappingMetadata.Should().BeTrue();
         config.StreamResults.Should().BeTrue();
@@ -177,23 +178,25 @@ public sealed class SnowflakeConfigurationTests
     }
 
     [Fact]
-    public void Validate_WithNegativeMaxRetryAttempts_ShouldThrowArgumentException()
+    public void Validate_WithNullResilience_ShouldThrowArgumentException()
     {
         // Arrange
-        var config = new SnowflakeConfiguration { MaxRetryAttempts = -1 };
+        var config = new SnowflakeConfiguration { Resilience = null! };
 
         // Act & Assert
         Assert.Throws<ArgumentException>(() => config.Validate());
     }
 
     [Fact]
-    public void Validate_WithNegativeRetryDelay_ShouldThrowArgumentException()
+    public void Validate_WithImpossibleResilience_ShouldThrow()
     {
-        // Arrange
-        var config = new SnowflakeConfiguration { RetryDelay = TimeSpan.FromSeconds(-1) };
+        // Arrange (NRES003 flags the impossible policy at compile time; here it is the point of the test)
+#pragma warning disable NRES003
+        var config = new SnowflakeConfiguration { Resilience = SnowflakeConnectorResilience.Default with { Attempts = 0 } };
+#pragma warning restore NRES003
 
         // Act & Assert
-        Assert.Throws<ArgumentException>(() => config.Validate());
+        Assert.Throws<ResilienceConfigurationException>(() => config.Validate());
     }
 
     [Fact]

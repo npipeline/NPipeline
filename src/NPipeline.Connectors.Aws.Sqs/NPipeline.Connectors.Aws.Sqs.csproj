@@ -33,6 +33,10 @@
     </ItemGroup>
 
     <ItemGroup>
+        <InternalsVisibleTo Include="NPipeline.Connectors.Aws.Sqs.Tests"/>
+    </ItemGroup>
+
+    <ItemGroup>
         <ProjectReference Include="..\NPipeline\NPipeline.csproj"/>
         <ProjectReference Include="..\NPipeline.Connectors\NPipeline.Connectors.csproj"/>
     </ItemGroup>

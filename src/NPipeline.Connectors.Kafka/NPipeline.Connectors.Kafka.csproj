@@ -32,6 +32,7 @@
         <PackageReference Include="Confluent.SchemaRegistry.Serdes.Avro"/>
         <PackageReference Include="Confluent.SchemaRegistry.Serdes.Protobuf"/>
         <PackageReference Include="Microsoft.Extensions.Logging.Abstractions"/>
+        <PackageReference Include="NResilience"/>
     </ItemGroup>
 
     <ItemGroup>

@@ -3,7 +3,7 @@ using NPipeline.Connectors.MySql.Configuration;
 namespace NPipeline.Connectors.MySql.Exceptions;
 
 /// <summary>
-///     Utility methods for handling MySQL exceptions and implementing retry logic.
+///     Utility methods for translating and describing MySQL exceptions.
 /// </summary>
 public static class MySqlExceptionHandler
 {
@@ -26,40 +26,6 @@ public static class MySqlExceptionHandler
         [2006] = "MySQL server has gone away",
         [2013] = "Lost connection to MySQL server during query",
     };
-
-    /// <summary>
-    ///     Determines whether an exception should be retried based on the configuration.
-    /// </summary>
-    public static bool ShouldRetry(Exception exception, MySqlConfiguration configuration)
-    {
-        if (configuration.MaxRetryAttempts <= 0)
-            return false;
-
-        return MySqlTransientErrorDetector.IsTransient(exception);
-    }
-
-    /// <summary>
-    ///     Gets the retry delay for a given attempt using exponential back-off with jitter.
-    /// </summary>
-    public static TimeSpan GetRetryDelay(Exception exception, int attemptCount,
-        MySqlConfiguration configuration)
-    {
-        var exponentialDelay = TimeSpan.FromSeconds(
-            configuration.RetryDelay.TotalSeconds * Math.Pow(2, attemptCount - 1));
-
-        // ±25 % jitter to avoid thundering herd
-        var jitterFactor = 0.75 + Random.Shared.NextDouble() * 0.5;
-
-        var delayWithJitter = TimeSpan.FromMilliseconds(
-            exponentialDelay.TotalMilliseconds * jitterFactor);
-
-        const int maxDelaySeconds = 30;
-
-        if (delayWithJitter.TotalSeconds > maxDelaySeconds)
-            delayWithJitter = TimeSpan.FromSeconds(maxDelaySeconds);
-
-        return delayWithJitter;
-    }
 
     /// <summary>
     ///     Handles an exception by wrapping it in a MySQL exception or rethrowing it.

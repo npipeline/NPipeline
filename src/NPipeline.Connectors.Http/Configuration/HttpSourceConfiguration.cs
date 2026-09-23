@@ -2,7 +2,7 @@ using System.Text.Json;
 using NPipeline.Connectors.Http.Auth;
 using NPipeline.Connectors.Http.Pagination;
 using NPipeline.Connectors.Http.RateLimiting;
-using NPipeline.Connectors.Http.Retry;
+using NPipeline.Connectors.Http.Reliability;
 
 namespace NPipeline.Connectors.Http.Configuration;
 
@@ -34,9 +34,6 @@ public sealed class HttpSourceConfiguration
     /// </summary>
     public string? HttpClientName { get; init; }
 
-    /// <summary>Per-request timeout. Defaults to 30 seconds.</summary>
-    public TimeSpan Timeout { get; init; } = TimeSpan.FromSeconds(30);
-
     /// <summary>
     ///     Dot-separated JSON property path to the array of items within each response.
     ///     Leave <c>null</c> when the root of the response body is the items array.
@@ -59,8 +56,12 @@ public sealed class HttpSourceConfiguration
     /// <summary>Rate limiter. Defaults to <see cref="NullRateLimiter" />.</summary>
     public IRateLimiter RateLimiter { get; init; } = NullRateLimiter.Instance;
 
-    /// <summary>Retry strategy. Defaults to <see cref="ExponentialBackoffHttpRetryStrategy.Default" />.</summary>
-    public IHttpRetryStrategy RetryStrategy { get; init; } = ExponentialBackoffHttpRetryStrategy.Default;
+    /// <summary>
+    ///     How each request is retried and timed out. Defaults to <see cref="HttpConnectorResilience.Default" />: four
+    ///     attempts, a 30-second timeout on each, and exponential backoff that honors <c>Retry-After</c>.
+    ///     <see cref="NResilience.Resilience.AttemptTimeout" /> is the per-request timeout.
+    /// </summary>
+    public NResilience.Resilience Resilience { get; init; } = HttpConnectorResilience.Default;
 
     /// <summary>
     ///     Optional mutator invoked immediately before each send, including any retry attempts.
@@ -87,8 +88,8 @@ public sealed class HttpSourceConfiguration
         if (!BaseUri.IsAbsoluteUri)
             throw new ArgumentException("HttpSourceConfiguration.BaseUri must be an absolute URI.", nameof(BaseUri));
 
-        if (Timeout <= TimeSpan.Zero)
-            throw new ArgumentException("HttpSourceConfiguration.Timeout must be a positive duration.", nameof(Timeout));
+        ArgumentNullException.ThrowIfNull(Resilience);
+        Resilience.Validate();
 
         if (MaxPages.HasValue && MaxPages.Value <= 0)
             throw new ArgumentException("HttpSourceConfiguration.MaxPages must be greater than zero when specified.", nameof(MaxPages));

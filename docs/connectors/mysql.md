@@ -114,8 +114,47 @@ public MySqlSinkNode(
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
 | `ContinueOnError` | `bool` | `false` | Continue on row-level errors |
-| `MaxRetryAttempts` | `int` | `3` | Retry attempts |
-| `RetryDelay` | `TimeSpan` | - | Delay between retries |
+| `Resilience` | `Resilience` | `MySqlConnectorResilience.Default` | How transient failures are retried; see [Resilience](#resilience) |
+
+## Resilience
+
+The sink retries transient failures with [NResilience](https://github.com/nresilience/NResilience). The `Resilience`
+property on `MySqlConfiguration` configures it. The default, `MySqlConnectorResilience.Default`, does the following:
+
+- Makes up to four attempts (three retries).
+- Retries lock wait timeouts (1205), deadlocks (1213), and lost connections (2006, 2013).
+- Treats too many connections (1040 and 1203) as throttling, which waits longer: backoff starts at 5 seconds.
+- Doesn't retry other errors, such as a duplicate key or a missing table.
+- Waits with exponential backoff and full jitter, from 2 seconds up to 30 seconds.
+- Has no attempt timeout and no deadline. The driver's own timeout bounds each attempt: `CommandTimeout` for rows and batches, and `BulkLoadTimeout` for bulk loads.
+  A long bulk write isn't cut off by a retry policy's timeout.
+
+Each write strategy retries one unit of work that commits all or nothing, so a retry never inserts rows that an
+earlier attempt committed:
+
+- `PerRow`: one `INSERT` per row.
+- `Batch`: one multi-row statement per flush.
+- `BulkLoad`: one `LOAD DATA LOCAL INFILE` per flush.
+
+Each unit commits all or nothing on a transactional engine such as InnoDB. Non-transactional engines such as MyISAM keep the rows a failed statement wrote, so a retry can insert them again. For such tables, turn retries off with `Resilience.None`.
+
+With `DeliverySemantic.ExactlyOnce`, the sink wraps all writes in one transaction. A failure can abort that whole
+transaction, so the writers make one attempt and the sink rolls the transaction back. A batch that fails isn't
+written again when the writer is disposed.
+
+To change a setting, derive a policy with a `with` expression:
+
+```csharp
+var config = new MySqlConfiguration
+{
+    Resilience = MySqlConnectorResilience.Default with { Attempts = 6 },
+};
+```
+
+To turn retries off, use `Resilience.None`.
+
+The connector is the only layer that retries; MySqlConnector doesn't retry commands. Retries aren't logged by the
+connector. To observe them, attach a listener: `MySqlConnectorResilience.Default.WithListener(e => ...)`.
 
 ## Dependency Injection
 

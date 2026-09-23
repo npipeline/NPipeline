@@ -26,36 +26,6 @@ public class AzureRetryConfigurationTests
     }
 
     [Fact]
-    public void InitialRetryDelay_DefaultShouldBe100Milliseconds()
-    {
-        // Arrange
-        var config = new AzureRetryConfiguration();
-
-        // Act & Assert
-        config.InitialRetryDelay.Should().Be(TimeSpan.FromMilliseconds(100));
-    }
-
-    [Fact]
-    public void RetryBackoffFactor_DefaultShouldBe2()
-    {
-        // Arrange
-        var config = new AzureRetryConfiguration();
-
-        // Act & Assert
-        config.RetryBackoffFactor.Should().Be(2.0);
-    }
-
-    [Fact]
-    public void UseJitter_DefaultShouldBeTrue()
-    {
-        // Arrange
-        var config = new AzureRetryConfiguration();
-
-        // Act & Assert
-        config.UseJitter.Should().BeTrue();
-    }
-
-    [Fact]
     public void MaxRetryAttempts_CanBeModified()
     {
         // Arrange
@@ -80,45 +50,5 @@ public class AzureRetryConfigurationTests
 
         // Assert
         config.MaxRetryWaitTime.Should().Be(newTime);
-    }
-
-    [Fact]
-    public void InitialRetryDelay_CanBeModified()
-    {
-        // Arrange
-        var config = new AzureRetryConfiguration();
-        var newDelay = TimeSpan.FromMilliseconds(500);
-
-        // Act
-        config.InitialRetryDelay = newDelay;
-
-        // Assert
-        config.InitialRetryDelay.Should().Be(newDelay);
-    }
-
-    [Fact]
-    public void RetryBackoffFactor_CanBeModified()
-    {
-        // Arrange
-        var config = new AzureRetryConfiguration();
-
-        // Act
-        config.RetryBackoffFactor = 1.5;
-
-        // Assert
-        config.RetryBackoffFactor.Should().Be(1.5);
-    }
-
-    [Fact]
-    public void UseJitter_CanBeModified()
-    {
-        // Arrange
-        var config = new AzureRetryConfiguration();
-
-        // Act
-        config.UseJitter = false;
-
-        // Assert
-        config.UseJitter.Should().BeFalse();
     }
 }

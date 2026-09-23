@@ -46,6 +46,11 @@ public sealed class NullKafkaMetrics : IKafkaMetrics
     }
 
     /// <inheritdoc />
+    public void RecordConsumeError(string topic, Exception ex)
+    {
+    }
+
+    /// <inheritdoc />
     public void RecordCommitLatency(string topic, TimeSpan latency)
     {
     }

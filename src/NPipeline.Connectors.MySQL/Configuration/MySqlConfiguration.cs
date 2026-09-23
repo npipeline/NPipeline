@@ -1,6 +1,7 @@
 using NPipeline.Connectors.Checkpointing;
 using NPipeline.Connectors.Configuration;
 using NPipeline.Connectors.MySql.Mapping;
+using NPipeline.Connectors.MySql.Reliability;
 
 namespace NPipeline.Connectors.MySql.Configuration;
 
@@ -18,7 +19,6 @@ public class MySqlConfiguration
     private const int DefaultMaxPoolSize = 100;
     private const int DefaultBulkLoadBatchSize = 5_000;
     private const int DefaultBulkLoadNotifyAfter = 1_000;
-    private const int DefaultMaxRetryAttempts = 3;
 
     // Connection Settings
 
@@ -166,14 +166,12 @@ public class MySqlConfiguration
     // Error Handling
 
     /// <summary>
-    ///     Gets or sets the maximum number of retry attempts for transient errors. Default is 3.
+    ///     Gets or sets how writes are retried. Defaults to <see cref="MySqlConnectorResilience.Default" />: four attempts
+    ///     with exponential backoff, retrying only the errors <see cref="MySqlConnectorResilience.Classifier" /> judges
+    ///     transient. Each attempt is bounded by <see cref="CommandTimeout" /> or <see cref="BulkLoadTimeout" />. Use
+    ///     <see cref="NResilience.Resilience.None" /> to turn retries off.
     /// </summary>
-    public int MaxRetryAttempts { get; set; } = DefaultMaxRetryAttempts;
-
-    /// <summary>
-    ///     Gets or sets the delay between retry attempts. Default is 2 seconds.
-    /// </summary>
-    public TimeSpan RetryDelay { get; set; } = TimeSpan.FromSeconds(2);
+    public NResilience.Resilience Resilience { get; set; } = MySqlConnectorResilience.Default;
 
     /// <summary>
     ///     Gets or sets whether to continue processing when a row-level error occurs.
@@ -323,11 +321,10 @@ public class MySqlConfiguration
         if (BatchSize > MaxBatchSize)
             throw new ArgumentException("BatchSize cannot exceed MaxBatchSize.", nameof(BatchSize));
 
-        if (MaxRetryAttempts < 0)
-            throw new ArgumentException("MaxRetryAttempts cannot be negative.", nameof(MaxRetryAttempts));
+        if (Resilience is null)
+            throw new ArgumentException("Resilience cannot be null.", nameof(Resilience));
 
-        if (RetryDelay < TimeSpan.Zero)
-            throw new ArgumentException("RetryDelay cannot be negative.", nameof(RetryDelay));
+        Resilience.Validate();
 
         if (BulkLoadTimeout <= 0)
             throw new ArgumentException("BulkLoadTimeout must be greater than zero.", nameof(BulkLoadTimeout));
