@@ -58,11 +58,10 @@ NPipeline ships 20+ Roslyn analyzers in `NPipeline.Analyzers`. They run during e
 
 | ID | Severity | Rule |
 | ---- | ---------- | ------ |
-| NP9001 | Warning | `RestartNode` requires `ResilientExecutionStrategy`, `MaxNodeRestartAttempts > 0`, and `MaxMaterializedItems` to be set |
-| NP9002 | Error | `MaxMaterializedItems` must not be null - prevents unbounded memory growth |
+| NP9001 | Warning | `RestartNode` returned outside `DecideRestartAsync`, or with no `NodeRestart.MaxRestarts` set anywhere |
 | NP9003 | Warning | Inappropriate parallelism configuration (too high for CPU-bound, too low for I/O) |
 | NP9004 | Warning | Batch size / timeout mismatch (large batch + short timeout or vice versa) |
-| NP9005 | Warning | Inappropriate timeout values (zero, negative, too short for I/O, too long for CPU) |
+| NP9005 | Warning | Circuit breaker timings that cannot work (non-positive durations; `MaxPause` shorter than `OpenDuration` with `WhenOpen = Pause`) |
 
 ### Performance & Optimization
 
@@ -83,6 +82,8 @@ NPipeline ships 20+ Roslyn analyzers in `NPipeline.Analyzers`. They run during e
 | NP9201 | Warning | Catch block swallows `OperationCanceledException` without re-throwing |
 | NP9202 | Warning | Inefficient exception handling in hot paths |
 | NP9203 | Warning | `CancellationToken` parameter not forwarded to async calls or checked in loops |
+| NP9204 | Error | `ItemRetry`, `NodeRestart`, or `CircuitBreaker` set for a source, sink, aggregate, or join node |
+| NP9205 | Warning | Resilience policy returns `Retry` without consulting `failure.CanRetry` |
 
 ### Data Integrity & Correctness
 

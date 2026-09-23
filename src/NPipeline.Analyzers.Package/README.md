@@ -45,8 +45,7 @@ The package includes 18 comprehensive analyzers covering different aspects of pi
 
 1. **BatchingConfigurationMismatchAnalyzer** - Detects mismatched batch size and timeout configurations
 2. **InappropriateParallelismConfigurationAnalyzer** - Identifies inappropriate parallelism settings that can cause resource contention
-3. **TimeoutConfigurationAnalyzer** - Detects timeout values that are too short or too long for the workload type
-4. **UnboundedMaterializationConfigurationAnalyzer** - Identifies potential memory leaks from unbounded materialization
+3. **TimeoutConfigurationAnalyzer** - Detects circuit breaker timings that cannot work (non-positive durations, or a `MaxPause` shorter than `OpenDuration` with `WhenOpen = Pause`)
 
 ### Async/Cancellation Analyzers
 
@@ -58,18 +57,20 @@ The package includes 18 comprehensive analyzers covering different aspects of pi
 
 1. **InefficientExceptionHandlingAnalyzer** - Detects inefficient exception handling patterns in hot paths
 2. **OperationCanceledExceptionAnalyzer** - Ensures proper handling of OperationCanceledException
+3. **NodeKindResilienceMisuseAnalyzer** - Detects `ItemRetry`, `NodeRestart`, or `CircuitBreaker` configured for a source, sink, aggregate, or join node
+4. **UnconditionalRetryDecisionAnalyzer** - Detects a resilience policy that returns `Retry` without consulting `failure.CanRetry`
 
 ### Pipeline-Specific Analyzers
 
 1. **DependencyInjectionAnalyzer** - Detects dependency injection anti-patterns in node implementations
 2. **PipelineContextAccessAnalyzer** - Identifies unsafe access patterns on PipelineContext properties
-3. **ResilientExecutionConfigurationAnalyzer** - Validates resilient execution strategy configurations
+3. **ResilientExecutionConfigurationAnalyzer** - Detects `RestartNode` returned where it cannot restart a node, or where `NodeRestart` is never enabled
 4. **SinkNodeInputConsumptionAnalyzer** - Ensures proper consumption of input in sink nodes
 5. **SourceNodeStreamingAnalyzer** - Detects non-streaming patterns in source nodes
 
-## Supported Code Fix Providers (18)
+## Supported Code Fix Providers (14)
 
-Each analyzer has a corresponding code fix provider that can automatically resolve detected issues:
+These code fix providers can automatically resolve detected issues:
 
 1. **AnonymousObjectAllocationCodeFixProvider** - Converts anonymous objects to named types or ValueTuples
 2. **BatchingConfigurationMismatchCodeFixProvider** - Adjusts batch size and timeout configurations
@@ -82,12 +83,9 @@ Each analyzer has a corresponding code fix provider that can automatically resol
 9. **LinqInHotPathsCodeFixProvider** - Converts LINQ operations to more efficient foreach loops
 10. **OperationCanceledExceptionCodeFixProvider** - Adds proper OperationCanceledException handling
 11. **PipelineContextAccessCodeFixProvider** - Adds null checks and conditional operators for safe access
-12. **ResilientExecutionConfigurationCodeFixProvider** - Configures resilient execution strategies
-13. **SinkNodeInputConsumptionCodeFixProvider** - Adds proper async enumeration for input consumption
-14. **SourceNodeStreamingCodeFixProvider** - Converts to streaming patterns for source nodes
-15. **SynchronousOverAsyncCodeFixProvider** - Replaces sync-over-async patterns with proper async
-16. **TimeoutConfigurationCodeFixProvider** - Optimizes timeout values based on workload characteristics
-17. **UnboundedMaterializationConfigurationCodeFixProvider** - Adds bounds to materialization operations
+12. **SinkNodeInputConsumptionCodeFixProvider** - Adds proper async enumeration for input consumption
+13. **SourceNodeStreamingCodeFixProvider** - Converts to streaming patterns for source nodes
+14. **SynchronousOverAsyncCodeFixProvider** - Replaces sync-over-async patterns with proper async
 
 ## Example Diagnostics
 
@@ -100,7 +98,7 @@ public string ProcessItem(Item item)
     string result = "Processing: " + item.Name + " at " + DateTime.Now;
     return result;
 }
-// Diagnostic: NPIPE001: Use StringBuilder or string interpolation for efficient string concatenation
+// Diagnostic: NP9104: Inefficient string operation detected
 ```
 
 ```csharp
@@ -111,7 +109,7 @@ public List<Result> TransformItems(List<Item> items)
                  .Select(x => new Result(x))
                  .ToList();
 }
-// Diagnostic: NPIPE002: Avoid LINQ operations in hot paths
+// Diagnostic: NP9103: LINQ operation detected in hot path
 ```
 
 ### Configuration Issues
@@ -122,16 +120,13 @@ var strategy = new ParallelExecutionStrategy
 {
     DegreeOfParallelism = Environment.ProcessorCount
 };
-// Diagnostic: NPIPE003: High parallelism for I/O-bound work may cause resource contention
+// Diagnostic: NP9003: Inappropriate parallelism configuration detected
 ```
 
 ```csharp
-// Timeout too short for complex processing
-var resilientStrategy = new ResilientExecutionStrategy
-{
-    Timeout = TimeSpan.FromMilliseconds(100)
-};
-// Diagnostic: NPIPE004: Timeout may be too short for the workload type
+// Item retry on a sink: only transform nodes retry items
+builder.WithResilience(sink, o => o with { ItemRetry = ItemRetryOptions.Default });
+// Diagnostic: NP9204: 'sink' is a sink node, but its resilience options set ItemRetry, which only transform nodes use; building the pipeline will fail
 ```
 
 ### Async/Await Issues
@@ -142,7 +137,7 @@ public void ProcessData()
 {
     var result = GetDataAsync().Result;
 }
-// Diagnostic: NPIPE005: Avoid blocking on async operations
+// Diagnostic: NP9101: Avoid blocking calls in async methods
 ```
 
 ```csharp
@@ -151,7 +146,7 @@ public async Task ProcessAsync(CancellationToken cancellationToken)
 {
     await ProcessItemAsync(); // Missing cancellationToken parameter
 }
-// Diagnostic: NPIPE006: Async method should respect cancellation token
+// Diagnostic: NP9203: Method should respect cancellation token
 ```
 
 ## Troubleshooting
@@ -195,11 +190,11 @@ You can configure the behavior of the analyzers using an `.editorconfig` file:
 
 ```ini
 # Severity levels
-dotnet_diagnostic.NPIPE001.severity = warning
-dotnet_diagnostic.NPIPE002.severity = suggestion
+dotnet_diagnostic.NP9104.severity = warning
+dotnet_diagnostic.NP9103.severity = suggestion
 
 # Disable specific analyzers
-dotnet_diagnostic.NPIPE003.severity = none
+dotnet_diagnostic.NP9003.severity = none
 
 # Configure hot path detection
 dotnet_code_quality.maximum_hot_path_complexity = 20

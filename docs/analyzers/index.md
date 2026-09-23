@@ -29,11 +29,21 @@ dotnet add package NPipeline.Connectors.SqlServer.Analyzers
 
 | Rule | Severity | Title | Fix |
 |------|----------|-------|-----|
-| NP9001 | Warning | RestartNode decision requires complete resilience configuration | Review resilience configuration when `ResilienceDecision.RestartNode` can be returned. Verify that `MaxItemRetries`, `MaxNodeRestartAttempts`, and `MaxMaterializedItems` are all properly configured. |
-| NP9002 | **Error** | Unbounded materialization configuration | Set `MaxMaterializedItems` on `PipelineRetryOptions` to prevent out-of-memory crashes. |
+| NP9001 | Warning | RestartNode decision requires NodeRestart | Return `ResilienceDecision.RestartNode` only from `DecideRestartAsync`, and only for transform nodes with `NodeRestart.MaxRestarts` greater than zero. |
 | NP9003 | Warning | Inappropriate parallelism configuration | Reduce `DegreeOfParallelism` or disable `PreserveOrdering` when parallelism is high. |
 | NP9004 | Warning | Batching configuration mismatch | Verify `BatchSize` and `BatchTimeout` are consistent with the node's expected throughput. |
-| NP9005 | Warning | Inappropriate timeout configuration | Fix negative, zero, or excessively low timeout values. |
+| NP9005 | Warning | Circuit breaker timing cannot work | Make `CircuitBreakerOptions.Window`, `OpenDuration`, and `MaxPause` positive. With `WhenOpen = BreakerOpenBehavior.Pause`, make `MaxPause` at least `OpenDuration`, or every paused attempt fails before the breaker lets a probe through. |
+
+To enable node restart for a transform, set `NodeRestart.MaxRestarts` above zero:
+
+```csharp
+builder.WithResilience(transform, o => o with
+{
+    NodeRestart = new NodeRestartOptions { MaxRestarts = 3 },
+});
+```
+
+NP9002 isn't used. Node restart resumes from a checkpoint and holds at most `NodeRestartOptions.MaxReplayWindow` items, so there is no unbounded buffer to guard against.
 
 ## NP91xx - Performance and Optimization
 
@@ -56,6 +66,8 @@ Rules NP9103–NP9107 are **profile-gated**: they only fire when the [optimizati
 | NP9201 | Warning | Do not swallow OperationCanceledException | Don't catch and suppress `OperationCanceledException`; let it propagate for proper cancellation handling. |
 | NP9202 | Warning | Inefficient exception handling | Avoid `catch (Exception)` with rethrow in tight loops. Use specific exception types. |
 | NP9203 | Warning | Method should respect cancellation token | Pass `CancellationToken` to async methods that accept it. |
+| NP9204 | **Error** | Transform-only resilience setting on a non-transform node | `ItemRetry`, `NodeRestart`, and `CircuitBreaker` apply only to transform nodes; if set on a source, sink, aggregate, or join handle, building the pipeline fails. Retry reads and writes in the connector, or use `NodeRetry` to execute the node again before it has consumed input. |
+| NP9205 | Warning | Resilience policy returns Retry without consulting the retry budget | A policy's `Retry` is never overridden, so guard it with `failure.CanRetry` (which combines the classifier, the node's `MaxRetries`, and the circuit breaker), or defer to `base.DecideItemFailureAsync` / `base.DecideNodeFailureAsync`. |
 
 ## NP93xx - Data Integrity and Correctness
 
@@ -85,16 +97,6 @@ Rules NP9103–NP9107 are **profile-gated**: they only fire when the [optimizati
 Most analyzer rules include automatic code fix providers. Apply fixes individually via the lightbulb menu, or use **Fix All** to batch-apply across a project.
 
 ### Key Code Fix Examples
-
-**NP9002 - Add `MaxMaterializedItems`:**
-
-```csharp
-// Before
-new PipelineRetryOptions(MaxItemRetries: 3, MaxNodeRestartAttempts: 3)
-
-// After (code fix applied)
-new PipelineRetryOptions(MaxItemRetries: 3, MaxNodeRestartAttempts: 3, MaxMaterializedItems: 10000)
-```
 
 **NP9101 - Replace blocking call with await:**
 

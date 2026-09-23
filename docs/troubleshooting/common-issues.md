@@ -77,17 +77,22 @@ All retry attempts failed. The `AttemptCount` property shows how many attempts w
 
 **Fix:** Either increase `MaxItemRetries` or route failed items to a dead letter queue for manual review.
 
-### MaterializationCapExceeded (NP0503)
+### Lineage materialization cap exceeded
 
-The `MaxMaterializedItems` limit was reached. This safety guard prevents unbounded memory growth when replaying items during retry.
+With item-level lineage enabled, a node whose inputs and outputs aren't 1:1 buffered more than
+`LineageOptions.MaterializationCap` items, and `OverflowPolicy` is `LineageOverflowPolicy.Strict`. The node fails with
+an `InvalidOperationException` whose message starts with `[NPipeline.Lineage] Materialization cap exceeded`.
 
-**Fix:** Increase the cap or redesign to process smaller batches:
+**Fix:** Raise the cap, or use the default `LineageOverflowPolicy.Degrade`, which switches to positional mapping
+instead of failing:
 
 ```csharp
-new PipelineRetryOptions { MaxMaterializedItems = 50000 }
+builder.EnableItemLevelLineage(o => o with
+{
+    MaterializationCap = 50_000,
+    OverflowPolicy = LineageOverflowPolicy.Degrade,
+});
 ```
-
-> **Warning:** Analyzer rule NP9002 flags missing `MaxMaterializedItems` as an **error** because unbounded materialization can cause out-of-memory crashes.
 
 ### DeadLetterQueueCapacityExceeded (NP0502)
 
@@ -97,7 +102,7 @@ The dead letter queue is full. Process or drain the dead letter queue, or increa
 
 ### High Memory Usage
 
-- Check for unbounded materialization - set `MaxMaterializedItems` on retry options
+- For transforms with node restart, lower `NodeRestartOptions.MaxReplayWindow` to hold fewer items for replay
 - Verify you're using `DataStream<T>` streaming rather than materializing entire datasets
 - Enable memory metrics to identify the culprit node: `AddNPipelineObservability(new ObservabilityExtensionOptions { EnableMemoryMetrics = true })`
 

@@ -29,11 +29,10 @@ public static class ErrorCodes
 {
     #region Configuration & Setup Analyzers (NP90XX)
 
-    /// <summary>Detects missing resilience configuration that can cause runtime failures when RestartNode is returned.</summary>
+    /// <summary>Detects RestartNode returned where it cannot restart a node, or where NodeRestart is never enabled.</summary>
     public const string IncompleteResilientConfiguration = "NP9001";
 
-    /// <summary>Prevents unbounded memory growth in retry options.</summary>
-    public const string UnboundedMaterializationConfiguration = "NP9002";
+    // NP9002 (unbounded materialization) is retired: node restart no longer materializes its input. Do not reuse it.
 
     /// <summary>Detects inappropriate parallelism configuration.</summary>
     public const string InappropriateParallelismConfiguration = "NP9003";
@@ -41,7 +40,7 @@ public static class ErrorCodes
     /// <summary>Detects batching configuration mismatches.</summary>
     public const string BatchingConfigurationMismatch = "NP9004";
 
-    /// <summary>Detects timeout configuration issues.</summary>
+    /// <summary>Detects circuit breaker timings that cannot work.</summary>
     public const string TimeoutConfiguration = "NP9005";
 
     #endregion
@@ -81,6 +80,12 @@ public static class ErrorCodes
 
     /// <summary>Detects when methods don't properly respect cancellation tokens.</summary>
     public const string NodeNotRespectingCancellationToken = "NP9203";
+
+    /// <summary>Detects ItemRetry, NodeRestart, or CircuitBreaker configured for a node that is not a transform.</summary>
+    public const string NodeKindResilienceMisuse = "NP9204";
+
+    /// <summary>Detects a resilience policy that returns Retry without consulting the failure's retry budget.</summary>
+    public const string UnconditionalRetryDecision = "NP9205";
 
     #endregion
 
