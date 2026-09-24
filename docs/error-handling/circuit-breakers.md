@@ -1,16 +1,16 @@
 ---
-title: "Circuit Breakers"
+title: "Circuit breakers"
 description: "Stop calling a dependency that keeps failing, and let it recover before you try again."
 order: 5
 ---
 
-# Circuit Breakers
+# Circuit breakers
 
 A circuit breaker watches the item attempts of a transform node. When enough attempts fail transiently, the breaker
 *opens*, and the node stops making attempts for a while. This spares a dependency that's already down from a flood of
 retries, and it makes the pipeline fail fast instead of retrying every item against a service that can't answer.
 
-## How It Works
+## How the breaker works
 
 The breaker has three states:
 
@@ -32,15 +32,16 @@ stateDiagram-v2
 The breaker guards every attempt of an item's transform, including item retries. With `ItemRetry.MaxRetries = 10` and
 a breaker that opens after five failures, a dead dependency sees five attempts, not eleven.
 
-### Only Transient Failures Count
+### Only transient failures count
 
 The node's `ItemRetry.Classifier` decides whether a failure is transient. Only transient failures count against the
 breaker. A permanent failure, such as a malformed record, says nothing about the health of the dependency, so it
 neither trips the breaker nor resets its failure count. Cancelling the pipeline doesn't count either.
 
-For which exceptions the default classifier treats as transient, see [Retry Strategies](retry-strategies.md).
+For the exceptions that the default classifier treats as transient, see
+[Retry strategies](retry-strategies.md#which-failures-are-retried).
 
-## Enabling the Circuit Breaker
+## Enable the circuit breaker
 
 Set `CircuitBreaker` in the resilience options, for the whole pipeline or for one transform node:
 
@@ -64,9 +65,9 @@ With these options, the breaker behaves as follows:
 
 `CircuitBreakerOptions.Default` has these values. Setting `CircuitBreaker = null`, the default, turns the breaker off.
 
-A breaker only guards transform nodes. Setting one on a source, sink, or aggregate node is a build error.
+A breaker only guards transform nodes. Setting one on a source, sink, aggregate, or join node is a build error.
 
-## Configuration Options
+## Configuration options
 
 `CircuitBreakerOptions`, in the `NPipeline.Reliability` namespace, controls the breaker:
 
@@ -79,13 +80,13 @@ A breaker only guards transform nodes. Setting one on a source, sink, or aggrega
 | `OpenDuration` | 30 seconds | How long the breaker stays open before it lets a probe through. |
 | `HalfOpenProbes` | `1` | The most probes in flight at once while half-open. |
 | `ProbeSuccesses` | `1` | The successful probes needed to close the breaker. |
-| `WhenOpen` | `BreakerOpenBehavior.Fail` | What an attempt does while the breaker is open. See [What Happens While the Breaker Is Open](#what-happens-while-the-breaker-is-open). |
+| `WhenOpen` | `BreakerOpenBehavior.Fail` | What an attempt does while the breaker is open. See [What happens while the breaker is open](#what-happens-while-the-breaker-is-open). |
 | `MaxPause` | 5 minutes | With `WhenOpen = Pause`, the longest one attempt waits before it fails. |
 
 The breaker trips when **any** configured condition is met. At least one of `ConsecutiveFailures` and `FailureRate` must
 be set.
 
-### Trip on a Failure Rate
+### Trip on a failure rate
 
 A consecutive-failure count suits a dependency that either works or doesn't. For one that degrades, where some calls
 succeed and many fail, use a failure rate:
@@ -103,11 +104,11 @@ CircuitBreaker = new CircuitBreakerOptions
 `MinimumCalls` stops the breaker from tripping on a handful of early failures: one failure out of the first two attempts
 is a 50% rate, but it isn't evidence of an outage.
 
-## What Happens While the Breaker Is Open
+## What happens while the breaker is open
 
 **By default, an open breaker fails the item.** Waiting for the breaker instead is opt-in.
 
-### Fail (Default)
+### Fail (default)
 
 With `WhenOpen = BreakerOpenBehavior.Fail`, an attempt that the open breaker refuses isn't made. The item fails with a
 `CircuitBreakerOpenException`, whose `NodeId` and `State` properties say which breaker refused it and in what state.
@@ -120,7 +121,7 @@ whose inner exception is the `CircuitBreakerOpenException`.
 A custom policy can choose differently. For example, it can return `ResilienceDecision.DeadLetter` for a refused
 attempt when dead-lettering during an outage is what you want.
 
-### Pause (Opt-In)
+### Pause (opt-in)
 
 To make an attempt wait for the breaker instead of failing, set `WhenOpen` to `BreakerOpenBehavior.Pause`:
 
@@ -148,7 +149,7 @@ A pause is bounded in two ways:
 Use `Pause` when the dependency usually recovers on its own and a late result is better than none. Keep the default,
 `Fail`, when the pipeline is scheduled to run again soon, or when a stalled pipeline would be worse than a failed one.
 
-## Breaker Lifetime
+## Breaker lifetime
 
 A node's breaker lives as long as the `PipelineFactory` that built the pipeline, not just for one run. `AddNPipeline()`
 registers the factory as a singleton, and `PipelineRunner.Create()` creates one per runner, so reusing a runner reuses
@@ -161,7 +162,7 @@ probes the dependency and, if it has recovered, carries on normally.
 Each pipeline definition type has its own breakers, one per node. If you change a node's `CircuitBreakerOptions` or its
 `Time` provider, the node gets a new breaker, which starts closed.
 
-## Observing the Breaker
+## Observe the breaker
 
 Every state change raises `IExecutionObserver.OnCircuitStateChanged` with a `CircuitStateChangedEvent`, which carries
 the node id, the previous and new states, and the reason for the change. The Observability extension counts transitions
@@ -170,7 +171,7 @@ to `Open` as the node's `CircuitBreakerTrips`. For more information, see [Observ
 An open breaker becomes half-open when the next attempt is asked for after `OpenDuration`, not on a timer. The
 `Open` to `HalfOpen` event is raised at that moment, by the run that makes the attempt.
 
-## Testing
+## Test with a fake clock
 
 The breaker reads time from `PipelineResilienceOptions.Time`. In tests, set it to a `FakeTimeProvider` from
 `Microsoft.Extensions.TimeProvider.Testing` and advance the clock instead of waiting out `OpenDuration`:
@@ -189,7 +190,7 @@ builder.WithResilience(transform, options => options with
 time.Advance(TimeSpan.FromMinutes(1)); // The next attempt is a probe.
 ```
 
-## Practical Example
+## Example: pause while an API is down
 
 The following pipeline calls an external API. It retries transient failures, stops calling the API while it's down, and
 waits up to five minutes for it to recover before it fails:
@@ -226,8 +227,8 @@ and every 30 seconds one request is sent as a probe. When a probe succeeds, the 
 from where it stopped. If the API is still down after five minutes, the node fails. Malformed requests, which fail
 permanently, go to the dead-letter sink and never trip the breaker.
 
-## Next Steps
+## Next steps
 
-- [Dead-Letter Queues](dead-letter-queues.md): capture items that fail permanently.
-- [Retry Strategies](retry-strategies.md): control which failures are retried and how long to wait between attempts.
-- [Resilience Policies](resilience-policies.md): decide what happens to a refused attempt yourself.
+- [Dead-letter queues](dead-letter-queues.md): capture items that fail permanently.
+- [Retry strategies](retry-strategies.md): control which failures are retried and how long to wait between attempts.
+- [Resilience policies](resilience-policies.md): decide what happens to a refused attempt yourself.

@@ -1,4 +1,5 @@
 using NPipeline.Pipeline;
+using NPipeline.Reliability;
 using Sample_AdvancedErrorHandling.Nodes;
 
 namespace Sample_AdvancedErrorHandling;
@@ -53,6 +54,11 @@ public class AdvancedErrorHandlingPipeline : IPipelineDefinition
 
         // Add the dead letter queue sink that captures failed items for later processing
         var deadLetterSink = builder.AddSink<DeadLetterQueueSink, SourceData>("dead-letter-queue-sink");
+
+        // Polly retries and breaks inside these two nodes. Turn the pipeline's item retry (L1) off for them, so that
+        // a failure that escapes Polly isn't retried a second time by the pipeline. One layer retries each call.
+        builder.WithResilience(retry, options => options with { ItemRetry = ItemRetryOptions.None });
+        builder.WithResilience(circuitBreaker, options => options with { ItemRetry = ItemRetryOptions.None });
 
         // Connect the nodes in a linear flow with error handling
         builder.Connect(source, retry);

@@ -1,381 +1,239 @@
 ---
-title: "Retry Strategies"
-description: "Configure backoff algorithms and jitter to control timing between retry attempts."
+title: "Retry strategies"
+description: "Choose how long each resilience layer waits between attempts, and which failures are worth retrying."
 order: 4
 ---
 
-# Retry Strategies
+# Retry strategies
 
-When a resilience policy returns `ResilienceDecision.Retry`, NPipeline waits before retrying. The **retry delay strategy** controls how long to wait. It combines a **backoff algorithm** (how delay grows) with an optional **jitter strategy** (randomization to prevent thundering herds).
+A retry strategy has two parts: a *backoff*, which sets how long to wait before each retry, and a *classifier*, which
+decides whether a failure is worth retrying at all. Each of the [three resilience layers](three-layers.md) has its own
+of each, so a node can retry items quickly and restart slowly.
 
-## Quick Start
+## Quick start
 
-Configure retry delays on `PipelineRetryOptions` using the fluent extension methods:
-
-```csharp
-using NPipeline.Configuration;
-using NPipeline.Configuration.RetryDelay;
-
-builder.WithRetryOptions(options => options
-    .WithExponentialBackoffAndFullJitter());
-```
-
-That single line gives you exponential backoff (1s base, 2x multiplier, 1min cap) with full jitter - a sensible default for most production workloads.
-
-## Backoff Algorithms
-
-NPipeline provides three built-in backoff strategies via `BackoffStrategies` in `NPipeline.Execution.RetryDelay`:
-
-### Exponential Backoff
-
-Delay doubles (or multiplies) with each attempt. Best for transient failures where you want to back off quickly.
-
-```
-Attempt 0: 1s
-Attempt 1: 2s
-Attempt 2: 4s
-Attempt 3: 8s  (capped at maxDelay)
-```
+The following example retries each failed item up to five times, starting at 500 milliseconds and doubling each time,
+up to 30 seconds:
 
 ```csharp
-BackoffStrategies.ExponentialBackoff(
-    baseDelay: TimeSpan.FromSeconds(1),
-    multiplier: 2.0,
-    maxDelay: TimeSpan.FromMinutes(1));
-```
+using NPipeline.Reliability;
 
-**Parameters:**
-
-- `baseDelay` - delay for the first retry (must be positive)
-- `multiplier` - growth factor per attempt (default: 2.0, must be ≥ 1.0)
-- `maxDelay` - ceiling to prevent excessive waits (default: 1 minute)
-
-### Linear Backoff
-
-Delay grows by a fixed increment each attempt. More predictable than exponential.
-
-```
-Attempt 0: 1s
-Attempt 1: 2s
-Attempt 2: 3s
-Attempt 3: 4s
-```
-
-```csharp
-BackoffStrategies.LinearBackoff(
-    baseDelay: TimeSpan.FromSeconds(1),
-    increment: TimeSpan.FromSeconds(1),
-    maxDelay: TimeSpan.FromSeconds(30));
-```
-
-**Parameters:**
-
-- `baseDelay` - delay for the first retry (must be positive)
-- `increment` - added per attempt (default: 1 second)
-- `maxDelay` - ceiling (default: 1 minute)
-
-### Fixed Delay
-
-Same delay every time. Simple and deterministic - useful for testing or rate-limited APIs with known cooldowns.
-
-```
-Attempt 0: 5s
-Attempt 1: 5s
-Attempt 2: 5s
-```
-
-```csharp
-BackoffStrategies.FixedDelay(
-    delay: TimeSpan.FromSeconds(5));
-```
-
-## Jitter Strategies
-
-Without jitter, clients that fail simultaneously will all retry at the same instant (thundering herd). Jitter randomizes the delay to spread retries across time.
-
-NPipeline provides four jitter strategies via `JitterStrategies`:
-
-| Strategy | Formula | Best For |
-|----------|---------|----------|
-| **Full Jitter** | `random(0, baseDelay)` | Maximum spread in distributed systems |
-| **Equal Jitter** | `baseDelay/2 + random(0, baseDelay/2)` | Balance between predictability and spread |
-| **Decorrelated Jitter** | `random(baseDelay, previousDelay × multiplier)` | Long retry sequences where prior delay matters |
-| **No Jitter** | `baseDelay` (unchanged) | Testing or when deterministic behavior is required |
-
-### Usage
-
-```csharp
-JitterStrategies.FullJitter()
-JitterStrategies.EqualJitter()
-JitterStrategies.DecorrelatedJitter(maxDelay: TimeSpan.FromMinutes(1), multiplier: 3.0)
-JitterStrategies.NoJitter()
-```
-
-## Convenience Extension Methods
-
-The most common combinations have dedicated extension methods on `PipelineRetryOptions`:
-
-```csharp
-// Exponential backoff + full jitter (recommended default)
-options.WithExponentialBackoffAndFullJitter(
-    baseDelay: TimeSpan.FromSeconds(1),
-    multiplier: 2.0,
-    maxDelay: TimeSpan.FromMinutes(1))
-
-// Linear backoff + equal jitter
-options.WithLinearBackoffAndEqualJitter(
-    baseDelay: TimeSpan.FromSeconds(1),
-    increment: TimeSpan.FromSeconds(1),
-    maxDelay: TimeSpan.FromSeconds(30))
-
-// Fixed delay + no jitter
-options.WithFixedDelayNoJitter(
-    delay: TimeSpan.FromSeconds(1))
-
-// Exponential backoff + decorrelated jitter
-options.WithExponentialBackoffAndDecorrelatedJitter(
-    baseDelay: TimeSpan.FromSeconds(1),
-    multiplier: 2.0,
-    maxDelay: TimeSpan.FromMinutes(1),
-    jitterMaxDelay: TimeSpan.FromMinutes(1),
-    jitterMultiplier: 3.0)
-```
-
-## Custom Strategy Composition
-
-For full control, compose your own backoff + jitter combination:
-
-```csharp
-using NPipeline.Execution.RetryDelay;
-
-var backoff = BackoffStrategies.ExponentialBackoff(
-    TimeSpan.FromMilliseconds(500), multiplier: 1.5, maxDelay: TimeSpan.FromSeconds(30));
-
-var jitter = JitterStrategies.EqualJitter();
-
-builder.WithRetryOptions(options => options.WithCustomStrategy(backoff, jitter));
-```
-
-## How It Works Internally
-
-1. Your resilience policy returns `ResilienceDecision.Retry`.
-2. The runtime calls `IResiliencePolicy.GetRetryDelayAsync(context, retryKind, attemptNumber)`.
-3. The default implementation (`ResiliencePolicyBase`) delegates to `context.GetRetryDelayStrategy()`.
-4. The strategy is a `CompositeRetryDelayStrategy` that applies the backoff delegate, then the jitter delegate.
-5. The runtime waits the resulting `TimeSpan`, then retries.
-
-The `attemptNumber` is 1-based: attempt 1 is the first retry after the initial failure.
-
-`retryKind` specifies the type of retry being backed off:
-
-| Kind | Meaning | Cost |
-|------|---------|------|
-| `RetryKind.ItemRetry` | One item failed and is being retried | Cheap — only the item is reprocessed |
-| `RetryKind.NodeRestart` | The node failed and is being restarted | Expensive — the node replays its entire input |
-
-The default implementation ignores the kind and applies the same strategy to both. Override `GetRetryDelayAsync` to implement different backoff strategies. For example, use a short delay for item retries and a longer delay for node restarts:
-
-```csharp
-public override ValueTask<TimeSpan> GetRetryDelayAsync(
-    PipelineContext context, RetryKind retryKind, int attemptNumber, CancellationToken cancellationToken)
+builder.WithResilience(options => options with
 {
-    return retryKind switch
+    ItemRetry = options.ItemRetry with
     {
-        RetryKind.ItemRetry => ValueTask.FromResult(TimeSpan.FromMilliseconds(50 * attemptNumber)),
-        _ => base.GetRetryDelayAsync(context, retryKind, attemptNumber, cancellationToken),
-    };
-}
-```
-
-## Choosing a Strategy
-
-| Scenario | Recommended Strategy |
-|----------|---------------------|
-| Distributed services with transient failures | Exponential + Full Jitter |
-| Predictable recovery with some spread | Linear + Equal Jitter |
-| Rate-limited APIs with known cooldown | Fixed + No Jitter |
-| Long retry sequences (10+ attempts) | Exponential + Decorrelated Jitter |
-| Unit tests | Fixed + No Jitter (deterministic) |
-
-## Configuration Reference
-
-`PipelineRetryOptions` controls how many retries are allowed:
-
-| Property | Baseline Default | Default Profile | Description |
-|----------|-----------------|-----------------|-------------|
-| `MaxItemRetries` | 0 | 3 | Maximum retries per item |
-| `MaxNodeRestartAttempts` | 3 | 3 | Maximum node restart attempts |
-| `MaxSequentialNodeAttempts` | 5 | 5 | Maximum sequential node execution attempts |
-| `MaxMaterializedItems` | null | 10,000 | Item buffer cap for node restart (see [Materialization](materialization.md)) |
-| `DelayStrategyConfiguration` | null | Exponential + full jitter | Backoff + jitter configuration |
-
-In the `Default` [optimization profile](../guides/optimization-profiles.md), the "Default Profile" column values are applied automatically when no explicit retry configuration is provided. In `HighThroughput` mode, the "Baseline Default" values apply and you must configure everything explicitly. In both profiles, these are limits: an item is retried only when your [resilience policy](resilience-policies.md) returns `Retry`, and never more than `MaxItemRetries` times, even if the policy's own rule allows more.
-
-```csharp
-builder.WithRetryOptions(options => options with
-{
-    MaxItemRetries = 5,
-    MaxNodeRestartAttempts = 3,
-    DelayStrategyConfiguration = new RetryDelayStrategyConfiguration(
-        BackoffStrategies.ExponentialBackoff(TimeSpan.FromSeconds(1)),
-        JitterStrategies.FullJitter())
+        MaxRetries = 5,
+        Backoff = RetryBackoff.Exponential(TimeSpan.FromMilliseconds(500), maxDelay: TimeSpan.FromSeconds(30)),
+    },
 });
 ```
 
-## Monitoring Retry Behavior
+With the Default [optimization profile](../guides/optimization-profiles.md), you don't need any configuration to
+retry: transient item failures are retried three times, with exponential backoff from 200 milliseconds up to 30
+seconds and full jitter. That's `ItemRetryOptions.Default`. The HighThroughput profile retries nothing.
 
-In production, monitor retry metrics to detect emerging issues and tune your strategy.
+## Where the backoff is set
 
-### Key Metrics
+Each layer's options record has a `Backoff` property, of type `RetryBackoff`:
 
-| Metric | Healthy Range | Action If Exceeded |
-|--------|--------------|-------------------|
-| Retry rate (% of operations retried) | 0–5% | Investigate upstream failures |
-| Average retry attempts per failure | 1–2 | Lower max retries or fix root cause |
-| Retry exhaustion rate (% that hit max) | < 5% | Increase max retries or dead-letter sooner |
-| Average delay per retry | Matches configured strategy | Check for clock skew or strategy misconfiguration |
+| Layer | Property | Default |
+| --- | --- | --- |
+| L1: item retry | `ItemRetry.Backoff` | No delay. `ItemRetryOptions.Default`, used by the Default profile, is exponential from 200 ms up to 30 s, with full jitter |
+| L2: node restart | `NodeRestart.Backoff` | Exponential from 1 s up to 30 s, with full jitter |
+| L3: node retry | `NodeRetry.Backoff` | Exponential from 1 s up to 30 s, with full jitter |
 
-### Structured Logging
+Every delay waits on the clock in `PipelineResilienceOptions.Time`, and cancelling the pipeline ends the wait at once.
 
-Log retry events with context so you can correlate failures across nodes:
+A backoff belongs to the node's options, and it depends only on the retry number. Nothing is shared between items or
+nodes: two items that fail at the same time each wait their own delay.
+
+## Backoff curves
+
+`RetryBackoff` is a value type with a factory method for each curve. The *retry number* is 1-based: retry 1 is the
+first retry after the first attempt failed.
+
+| Factory method | Delay before retry *n* | Default jitter |
+| --- | --- | --- |
+| `RetryBackoff.None` | Zero | None |
+| `RetryBackoff.Constant(delay)` | `delay` | None |
+| `RetryBackoff.Linear(step, maxDelay)` | `step` × *n* | Equal |
+| `RetryBackoff.Exponential(baseDelay, factor, maxDelay)` | `baseDelay` × `factor`^(*n* - 1) | Full |
+| `RetryBackoff.Custom(delayForRetry)` | Whatever `delayForRetry(n)` returns | Never jittered |
+
+The exponential factor defaults to 2. `maxDelay` caps the delay, and it defaults to no cap. Each method also takes a
+`jitter` argument to override the default.
+
+The following table shows the delays, before jitter, for three curves:
+
+| Retry | `Constant(1s)` | `Linear(1s)` | `Exponential(1s, maxDelay: 5s)` |
+| --- | --- | --- | --- |
+| 1 | 1 s | 1 s | 1 s |
+| 2 | 1 s | 2 s | 2 s |
+| 3 | 1 s | 3 s | 4 s |
+| 4 | 1 s | 4 s | 5 s |
+
+To compute a delay yourself, call `DelayFor`. For example, `RetryBackoff.Linear(TimeSpan.FromSeconds(1)).DelayFor(3)`
+returns a delay between 1.5 and 3 seconds, because linear backoff has equal jitter by default.
+
+### Adjust a curve
+
+`RetryBackoff` is a record struct, so you can derive a variant with a `with` expression:
 
 ```csharp
-public sealed class LoggingResiliencePolicy : ResiliencePolicyBase
+var backoff = RetryBackoff.Exponential(TimeSpan.FromMilliseconds(200), maxDelay: TimeSpan.FromSeconds(30));
+var steeper = backoff with { Factor = 3 };
+var predictable = backoff with { Jitter = RetryJitter.None };
+```
+
+The factory methods check their arguments and throw `ArgumentOutOfRangeException` for a negative delay, or for an
+exponential factor below 1. A value changed with `with` skips those checks, so building the pipeline checks every
+node's options again. To check a value yourself, call `Validate()`.
+
+### Custom curves
+
+For a curve the factory methods don't cover, pass a function of the retry number:
+
+```csharp
+// 100 ms, 100 ms, 200 ms, 300 ms, 500 ms, ...: a Fibonacci backoff.
+var fibonacci = RetryBackoff.Custom(retry => TimeSpan.FromMilliseconds(100 * Fibonacci(retry)));
+```
+
+A custom delay isn't jittered or capped, and a negative result counts as zero.
+
+## Jitter
+
+Without jitter, items that fail at the same moment all retry at the same moment, and hit a recovering service together.
+Jitter spreads the retries out. `RetryJitter` has three values:
+
+| Value | Delay | Use it for |
+| --- | --- | --- |
+| `None` | The computed delay | Tests, and waits that must be predictable |
+| `Full` | A random delay between zero and the computed delay | The most spread. The default for exponential backoff |
+| `Equal` | Half the computed delay, plus a random delay up to the other half | Spread with a guaranteed minimum wait. The default for linear backoff |
+
+Jitter never makes a delay longer than `MaxDelay`.
+
+## Which failures are retried
+
+A layer retries a failure only when its classifier judges it *transient*: a failure that might not happen again,
+such as a timeout. A *permanent* failure, such as a malformed record or a programming error, fails at once, because
+retrying it only wastes time.
+
+Each layer that retries has a `Classifier` property, of type `RetryClassifier`: `ItemRetry.Classifier` and
+`NodeRetry.Classifier`. Node restart doesn't use a classifier.
+
+### The default classifier
+
+`RetryClassifier.Default` treats the following exceptions as transient:
+
+- `TimeoutException`, `IOException`, and `SocketException`.
+- `HttpRequestException` with no status code, or with status 408, 429, or 5xx.
+- `DbException` when its `IsTransient` property is `true`.
+- `TaskCanceledException` that the pipeline's own cancellation token didn't cause, such as an `HttpClient` timeout.
+
+It treats everything else as permanent, including the following:
+
+- Cancellation of the pipeline's own token. No classifier can make this transient.
+- `RetryExhaustedException`, so that one layer doesn't retry another layer's exhausted retries.
+- Any exception that [NResilience](three-layers.md#how-connector-and-pipeline-retries-compose) has already retried. A
+  connector's retries aren't multiplied by the pipeline's.
+
+Before it judges a failure, the classifier looks inside the exceptions that the pipeline wraps failures in:
+`NodeExecutionException`, `PipelineExecutionException`, `TargetInvocationException`, and an `AggregateException` with a
+single inner exception.
+
+To retry every failure except the pipeline's own cancellation, use `RetryClassifier.All`.
+
+### Add your own rules
+
+A classifier is immutable. `Transient<TException>()` and `Permanent<TException>()` each return a new classifier with
+one more rule. Your rules are checked before the built-in ones, in the order you add them. A rule can take a condition:
+
+```csharp
+builder.WithResilience(options => options with
 {
-    private readonly ILogger _logger;
-
-    public LoggingResiliencePolicy(ILogger logger) => _logger = logger;
-
-    public override Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
-        ITransformNode<TIn, TOut> node, TIn failedItem, Exception exception,
-        PipelineContext context, string nodeId, int retryAttempt,
-        CancellationToken cancellationToken)
+    ItemRetry = options.ItemRetry with
     {
-        _logger.LogWarning(
-            "Node {NodeId} retry attempt {Attempt}: {ErrorType} - {Message}",
-            nodeId, retryAttempt, exception.GetType().Name, exception.Message);
-
-        return Task.FromResult(retryAttempt < 3
-            ? ResilienceDecision.Retry
-            : ResilienceDecision.DeadLetter);
-    }
-}
+        Classifier = RetryClassifier.Default
+            .Transient<SqlException>(e => e.Number is 1205 or 40501)                                // Deadlock, throttled
+            .Permanent<HttpRequestException>(e => e.StatusCode == HttpStatusCode.NotImplemented),   // A 501 won't change
+    },
+});
 ```
 
-### Alerting Thresholds
+A rule matches the exception or any wrapped exception as described in the preceding section.
 
-Set alerts on these conditions:
+## Choose a strategy
 
-- **Retry rate > 10%** - systematic failures, not transient
-- **Average delay > 5 seconds** - delays are dominating pipeline latency
-- **Exhaustion rate > 5%** - too many items hitting the retry ceiling
-- **Retry rate trending up > 20%** over the last hour - degrading dependency
+The following table suggests a strategy for common situations:
 
-### Using Observability Extension
+| Situation | Backoff | Jitter |
+| --- | --- | --- |
+| Calls to a shared service from many items or pipelines | Exponential | Full (the default) |
+| A predictable wait with some spread | Linear | Equal (the default) |
+| A known cooldown, such as a lock timeout | Constant | None |
+| Node restart or node retry, where each attempt is expensive | Exponential with a base of a second or more | Full |
+| Tests | Constant or `None` | None |
 
-With `NPipeline.Extensions.Observability`, retry events are emitted as part of the node lifecycle. See [Observability](../extensions/observability.md) for integration with your metrics platform.
+For calls to an HTTP API, consider retrying inside the node with NResilience instead, which also honors
+`Retry-After`. For more information, see [Call external APIs from a transform](three-layers.md#call-external-apis-from-a-transform).
 
-## Testing Retry Strategies
+## Monitor retries
 
-### Principle: Use Fixed Delays
+Every retry at every layer raises `IExecutionObserver.OnRetry` with a `NodeRetryEvent`. The event's `Kind` says which
+layer retried: `RetryKind.ItemRetry`, `RetryKind.NodeRestart`, or `RetryKind.NodeRetry`. When a layer gives up after
+retrying, it raises `OnRetryExhausted` with a `RetryExhaustedEvent` before it throws `RetryExhaustedException`.
 
-Always use `FixedDelay` with `NoJitter` in tests. Jitter adds randomness that makes timing assertions unreliable.
+The Observability extension counts these events for you. For more information, see
+[Observability](../extensions/observability.md).
+
+The following signs suggest that a strategy needs attention:
+
+- **High retry rate:** If more than a few percent of items are retried, failures are likely systematic. Fix the cause or classify as permanent.
+- **Frequent exhaustion:** Items using all retries fail for longer than the backoff waits. Consider a [circuit breaker](circuit-breakers.md) with `WhenOpen = Pause`, or dead-letter the items sooner.
+- **High latency:** If retry delays dominate latency, lower `MaxDelay` or make fewer retries.
+
+## Test retry behavior
+
+To test retries without waiting for real delays, set `Time` to a `FakeTimeProvider` from the
+`Microsoft.Extensions.TimeProvider.Testing` package, and advance it in the test:
 
 ```csharp
-// Deterministic for testing
-builder.WithRetryOptions(options => options
-    .WithFixedDelayNoJitter(delay: TimeSpan.FromMilliseconds(10)));
+var time = new FakeTimeProvider();
+
+builder.WithResilience(options => options with
+{
+    ItemRetry = options.ItemRetry with { MaxRetries = 3, Backoff = RetryBackoff.Constant(TimeSpan.FromSeconds(10)) },
+    Time = time,
+});
+
+// ... start the run ...
+
+time.Advance(TimeSpan.FromSeconds(10)); // The first retry happens now.
 ```
 
-### Testing That Retries Occur
-
-Verify that a transient failure triggers the expected number of retries:
+To test a backoff curve on its own, turn jitter off and call `DelayFor`:
 
 ```csharp
 [Fact]
-public async Task Retry_TransientFailure_RetriesThreeTimes()
+public void Exponential_backoff_doubles_up_to_the_cap()
 {
-    var attemptCount = 0;
-    var policy = ResiliencePolicyBuilder
-        .ForNode<FailingTransform, string>()
-        .OnAny().Retry(maxRetries: 3)
-        .Build();
+    var backoff = RetryBackoff.Exponential(
+        TimeSpan.FromMilliseconds(100), maxDelay: TimeSpan.FromMilliseconds(500), jitter: RetryJitter.None);
 
-    // FailingTransform increments attemptCount and throws on first 2 calls
-    // ... run pipeline with policy ...
-
-    attemptCount.Should().Be(3); // 1 initial + 2 retries before success
+    backoff.DelayFor(1).Should().Be(TimeSpan.FromMilliseconds(100));
+    backoff.DelayFor(2).Should().Be(TimeSpan.FromMilliseconds(200));
+    backoff.DelayFor(3).Should().Be(TimeSpan.FromMilliseconds(400));
+    backoff.DelayFor(4).Should().Be(TimeSpan.FromMilliseconds(500));
 }
 ```
 
-### Testing Backoff Sequences
+For a runnable tour of the backoff curves, see the
+[`Sample_RetryDelay`](https://github.com/NPipeline/NPipeline/tree/main/samples/Sample_RetryDelay) sample.
 
-Validate that your strategy produces the expected delay progression:
+## Next steps
 
-```csharp
-[Fact]
-public void ExponentialBackoff_ProducesExpectedDelays()
-{
-    var backoff = BackoffStrategies.ExponentialBackoff(
-        baseDelay: TimeSpan.FromMilliseconds(100),
-        multiplier: 2.0,
-        maxDelay: TimeSpan.FromMilliseconds(500));
-
-    // Attempt 0: 100ms, 1: 200ms, 2: 400ms, 3: 500ms (capped)
-    backoff(0).Should().Be(TimeSpan.FromMilliseconds(100));
-    backoff(1).Should().Be(TimeSpan.FromMilliseconds(200));
-    backoff(2).Should().Be(TimeSpan.FromMilliseconds(400));
-    backoff(3).Should().Be(TimeSpan.FromMilliseconds(500));
-}
-```
-
-### Testing Retry Exhaustion
-
-Confirm that items are dead-lettered after max retries:
-
-```csharp
-[Fact]
-public async Task RetryExhausted_ItemIsDeadLettered()
-{
-    var deadLetterSink = new BoundedInMemoryDeadLetterSink();
-    builder.AddDeadLetterSink(deadLetterSink);
-
-    var policy = ResiliencePolicyBuilder
-        .ForNode<AlwaysFailsTransform, Order>()
-        .OnAny().Retry(maxRetries: 3)  // exhausted → DeadLetter
-        .Build();
-
-    builder.AddResiliencePolicy(policy);
-    // ... run pipeline ...
-
-    deadLetterSink.Items.Should().HaveCount(1);
-    deadLetterSink.Items.First().Attribution.RetryCount.Should().Be(3);
-}
-```
-
-### Testing Jitter Distribution
-
-Use a seeded `Random` to verify jitter behavior deterministically:
-
-```csharp
-[Fact]
-public void FullJitter_DelaysAreWithinExpectedRange()
-{
-    var jitter = JitterStrategies.FullJitter();
-    var delays = Enumerable.Range(0, 100)
-        .Select(_ => jitter(TimeSpan.FromSeconds(1)))
-        .ToList();
-
-    delays.Should().OnlyContain(d =>
-        d >= TimeSpan.Zero && d <= TimeSpan.FromSeconds(1));
-
-    // Jitter should produce variety, not constant values
-    delays.Distinct().Count().Should().BeGreaterThan(1);
-}
-```
-
-## Next Steps
-
-- [Circuit Breakers](circuit-breakers.md) - stop retrying when a node is consistently failing
-- [Materialization](materialization.md) - buffer items to support node restart
-- [Dead-Letter Queues](dead-letter-queues.md) - capture items that exhaust all retries
+- [The three resilience layers](three-layers.md): what each layer retries.
+- [Resilience policies](resilience-policies.md): decide in code whether to retry.
+- [Circuit breakers](circuit-breakers.md): stop retrying a dependency that keeps failing.
+- [Dead-letter queues](dead-letter-queues.md): capture the items that still fail.

@@ -47,8 +47,9 @@ public interface IExecutionObserver
     /// </summary>
     /// <param name="e">The event containing the previous and new state.</param>
     /// <remarks>
-    ///     The transition from <see cref="CircuitState.Open" /> to <see cref="CircuitState.HalfOpen" /> is raised from a
-    ///     timer thread, not from the node's execution.
+    ///     The breaker has no timer. The transition from <see cref="CircuitState.Open" /> to
+    ///     <see cref="CircuitState.HalfOpen" /> is raised when the next attempt asks for a permit after
+    ///     <c>CircuitBreakerOptions.OpenDuration</c>, on the thread of the run that makes that attempt.
     /// </remarks>
     void OnCircuitStateChanged(CircuitStateChangedEvent e)
     {

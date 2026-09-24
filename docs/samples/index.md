@@ -6,7 +6,7 @@ order: 101
 
 # Samples
 
-All samples are in the [`samples/`](https://github.com/user/npipeline/tree/main/samples) directory. Each is a standalone console application.
+All samples are in the [`samples/`](https://github.com/NPipeline/NPipeline/tree/main/samples) directory. Each is a standalone console application.
 
 ## Core Pipeline Patterns
 
@@ -51,9 +51,10 @@ All samples are in the [`samples/`](https://github.com/user/npipeline/tree/main/
 | Sample | Description | Complexity |
 |--------|-------------|------------|
 | `Sample_BasicErrorHandling` | Try/catch patterns in nodes | Beginner |
-| `Sample_AdvancedErrorHandling` | Error handlers and dead letter queues | Intermediate |
+| `Sample_AdvancedErrorHandling` | Polly inside nodes, composed with dead-letter queues | Intermediate |
 | `Sample_FluentErrorHandling` | Fluent API for resilience configuration | Intermediate |
-| `Sample_RetryDelay` | Retry with exponential backoff | Intermediate |
+| `Sample_RetryDelay` | Backoff curves, jitter, and per-node retry options | Intermediate |
+| `Sample_EdgeResilience` | NResilience inside a transform, with pipeline item retry off for that node | Intermediate |
 
 ## Parallel Execution and Performance
 

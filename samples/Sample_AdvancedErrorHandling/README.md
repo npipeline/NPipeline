@@ -2,8 +2,31 @@
 
 ## Overview
 
-This sample demonstrates production-grade resilience patterns in NPipeline, including circuit breaker patterns, dead letter queues, comprehensive retry
-strategies, and error recovery mechanisms using Polly.
+This sample shows that a resilience library you already use still composes with NPipeline. Two transform nodes use
+Polly inside `TransformAsync`: one retries with exponential backoff, and one wraps its work in a circuit breaker.
+The sample also covers dead letter queues and error-rate monitoring.
+
+NPipeline's own resilience features, such as item retry and circuit breakers, don't need Polly. For those, see
+[Error handling](../../docs/error-handling/index.md). For the recommended way to retry calls to an external service,
+see [`Sample_EdgeResilience`](../Sample_EdgeResilience/README.md).
+
+## Use your own resilience library inside a node
+
+When a node retries its own calls, turn the pipeline's item retry (L1) off for that node. Otherwise, a failure that
+escapes the library's retries is retried again by the pipeline, and the two layers multiply each other's attempts.
+The Default optimization profile retries transient failures three times, so this applies even when you haven't
+configured retries yourself.
+
+[`AdvancedErrorHandlingPipeline.cs`](AdvancedErrorHandlingPipeline.cs) does this for both Polly nodes:
+
+```csharp
+builder.WithResilience(retry, options => options with { ItemRetry = ItemRetryOptions.None });
+builder.WithResilience(circuitBreaker, options => options with { ItemRetry = ItemRetryOptions.None });
+```
+
+In this sample, the Polly nodes also catch every exception and pass the item on, so no failure reaches the pipeline.
+For more information about how the layers compose, see
+[The three resilience layers](../../docs/error-handling/three-layers.md).
 
 ## Key Concepts
 

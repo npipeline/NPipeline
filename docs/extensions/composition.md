@@ -162,12 +162,23 @@ Sub-Pipeline Error → CompositeTransformNode → Parent Pipeline Error Handler
 
 Unhandled exceptions in a sub-pipeline propagate to the composite node in the parent, which then follows the parent's error handling strategy (resilience policy, dead-letter, etc.).
 
+### How Resilience Applies to Composite Nodes
+
+A composite node is a transform node that runs a complete sub-pipeline for each input item. Resilience works at two separate levels:
+
+- **Inside the sub-pipeline:** The sub-pipeline's own builder sets its resilience options, policy, and dead-letter sink. It doesn't inherit the parent's `WithResilience` options or resilience policy. Its transforms start from the sub-pipeline's own optimization profile. Under the `Default` profile, they retry transient item failures three times unless you change that.
+- **On the composite node:** The parent treats each sub-pipeline run as one item attempt. Item retry (L1) on the composite node runs the whole sub-pipeline again for that item, and node restart (L2) runs it again for each item that it replays.
+
+When a sub-pipeline's retries run out, it throws `RetryExhaustedException`. `RetryClassifier.Default` classifies that exception as permanent, so the parent's default item retry doesn't multiply the sub-pipeline's attempts. A transient failure that the sub-pipeline doesn't retry reaches the parent as transient, because the classifier looks through `NodeExecutionException` and `PipelineExecutionException`.
+
+The sub-pipeline has no dead-letter sink unless you add one in its definition or set `InheritDeadLetterDecorator = true` in its `CompositeContextConfiguration`. If a sub-pipeline node dead-letters an item without a sink, the run fails with `DeadLetterSinkNotConfiguredException` (NP0424).
+
 ### Strategies
 
 **Catch in sub-pipeline** - handle expected errors internally:
 
 ```csharp
-// Sub-pipeline with its own resilience policy
+// Sub-pipeline with its own retry settings
 public class EnrichmentPipeline : IPipelineDefinition
 {
     public void Define(PipelineBuilder builder, PipelineContext context)
@@ -179,14 +190,11 @@ public class EnrichmentPipeline : IPipelineDefinition
         builder.Connect(input, enrich);
         builder.Connect(enrich, output);
 
-        // Handle API failures within the sub-pipeline
-        var policy = ResiliencePolicyBuilder
-            .ForNode<EnrichNode, RawOrder>()
-            .OnAny().Retry(maxRetries: 3)
-            .Build();
-
-        builder.SetNodeResiliencePolicy(enrich, policy);
-        enrich.WithResilience(builder);
+        // Retry transient API failures within the sub-pipeline
+        builder.WithResilience(enrich, o => o with
+        {
+            ItemRetry = ItemRetryOptions.Default with { MaxRetries = 5 },
+        });
     }
 }
 ```
@@ -194,14 +202,16 @@ public class EnrichmentPipeline : IPipelineDefinition
 **Let errors propagate** - parent handles all errors:
 
 ```csharp
-// Parent pipeline catches sub-pipeline failures via its own resilience policy
+// Parent pipeline retries the whole sub-pipeline for an item, then dead-letters the item
+var compositeNode = builder.AddComposite<RawOrder, EnrichedOrder, EnrichmentPipeline>("enrich");
+
 var parentPolicy = ResiliencePolicyBuilder
-    .ForNode<CompositeNode, RawOrder>()
+    .ForNode<CompositeTransformNode<RawOrder, EnrichedOrder, EnrichmentPipeline>, RawOrder>()
     .OnAny().Retry(maxRetries: 2)
     .Build();
 
-builder.SetNodeResiliencePolicy(compositeNode, parentPolicy);
-compositeNode.WithResilience(builder);
+builder.AddResiliencePolicy(compositeNode, parentPolicy);
+builder.AddDeadLetterSink(new BoundedInMemoryDeadLetterSink());
 ```
 
 **Hybrid** - handle expected errors in sub-pipeline, let critical ones propagate.

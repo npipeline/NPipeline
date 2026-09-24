@@ -1,82 +1,82 @@
 ---
-title: Error Handling
-description: Configure resilience policies, retries, circuit breakers, and dead letter queues.
+title: Error handling
+description: Configure retries, node restarts, circuit breakers, and dead-letter queues.
 order: 3
 ---
 
-# Error Handling
+# Error handling
 
-NPipeline distinguishes three levels of failure. Each level has different causes, different recovery options, and different configuration points.
+When a node fails, NPipeline can retry the work, set the failed item aside, or fail the pipeline. This section explains
+how to choose between them, and how to configure each one.
 
-## The Three Failure Levels
+## What can fail
 
-### Item-Level Failures
+Failures happen at three levels. Each level has different causes and different ways to recover:
 
-An individual item throws an exception during processing inside a transform node. The item fails, but the stream can continue.
+- **An item.** One item throws an exception inside a transform node, and the rest of the stream is unaffected. For
+  example, one malformed record causes a `FormatException` while the other records process normally. You can retry the
+  item, skip it, or send it to a dead-letter queue.
+- **A node.** A node's stream fails, or the node can't start. For example, a transform loses a connection it holds, or
+  a source can't open its connection at startup. You can restart a transform from its checkpoint, retry a node that
+  failed before it read any input, continue without the node, or fail the pipeline.
+- **The pipeline.** A node failed and nothing recovered it. The pipeline fails with the node's exception, so you can
+  investigate and fix the cause.
 
-**Example:** A single malformed record causes a `FormatException` in a CSV parser while other records process normally.
+NPipeline recovers from these failures at three layers: item retry, node restart, and node retry. The connectors add
+their own retries for calls to external systems. For more information, see
+[The three resilience layers](three-layers.md).
 
-**Recovery options:** Retry the item, skip it, or route it to a dead-letter queue.
+## Decisions
 
-### Node-Level Failures
-
-An entire node fails - typically because its stream is exhausted or an unrecoverable error occurs (e.g., a database connection drops mid-stream).
-
-**Example:** A source node's HTTP connection times out after the stream has started.
-
-**Recovery options:** Restart a transform from its checkpoint, continue without the node, or fail the pipeline. Node retry runs a node again only if it failed before reading any input.
-
-### Pipeline-Level Failures
-
-The pipeline itself cannot continue - either because a critical node failed with no recovery path, or because a circuit breaker tripped.
-
-**Example:** A circuit breaker opens after 5 consecutive node restart failures.
-
-**Recovery options:** Fail fast with a clear error message. Investigate and fix the root cause.
-
-## Decision Model
-
-When a failure occurs, NPipeline consults your **resilience policy** to decide what to do. The policy returns one of six decisions:
+When a failure occurs, NPipeline asks a *resilience policy* what to do. The policy returns one of six decisions, which
+the `ResilienceDecision` enum defines:
 
 | Decision | Meaning |
-|----------|---------|
-| `Fail` | Stop the pipeline immediately. Surface the exception. |
-| `Retry` | Retry the failed operation, after the layer's backoff. |
-| `Skip` | Discard the failed item and continue processing. |
-| `DeadLetter` | Route the failed item to a dead-letter sink for later inspection. |
-| `RestartNode` | Restart the failed transform from its checkpoint, the first item whose outcome wasn't delivered. |
-| `ContinueWithoutNode` | Remove the failed node and continue the pipeline without it. |
+| --- | --- |
+| `Fail` | Fail the node, and with it the pipeline. |
+| `Retry` | Retry the failed work, after the layer's backoff. |
+| `Skip` | Drop the failed item and continue. |
+| `DeadLetter` | Send the failed item to the dead-letter sink and continue. |
+| `RestartNode` | Restart the failed transform from its checkpoint, the first item whose outcome it hasn't delivered. |
+| `ContinueWithoutNode` | End the failed node's stream and continue the pipeline without it. |
 
-These decisions are defined in the `ResilienceDecision` enum (`NPipeline.Reliability` namespace).
+## Default behavior
 
-## Default Behavior
+Each node's `PipelineResilienceOptions` describe what is retried, and `DefaultResiliencePolicy` carries them out. The
+options start from the [optimization profile](../guides/optimization-profiles.md):
 
-Each node's `PipelineResilienceOptions` describe what is retried, and `DefaultResiliencePolicy` carries them out. The options start from the [optimization profile](../guides/optimization-profiles.md):
+- **Default profile:** transient item failures are retried up to three times, with exponential backoff from 200
+  milliseconds up to 30 seconds and full jitter (`ItemRetryOptions.Default`).
+- **HighThroughput profile:** nothing is retried (`PipelineResilienceOptions.None`).
 
-**Default profile:** transient item failures are retried up to 3 times, with exponential backoff from 200 ms up to 30 s and full jitter (`ItemRetryOptions.Default`).
+Transient failures include the following:
 
-Transient failures include:
-- `TimeoutException`, `IOException`, and `SocketException`
-- `HttpRequestException` (no status or status 408, 429, or 5xx)
-- `DbException` where `IsTransient` is true
-- `TaskCanceledException` (unless caused by the pipeline's own token)
+- `TimeoutException`, `IOException`, and `SocketException`.
+- `HttpRequestException` with no status code, or with status 408, 429, or 5xx.
+- `DbException` when `IsTransient` is `true`.
+- `TaskCanceledException`, unless the pipeline's own cancellation token caused it.
 
-Any other failure fails the node at once, so a programming error is not retried.
+Any other failure fails the node at once, so a programming error isn't retried. For the full rules, see
+[Retry strategies](retry-strategies.md#which-failures-are-retried).
 
-**HighThroughput profile:** nothing is retried (`PipelineResilienceOptions.None`).
+In both profiles, the following also applies:
 
-In both profiles:
-
-- An item that is not retried fails the node unless you set `OnItemFailure` to `Skip` or `DeadLetter`.
+- An item that isn't retried fails the node, unless you set `OnItemFailure` to `Skip` or `DeadLetter`.
 - Node restart (`NodeRestart`) and node retry (`NodeRetry`) are off until you configure them.
-- `OnItemFailure = DeadLetter` without a dead-letter sink stops the run before any node starts. A custom policy that returns `DeadLetter` without a sink fails the node with `DeadLetterSinkNotConfiguredException` ([NP0424](../reference/error-codes.md)). The item is never dropped silently.
-- A failure that is not retried fails the pipeline. This is intentional: silent data loss is worse than a loud failure.
+- A failure that nothing recovers fails the pipeline. This is intentional: silent data loss is worse than a loud
+  failure.
+- `OnItemFailure = DeadLetter` without a dead-letter sink stops the run before any node starts. A custom policy that
+  returns `DeadLetter` without a sink fails the node with `DeadLetterSinkNotConfiguredException`
+  ([NP0424](../reference/error-codes.md)). An item is never dropped silently.
 
-A custom policy registered with `AddResiliencePolicy()` makes the decisions instead. The node's limits are passed to it as advice (`failure.MaxRetries`, `failure.CanRetry`); the runtime does not override its answer, except that repeating the same work more than 100 times fails the node.
+A custom policy that you register with `AddResiliencePolicy()` makes the decisions instead. The node's limits reach it
+as advice, through `failure.MaxRetries` and `failure.CanRetry`. The runtime doesn't override its answer, except that
+repeating the same work more than 100 times fails the node. For more information, see
+[Resilience policies](resilience-policies.md).
 
-## Configuring Error Handling
+## Configure error handling
 
-Error handling is configured on the `PipelineBuilder` inside your pipeline definition:
+You configure error handling on the `PipelineBuilder`, in your pipeline definition:
 
 ```csharp
 public class MyPipeline : IPipelineDefinition
@@ -91,7 +91,7 @@ public class MyPipeline : IPipelineDefinition
             CircuitBreaker = new CircuitBreakerOptions { ConsecutiveFailures = 5, OpenDuration = TimeSpan.FromMinutes(1) },
         });
 
-        // 2. Add a dead-letter sink (where failed items go).
+        // 2. Add a dead-letter sink, where failed items go.
         builder.AddDeadLetterSink(new BoundedInMemoryDeadLetterSink());
 
         // 3. Optionally, add a resilience policy with your own decision logic.
@@ -102,7 +102,7 @@ public class MyPipeline : IPipelineDefinition
 }
 ```
 
-A node's options derive from the pipeline's. Override them for one node with `WithResilience(handle, ...)`:
+A node's options derive from the pipeline's. To override them for one node, pass its handle to `WithResilience`:
 
 ```csharp
 builder.WithResilience(enrich, options => options with
@@ -111,28 +111,39 @@ builder.WithResilience(enrich, options => options with
 });
 ```
 
-## How Failures Flow
+Item retry, node restart, and the circuit breaker apply only to transform nodes. Setting them on a source, sink,
+aggregate, or join node is a build error. Node retry applies to any node, but covers setup only: once a node has read
+input, it isn't executed again. Sinks and sources recover from mid-stream failures through their connector's retries.
+
+## How failures flow
+
+The following diagram shows how a failure reaches a decision, and what each decision does:
 
 ```mermaid
 flowchart TD
     A[Exception thrown] --> B{Which layer?}
     B -->|Item, in a transform| C[DecideItemFailureAsync]
-    B -->|Stream, in a node wrapped for restart| D[DecideRestartAsync]
+    B -->|Stream, in a transform with restarts| D[DecideRestartAsync]
     B -->|Node| E[DecideNodeFailureAsync]
     C --> F{Decision}
     D --> F
     E --> F
-    F -->|Retry| G[Wait for the layer's backoff → retry]
-    F -->|Skip| H[Discard item → continue]
-    F -->|DeadLetter| I[Route to sink → continue]
+    F -->|Retry| G[Wait for the layer's backoff, then retry]
+    F -->|Skip| H[Drop the item, then continue]
+    F -->|DeadLetter| I[Send to the dead-letter sink, then continue]
     F -->|RestartNode| J[Resume at the checkpoint]
-    F -->|Fail| K[Pipeline stops]
-    F -->|ContinueWithoutNode| L[Remove node → continue]
+    F -->|Fail| K[The node fails]
+    F -->|ContinueWithoutNode| L[End the node's stream, then continue]
 ```
 
-## Enabling Resilience on a Node
+An item failure that isn't resolved fails the node's stream. If the node has restarts configured, that stream failure
+goes to `DecideRestartAsync`, so the layers escalate from the item to the node.
 
-To make a transform restartable, set its `NodeRestart.MaxRestarts` above zero. The builder then wraps the node for restart; there's no separate call. The node restarts as often as the policy answers `RestartNode` (the default policy follows `MaxRestarts`), waiting `NodeRestart.Backoff` between runs:
+## Restart a transform
+
+To make a transform restartable, set its `NodeRestart.MaxRestarts` above zero. The builder then wraps the node for
+restart, and there's no separate call to make. The node restarts as often as the policy answers `RestartNode`, which
+the default policy does until `MaxRestarts` is reached. It waits for `NodeRestart.Backoff` between runs:
 
 ```csharp
 builder.WithResilience(transform, options => options with
@@ -141,21 +152,25 @@ builder.WithResilience(transform, options => options with
 });
 ```
 
-A restart resumes at the node's checkpoint, so it doesn't deliver items twice or buffer the whole input. For more information, see [Node restart and the replay window](materialization.md).
+A restart resumes at the node's checkpoint, so it doesn't deliver items twice or buffer the whole input. For more
+information, see [Node restart and the replay window](materialization.md).
 
-> **Note:** Item retry and node restart apply only to transform nodes. Node retry (`NodeRetry`) applies to any node, but covers setup only: once a node has read input, it isn't executed again. Sinks and sources recover from mid-stream failures through their connector's retries.
+## Key namespaces
 
-## Key Namespaces
+The following namespaces contain the resilience types:
 
 | Namespace | Contains |
-|-----------|----------|
-| `NPipeline.Reliability` | `PipelineResilienceOptions`, `ItemRetryOptions`, `NodeRestartOptions`, `NodeRetryOptions`, `CircuitBreakerOptions`, `BreakerOpenBehavior`, `RetryBackoff`, `RetryClassifier`, `IResiliencePolicy`, `ResiliencePolicyBase`, `ResilienceDecision` |
-| `NPipeline.ErrorHandling` | `ResiliencePolicyBuilder`, `IDeadLetterSink`, `DeadLetterEnvelope`, `CircuitBreakerOpenException` |
+| --- | --- |
+| `NPipeline.Reliability` | `PipelineResilienceOptions`, `ItemRetryOptions`, `NodeRestartOptions`, `NodeRetryOptions`, `CircuitBreakerOptions`, `BreakerOpenBehavior`, `RetryBackoff`, `RetryClassifier`, `IResiliencePolicy`, `ResiliencePolicyBase`, `DefaultResiliencePolicy`, `ResilienceDecision` |
+| `NPipeline.ErrorHandling` | `ResiliencePolicyBuilder`, `IDeadLetterSink`, `DeadLetterEnvelope`, `RetryExhaustedException`, `CircuitBreakerOpenException`, `DeadLetterSinkNotConfiguredException` |
 
-## In This Section
+## In this section
 
-- [Resilience Policies](resilience-policies.md) - implement custom decision logic with the fluent builder
-- [Retry Strategies](retry-strategies.md) - configure exponential, linear, or fixed backoff with jitter
-- [Circuit Breakers](circuit-breakers.md) - stop calling a dependency that keeps failing, and fail or pause until it recovers
-- [Dead-Letter Queues](dead-letter-queues.md) - capture and inspect failed items
-- [Node restart and the replay window](materialization.md) - how a transform resumes from its checkpoint, and what a restart guarantees
+- [The three resilience layers](three-layers.md): what each layer retries, and how connector retries compose with them.
+- [Resilience policies](resilience-policies.md): make decisions in code, or with the fluent builder.
+- [Retry strategies](retry-strategies.md): choose the backoff, the jitter, and which failures are retried.
+- [Circuit breakers](circuit-breakers.md): stop calling a dependency that keeps failing, and fail or pause until it
+  recovers.
+- [Dead-letter queues](dead-letter-queues.md): capture and inspect failed items.
+- [Node restart and the replay window](materialization.md): how a transform resumes from its checkpoint, and what a
+  restart guarantees.

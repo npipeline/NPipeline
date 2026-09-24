@@ -35,7 +35,8 @@ and a strategy that can't resume, the build fails with `NP0425`. Restarting such
 deliver its items twice, so NPipeline doesn't fall back to that.
 
 Node restart applies to transform nodes (`ITransformNode`). Stream transforms, sources, sinks, and aggregates don't
-restart. For more information about recovering those, see [Error handling](index.md).
+restart. For more information about recovering those, see
+[Why sinks and sources aren't run again](three-layers.md#why-sinks-and-sources-arent-run-again).
 
 ## The checkpoint
 
@@ -98,6 +99,7 @@ and never ends the stream as if it had completed.
 
 ## Next steps
 
+- [The three resilience layers](three-layers.md): how node restart relates to item retry and node retry.
 - [Resilience policies](resilience-policies.md): decide restarts in code with `DecideRestartAsync`.
 - [Retry strategies](retry-strategies.md): choose the backoff between restarts.
 - [Circuit breakers](circuit-breakers.md): stop calling a dependency that keeps failing.

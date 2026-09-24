@@ -40,16 +40,28 @@ Use `CanConnect()` to check compatibility before connecting.
 
 Your pipeline graph contains a cycle. NPipeline pipelines must be directed acyclic graphs (DAGs). Use `PipelineGraphExporter.ToMermaid(graph)` to visualize the graph and find the cycle.
 
+### Node restart requires a resumable execution strategy (NP0425)
+
+A transform sets `NodeRestart.MaxRestarts` above zero, but its execution strategy doesn't implement `IResumableExecutionStrategy`, so it can't resume from a checkpoint after a restart.
+
+**Fix:** Use a resumable strategy, such as `SequentialExecutionStrategy` or a parallel strategy, implement `IResumableExecutionStrategy` in your own strategy, or set `NodeRestart.MaxRestarts` to 0 for that node. For more information, see [Node restart and the replay window](../error-handling/materialization.md).
+
+### Transform-only resilience setting on a non-transform node (NP9204)
+
+`ItemRetry`, `NodeRestart`, and `CircuitBreaker` apply only to transform nodes. Setting them for a source, sink, aggregate, or join fails the build.
+
+**Fix:** Retry reads and writes in the node's connector, or use `NodeRetry` to execute the node again before it reads any input.
+
 ## Pipeline Fails at Runtime
 
 ### NodeExecutionException
 
 An unhandled exception occurred in a node's `TransformAsync`, `ConsumeAsync`, or `OpenStream` method. Check the `InnerException` for the root cause and the `NodeId` property to identify which node failed.
 
-**Fix:** Add a resilience policy and enable resilient execution to handle transient errors:
+**Fix:** Decide how the node should recover. Under the `Default` optimization profile, a transform already retries a transient item failure three times with exponential backoff. To retry every failure and then dead-letter the item, register a resilience policy and a dead-letter sink:
 
 ```csharp
-// Configure a resilience policy that retries then dead-letters
+// Retry any failure up to 3 times, then dead-letter the item
 var policy = ResiliencePolicyBuilder
     .ForNode<MyTransform, MyData>()
     .OnAny().Retry(maxRetries: 3)
@@ -57,8 +69,18 @@ var policy = ResiliencePolicyBuilder
 
 builder.AddResiliencePolicy(policy);
 builder.AddDeadLetterSink(new BoundedInMemoryDeadLetterSink());
-transform.WithResilience(builder);
 ```
+
+To restart a transform whose stream fails mid-stream, set `NodeRestart` in its options. You don't need a separate call to enable it:
+
+```csharp
+builder.WithResilience(transform, o => o with
+{
+    NodeRestart = new NodeRestartOptions { MaxRestarts = 3 },
+});
+```
+
+Item retry, node restart, and the circuit breaker apply only to transform nodes. Setting them for a source, sink, aggregate, or join fails the build (NP9204). For a source or sink, retry reads and writes in the connector instead. For more information, see [The three resilience layers](../error-handling/three-layers.md).
 
 ### CircuitBreakerOpenException
 
@@ -73,9 +95,9 @@ so that attempts wait for the breaker instead of failing. For more information, 
 
 ### RetryExhaustedException (NP0311)
 
-All retry attempts failed. The `AttemptCount` property shows how many attempts were made.
+All retry attempts failed. The `AttemptCount` property shows how many attempts were made, and the inner exception is the last failure.
 
-**Fix:** Either increase `MaxItemRetries` or route failed items to a dead letter queue for manual review.
+**Fix:** Raise the node's retry limit, for example `ItemRetry = o.ItemRetry with { MaxRetries = 5 }`, or route failed items to a dead-letter queue for manual review with `OnItemFailure = ItemFailureAction.DeadLetter` and a dead-letter sink. If a registered policy decides the node's failures, change the policy instead, because the options are only advice to it. For more information, see [Dead-Letter Queues](../error-handling/dead-letter-queues.md).
 
 ### Lineage materialization cap exceeded
 

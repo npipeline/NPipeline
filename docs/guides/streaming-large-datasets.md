@@ -113,4 +113,4 @@ services.AddNPipelineObservability(new ObservabilityExtensionOptions
 
 - [Batching and Windowing](batching-and-windowing.md) - batch items for efficient bulk operations
 - [Parallel Execution](parallel-execution.md) - bounded queues and backpressure
-- [Error Handling: Materialization](../error-handling/materialization.md) - buffering for node restart
+- [Node restart and the replay window](../error-handling/materialization.md) - how node restart bounds the items it holds for replay
