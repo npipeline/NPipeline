@@ -48,25 +48,13 @@ public sealed class ParallelExecutionMetrics
     /// </summary>
     public long MaxItemRetryAttempts => Interlocked.Read(ref _maxItemRetryAttempts);
 
-    internal long IncrementDroppedNewest()
-    {
-        return Interlocked.Increment(ref _droppedNewest);
-    }
+    internal long IncrementDroppedNewest() => Interlocked.Increment(ref _droppedNewest);
 
-    internal long IncrementDroppedOldest()
-    {
-        return Interlocked.Increment(ref _droppedOldest);
-    }
+    internal long IncrementDroppedOldest() => Interlocked.Increment(ref _droppedOldest);
 
-    internal long IncrementProcessed()
-    {
-        return Interlocked.Increment(ref _processed);
-    }
+    internal long IncrementProcessed() => Interlocked.Increment(ref _processed);
 
-    internal long IncrementEnqueued()
-    {
-        return Interlocked.Increment(ref _enqueued);
-    }
+    internal long IncrementEnqueued() => Interlocked.Increment(ref _enqueued);
 
     internal void RecordRetry(int attemptNumber)
     {

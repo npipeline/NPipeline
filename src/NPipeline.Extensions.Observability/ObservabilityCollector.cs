@@ -128,7 +128,7 @@ public sealed class ObservabilityCollector : IObservabilityCollector
             return false;
 
         return _nodeMetrics.TryGetValue(BuildMetricKey(nodeId, pipelineId), out var qualified)
-            && qualified.HasTimingBreakdown();
+               && qualified.HasTimingBreakdown();
     }
 
     /// <inheritdoc />
@@ -205,36 +205,33 @@ public sealed class ObservabilityCollector : IObservabilityCollector
         return _nodeMetrics.GetOrAdd(qualifiedKey, _ => new NodeMetricsBuilder(nodeId, pipelineId, pipelineName));
     }
 
-    private static string BuildMetricKey(string nodeId, Guid pipelineId)
-    {
-        return string.Concat(pipelineId.ToString("N"), "::", nodeId);
-    }
+    private static string BuildMetricKey(string nodeId, Guid pipelineId) => string.Concat(pipelineId.ToString("N"), "::", nodeId);
 
     private sealed class NodeMetricsBuilder(string nodeId, Guid pipelineId, string? pipelineName = null)
     {
         private readonly object _identityLock = new();
         private readonly object _performanceMetricsLock = new();
         private double? _averageItemProcessingMs;
+        private long _circuitBreakerTrips;
         private double? _durationMs;
         private DateTimeOffset? _endTime;
         private Exception? _exception;
+        private bool _hasTimingBreakdown;
         private double? _inputWaitDurationMs;
         private long _itemsEmitted;
         private long _itemsProcessed;
         private double? _outputBlockDurationMs;
         private double? _peakMemoryUsageMb;
         private double? _processorTimeMs;
+        private long _retriesExhausted;
         private int _retryCount;
         private long _retryEvents;
-        private long _retriesExhausted;
-        private long _circuitBreakerTrips;
         private DateTimeOffset? _startTime;
         private bool _success = true;
         private int? _threadId;
         private double? _throughputItemsPerSec;
         private double? _wallDurationMs;
         private double? _workDurationMs;
-        private bool _hasTimingBreakdown;
 
         public string NodeId { get; } = nodeId;
 
@@ -285,6 +282,7 @@ public sealed class ObservabilityCollector : IObservabilityCollector
                 if (_startTime.HasValue)
                 {
                     var wallDurationMs = (timestamp - _startTime.Value).TotalMilliseconds;
+
                     if (!_wallDurationMs.HasValue || wallDurationMs > _wallDurationMs.Value)
                         _wallDurationMs = wallDurationMs;
 
@@ -347,6 +345,7 @@ public sealed class ObservabilityCollector : IObservabilityCollector
                 _averageItemProcessingMs = averageItemProcessingMs;
 
                 var itemsProcessed = Interlocked.Read(ref _itemsProcessed);
+
                 if (!_durationMs.HasValue && itemsProcessed > 0 && averageItemProcessingMs > 0)
                 {
                     var derivedDurationMs = itemsProcessed * averageItemProcessingMs;
@@ -373,6 +372,7 @@ public sealed class ObservabilityCollector : IObservabilityCollector
                 if (_startTime.HasValue)
                 {
                     var wallEnd = _startTime.Value.AddMilliseconds(_wallDurationMs.Value);
+
                     if (!_endTime.HasValue || wallEnd > _endTime.Value)
                         _endTime = wallEnd;
                 }

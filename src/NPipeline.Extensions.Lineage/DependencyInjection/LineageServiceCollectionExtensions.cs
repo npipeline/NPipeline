@@ -1,6 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using NPipeline.Execution;
 using NPipeline.Pipeline;
 
 namespace NPipeline.Lineage.DependencyInjection;

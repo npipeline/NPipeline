@@ -5,7 +5,6 @@ using NPipeline.Execution;
 using NPipeline.Execution.Annotations;
 using NPipeline.Graph;
 using NPipeline.Nodes;
-using NPipeline.Observability;
 using NPipeline.Observability.Configuration;
 using NPipeline.Observability.Logging;
 using NPipeline.Observability.Tracing;
@@ -43,7 +42,8 @@ public sealed class ObservabilitySurface : IObservabilitySurface
         where TDefinition : IPipelineDefinition, new()
     {
         // Emit branch metrics as tracing tags
-        foreach (var kv in context.NodeEnvironment.NodeExecutionScopeRegistry.EnumerateRuntimeAnnotationsWithPrefix(ExecutionAnnotationKeys.BranchMetricsPrefix))
+        foreach (var kv in context.NodeEnvironment.NodeExecutionScopeRegistry.EnumerateRuntimeAnnotationsWithPrefix(ExecutionAnnotationKeys
+                     .BranchMetricsPrefix))
         {
             if (kv.Value is BranchMetrics fm)
             {
@@ -143,6 +143,7 @@ public sealed class ObservabilitySurface : IObservabilitySurface
         if (autoObservabilityScope != null)
         {
             ObservabilitySurfaceLogMessages.AutoObservabilityScopeStored(logger, nodeDef.Id);
+
             context.NodeEnvironment.NodeExecutionScopeRegistry.RegisterNodeObservabilityScope(
                 nodeDef.Id,
                 autoObservabilityScope,
@@ -214,31 +215,6 @@ public sealed class ObservabilitySurface : IObservabilitySurface
         return completed;
     }
 
-    private static void PublishNodeDataflowCompleted(
-        PipelineContext context,
-        string nodeId,
-        string nodeType,
-        DateTimeOffset startTime,
-        NodeTimingBreakdown timingBreakdown,
-        Exception? failureException)
-    {
-        var collector = context.Observability.ObservabilityFactory.ResolveObservabilityCollector();
-        var metricsAlreadyCaptured = collector?.HasTimingBreakdown(nodeId, context.RunIdentity.PipelineId) == true;
-
-        context.Observability.ExecutionObserver.OnNodeDataflowCompleted(
-            new NodeDataflowCompleted(
-                nodeId,
-                nodeType,
-                startTime,
-                DateTimeOffset.UtcNow,
-                failureException is null,
-                failureException,
-                context.RunIdentity.PipelineId,
-                context.RunIdentity.PipelineName,
-                timingBreakdown,
-                metricsAlreadyCaptured));
-    }
-
     /// <inheritdoc />
     public IPipelineActivity BeginPipeline(Type definitionType, PipelineContext context)
     {
@@ -251,7 +227,8 @@ public sealed class ObservabilitySurface : IObservabilitySurface
     /// <inheritdoc />
     public async Task CompletePipeline(Type definitionType, PipelineContext context, PipelineGraph graph, IPipelineActivity pipelineActivity)
     {
-        foreach (var kv in context.NodeEnvironment.NodeExecutionScopeRegistry.EnumerateRuntimeAnnotationsWithPrefix(ExecutionAnnotationKeys.BranchMetricsPrefix))
+        foreach (var kv in context.NodeEnvironment.NodeExecutionScopeRegistry.EnumerateRuntimeAnnotationsWithPrefix(ExecutionAnnotationKeys
+                     .BranchMetricsPrefix))
         {
             if (kv.Value is BranchMetrics fm)
             {
@@ -296,6 +273,31 @@ public sealed class ObservabilitySurface : IObservabilitySurface
         {
             ObservabilitySurfaceLogMessages.MetricsEmissionFailedAfterPipelineFailure(logger, emitEx, definitionType.Name);
         }
+    }
+
+    private static void PublishNodeDataflowCompleted(
+        PipelineContext context,
+        string nodeId,
+        string nodeType,
+        DateTimeOffset startTime,
+        NodeTimingBreakdown timingBreakdown,
+        Exception? failureException)
+    {
+        var collector = context.Observability.ObservabilityFactory.ResolveObservabilityCollector();
+        var metricsAlreadyCaptured = collector?.HasTimingBreakdown(nodeId, context.RunIdentity.PipelineId) == true;
+
+        context.Observability.ExecutionObserver.OnNodeDataflowCompleted(
+            new NodeDataflowCompleted(
+                nodeId,
+                nodeType,
+                startTime,
+                DateTimeOffset.UtcNow,
+                failureException is null,
+                failureException,
+                context.RunIdentity.PipelineId,
+                context.RunIdentity.PipelineName,
+                timingBreakdown,
+                metricsAlreadyCaptured));
     }
 
     /// <summary>

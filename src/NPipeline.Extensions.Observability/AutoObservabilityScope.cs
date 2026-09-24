@@ -18,11 +18,11 @@ public sealed class AutoObservabilityScope : IAutoObservabilityScope
     private readonly int? _threadId;
     private int _disposed;
     private Exception? _exception;
+    private int _explicitWorkTrackingUsed;
+    private long _inputWaitTicks;
     private long _itemsEmitted;
     private long _itemsProcessed;
-    private long _inputWaitTicks;
     private long _outputBlockTicks;
-    private int _explicitWorkTrackingUsed;
     private bool _success;
     private long _workTicks;
 
@@ -112,10 +112,7 @@ public sealed class AutoObservabilityScope : IAutoObservabilityScope
     }
 
     /// <inheritdoc />
-    public Exception? GetFailureException()
-    {
-        return _exception;
-    }
+    public Exception? GetFailureException() => _exception;
 
     /// <inheritdoc />
     public void AddWork(TimeSpan duration)
@@ -175,6 +172,7 @@ public sealed class AutoObservabilityScope : IAutoObservabilityScope
 
         // Keep wall duration coherent with observed buckets to avoid losing accounted time.
         var bucketSumTicks = SaturatingAddTicks(inputWaitTicks, SaturatingAddTicks(outputBlockTicks, workTicks));
+
         if (wallTicks < bucketSumTicks)
             wallTicks = bucketSumTicks;
 

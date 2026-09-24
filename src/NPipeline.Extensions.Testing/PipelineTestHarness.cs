@@ -147,13 +147,9 @@ public sealed class PipelineTestHarness<TPipeline> where TPipeline : IPipelineDe
             IResiliencePolicy resiliencePolicy;
 
             if (_captureErrors)
-            {
                 resiliencePolicy = new CapturingResiliencePolicy(Context.ExecutionConfiguration.ResiliencePolicy, _capturedErrors, _errorHandlingDecision);
-            }
             else
-            {
                 resiliencePolicy = Context.ExecutionConfiguration.ResiliencePolicy;
-            }
 
             executionContext = new PipelineContext(
                 new PipelineContextConfiguration(
@@ -196,8 +192,8 @@ public sealed class PipelineTestHarness<TPipeline> where TPipeline : IPipelineDe
         // Combine any captured errors with uncaught exceptions
         List<Exception> allErrors =
         [
-            .._capturedErrors,
-            ..uncaughtErrors,
+            .. _capturedErrors,
+            .. uncaughtErrors,
         ];
 
         return new PipelineExecutionResult(success, stopwatch.Elapsed, allErrors, executionContext);

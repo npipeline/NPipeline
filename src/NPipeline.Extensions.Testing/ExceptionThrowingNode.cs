@@ -22,8 +22,5 @@ public sealed class ExceptionThrowingNode<TIn> : TransformNode<TIn, TIn>
     }
 
     /// <inheritdoc />
-    public override ValueTask<TIn> TransformAsync(TIn item, PipelineContext context, CancellationToken cancellationToken)
-    {
-        throw _exceptionToThrow;
-    }
+    public override ValueTask<TIn> TransformAsync(TIn item, PipelineContext context, CancellationToken cancellationToken) => throw _exceptionToThrow;
 }

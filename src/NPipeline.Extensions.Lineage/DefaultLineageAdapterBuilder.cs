@@ -1,4 +1,3 @@
-using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using NPipeline.Attributes.Lineage;
@@ -7,7 +6,6 @@ using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.Execution.Lineage;
 using NPipeline.Graph.PipelineDelegates;
-using NPipeline.Lineage;
 
 namespace NPipeline.Lineage;
 
@@ -20,13 +18,12 @@ internal sealed class DefaultLineageAdapterBuilder
         ILineageMapper? cachedMapper = null;
 
         if (lineageMapperType is not null)
-        {
             cachedMapper = (ILineageMapper)Activator.CreateInstance(lineageMapperType)!;
-        }
 
         return (transformInput, nodeId, pipelineId, pipelineName, declaredCardinality, options, cancellationToken) =>
         {
             var typedInput = (IDataStream<LineagePacket<TIn>>)transformInput;
+
             // The node executor starts the node's lineage state, knowing whether its strategy reports provenance.
             var nodeLineage = LineageNodeOutcomeRegistry.GetOrBeginNode(pipelineId, nodeId);
 
@@ -128,9 +125,7 @@ internal sealed class DefaultLineageAdapterBuilder
                         var latestRecord = packet.LineageRecords[^1];
 
                         if (latestRecord.ContributorInputIndices is { Count: > 0 })
-                        {
                             ancestryInputIndices = [.. latestRecord.ContributorInputIndices];
-                        }
                     }
 
                     // The strategy looks the item's lineage up by its input index, which a node restart preserves.
@@ -196,9 +191,7 @@ internal sealed class DefaultLineageAdapterBuilder
                             foreach (var record in packet.LineageRecords)
                             {
                                 if (emittedRecords.TryAdd(record, null))
-                                {
                                     await lineageSink.RecordAsync(record, token).ConfigureAwait(false);
-                                }
                             }
                         }
 
@@ -207,6 +200,7 @@ internal sealed class DefaultLineageAdapterBuilder
                             terminalCorrelations.Add(packet.CorrelationId))
                         {
                             var finalPath = packet.TraversalPath.Add($"{pipelineId:N}::{sinkNodeId}");
+
                             var latestRecord = packet.LineageRecords.Length > 0
                                 ? packet.LineageRecords[^1]
                                 : null;
@@ -250,16 +244,12 @@ internal sealed class DefaultLineageAdapterBuilder
         LineageOptions? options)
     {
         if (mapperType is null && cardinality == TransformCardinality.OneToOne)
-        {
             return StreamingOneToOneStrategy<TIn, TOut>.Instance;
-        }
 
         var cap = options?.MaterializationCap;
 
         if (cap is not null && cap > 0)
-        {
             return CapAwareMaterializingStrategy<TIn, TOut>.Instance;
-        }
 
         return MaterializingStrategy<TIn, TOut>.Instance;
     }

@@ -1,7 +1,6 @@
 using System.Runtime.CompilerServices;
 using NPipeline.Attributes.Lineage;
 using NPipeline.Configuration;
-using NPipeline.Lineage;
 
 namespace NPipeline.Lineage;
 

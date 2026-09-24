@@ -6,12 +6,12 @@ namespace NPipeline.Extensions.Parallelism;
 /// </summary>
 public sealed class ParallelOptionsBuilder
 {
+    private bool _enableInputWaitTiming;
     private int? _maxDegreeOfParallelism;
     private int? _maxQueueLength;
     private TimeSpan? _metricsInterval;
     private int? _outputBufferCapacity;
     private bool _preserveOrdering = true;
-    private bool _enableInputWaitTiming;
     private BoundedQueuePolicy _queuePolicy = BoundedQueuePolicy.Block;
 
     /// <summary>
@@ -137,9 +137,8 @@ public sealed class ParallelOptionsBuilder
     ///     Builds the ParallelOptions with the configured settings.
     /// </summary>
     /// <returns>A new ParallelOptions instance.</returns>
-    public ParallelOptions Build()
-    {
-        return new ParallelOptions(
+    public ParallelOptions Build() =>
+        new(
             _maxDegreeOfParallelism,
             _maxQueueLength,
             _queuePolicy,
@@ -147,5 +146,4 @@ public sealed class ParallelOptionsBuilder
             _preserveOrdering,
             _metricsInterval,
             _enableInputWaitTiming);
-    }
 }

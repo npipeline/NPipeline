@@ -54,9 +54,11 @@ public sealed class ParallelExecutionStrategy : BlockingParallelStrategy
         {
             BoundedQueuePolicy.Block => await base.ExecuteAsync(input, node, context, nodeId, cancellationToken).ConfigureAwait(false),
             BoundedQueuePolicy.DropOldest =>
-                await (_dropOldest ??= new DropOldestParallelStrategy(ConfiguredMaxDop)).ExecuteAsync(input, node, context, nodeId, cancellationToken).ConfigureAwait(false),
+                await (_dropOldest ??= new DropOldestParallelStrategy(ConfiguredMaxDop)).ExecuteAsync(input, node, context, nodeId, cancellationToken)
+                    .ConfigureAwait(false),
             BoundedQueuePolicy.DropNewest =>
-                await (_dropNewest ??= new DropNewestParallelStrategy(ConfiguredMaxDop)).ExecuteAsync(input, node, context, nodeId, cancellationToken).ConfigureAwait(false),
+                await (_dropNewest ??= new DropNewestParallelStrategy(ConfiguredMaxDop)).ExecuteAsync(input, node, context, nodeId, cancellationToken)
+                    .ConfigureAwait(false),
             _ => await base.ExecuteAsync(input, node, context, nodeId, cancellationToken).ConfigureAwait(false),
         };
     }

@@ -27,7 +27,7 @@ public class PassThroughTransformNode<TIn, TOut> : TransformNode<TIn, TOut>
         if (item == null)
 
             // If TOut is a reference type or nullable, default(TOut) is acceptable
-            return ValueTask.FromResult<TOut>(default(TOut)!);
+            return ValueTask.FromResult<TOut>(default!);
 
         var inputObj = (object)item;
 

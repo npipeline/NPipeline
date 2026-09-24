@@ -2,7 +2,6 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using NPipeline.Attributes.Lineage;
 using NPipeline.Configuration;
-using NPipeline.Lineage;
 
 namespace NPipeline.Lineage;
 
@@ -93,7 +92,8 @@ internal sealed class CapAwareMaterializingStrategy<TIn, TOut> : LineageMappingS
         }
 
         // Degrade path: positional streaming, include buffered items + remainder
-        await foreach (var packet in PositionalStreamingMap(InputAll(ct), OutputAll(ct), nodeId, pipelineId, pipelineName, cardinality, options, ct).ConfigureAwait(false))
+        await foreach (var packet in PositionalStreamingMap(InputAll(ct), OutputAll(ct), nodeId, pipelineId, pipelineName, cardinality, options, ct)
+                           .ConfigureAwait(false))
         {
             yield return packet;
         }

@@ -14,10 +14,8 @@ public static class PipelineBuilderExtensions
     /// </summary>
     public static TransformNodeHandle<T, T> AddStringCleansing<T>(
         this PipelineBuilder builder,
-        string? name = null)
-    {
-        return AddConfiguredNode<StringCleansingNode<T>, T, T>(builder, name, null);
-    }
+        string? name = null) =>
+        AddConfiguredNode<StringCleansingNode<T>, T, T>(builder, name, null);
 
     /// <summary>
     ///     Adds a string cleansing node configured with the supplied delegate.
@@ -36,10 +34,8 @@ public static class PipelineBuilderExtensions
     /// </summary>
     public static TransformNodeHandle<T, T> AddNumericCleansing<T>(
         this PipelineBuilder builder,
-        string? name = null)
-    {
-        return AddConfiguredNode<NumericCleansingNode<T>, T, T>(builder, name, null);
-    }
+        string? name = null) =>
+        AddConfiguredNode<NumericCleansingNode<T>, T, T>(builder, name, null);
 
     /// <summary>
     ///     Adds a numeric cleansing node configured with the supplied delegate.
@@ -58,10 +54,8 @@ public static class PipelineBuilderExtensions
     /// </summary>
     public static TransformNodeHandle<T, T> AddCollectionCleansing<T>(
         this PipelineBuilder builder,
-        string? name = null)
-    {
-        return AddConfiguredNode<CollectionCleansingNode<T>, T, T>(builder, name, null);
-    }
+        string? name = null) =>
+        AddConfiguredNode<CollectionCleansingNode<T>, T, T>(builder, name, null);
 
     /// <summary>
     ///     Adds a collection cleansing node configured with the supplied delegate.
@@ -80,10 +74,8 @@ public static class PipelineBuilderExtensions
     /// </summary>
     public static TransformNodeHandle<T, T> AddDateTimeCleansing<T>(
         this PipelineBuilder builder,
-        string? name = null)
-    {
-        return AddConfiguredNode<DateTimeCleansingNode<T>, T, T>(builder, name, null);
-    }
+        string? name = null) =>
+        AddConfiguredNode<DateTimeCleansingNode<T>, T, T>(builder, name, null);
 
     /// <summary>
     ///     Adds a datetime cleansing node configured with the supplied delegate.
@@ -332,10 +324,8 @@ public static class PipelineBuilderExtensions
     public static TransformNodeHandle<TIn, TOut> AddTypeConversion<TIn, TOut>(
         this PipelineBuilder builder,
         string? name = null,
-        bool applyDefaultErrorHandler = true)
-    {
-        return AddTypeConversionInternal<TIn, TOut>(builder, null, name, applyDefaultErrorHandler);
-    }
+        bool applyDefaultErrorHandler = true) =>
+        AddTypeConversionInternal<TIn, TOut>(builder, null, name, applyDefaultErrorHandler);
 
     /// <summary>
     ///     Adds a type conversion node configured with the provided conversion delegate.
@@ -372,10 +362,8 @@ public static class PipelineBuilderExtensions
     /// <returns>A handle to the registered node for chaining.</returns>
     public static TransformNodeHandle<T, T> AddEnrichment<T>(
         this PipelineBuilder builder,
-        string? name = null)
-    {
-        return AddConfiguredNode<EnrichmentNode<T>, T, T>(builder, name, null);
-    }
+        string? name = null) =>
+        AddConfiguredNode<EnrichmentNode<T>, T, T>(builder, name, null);
 
     /// <summary>
     ///     Adds an enrichment node to the pipeline for setting property values from lookups, computations, or defaults.
@@ -408,10 +396,8 @@ public static class PipelineBuilderExtensions
         this PipelineBuilder builder,
         string? name = null,
         Action<TTransformationNode>? configure = null)
-        where TTransformationNode : PropertyTransformationNode<T>, new()
-    {
-        return AddConfiguredNode<TTransformationNode, T, T>(builder, name, configure);
-    }
+        where TTransformationNode : PropertyTransformationNode<T>, new() =>
+        AddConfiguredNode<TTransformationNode, T, T>(builder, name, configure);
 
     private static TransformNodeHandle<TIn, TOut> AddTypeConversionInternal<TIn, TOut>(
         PipelineBuilder builder,

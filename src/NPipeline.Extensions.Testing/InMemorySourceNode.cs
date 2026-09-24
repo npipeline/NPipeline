@@ -73,7 +73,9 @@ public sealed class InMemorySourceNode<T> : SourceNode<T>
         if (!_useContext)
             return new InMemoryDataStream<T>(_items!);
 
-        var nodeId = context.NodeEnvironment.TryGetNodeId(this, out var resolved) ? resolved : string.Empty;
+        var nodeId = context.NodeEnvironment.TryGetNodeId(this, out var resolved)
+            ? resolved
+            : string.Empty;
 
         var items = ResolveFromContext(context, nodeId)
                     ?? throw new InvalidOperationException(

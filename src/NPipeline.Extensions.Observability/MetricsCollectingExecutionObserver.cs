@@ -136,6 +136,7 @@ public sealed class MetricsCollectingExecutionObserver(IObservabilityCollector c
         if (!skipCollectorWrites)
         {
             var timingBreakdown = e.TimingBreakdown;
+
             if (timingBreakdown.WorkDuration <= TimeSpan.Zero &&
                 timingBreakdown.InputWaitDuration <= TimeSpan.Zero &&
                 timingBreakdown.OutputBlockDuration <= TimeSpan.Zero &&
@@ -159,7 +160,7 @@ public sealed class MetricsCollectingExecutionObserver(IObservabilityCollector c
                 pipelineName: e.PipelineName);
         }
 
-        RecordDerivedPerformanceMetrics(e.NodeId, e.PipelineId, e.PipelineName, forceUpdate: !skipCollectorWrites);
+        RecordDerivedPerformanceMetrics(e.NodeId, e.PipelineId, e.PipelineName, !skipCollectorWrites);
     }
 
     /// <inheritdoc />
@@ -224,10 +225,7 @@ public sealed class MetricsCollectingExecutionObserver(IObservabilityCollector c
         _disposed = true;
     }
 
-    private static string BuildNodeExecutionKey(string nodeId, Guid pipelineId)
-    {
-        return string.Concat(pipelineId.ToString("N"), "::", nodeId);
-    }
+    private static string BuildNodeExecutionKey(string nodeId, Guid pipelineId) => string.Concat(pipelineId.ToString("N"), "::", nodeId);
 
     private void RecordDerivedPerformanceMetrics(string nodeId, Guid pipelineId, string? pipelineName, bool forceUpdate = false)
     {

@@ -23,8 +23,6 @@ public sealed class MockNode<TIn, TOut> : TransformNode<TIn, TOut>
     }
 
     /// <inheritdoc />
-    public override ValueTask<TOut> TransformAsync(TIn item, PipelineContext context, CancellationToken cancellationToken)
-    {
-        return new ValueTask<TOut>(_transformLogic(item, context, cancellationToken));
-    }
+    public override ValueTask<TOut> TransformAsync(TIn item, PipelineContext context, CancellationToken cancellationToken) =>
+        new(_transformLogic(item, context, cancellationToken));
 }

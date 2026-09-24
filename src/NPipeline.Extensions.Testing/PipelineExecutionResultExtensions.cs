@@ -126,10 +126,7 @@ public static class PipelineExecutionResultExtensions
     /// <param name="result">The execution result.</param>
     /// <returns>The sink instance from the context.</returns>
     /// <exception cref="InvalidOperationException">Thrown if the sink type is not found in the context.</exception>
-    public static T GetSink<T>(this PipelineExecutionResult result) where T : class
-    {
-        return result.Context.GetSink<T>();
-    }
+    public static T GetSink<T>(this PipelineExecutionResult result) where T : class => result.Context.GetSink<T>();
 
     /// <summary>
     ///     Tries to get a value from the context's Items dictionary.

@@ -2,7 +2,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using NPipeline.Execution;
 using NPipeline.Extensions.Observability;
-using NPipeline.Observability;
 using NPipeline.Observability.Metrics;
 
 namespace NPipeline.Observability.DependencyInjection;

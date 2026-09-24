@@ -76,6 +76,7 @@ internal sealed class ProvenanceMappingStrategy<TIn, TOut> : LineageMappingStrat
                     }
 
                     yield return MintPacket(output, nodeId, pipelineId, pipelineName, options);
+
                     continue;
                 }
 
@@ -89,14 +90,16 @@ internal sealed class ProvenanceMappingStrategy<TIn, TOut> : LineageMappingStrat
                     var (outcome, retryCount) = ResolveRecordedOutcome(pipelineId, nodeId, index, LineageOutcomeReason.Emitted);
 
                     lineageRecords = MaybeAppendHop(lineageRecords, packet.CorrelationId, traversalPath, nodeId, pipelineId, pipelineName, options,
-                        isOnlyOutput ? 1 : null, packet.Data, output, outcome, retryCount);
+                        isOnlyOutput
+                            ? 1
+                            : null, packet.Data, output, outcome, retryCount);
                 }
 
                 if (isOnlyOutput)
                     Finish(index, inputs, lineage);
 
                 yield return new LineagePacket<TOut>(output, packet.CorrelationId, traversalPath)
-                { Collect = packet.Collect, LineageRecords = lineageRecords };
+                    { Collect = packet.Collect, LineageRecords = lineageRecords };
             }
 
             // Items that ended after the last output. Every report is made before the node's output completes.
@@ -160,10 +163,7 @@ internal sealed class ProvenanceMappingStrategy<TIn, TOut> : LineageMappingStrat
         private bool _ended;
         private long _read;
 
-        public ValueTask DisposeAsync()
-        {
-            return enumerator.DisposeAsync();
-        }
+        public ValueTask DisposeAsync() => enumerator.DisposeAsync();
 
         /// <summary>
         ///     Gets the packet of the item at <paramref name="index" />, or null when that item is finished already or the

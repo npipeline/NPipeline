@@ -2,7 +2,6 @@ using System.Threading.Channels;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.Execution;
-using NPipeline.Execution.Lineage;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 
@@ -29,10 +28,8 @@ public sealed class DropNewestParallelStrategy : ParallelExecutionStrategyBase
         ITransformNode<TIn, TOut> node,
         PipelineContext context,
         string nodeId,
-        CancellationToken cancellationToken)
-    {
-        return Execute(input, 0, null, node, context, nodeId, cancellationToken);
-    }
+        CancellationToken cancellationToken) =>
+        Execute(input, 0, null, node, context, nodeId, cancellationToken);
 
     /// <inheritdoc />
     /// <remarks>
@@ -145,7 +142,9 @@ public sealed class DropNewestParallelStrategy : ParallelExecutionStrategyBase
                 await foreach (var item in timedInput.WithCancellation(faultCts.Token).ConfigureAwait(false))
                 {
                     // Lineage is keyed by the item's index in the node's input, which a restart preserves.
-                    var lineageInputIndex = trackLineage ? sequence : (long?)null;
+                    var lineageInputIndex = trackLineage
+                        ? sequence
+                        : (long?)null;
 
                     var indexedItem = new IndexedWorkItem<TIn>(item, lineageInputIndex, sequence++);
 
