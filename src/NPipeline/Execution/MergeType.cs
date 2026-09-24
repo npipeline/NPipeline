@@ -23,6 +23,8 @@ public enum MergeType
     ///     Joins items from two or more streams based on a shared key.
     ///     This is a stateful operation that holds items in memory until the input streams complete.
     ///     The node using this strategy is expected to receive a tuple of the joined items.
+    ///     The input streams are read concurrently, so an unbounded live input does not starve the other side;
+    ///     the output order across the two inputs is therefore not deterministic.
     /// </summary>
     KeyedJoin,
 

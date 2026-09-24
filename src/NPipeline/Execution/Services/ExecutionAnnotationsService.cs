@@ -37,7 +37,7 @@ public sealed class ExecutionAnnotationsService : IExecutionAnnotationsService
         return null;
     }
 
-    private static int? GetMergeCapacity(PipelineGraph graph, string nodeId)
+    internal static int? GetMergeCapacity(PipelineGraph graph, string nodeId)
     {
         if (graph.ExecutionOptions.NodeExecutionAnnotations != null)
         {

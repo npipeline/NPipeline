@@ -1,6 +1,6 @@
 using System.Runtime.CompilerServices;
-using System.Threading.Channels;
 using NPipeline.DataFlow;
+using NPipeline.Execution.Services;
 using NPipeline.Nodes;
 
 namespace NPipeline.Execution.Strategies;
@@ -52,7 +52,7 @@ public static class MergeStrategies
     /// </summary>
     /// <typeparam name="T">The type of data in the streams.</typeparam>
     /// <param name="dataStreams">The data pipes to merge.</param>
-    /// <param name="capacity">Optional capacity limit for the internal channel. If null, uses unbounded channel.</param>
+    /// <param name="capacity">Optional capacity limit for the internal channel. If null, uses a default bounded capacity.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>A single merged asynchronous stream.</returns>
     public static async IAsyncEnumerable<T> InterleaveBounded<T>(
@@ -60,43 +60,17 @@ public static class MergeStrategies
         int? capacity = null,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var channel = capacity is { } c && c > 0
-            ? Channel.CreateBounded<T>(new BoundedChannelOptions(c)
-            {
-                SingleReader = true,
-                SingleWriter = false,
-                FullMode = BoundedChannelFullMode.Wait,
-            })
-            : Channel.CreateUnbounded<T>(new UnboundedChannelOptions { SingleReader = true, SingleWriter = false });
+        ArgumentNullException.ThrowIfNull(dataStreams);
 
-        var producerTasks = dataStreams
-            .Select(dataStream => Task.Run(async () =>
-            {
-                if (dataStream is not IDataStream<T> typedPipe)
-                {
-                    channel.Writer.TryComplete(
-                        new InvalidCastException($"Cannot interleave streams. Expected pipe of '{typeof(T).Name}', but found '{dataStream.GetType().Name}'."));
+        var sources = new List<IAsyncEnumerable<T>>();
+        foreach (var dataStream in dataStreams)
+        {
+            sources.Add(dataStream is IDataStream<T> typedPipe
+                ? typedPipe
+                : throw new InvalidCastException($"Cannot interleave streams. Expected pipe of '{typeof(T).Name}', but found '{dataStream.GetType().Name}'."));
+        }
 
-                    return;
-                }
-
-                await foreach (var item in typedPipe.WithCancellation(cancellationToken).ConfigureAwait(false))
-                {
-                    if (!await channel.Writer.WaitToWriteAsync(cancellationToken).ConfigureAwait(false))
-                        break;
-
-                    await channel.Writer.WriteAsync(item, cancellationToken).ConfigureAwait(false);
-                }
-            }, cancellationToken))
-            .ToList();
-
-        _ = Task.WhenAll(producerTasks).ContinueWith(
-            t => channel.Writer.TryComplete(t.Exception?.InnerException),
-            CancellationToken.None,
-            TaskContinuationOptions.ExecuteSynchronously,
-            TaskScheduler.Default);
-
-        await foreach (var item in channel.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
+        await foreach (var item in StreamInterleaver.Interleave(sources, capacity, cancellationToken).ConfigureAwait(false))
         {
             yield return item;
         }
