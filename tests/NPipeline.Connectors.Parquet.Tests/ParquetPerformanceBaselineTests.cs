@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.Pipeline;
 using NPipeline.StorageProviders;

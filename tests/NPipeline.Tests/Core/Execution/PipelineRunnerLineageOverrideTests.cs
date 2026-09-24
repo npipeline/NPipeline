@@ -4,9 +4,9 @@ using FakeItEasy;
 using NPipeline.Configuration;
 using NPipeline.Execution;
 using NPipeline.Execution.Plans;
-using NPipeline.Observability;
 using NPipeline.Graph;
 using NPipeline.Nodes;
+using NPipeline.Observability;
 using NPipeline.Pipeline;
 
 namespace NPipeline.Tests.Core.Execution;
@@ -37,6 +37,7 @@ public sealed class PipelineRunnerLineageOverrideTests
             .Returns(new NPipeline.Pipeline.Pipeline(baseGraph));
 
         PipelineGraph? observedGraph = null;
+
         _ = A.CallTo(() => nodeInstantiationService.InstantiateNodes(A<PipelineGraph>._, A<INodeFactory>._))
             .Invokes((PipelineGraph graph, INodeFactory _) => observedGraph = graph)
             .Returns(new Dictionary<string, INode>());
@@ -102,6 +103,7 @@ public sealed class PipelineRunnerLineageOverrideTests
             .Returns(new NPipeline.Pipeline.Pipeline(baseGraph));
 
         PipelineGraph? observedGraph = null;
+
         _ = A.CallTo(() => nodeInstantiationService.InstantiateNodes(A<PipelineGraph>._, A<INodeFactory>._))
             .Invokes((PipelineGraph graph, INodeFactory _) => observedGraph = graph)
             .Returns(new Dictionary<string, INode>());

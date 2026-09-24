@@ -1,12 +1,9 @@
-using NPipeline.Execution;
 using System.Reflection;
 using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NPipeline.Configuration;
 using NPipeline.ErrorHandling;
 using NPipeline.Extensions.DependencyInjection;
 using NPipeline.Extensions.Testing;
-using NPipeline.Graph;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 using NPipeline.Reliability;
@@ -87,21 +84,14 @@ public sealed class RetryOptionsTests
 
     private sealed class FlakyNodeErrorHandler : IResiliencePolicy
     {
-        public ValueTask<ResilienceDecision> DecideNodeFailureAsync(NodeFailure failure, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult(ResilienceDecision.Fail);
-        }
+        public ValueTask<ResilienceDecision> DecideNodeFailureAsync(NodeFailure failure, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(ResilienceDecision.Fail);
 
-        public ValueTask<ResilienceDecision> DecideRestartAsync(StreamFailure failure, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult(ResilienceDecision.Fail);
-        }
+        public ValueTask<ResilienceDecision> DecideRestartAsync(StreamFailure failure, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(ResilienceDecision.Fail);
 
-        public ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult(ResilienceDecision.Retry);
-        }
-
+        public ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(ResilienceDecision.Retry);
     }
 
     private sealed class SequentialRetryPipeline : IPipelineDefinition
@@ -128,24 +118,21 @@ public sealed class RetryOptionsTests
             if (_attempt < 3)
                 throw new InvalidOperationException("boom");
 
-            return ValueTask.FromResult<int>(item);
+            return ValueTask.FromResult(item);
         }
     }
 
     private sealed class NodeRestartingErrorHandler : ResiliencePolicyBase
     {
-        public override ValueTask<ResilienceDecision> DecideRestartAsync(StreamFailure failure, CancellationToken cancellationToken)
-        {
+        public override ValueTask<ResilienceDecision> DecideRestartAsync(StreamFailure failure, CancellationToken cancellationToken) =>
+
             // The node's MaxRestarts is advice; this policy follows it.
-            return ValueTask.FromResult(failure.CanRestart
+            ValueTask.FromResult(failure.CanRestart
                 ? ResilienceDecision.RestartNode
                 : ResilienceDecision.Fail);
-        }
 
-        public override ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult(ResilienceDecision.Fail);
-        }
+        public override ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(ResilienceDecision.Fail);
     }
 
     private sealed class ResilientPipeline : IPipelineDefinition
@@ -159,7 +146,8 @@ public sealed class RetryOptionsTests
             builder.AddResiliencePolicy<NodeRestartingErrorHandler>();
 
             // One restart: the transform fails twice, so the restarted run fails too and the restarts are exhausted.
-            builder.WithResilience(o => o with { NodeRestart = new NodeRestartOptions { MaxRestarts = 1, MaxReplayWindow = 128, Backoff = RetryBackoff.None } });
+            builder.WithResilience(o =>
+                o with { NodeRestart = new NodeRestartOptions { MaxRestarts = 1, MaxReplayWindow = 128, Backoff = RetryBackoff.None } });
         }
     }
 

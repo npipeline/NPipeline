@@ -21,9 +21,8 @@ public class LineageCollectorTests
         int? outputEmissionCount = 1,
         IReadOnlyList<int>? contributorInputIndices = null,
         int? retryCount = null,
-        object? data = null)
-    {
-        return new LineageRecord(
+        object? data = null) =>
+        new(
             correlationId,
             nodeId,
             s_pipelineId,
@@ -37,7 +36,6 @@ public class LineageCollectorTests
             OutputEmissionCount: outputEmissionCount,
             Cardinality: cardinality,
             Data: data);
-    }
 
     [Fact]
     public void CreateLineagePacket_WithValidItemAndSourceNodeId_ShouldCreatePacketWithUniqueGuid()
@@ -108,12 +106,14 @@ public class LineageCollectorTests
 
         collector.Record(BuildRecord(packet.CorrelationId, "node1", ["source1", QualifiedPathNode("node1")]));
         collector.Record(BuildRecord(packet.CorrelationId, "node2", ["source1", QualifiedPathNode("node1"), QualifiedPathNode("node2")]));
+
         collector.Record(BuildRecord(packet.CorrelationId, "node3",
             ["source1", QualifiedPathNode("node1"), QualifiedPathNode("node2"), QualifiedPathNode("node3")]));
 
         var history = collector.GetCorrelationHistory(packet.CorrelationId);
 
         history.Should().HaveCount(3);
+
         history[^1].TraversalPath.Should().ContainInOrder(
             "source1",
             QualifiedPathNode("node1"),
@@ -175,7 +175,10 @@ public class LineageCollectorTests
 
         history.Should().HaveCount(1);
         history[0].OutcomeReason.Should().Be(outcomeReason);
-        collector.GetTerminalReason(packet.CorrelationId).Should().Be(terminal ? outcomeReason : null);
+
+        collector.GetTerminalReason(packet.CorrelationId).Should().Be(terminal
+            ? outcomeReason
+            : null);
     }
 
     [Fact]
@@ -330,6 +333,7 @@ public class LineageCollectorTests
                 for (var i = 0; i < itemCount; i++)
                 {
                     var packet = collector.CreateLineagePacket($"item-{threadId}-{i}", $"source-{threadId}");
+
                     collector.Record(BuildRecord(
                         packet.CorrelationId,
                         $"node-{threadId}",
@@ -389,8 +393,7 @@ public class LineageCollectorTests
         var collector = new LineageCollector();
         var packet = collector.CreateLineagePacket("test", "source1");
 
-        collector.Record(BuildRecord(packet.CorrelationId, "node1", ["source1", QualifiedPathNode("node1")],
-            LineageOutcomeReason.Emitted, false, ObservedCardinality.One, 1, 1, data: "test"));
+        collector.Record(BuildRecord(packet.CorrelationId, "node1", ["source1", QualifiedPathNode("node1")], data: "test"));
 
         collector.Record(BuildRecord(packet.CorrelationId, "node2",
             ["source1", QualifiedPathNode("node1"), QualifiedPathNode("node2")],
@@ -419,10 +422,10 @@ public class LineageCollectorTests
         var packet = collector.CreateLineagePacket("test", "source1");
 
         collector.Record(BuildRecord(packet.CorrelationId, "node1", ["source1", QualifiedPathNode("node1")],
-            LineageOutcomeReason.FilteredOut, isTerminal: true));
+            LineageOutcomeReason.FilteredOut, true));
 
         collector.Record(BuildRecord(packet.CorrelationId, "node2", ["source1", QualifiedPathNode("node1"), QualifiedPathNode("node2")],
-            LineageOutcomeReason.DeadLettered, isTerminal: true));
+            LineageOutcomeReason.DeadLettered, true));
 
         collector.GetTerminalReason(packet.CorrelationId).Should().Be(LineageOutcomeReason.DeadLettered);
     }
@@ -434,11 +437,10 @@ public class LineageCollectorTests
         var unresolved = collector.CreateLineagePacket("unresolved", "source1");
         var resolved = collector.CreateLineagePacket("resolved", "source1");
 
-        collector.Record(BuildRecord(unresolved.CorrelationId, "node1", ["source1", QualifiedPathNode("node1")],
-            LineageOutcomeReason.Emitted, isTerminal: false));
+        collector.Record(BuildRecord(unresolved.CorrelationId, "node1", ["source1", QualifiedPathNode("node1")]));
 
         collector.Record(BuildRecord(resolved.CorrelationId, "node1", ["source1", QualifiedPathNode("node1")],
-            LineageOutcomeReason.DeadLettered, isTerminal: true));
+            LineageOutcomeReason.DeadLettered, true));
 
         var unresolvedCorrelations = collector.GetUnresolvedCorrelations();
 

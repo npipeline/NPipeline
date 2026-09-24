@@ -61,10 +61,8 @@ internal sealed class StreamingSource<T>(Func<CancellationToken, IAsyncEnumerabl
         return new StreamingSource<T>(ct => YieldThenWait(items, ct));
     }
 
-    public override IDataStream<T> OpenStream(PipelineContext context, CancellationToken cancellationToken)
-    {
-        return new DataStream<T>(produce(cancellationToken), "streaming-source");
-    }
+    public override IDataStream<T> OpenStream(PipelineContext context, CancellationToken cancellationToken) =>
+        new DataStream<T>(produce(cancellationToken), "streaming-source");
 
     private static async IAsyncEnumerable<T> Yield(IEnumerable<T> items, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -158,8 +156,8 @@ internal sealed class RecordingObserver : IExecutionObserver
 /// </summary>
 internal sealed class CollectingSink<T> : SinkNode<T>
 {
-    private readonly ConcurrentQueue<T> _items = new();
     private readonly TaskCompletionSource _firstItem = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly ConcurrentQueue<T> _items = new();
 
     public IReadOnlyList<T> Items => [.. _items];
 
@@ -200,10 +198,7 @@ internal sealed class FlakyTransform(int failuresPerItem) : TransformNode<int, i
     /// </summary>
     public int TotalAttempts => _attempts.Values.Sum();
 
-    public int AttemptsFor(int item)
-    {
-        return _attempts.GetValueOrDefault(item);
-    }
+    public int AttemptsFor(int item) => _attempts.GetValueOrDefault(item);
 
     public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
     {
@@ -221,10 +216,8 @@ internal sealed class FlakyTransform(int failuresPerItem) : TransformNode<int, i
 /// </summary>
 internal sealed class FixedDecisionPolicy(ResilienceDecision itemDecision) : ResiliencePolicyBase
 {
-    public override ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken)
-    {
-        return ValueTask.FromResult(itemDecision);
-    }
+    public override ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken) =>
+        ValueTask.FromResult(itemDecision);
 }
 
 /// <summary>

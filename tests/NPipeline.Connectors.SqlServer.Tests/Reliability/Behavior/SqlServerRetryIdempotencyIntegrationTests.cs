@@ -39,7 +39,9 @@ public sealed class SqlServerRetryIdempotencyIntegrationTests(SqlServerTestConta
             Backoff = Backoff.Default with { TransientBase = TimeSpan.FromMilliseconds(1) },
 
             // 2601 (duplicate key in a unique index) stands in for a transient failure here.
-            Classifier = SqlServerConnectorResilience.Classifier.On<SqlException>(e => e.Number == 2601 ? Verdict.Transient : Verdict.Permanent),
+            Classifier = SqlServerConnectorResilience.Classifier.On<SqlException>(e => e.Number == 2601
+                ? Verdict.Transient
+                : Verdict.Permanent),
         }).WithListener(e =>
         {
             if (e.Kind != CallEventKind.Retrying)

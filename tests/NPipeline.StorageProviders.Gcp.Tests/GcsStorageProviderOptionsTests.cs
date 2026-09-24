@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using Google.Apis.Auth.OAuth2;
 using NPipeline.StorageProviders.Gcp.Reliability;
+using NResilience;
 
 namespace NPipeline.StorageProviders.Gcp.Tests;
 
@@ -113,10 +114,10 @@ public class GcsStorageProviderOptionsTests
         var options = new GcsStorageProviderOptions();
 
         // Act
-        options.Resilience = NResilience.Resilience.None;
+        options.Resilience = Resilience.None;
 
         // Assert
-        options.Resilience.Should().BeSameAs(NResilience.Resilience.None);
+        options.Resilience.Should().BeSameAs(Resilience.None);
     }
 
     [Fact]
@@ -137,7 +138,7 @@ public class GcsStorageProviderOptionsTests
 #pragma warning restore NRES003
         };
 
-        _ = Assert.Throws<NResilience.ResilienceConfigurationException>(options.Validate);
+        _ = Assert.Throws<ResilienceConfigurationException>(options.Validate);
     }
 
     [Fact]

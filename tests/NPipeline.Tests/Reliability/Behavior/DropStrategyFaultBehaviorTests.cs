@@ -20,7 +20,7 @@ public sealed class DropStrategyFaultBehaviorTests
     [MemberData(nameof(DropPolicies))]
     public async Task AFailedWorker_FailsTheRun_EvenWhenTheInputNeverEnds(BoundedQueuePolicy policy)
     {
-        var act = () => BehaviorPipeline.RunAsync(b => Wire(b, StreamingSource<int>.Unbounded([1, 2, 3]), new FlakyTransform(failuresPerItem: 100), policy));
+        var act = () => BehaviorPipeline.RunAsync(b => Wire(b, StreamingSource<int>.Unbounded([1, 2, 3]), new FlakyTransform(100), policy));
 
         var thrown = await act.Should().ThrowAsync<Exception>().WaitAsync(TimeSpan.FromSeconds(10));
         Flatten(thrown.Which).Should().Contain(e => e is TimeoutException);
@@ -33,7 +33,7 @@ public sealed class DropStrategyFaultBehaviorTests
         var sink = new CollectingSink<int>();
         var source = new StreamingSource<int>(ct => FailAfter([1, 2, 3], new IOException("the source's connection dropped"), ct));
 
-        var act = () => BehaviorPipeline.RunAsync(b => Wire(b, source, new FlakyTransform(failuresPerItem: 0), policy, sink));
+        var act = () => BehaviorPipeline.RunAsync(b => Wire(b, source, new FlakyTransform(0), policy, sink));
 
         var thrown = await act.Should().ThrowAsync<Exception>();
         Flatten(thrown.Which).Should().Contain(e => e is IOException && e.Message == "the source's connection dropped");
@@ -54,7 +54,7 @@ public sealed class DropStrategyFaultBehaviorTests
             .WithResilience(o => o with { ItemRetry = ItemRetryOptions.None })
             .WithExecutionStrategy(t, new ParallelExecutionStrategy(2));
 
-        _ = builder.WithParallelOptions(t, new ParallelOptions(2, MaxQueueLength: 1_000, QueuePolicy: policy));
+        _ = builder.WithParallelOptions(t, new ParallelOptions(2, 1_000, policy));
     }
 
     private static IEnumerable<Exception> Flatten(Exception exception)

@@ -6,7 +6,6 @@ using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.Execution;
 using NPipeline.Extensions.Testing;
-using NPipeline.Graph;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 using NPipeline.Reliability;
@@ -88,7 +87,7 @@ public class ParallelMetricsTests
         public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             return AttemptCounts.AddOrUpdate(item, 1, (_, i) => i + 1) >= 3
-                ? ValueTask.FromResult<int>(item * 2)
+                ? ValueTask.FromResult(item * 2)
                 : throw new InvalidOperationException("forced failure");
         }
     }

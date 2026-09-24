@@ -8,10 +8,8 @@ namespace NPipeline.Tests.Common;
 /// </summary>
 public sealed class RetryHandler : ResiliencePolicyBase
 {
-    public override ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken)
-    {
-        return ValueTask.FromResult(failure.Attempt <= failure.MaxRetries
+    public override ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken) =>
+        ValueTask.FromResult(failure.Attempt <= failure.MaxRetries
             ? ResilienceDecision.Retry
             : ResilienceDecision.Fail);
-    }
 }

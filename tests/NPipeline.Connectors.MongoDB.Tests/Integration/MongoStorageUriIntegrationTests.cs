@@ -12,15 +12,9 @@ namespace NPipeline.Connectors.MongoDB.Tests.Integration;
 [Collection(MongoTestCollection.Name)]
 public class MongoStorageUriIntegrationTests(MongoTestContainerFixture fixture)
 {
-    private static string UniqueCollection()
-    {
-        return $"col_{Guid.NewGuid():N}";
-    }
+    private static string UniqueCollection() => $"col_{Guid.NewGuid():N}";
 
-    private static PipelineContext DefaultContext()
-    {
-        return new PipelineContext();
-    }
+    private static PipelineContext DefaultContext() => new();
 
     // ── MongoDatabaseStorageProvider ──────────────────────────────────────────
 

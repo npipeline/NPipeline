@@ -13,8 +13,8 @@ namespace NPipeline.Connectors.DataLake.Tests.Reliability.Behavior;
 /// </summary>
 public sealed class ManifestConcurrencyRecoveryTests : IDisposable
 {
-    private readonly string _tempDir;
     private readonly StorageUri _tableUri;
+    private readonly string _tempDir;
 
     public ManifestConcurrencyRecoveryTests()
     {
@@ -22,6 +22,8 @@ public sealed class ManifestConcurrencyRecoveryTests : IDisposable
         _ = Directory.CreateDirectory(_tempDir);
         _tableUri = StorageUri.FromFilePath(_tempDir);
     }
+
+    private string MainManifestFile => Path.Combine(_tempDir, "_manifest", "manifest.ndjson");
 
     public void Dispose()
     {
@@ -97,8 +99,6 @@ public sealed class ManifestConcurrencyRecoveryTests : IDisposable
         SnapshotId = snapshotId,
     };
 
-    private string MainManifestFile => Path.Combine(_tempDir, "_manifest", "manifest.ndjson");
-
     private IReadOnlyList<string> ReadMainManifestPaths()
     {
         var content = File.ReadAllText(MainManifestFile);
@@ -120,27 +120,14 @@ public sealed class ManifestConcurrencyRecoveryTests : IDisposable
 
         protected FileSystemStorageProvider Inner { get; } = new();
 
-        public static StaleReadProvider Create(bool moveable, string mainManifestFile)
-        {
-            var provider = moveable ? new Moveable() : new StaleReadProvider();
-            provider._mainManifestFile = mainManifestFile;
-            return provider;
-        }
-
-        public void FreezeMainManifestReads() => _frozen = File.ReadAllBytes(_mainManifestFile);
-
-        public void UnfreezeMainManifestReads() => _frozen = null;
-
         public StorageScheme Scheme => Inner.Scheme;
 
         public bool CanHandle(StorageUri uri) => Inner.CanHandle(uri);
 
-        public Task<Stream> OpenReadAsync(StorageUri uri, CancellationToken cancellationToken = default)
-        {
-            return IsMainManifest(uri) && _frozen is { } frozen
+        public Task<Stream> OpenReadAsync(StorageUri uri, CancellationToken cancellationToken = default) =>
+            IsMainManifest(uri) && _frozen is { } frozen
                 ? Task.FromResult<Stream>(new MemoryStream(frozen, false))
                 : Inner.OpenReadAsync(uri, cancellationToken);
-        }
 
         public Task<Stream> OpenWriteAsync(StorageUri uri, CancellationToken cancellationToken = default) =>
             Inner.OpenWriteAsync(uri, cancellationToken);
@@ -156,6 +143,20 @@ public sealed class ManifestConcurrencyRecoveryTests : IDisposable
 
         public Task<StorageMetadata?> GetMetadataAsync(StorageUri uri, CancellationToken cancellationToken = default) =>
             Inner.GetMetadataAsync(uri, cancellationToken);
+
+        public static StaleReadProvider Create(bool moveable, string mainManifestFile)
+        {
+            var provider = moveable
+                ? new Moveable()
+                : new StaleReadProvider();
+
+            provider._mainManifestFile = mainManifestFile;
+            return provider;
+        }
+
+        public void FreezeMainManifestReads() => _frozen = File.ReadAllBytes(_mainManifestFile);
+
+        public void UnfreezeMainManifestReads() => _frozen = null;
 
         private static bool IsMainManifest(StorageUri uri) =>
             uri.Path?.EndsWith("/_manifest/manifest.ndjson", StringComparison.Ordinal) == true;

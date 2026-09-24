@@ -27,14 +27,12 @@ public static class TestCachingHelpers
     /// <returns>A PipelineRunner with caching disabled.</returns>
     public static IPipelineRunner CreateRunnerWithoutCaching(
         IPipelineFactory? pipelineFactory = null,
-        INodeFactory? nodeFactory = null)
-    {
-        return new PipelineRunnerBuilder()
+        INodeFactory? nodeFactory = null) =>
+        new PipelineRunnerBuilder()
             .WithPipelineFactory(pipelineFactory ?? new PipelineFactory())
             .WithNodeFactory(nodeFactory ?? new DefaultNodeFactory())
             .WithoutExecutionPlanCache()
             .Build();
-    }
 
     /// <summary>
     ///     Creates a PipelineRunner with a specific execution plan cache implementation.
@@ -50,14 +48,12 @@ public static class TestCachingHelpers
     public static IPipelineRunner CreateRunnerWithCache(
         IPipelineExecutionPlanCache cache,
         IPipelineFactory? pipelineFactory = null,
-        INodeFactory? nodeFactory = null)
-    {
-        return new PipelineRunnerBuilder()
+        INodeFactory? nodeFactory = null) =>
+        new PipelineRunnerBuilder()
             .WithPipelineFactory(pipelineFactory ?? new PipelineFactory())
             .WithNodeFactory(nodeFactory ?? new DefaultNodeFactory())
             .WithExecutionPlanCache(cache)
             .Build();
-    }
 
     /// <summary>
     ///     Creates a PipelineRunner with default settings (caching enabled).
@@ -71,11 +67,9 @@ public static class TestCachingHelpers
     /// <returns>A PipelineRunner with caching enabled (default behavior).</returns>
     public static IPipelineRunner CreateRunnerWithCaching(
         IPipelineFactory? pipelineFactory = null,
-        INodeFactory? nodeFactory = null)
-    {
-        return new PipelineRunnerBuilder()
+        INodeFactory? nodeFactory = null) =>
+        new PipelineRunnerBuilder()
             .WithPipelineFactory(pipelineFactory ?? new PipelineFactory())
             .WithNodeFactory(nodeFactory ?? new DefaultNodeFactory())
             .Build();
-    }
 }

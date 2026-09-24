@@ -1,5 +1,4 @@
 using NPipeline.Connectors.Parquet.Attributes;
-using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.Pipeline;
 using NPipeline.StorageProviders;
@@ -484,15 +483,9 @@ public sealed class ParquetIntegrationTests
 
     #region Helper Methods
 
-    private static List<TestRecord> CreateTestRecords(int count)
-    {
-        return CreateTestRecords(0, count);
-    }
+    private static List<TestRecord> CreateTestRecords(int count) => CreateTestRecords(0, count);
 
-    private static List<TestRecord> CreateTestRecords(int startId, int count)
-    {
-        return GenerateRecords(startId, count).ToList();
-    }
+    private static List<TestRecord> CreateTestRecords(int startId, int count) => GenerateRecords(startId, count).ToList();
 
     private static IEnumerable<TestRecord> GenerateRecords(int startId, int count)
     {

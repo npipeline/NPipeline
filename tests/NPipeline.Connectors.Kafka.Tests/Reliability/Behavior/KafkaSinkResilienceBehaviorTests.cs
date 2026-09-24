@@ -266,6 +266,7 @@ public sealed class KafkaSinkResilienceBehaviorTests(KafkaTestContainerFixture f
         // A cluster that never answers: InitTransactions blocks until the test releases it. The pipeline is cancelled
         // once the sink is waiting on it, after the metadata lookup.
         using var cts = new CancellationTokenSource();
+
         A.CallTo(() => producer.InitTransactions(A<TimeSpan>._)).Invokes(() =>
         {
             cts.CancelAfter(TimeSpan.FromMilliseconds(100));
@@ -312,11 +313,10 @@ public sealed class KafkaSinkResilienceBehaviorTests(KafkaTestContainerFixture f
         A.CallTo(() => producer.BeginTransaction()).MustNotHaveHappened();
     }
 
-    private static KafkaConfiguration UnreachableConfiguration()
-    {
+    private static KafkaConfiguration UnreachableConfiguration() =>
+
         // Nothing listens on port 1.
-        return new KafkaConfiguration { BootstrapServers = "127.0.0.1:1", SinkTopic = "orders", BatchSize = 1 };
-    }
+        new() { BootstrapServers = "127.0.0.1:1", SinkTopic = "orders", BatchSize = 1 };
 
     private static IAcknowledgableMessage AcknowledgableMessage(string body)
     {
@@ -364,21 +364,16 @@ public sealed class KafkaSinkResilienceBehaviorTests(KafkaTestContainerFixture f
         return Fake.GetCalls(producer).Count(call => call.Method.Name == nameof(IProducer<string, string>.ProduceAsync));
     }
 
-    private KafkaConfiguration CreateConfiguration(int batchSize)
-    {
-        return new KafkaConfiguration
+    private KafkaConfiguration CreateConfiguration(int batchSize) =>
+        new()
         {
             BootstrapServers = fixture.BootstrapServers,
             SinkTopic = $"resilience-{Guid.NewGuid():N}",
             BatchSize = batchSize,
             BatchLingerMs = 0,
         };
-    }
 
-    private static Task RunAsync(KafkaSinkNode<string> sink, params string[] items)
-    {
-        return RunAsync(sink, CancellationToken.None, items);
-    }
+    private static Task RunAsync(KafkaSinkNode<string> sink, params string[] items) => RunAsync(sink, CancellationToken.None, items);
 
     private static async Task RunAsync(KafkaSinkNode<string> sink, CancellationToken cancellationToken, params string[] items)
     {

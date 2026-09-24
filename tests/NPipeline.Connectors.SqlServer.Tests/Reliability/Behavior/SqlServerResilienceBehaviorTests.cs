@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using FakeItEasy;
+using Microsoft.Data.SqlClient;
 using NPipeline.Connectors.SqlServer.Configuration;
 using NPipeline.Connectors.SqlServer.Reliability;
 using NPipeline.Connectors.SqlServer.Writers;
@@ -15,7 +16,7 @@ namespace NPipeline.Connectors.SqlServer.Tests.Reliability.Behavior;
 public sealed class SqlServerResilienceBehaviorTests
 {
     // The shipped preset with near-zero backoff, so the tests barely wait between attempts.
-    private static readonly NResilience.Resilience Fast = SqlServerConnectorResilience.Default with
+    private static readonly Resilience Fast = SqlServerConnectorResilience.Default with
     {
         Backoff = SqlServerConnectorResilience.Default.Backoff with
         {
@@ -103,7 +104,10 @@ public sealed class SqlServerResilienceBehaviorTests
     [Fact]
     public async Task PerRow_RecoversWhenARetrySucceeds_WritingTheRowOnce()
     {
-        var connection = new ScriptedConnection((index, _) => index == 0 ? SqlExceptions.WithNumber(1205) : null);
+        var connection = new ScriptedConnection((index, _) => index == 0
+            ? SqlExceptions.WithNumber(1205)
+            : null);
+
         var writer = PerRowWriter(connection);
 
         await writer.WriteAsync(new Row { Id = 7 });
@@ -120,7 +124,7 @@ public sealed class SqlServerResilienceBehaviorTests
 
         var act = () => writer.WriteAsync(new Row { Id = 1 });
 
-        _ = await act.Should().ThrowAsync<Microsoft.Data.SqlClient.SqlException>();
+        _ = await act.Should().ThrowAsync<SqlException>();
         connection.Executed.Should().ContainSingle();
     }
 
@@ -150,8 +154,11 @@ public sealed class SqlServerResilienceBehaviorTests
     public async Task Batch_RetriesOnlyTheChunkThatFailed()
     {
         // Three chunks of two rows. The third fails once: the first two are already committed and must not be sent again.
-        var connection = new ScriptedConnection((index, _) => index == 2 ? new TimeoutException("injected") : null);
-        var writer = BatchWriter(connection, batchSize: 2);
+        var connection = new ScriptedConnection((index, _) => index == 2
+            ? new TimeoutException("injected")
+            : null);
+
+        var writer = BatchWriter(connection, 2);
 
         await writer.WriteBatchAsync(Rows(6));
 
@@ -163,10 +170,10 @@ public sealed class SqlServerResilienceBehaviorTests
     public async Task Batch_DoesNotResendAFailedChunkWhenDisposed()
     {
         var connection = new ScriptedConnection((_, _) => SqlExceptions.WithNumber(2627));
-        var writer = BatchWriter(connection, batchSize: 10);
+        var writer = BatchWriter(connection, 10);
 
         var act = () => writer.WriteBatchAsync(Rows(3));
-        _ = await act.Should().ThrowAsync<Microsoft.Data.SqlClient.SqlException>();
+        _ = await act.Should().ThrowAsync<SqlException>();
 
         await writer.DisposeAsync();
 
@@ -184,10 +191,10 @@ public sealed class SqlServerResilienceBehaviorTests
         };
 
         var perRow = () => PerRowWriter(connection).WriteAsync(new Row { Id = 1 });
-        _ = await perRow.Should().ThrowAsync<Microsoft.Data.SqlClient.SqlException>();
+        _ = await perRow.Should().ThrowAsync<SqlException>();
 
-        var batch = () => BatchWriter(connection, batchSize: 10).WriteBatchAsync(Rows(2));
-        _ = await batch.Should().ThrowAsync<Microsoft.Data.SqlClient.SqlException>();
+        var batch = () => BatchWriter(connection, 10).WriteBatchAsync(Rows(2));
+        _ = await batch.Should().ThrowAsync<SqlException>();
 
         connection.Executed.Should().HaveCount(2);
     }
@@ -223,17 +230,13 @@ public sealed class SqlServerResilienceBehaviorTests
         connection.Executed.Should().ContainSingle();
     }
 
-    private static SqlServerPerRowWriter<Row> PerRowWriter(IDatabaseConnection connection, NResilience.Resilience? resilience = null)
-    {
-        return new SqlServerPerRowWriter<Row>(connection, "dbo", "rows", null,
+    private static SqlServerPerRowWriter<Row> PerRowWriter(IDatabaseConnection connection, Resilience? resilience = null) =>
+        new(connection, "dbo", "rows", null,
             new SqlServerConfiguration { Resilience = resilience ?? Fast });
-    }
 
-    private static SqlServerBatchWriter<Row> BatchWriter(IDatabaseConnection connection, int batchSize)
-    {
-        return new SqlServerBatchWriter<Row>(connection, "dbo", "rows", null,
+    private static SqlServerBatchWriter<Row> BatchWriter(IDatabaseConnection connection, int batchSize) =>
+        new(connection, "dbo", "rows", null,
             new SqlServerConfiguration { Resilience = Fast, BatchSize = batchSize });
-    }
 
     private static IEnumerable<Row> Rows(int count)
     {

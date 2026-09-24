@@ -1,9 +1,7 @@
-using NPipeline.Execution;
 using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NPipeline.Extensions.DependencyInjection;
 using NPipeline.Extensions.Testing;
-using NPipeline.Graph;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 using NPipeline.Reliability;
@@ -51,21 +49,14 @@ public sealed class ErrorHandlingTests(ITestOutputHelper output)
 
     public sealed class TestResiliencePolicy : IResiliencePolicy
     {
-        public ValueTask<ResilienceDecision> DecideNodeFailureAsync(NodeFailure failure, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult(ResilienceDecision.Fail);
-        }
+        public ValueTask<ResilienceDecision> DecideNodeFailureAsync(NodeFailure failure, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(ResilienceDecision.Fail);
 
-        public ValueTask<ResilienceDecision> DecideRestartAsync(StreamFailure failure, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult(ResilienceDecision.Fail);
-        }
+        public ValueTask<ResilienceDecision> DecideRestartAsync(StreamFailure failure, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(ResilienceDecision.Fail);
 
-        public ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult(ResilienceDecision.Skip);
-        }
-
+        public ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(ResilienceDecision.Skip);
     }
 
     public sealed class FailingPipelineDefinition : IPipelineDefinition

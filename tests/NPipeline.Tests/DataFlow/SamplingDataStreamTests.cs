@@ -14,7 +14,7 @@ public sealed class SamplingDataStreamTests
         var recorder = new TestSampleRecorder();
         var packet = new LineagePacket<int>(42, Guid.NewGuid(), ImmutableArray<string>.Empty);
         await using var input = new NPipeline.DataFlow.DataStreams.InMemoryDataStream<LineagePacket<int>>([packet], "input");
-        await using var sampled = new SamplingDataStream<LineagePacket<int>>(input, "node-a", "output", recorder, sampleRate: 1);
+        await using var sampled = new SamplingDataStream<LineagePacket<int>>(input, "node-a", "output", recorder, 1);
 
         await DrainAsync(sampled);
 
@@ -30,9 +30,9 @@ public sealed class SamplingDataStreamTests
     public async Task Enumerate_WithLineageRecord_MapsOutcomeFromLatestRecord(LineageOutcomeReason reason, SampleOutcome expectedOutcome)
     {
         var recorder = new TestSampleRecorder();
-        var packet = BuildPacket("node-a", reason, retryCount: 1, contributorInputIndices: [3, 5]);
+        var packet = BuildPacket("node-a", reason, 1, [3, 5]);
         await using var input = new NPipeline.DataFlow.DataStreams.InMemoryDataStream<LineagePacket<int>>([packet], "input");
-        await using var sampled = new SamplingDataStream<LineagePacket<int>>(input, "node-a", "output", recorder, sampleRate: 1);
+        await using var sampled = new SamplingDataStream<LineagePacket<int>>(input, "node-a", "output", recorder, 1);
 
         await DrainAsync(sampled);
 
@@ -48,7 +48,7 @@ public sealed class SamplingDataStreamTests
         var recorder = new TestSampleRecorder();
         var packet = BuildPacket("node-a", LineageOutcomeReason.DeadLettered);
         await using var input = new NPipeline.DataFlow.DataStreams.InMemoryDataStream<LineagePacket<int>>([packet], "input");
-        await using var sampled = new SamplingDataStream<LineagePacket<int>>(input, "node-a", "output", recorder, sampleRate: 1);
+        await using var sampled = new SamplingDataStream<LineagePacket<int>>(input, "node-a", "output", recorder, 1);
 
         await DrainAsync(sampled);
 
@@ -61,10 +61,11 @@ public sealed class SamplingDataStreamTests
     {
         var recorder = new TestSampleRecorder();
         var correlationId = Guid.NewGuid();
+
         var records = ImmutableArray.Create(
-            BuildRecord(correlationId, "upstream", LineageOutcomeReason.Emitted, retryCount: null),
-            BuildRecord(correlationId, "node-a", LineageOutcomeReason.Emitted, retryCount: 1),
-            BuildRecord(correlationId, "node-a", LineageOutcomeReason.Emitted, retryCount: 2));
+            BuildRecord(correlationId, "upstream", LineageOutcomeReason.Emitted, null),
+            BuildRecord(correlationId, "node-a", LineageOutcomeReason.Emitted, 1),
+            BuildRecord(correlationId, "node-a", LineageOutcomeReason.Emitted, 2));
 
         var packet = new LineagePacket<int>(42, correlationId, ImmutableArray<string>.Empty)
         {
@@ -72,7 +73,7 @@ public sealed class SamplingDataStreamTests
         };
 
         await using var input = new NPipeline.DataFlow.DataStreams.InMemoryDataStream<LineagePacket<int>>([packet], "input");
-        await using var sampled = new SamplingDataStream<LineagePacket<int>>(input, "node-a", "output", recorder, sampleRate: 1);
+        await using var sampled = new SamplingDataStream<LineagePacket<int>>(input, "node-a", "output", recorder, 1);
 
         await DrainAsync(sampled);
 
@@ -86,13 +87,14 @@ public sealed class SamplingDataStreamTests
     {
         var recorder = new TestSampleRecorder();
         var correlationId = Guid.NewGuid();
+
         var packet = new LineagePacket<int>(42, correlationId, ImmutableArray<string>.Empty)
         {
-            LineageRecords = ImmutableArray.Create(BuildRecord(correlationId, "node-a", LineageOutcomeReason.Emitted, retryCount: 4)),
+            LineageRecords = ImmutableArray.Create(BuildRecord(correlationId, "node-a", LineageOutcomeReason.Emitted, 4)),
         };
 
         await using var input = new NPipeline.DataFlow.DataStreams.InMemoryDataStream<LineagePacket<int>>([packet], "input");
-        await using var sampled = new SamplingDataStream<LineagePacket<int>>(input, "node-a", "output", recorder, sampleRate: 1);
+        await using var sampled = new SamplingDataStream<LineagePacket<int>>(input, "node-a", "output", recorder, 1);
 
         await DrainAsync(sampled);
 
@@ -104,6 +106,7 @@ public sealed class SamplingDataStreamTests
         int[]? contributorInputIndices = null)
     {
         var correlationId = Guid.NewGuid();
+
         return new LineagePacket<int>(42, correlationId, ImmutableArray<string>.Empty)
         {
             LineageRecords = ImmutableArray.Create(BuildRecord(correlationId, nodeId, reason, retryCount, contributorInputIndices)),
@@ -111,9 +114,8 @@ public sealed class SamplingDataStreamTests
     }
 
     private static LineageRecord BuildRecord(Guid correlationId, string nodeId, LineageOutcomeReason reason, int? retryCount = null,
-        int[]? contributorInputIndices = null)
-    {
-        return new LineageRecord(
+        int[]? contributorInputIndices = null) =>
+        new(
             correlationId,
             nodeId,
             Guid.NewGuid(),
@@ -123,7 +125,6 @@ public sealed class SamplingDataStreamTests
             RetryCount: retryCount,
             ContributorInputIndices: contributorInputIndices,
             Cardinality: ObservedCardinality.One);
-    }
 
     private static async Task DrainAsync<T>(IAsyncEnumerable<T> stream)
     {
@@ -144,7 +145,8 @@ public sealed class SamplingDataStreamTests
                 retryCount));
         }
 
-        public void RecordError(string nodeId, string originNodeId, Guid correlationId, int[]? ancestryInputIndices, object? serializedRecord, string errorMessage,
+        public void RecordError(string nodeId, string originNodeId, Guid correlationId, int[]? ancestryInputIndices, object? serializedRecord,
+            string errorMessage,
             string? exceptionType, string? stackTrace, int retryCount = 0, string? pipelineName = null, Guid? runId = null,
             DateTimeOffset timestamp = default)
         {

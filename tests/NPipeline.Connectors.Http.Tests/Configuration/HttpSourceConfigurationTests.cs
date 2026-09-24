@@ -8,10 +8,7 @@ namespace NPipeline.Connectors.Http.Tests.Configuration;
 
 public class HttpSourceConfigurationTests
 {
-    private static HttpSourceConfiguration ValidConfig()
-    {
-        return new HttpSourceConfiguration { BaseUri = new Uri("https://api.example.com/items") };
-    }
+    private static HttpSourceConfiguration ValidConfig() => new() { BaseUri = new Uri("https://api.example.com/items") };
 
     [Fact]
     public void Validate_WithAbsoluteUri_DoesNotThrow()

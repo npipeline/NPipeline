@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using FakeItEasy;
-using NPipeline.Configuration;
 using NPipeline.ErrorHandling;
 using NPipeline.Execution;
 using NPipeline.Graph;
@@ -18,8 +17,8 @@ namespace NPipeline.Tests.ErrorHandling;
 public sealed class PipelineRunnerTests
 {
     private readonly IErrorHandlingService _errorHandlingService = PipelineRunnerTestHelpers.PipelineRunnerMockFactory.CreateErrorHandlingService();
-    private readonly INodeFactory _nodeFactory = PipelineRunnerTestHelpers.PipelineRunnerMockFactory.CreateNodeFactory();
     private readonly INodeExecutor _nodeExecutor = PipelineRunnerTestHelpers.PipelineRunnerMockFactory.CreateNodeExecutor();
+    private readonly INodeFactory _nodeFactory = PipelineRunnerTestHelpers.PipelineRunnerMockFactory.CreateNodeFactory();
     private readonly INodeInstantiationService _nodeInstantiationService = PipelineRunnerTestHelpers.PipelineRunnerMockFactory.CreateNodeInstantiationService();
     private readonly IObservabilitySurface _observabilitySurface = PipelineRunnerTestHelpers.PipelineRunnerMockFactory.CreateObservabilitySurface();
     private readonly IPersistenceService _persistenceService = PipelineRunnerTestHelpers.PipelineRunnerMockFactory.CreatePersistenceService();

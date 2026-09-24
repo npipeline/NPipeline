@@ -157,20 +157,16 @@ public sealed class DefaultLineageFactoryTests
     {
         public Task RecordAsync(
             LineageRecord record,
-            CancellationToken cancellationToken)
-        {
-            return Task.CompletedTask;
-        }
+            CancellationToken cancellationToken) =>
+            Task.CompletedTask;
     }
 
     private sealed class TestPipelineLineageSink : IPipelineLineageSink
     {
         public Task RecordAsync(
             PipelineLineageReport report,
-            CancellationToken cancellationToken)
-        {
-            return Task.CompletedTask;
-        }
+            CancellationToken cancellationToken) =>
+            Task.CompletedTask;
     }
 
     private sealed class ThrowingLineageSinkConstructor : ILineageSink
@@ -182,10 +178,8 @@ public sealed class DefaultLineageFactoryTests
 
         public Task RecordAsync(
             LineageRecord record,
-            CancellationToken cancellationToken)
-        {
-            return Task.CompletedTask;
-        }
+            CancellationToken cancellationToken) =>
+            Task.CompletedTask;
     }
 
     private sealed class TypeWithoutParameterlessConstructor

@@ -45,25 +45,13 @@ public sealed class WatermarkIntegrationTests
         : AdvancedAggregateNode<SensorReading, string, (double sum, int count), double>(new AggregateNodeConfiguration<SensorReading>(
             WindowAssigner.Tumbling(TimeSpan.FromMinutes(5))))
     {
-        public override string GetKey(SensorReading item)
-        {
-            return item.SensorId;
-        }
+        public override string GetKey(SensorReading item) => item.SensorId;
 
-        public override (double, int) CreateAccumulator()
-        {
-            return (0, 0);
-        }
+        public override (double, int) CreateAccumulator() => (0, 0);
 
-        public override (double, int) Accumulate((double, int) acc, SensorReading item)
-        {
-            return (acc.Item1 + item.Value, acc.Item2 + 1);
-        }
+        public override (double, int) Accumulate((double, int) acc, SensorReading item) => (acc.Item1 + item.Value, acc.Item2 + 1);
 
-        public override double GetResult((double, int) acc)
-        {
-            return acc.Item1 / acc.Item2;
-        }
+        public override double GetResult((double, int) acc) => acc.Item1 / acc.Item2;
     }
 
     private sealed class SensorSource : SourceNode<SensorReading>

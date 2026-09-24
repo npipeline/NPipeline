@@ -8,10 +8,7 @@ namespace NPipeline.StorageProviders.S3.Tests;
 
 public class S3ClientFactoryBaseTests
 {
-    private static StorageUri Uri(string host = "my-bucket")
-    {
-        return StorageUri.Parse($"s3://{host}/some-key");
-    }
+    private static StorageUri Uri(string host = "my-bucket") => StorageUri.Parse($"s3://{host}/some-key");
 
     // ── GetClientAsync ────────────────────────────────────────────────────
 
@@ -124,9 +121,6 @@ public class S3ClientFactoryBaseTests
             _clientFactory = clientFactory ?? (_ => A.Fake<IAmazonS3>());
         }
 
-        protected override IAmazonS3 CreateClient(StorageUri uri)
-        {
-            return _clientFactory(uri);
-        }
+        protected override IAmazonS3 CreateClient(StorageUri uri) => _clientFactory(uri);
     }
 }

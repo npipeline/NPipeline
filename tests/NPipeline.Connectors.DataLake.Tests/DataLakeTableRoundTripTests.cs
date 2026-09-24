@@ -1,6 +1,5 @@
 using NPipeline.Connectors.DataLake.Partitioning;
 using NPipeline.Connectors.Parquet.Attributes;
-using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.Pipeline;
 using NPipeline.StorageProviders;
@@ -417,10 +416,7 @@ public sealed class DataLakeTableRoundTripTests : IAsyncDisposable
 
     #region Helper Methods
 
-    private static List<SalesRecord> CreateTestRecords(int count)
-    {
-        return CreateTestRecords(0, count);
-    }
+    private static List<SalesRecord> CreateTestRecords(int count) => CreateTestRecords(0, count);
 
     private static List<SalesRecord> CreateTestRecords(int startId, int count)
     {

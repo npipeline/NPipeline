@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using NPipeline.Configuration;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.Branching;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Execution;
 using NPipeline.Execution.Annotations;
 using NPipeline.Graph;
@@ -168,15 +169,10 @@ public sealed class ObservabilitySurfaceTests
 
     private sealed class DummyNode : ISourceNode<object>
     {
-        public IDataStream<object> OpenStream(PipelineContext context, CancellationToken cancellationToken)
-        {
-            return new NPipeline.DataFlow.DataStreams.InMemoryDataStream<object>(new List<object> { 1, 2, 3 }, "dummy");
-        }
+        public IDataStream<object> OpenStream(PipelineContext context, CancellationToken cancellationToken) =>
+            new InMemoryDataStream<object>(new List<object> { 1, 2, 3 }, "dummy");
 
-        public ValueTask DisposeAsync()
-        {
-            return ValueTask.CompletedTask;
-        }
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 
     private sealed class CollectObserver : IExecutionObserver
@@ -223,19 +219,10 @@ public sealed class ObservabilitySurfaceTests
     {
         private readonly IObservabilityCollector? _collector = collector;
 
-        public IObservabilityCollector ResolveObservabilityCollector()
-        {
-            return _collector ?? throw new NotSupportedException();
-        }
+        public IObservabilityCollector ResolveObservabilityCollector() => _collector ?? throw new NotSupportedException();
 
-        public IMetricsSink? ResolveMetricsSink()
-        {
-            throw new NotSupportedException();
-        }
+        public IMetricsSink? ResolveMetricsSink() => throw new NotSupportedException();
 
-        public IPipelineMetricsSink? ResolvePipelineMetricsSink()
-        {
-            throw new NotSupportedException();
-        }
+        public IPipelineMetricsSink? ResolvePipelineMetricsSink() => throw new NotSupportedException();
     }
 }

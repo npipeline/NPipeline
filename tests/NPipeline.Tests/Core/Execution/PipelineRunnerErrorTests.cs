@@ -16,8 +16,8 @@ namespace NPipeline.Tests.Core.Execution;
 public sealed class PipelineRunnerErrorTests
 {
     private readonly IErrorHandlingService _errorHandlingService = A.Fake<IErrorHandlingService>();
-    private readonly INodeFactory _nodeFactory = A.Fake<INodeFactory>();
     private readonly INodeExecutor _nodeExecutor = A.Fake<INodeExecutor>();
+    private readonly INodeFactory _nodeFactory = A.Fake<INodeFactory>();
     private readonly INodeInstantiationService _nodeInstantiationService = A.Fake<INodeInstantiationService>();
     private readonly IObservabilitySurface _observabilitySurface = A.Fake<IObservabilitySurface>();
     private readonly IPersistenceService _persistenceService = A.Fake<IPersistenceService>();
@@ -310,9 +310,6 @@ public sealed class PipelineRunnerErrorTests
             return new InMemoryDataStream<object>([new object()], "failing-output");
         }
 
-        public ValueTask DisposeAsync()
-        {
-            return ValueTask.CompletedTask;
-        }
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 }

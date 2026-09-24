@@ -1,3 +1,5 @@
+using Microsoft.CodeAnalysis;
+
 namespace NPipeline.Analyzers.Tests;
 
 public sealed class ResilientExecutionConfigurationAnalyzerTests
@@ -11,7 +13,7 @@ public sealed class ResilientExecutionConfigurationAnalyzerTests
 
                                          """;
 
-    private static async Task<IReadOnlyList<Microsoft.CodeAnalysis.Diagnostic>> AnalyzeAsync(string source)
+    private static async Task<IReadOnlyList<Diagnostic>> AnalyzeAsync(string source)
     {
         var diagnostics = await ResilienceAnalyzerTestHelper.GetDiagnosticsAsync<ResilientExecutionConfigurationAnalyzer>(source);
         return diagnostics.Where(d => d.Id == ResilientExecutionConfigurationAnalyzer.IncompleteResilientConfigurationId).ToList();

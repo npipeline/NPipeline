@@ -22,10 +22,7 @@ public class S3CoreStorageProviderTests
         _provider = new TestStorageProvider(factory, new S3CoreOptions());
     }
 
-    private static StorageUri Uri(string bucket = "my-bucket", string key = "my-key")
-    {
-        return StorageUri.Parse($"s3://{bucket}/{key}");
-    }
+    private static StorageUri Uri(string bucket = "my-bucket", string key = "my-key") => StorageUri.Parse($"s3://{bucket}/{key}");
 
     // ── Constructor ───────────────────────────────────────────────────────
 
@@ -270,10 +267,7 @@ public class S3CoreStorageProviderTests
             _client = client;
         }
 
-        protected override IAmazonS3 CreateClient(StorageUri uri)
-        {
-            return _client;
-        }
+        protected override IAmazonS3 CreateClient(StorageUri uri) => _client;
     }
 
     private sealed class TestStorageProvider : S3CoreStorageProvider

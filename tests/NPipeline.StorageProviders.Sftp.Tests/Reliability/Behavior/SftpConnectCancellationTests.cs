@@ -12,8 +12,8 @@ namespace NPipeline.StorageProviders.Sftp.Tests.Reliability.Behavior;
 /// </summary>
 public sealed class SftpConnectCancellationTests : IDisposable
 {
-    private readonly TcpListener _listener;
     private readonly List<Socket> _accepted = [];
+    private readonly TcpListener _listener;
     private int _acceptCount;
 
     public SftpConnectCancellationTests()

@@ -41,19 +41,15 @@ public sealed class LineageMappingStrategiesTests
         }
     }
 
-    private static IAsyncEnumerable<T> CreateDataStream<T>(params T[] items)
-    {
-        return items.ToAsyncEnumerable();
-    }
+    private static IAsyncEnumerable<T> CreateDataStream<T>(params T[] items) => items.ToAsyncEnumerable();
 
     private static LineageOptions CreateOptions(
         bool strict = false,
         bool warnOnMismatch = false,
         int? maxHopRecords = null,
         int? materializationCap = null,
-        LineageOverflowPolicy overflowPolicy = LineageOverflowPolicy.Degrade)
-    {
-        return new LineageOptions(
+        LineageOverflowPolicy overflowPolicy = LineageOverflowPolicy.Degrade) =>
+        new(
             strict, // Strict
             warnOnMismatch, // WarnOnMismatch
             null, // OnMismatch
@@ -68,33 +64,28 @@ public sealed class LineageMappingStrategiesTests
             true, // DeterministicSampling
             true, // RedactData
             maxHopRecords ?? 100); // MaxHopRecordsPerItem
-    }
 
     private sealed class OneToThreeMapper : ILineageMapper
     {
-        public LineageMappingResult MapInputToOutputs(IReadOnlyList<object> inputPackets, IReadOnlyList<object> outputs, LineageMappingContext context)
-        {
-            return new LineageMappingResult(
+        public LineageMappingResult MapInputToOutputs(IReadOnlyList<object> inputPackets, IReadOnlyList<object> outputs, LineageMappingContext context) =>
+            new(
             [
                 new LineageMappingRecord(0, [0]),
                 new LineageMappingRecord(1, [0]),
                 new LineageMappingRecord(2, [0]),
             ]);
-        }
     }
 
     private sealed class ConflictingFanOutMapper : ILineageMapper
     {
-        public LineageMappingResult MapInputToOutputs(IReadOnlyList<object> inputPackets, IReadOnlyList<object> outputs, LineageMappingContext context)
-        {
-            return new LineageMappingResult(
+        public LineageMappingResult MapInputToOutputs(IReadOnlyList<object> inputPackets, IReadOnlyList<object> outputs, LineageMappingContext context) =>
+            new(
             [
                 new LineageMappingRecord(0, [0]),
                 new LineageMappingRecord(1, [0, 1]),
                 new LineageMappingRecord(2, [1]),
                 new LineageMappingRecord(3, [1]),
             ]);
-        }
     }
 
     #endregion
@@ -113,7 +104,8 @@ public sealed class LineageMappingStrategiesTests
         // Act
         List<LineagePacket<string>> results = [];
 
-        await foreach (var packet in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null, null,
+        await foreach (var packet in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null,
+                           null,
                            CancellationToken.None))
         {
             results.Add(packet);
@@ -140,7 +132,8 @@ public sealed class LineageMappingStrategiesTests
         // Act & Assert
         var act = async () =>
         {
-            await foreach (var _ in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null, null,
+            await foreach (var _ in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null,
+                               null,
                                CancellationToken.None))
             {
                 // Enumerate to trigger mismatch
@@ -163,7 +156,8 @@ public sealed class LineageMappingStrategiesTests
         // Act & Assert
         var act = async () =>
         {
-            await foreach (var _ in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null, null,
+            await foreach (var _ in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null,
+                               null,
                                CancellationToken.None))
             {
                 // Enumerate to trigger mismatch
@@ -186,7 +180,8 @@ public sealed class LineageMappingStrategiesTests
         // Act
         List<LineagePacket<string>> results = [];
 
-        await foreach (var packet in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToMany, options, null, null,
+        await foreach (var packet in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToMany, options, null,
+                           null,
                            CancellationToken.None))
         {
             results.Add(packet);
@@ -208,7 +203,8 @@ public sealed class LineageMappingStrategiesTests
         // Act
         List<LineagePacket<string>> results = [];
 
-        await foreach (var packet in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null, null,
+        await foreach (var packet in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null,
+                           null,
                            CancellationToken.None))
         {
             results.Add(packet);
@@ -241,7 +237,8 @@ public sealed class LineageMappingStrategiesTests
         // Act
         List<LineagePacket<string>> results = [];
 
-        await foreach (var packet in strategy.MapAsync(inputPackets, outputData, "transform_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null, null,
+        await foreach (var packet in strategy.MapAsync(inputPackets, outputData, "transform_node", s_pipelineId, null, TransformCardinality.OneToOne, options,
+                           null, null,
                            CancellationToken.None))
         {
             results.Add(packet);
@@ -265,7 +262,8 @@ public sealed class LineageMappingStrategiesTests
         // Act
         List<LineagePacket<string>> results = [];
 
-        await foreach (var packet in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null, null,
+        await foreach (var packet in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null,
+                           null,
                            CancellationToken.None))
         {
             results.Add(packet);
@@ -288,7 +286,8 @@ public sealed class LineageMappingStrategiesTests
         // Act
         List<LineagePacket<string>> results = [];
 
-        await foreach (var packet in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null, null,
+        await foreach (var packet in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null,
+                           null,
                            CancellationToken.None))
         {
             results.Add(packet);
@@ -384,7 +383,8 @@ public sealed class LineageMappingStrategiesTests
         // Act
         List<LineagePacket<int>> results = [];
 
-        await foreach (var packet in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null, null,
+        await foreach (var packet in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null,
+                           null,
                            CancellationToken.None))
         {
             results.Add(packet);
@@ -407,7 +407,8 @@ public sealed class LineageMappingStrategiesTests
         // Act & Assert
         var act = async () =>
         {
-            await foreach (var _ in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null, null,
+            await foreach (var _ in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null,
+                               null,
                                CancellationToken.None))
             {
                 // Enumerate to trigger
@@ -429,7 +430,8 @@ public sealed class LineageMappingStrategiesTests
         // Act
         List<LineagePacket<int>> results = [];
 
-        await foreach (var packet in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null, null,
+        await foreach (var packet in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null,
+                           null,
                            CancellationToken.None))
         {
             results.Add(packet);
@@ -455,7 +457,8 @@ public sealed class LineageMappingStrategiesTests
         // Act
         List<LineagePacket<string>> results = [];
 
-        await foreach (var packet in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null, null,
+        await foreach (var packet in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null,
+                           null,
                            CancellationToken.None))
         {
             results.Add(packet);
@@ -478,7 +481,8 @@ public sealed class LineageMappingStrategiesTests
         // Act
         List<LineagePacket<string>> results = [];
 
-        await foreach (var packet in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null, null,
+        await foreach (var packet in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null,
+                           null,
                            CancellationToken.None))
         {
             results.Add(packet);
@@ -535,7 +539,8 @@ public sealed class LineageMappingStrategiesTests
         // Act
         List<LineagePacket<int>> results = [];
 
-        await foreach (var packet in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null, null,
+        await foreach (var packet in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null,
+                           null,
                            CancellationToken.None))
         {
             results.Add(packet);
@@ -559,7 +564,8 @@ public sealed class LineageMappingStrategiesTests
         // Act & Assert
         var act = async () =>
         {
-            await foreach (var _ in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null, null,
+            await foreach (var _ in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null,
+                               null,
                                CancellationToken.None))
             {
                 // Enumerate to trigger
@@ -643,7 +649,8 @@ public sealed class LineageMappingStrategiesTests
         // Act
         List<LineagePacket<string>> results = [];
 
-        await foreach (var packet in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null, null,
+        await foreach (var packet in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null,
+                           null,
                            CancellationToken.None))
         {
             results.Add(packet);
@@ -665,7 +672,8 @@ public sealed class LineageMappingStrategiesTests
         // Act
         List<LineagePacket<string>> results = [];
 
-        await foreach (var packet in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null, null,
+        await foreach (var packet in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null,
+                           null,
                            CancellationToken.None))
         {
             results.Add(packet);
@@ -693,7 +701,8 @@ public sealed class LineageMappingStrategiesTests
         // Act
         List<LineagePacket<int>> results = [];
 
-        await foreach (var packet in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null, null,
+        await foreach (var packet in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null,
+                           null,
                            CancellationToken.None))
         {
             results.Add(packet);
@@ -721,7 +730,8 @@ public sealed class LineageMappingStrategiesTests
         // Act & Assert
         var act = async () =>
         {
-            await foreach (var _ in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null, null,
+            await foreach (var _ in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null,
+                               null,
                                CancellationToken.None))
             {
                 // Enumerate to trigger
@@ -750,7 +760,8 @@ public sealed class LineageMappingStrategiesTests
         // Act
         List<LineagePacket<int>> results = [];
 
-        await foreach (var packet in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null, null,
+        await foreach (var packet in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null,
+                           null,
                            CancellationToken.None))
         {
             results.Add(packet);
@@ -779,7 +790,8 @@ public sealed class LineageMappingStrategiesTests
         // Act
         List<LineagePacket<int>> results = [];
 
-        await foreach (var packet in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null, null,
+        await foreach (var packet in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null,
+                           null,
                            CancellationToken.None))
         {
             results.Add(packet);
@@ -866,7 +878,8 @@ public sealed class LineageMappingStrategiesTests
         // Act
         List<LineagePacket<string>> results = [];
 
-        await foreach (var packet in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null, null,
+        await foreach (var packet in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null,
+                           null,
                            CancellationToken.None))
         {
             results.Add(packet);

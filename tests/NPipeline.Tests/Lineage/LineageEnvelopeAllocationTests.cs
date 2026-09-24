@@ -88,9 +88,8 @@ public sealed class LineageEnvelopeAllocationTests
         normalized.TimestampUtc.Should().NotBe(default);
     }
 
-    private static LineageRecord BuildRecord(IReadOnlyList<Guid> correlationIds, IReadOnlyList<int> inputIndices)
-    {
-        return new LineageRecord(
+    private static LineageRecord BuildRecord(IReadOnlyList<Guid> correlationIds, IReadOnlyList<int> inputIndices) =>
+        new(
             Guid.NewGuid(),
             "node-a",
             Guid.NewGuid(),
@@ -99,5 +98,4 @@ public sealed class LineageEnvelopeAllocationTests
             ["node-a"],
             ContributorCorrelationIds: correlationIds,
             ContributorInputIndices: inputIndices);
-    }
 }

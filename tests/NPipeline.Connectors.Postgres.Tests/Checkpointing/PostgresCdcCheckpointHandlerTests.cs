@@ -491,19 +491,14 @@ public sealed class PostgresCdcCheckpointHandlerTests
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     };
 
-    private CheckpointManager CreateCheckpointManager(ICheckpointStorage storage)
-    {
-        return new CheckpointManager(
+    private CheckpointManager CreateCheckpointManager(ICheckpointStorage storage) =>
+        new(
             storage,
             TestPipelineId,
             TestNodeId,
             CheckpointStrategy.CDC);
-    }
 
-    private static string SerializePosition(PostgresCdcPosition position)
-    {
-        return JsonSerializer.Serialize(position, JsonOptions);
-    }
+    private static string SerializePosition(PostgresCdcPosition position) => JsonSerializer.Serialize(position, JsonOptions);
 
     private static PostgresCdcPosition? DeserializePosition(string value)
     {

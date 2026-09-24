@@ -64,8 +64,5 @@ public class ChatEnrichmentNodeTests
         Assert.IsType<InvalidOperationException>(ex.InnerException, false);
     }
 
-    private static PipelineContext Context()
-    {
-        return new PipelineContext();
-    }
+    private static PipelineContext Context() => new();
 }

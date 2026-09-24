@@ -98,10 +98,7 @@ public sealed class DefaultNodeRegistrationPlannerTests
             return new DataStream<string>(merged.ToAsyncEnumerable(), "typed-merge");
         }
 
-        public ValueTask DisposeAsync()
-        {
-            return ValueTask.CompletedTask;
-        }
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 
     private sealed class UntypedCustomMergeNode : ICustomMergeNodeUntyped
@@ -121,20 +118,14 @@ public sealed class DefaultNodeRegistrationPlannerTests
             return new DataStream<object?>(merged.ToAsyncEnumerable(), "untyped-merge");
         }
 
-        public ValueTask DisposeAsync()
-        {
-            return ValueTask.CompletedTask;
-        }
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 
     [KeySelector(typeof(PlannerLeft), nameof(PlannerLeft.Id))]
     [KeySelector(typeof(PlannerRight), nameof(PlannerRight.Id))]
     private sealed class PlannerJoinNode : KeyedJoinNode<int, PlannerLeft, PlannerRight, int>
     {
-        public override int CreateOutput(PlannerLeft item1, PlannerRight item2)
-        {
-            return item1.Id + item2.Id;
-        }
+        public override int CreateOutput(PlannerLeft item1, PlannerRight item2) => item1.Id + item2.Id;
     }
 
     private sealed record PlannerLeft(int Id);

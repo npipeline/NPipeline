@@ -60,7 +60,9 @@ public sealed class MongoSinkIdempotencyIntegrationTests(MongoTestContainerFixtu
                     call.GetArgument<BulkWriteOptions>(1),
                     call.GetArgument<CancellationToken>(2));
 
-                return LoseFirstReply(ref lost) ? throw MongoResilienceBehaviorTests.ConnectionError() : result;
+                return LoseFirstReply(ref lost)
+                    ? throw MongoResilienceBehaviorTests.ConnectionError()
+                    : result;
             });
 
         A.CallTo(() => collection.InsertManyAsync(A<IEnumerable<BsonDocument>>._, A<InsertManyOptions>._, A<CancellationToken>._))

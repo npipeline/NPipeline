@@ -27,18 +27,13 @@ public sealed class PipelineFactoryTests
     // Test Node Implementations
     private sealed class TestSourceNode : SourceNode<string>
     {
-        public override IDataStream<string> OpenStream(PipelineContext context, CancellationToken cancellationToken)
-        {
-            throw new NotImplementedException();
-        }
+        public override IDataStream<string> OpenStream(PipelineContext context, CancellationToken cancellationToken) => throw new NotImplementedException();
     }
 
     private sealed class TestSinkNode : SinkNode<string>
     {
-        public override Task ConsumeAsync(IDataStream<string> input, PipelineContext context, CancellationToken cancellationToken)
-        {
+        public override Task ConsumeAsync(IDataStream<string> input, PipelineContext context, CancellationToken cancellationToken) =>
             throw new NotImplementedException();
-        }
     }
 
     // Test Pipeline Definition

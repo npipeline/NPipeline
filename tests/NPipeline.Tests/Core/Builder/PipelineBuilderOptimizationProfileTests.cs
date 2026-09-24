@@ -106,7 +106,7 @@ public sealed class PipelineBuilderOptimizationProfileTests
     {
         var builder = new PipelineBuilder();
 
-        var act = () => builder.WithResilience((Func<PipelineResilienceOptions, PipelineResilienceOptions>)null!);
+        var act = () => builder.WithResilience(null!);
 
         act.Should().Throw<ArgumentNullException>();
     }
@@ -125,10 +125,7 @@ public sealed class PipelineBuilderOptimizationProfileTests
 
     private sealed class TestSourceNode : SourceNode<int>
     {
-        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
-        {
-            throw new NotImplementedException();
-        }
+        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken) => throw new NotImplementedException();
     }
 
     private sealed class RecordingTraceListener : TraceListener

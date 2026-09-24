@@ -25,7 +25,7 @@ public sealed class PerItemRetryDelayTests
         var requests = new List<int>();
         await using var context = CreateContext();
 
-        var result = await ExecuteAsync(context, Options(3, Recording(requests)), failures: 3);
+        var result = await ExecuteAsync(context, Options(3, Recording(requests)), 3);
 
         result.Outcome.Should().Be(ItemExecutionOutcome.Emitted);
         requests.Should().Equal(1, 2, 3);
@@ -38,7 +38,7 @@ public sealed class PerItemRetryDelayTests
         await using var context = CreateContext();
         var options = Options(3, RetryBackoff.Constant(TimeSpan.FromMinutes(5))) with { Time = time };
 
-        var run = ExecuteAsync(context, options, failures: 1);
+        var run = ExecuteAsync(context, options, 1);
 
         await Task.Delay(50);
         run.IsCompleted.Should().BeFalse("the retry waits for the backoff");
@@ -53,7 +53,7 @@ public sealed class PerItemRetryDelayTests
         var requests = new List<int>();
         await using var context = CreateContext();
 
-        var result = await ExecuteAsync(context, Options(3, Recording(requests)), failures: 0);
+        var result = await ExecuteAsync(context, Options(3, Recording(requests)), 0);
 
         result.Outcome.Should().Be(ItemExecutionOutcome.Emitted);
         requests.Should().BeEmpty("a successful item must not wait");
@@ -66,7 +66,7 @@ public sealed class PerItemRetryDelayTests
         var requests = new List<int>();
         await using var context = CreateContext();
 
-        var act = () => ExecuteAsync(context, Options(2, Recording(requests)), failures: 5);
+        var act = () => ExecuteAsync(context, Options(2, Recording(requests)), 5);
 
         _ = await act.Should().ThrowAsync<RetryExhaustedException>();
         requests.Should().Equal(1, 2);
@@ -84,19 +84,18 @@ public sealed class PerItemRetryDelayTests
             return TimeSpan.FromSeconds(30);
         });
 
-        var act = () => ExecuteAsync(context, Options(3, backoff), failures: 5, cts.Token);
+        var act = () => ExecuteAsync(context, Options(3, backoff), 5, cts.Token);
 
         _ = await act.Should().ThrowAsync<OperationCanceledException>();
     }
 
-    private static PipelineResilienceOptions Options(int maxRetries, RetryBackoff backoff)
-    {
+    private static PipelineResilienceOptions Options(int maxRetries, RetryBackoff backoff) =>
+
         // The transform's failures are not transient, so the classifier retries everything.
-        return PipelineResilienceOptions.None with
+        PipelineResilienceOptions.None with
         {
             ItemRetry = new ItemRetryOptions { MaxRetries = maxRetries, Backoff = backoff, Classifier = RetryClassifier.All },
         };
-    }
 
     private static RetryBackoff Recording(List<int> requests)
     {
@@ -111,20 +110,18 @@ public sealed class PerItemRetryDelayTests
         PipelineContext context,
         PipelineResilienceOptions options,
         int failures,
-        CancellationToken cancellationToken = default)
-    {
-        return PerItemRetryExecutor.Instance.ExecuteWithRetryAsync(
-            item: 7,
-            node: new FlakyTransform(failures),
+        CancellationToken cancellationToken = default) =>
+        PerItemRetryExecutor.Instance.ExecuteWithRetryAsync(
+            7,
+            new FlakyTransform(failures),
             context,
             NodeId,
             options,
-            hasLineageIndex: false,
-            lineageInputIndex: 0,
-            lineageOutcomeWriter: LineageNodeOutcomeRegistry.GetWriter(context.RunIdentity.PipelineId, NodeId),
-            itemActivity: null,
+            false,
+            0,
+            LineageNodeOutcomeRegistry.GetWriter(context.RunIdentity.PipelineId, NodeId),
+            null,
             cancellationToken);
-    }
 
     private static PipelineContext CreateContext()
     {

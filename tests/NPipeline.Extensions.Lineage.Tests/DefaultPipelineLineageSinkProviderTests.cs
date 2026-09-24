@@ -274,11 +274,6 @@ public class DefaultPipelineLineageSinkProviderTests
         exception.Should().BeOfType<ArgumentNullException>();
     }
 
-    private sealed class StubPipelineLineageSink : IPipelineLineageSink
-    {
-        public Task RecordAsync(PipelineLineageReport report, CancellationToken cancellationToken) => Task.CompletedTask;
-    }
-
     [Fact]
     public void Create_WithDifferentContexts_ShouldReturnSinks()
     {
@@ -296,5 +291,10 @@ public class DefaultPipelineLineageSinkProviderTests
         sink2.Should().NotBeNull();
         sink1.Should().BeOfType<LoggingPipelineLineageSink>();
         sink2.Should().BeOfType<LoggingPipelineLineageSink>();
+    }
+
+    private sealed class StubPipelineLineageSink : IPipelineLineageSink
+    {
+        public Task RecordAsync(PipelineLineageReport report, CancellationToken cancellationToken) => Task.CompletedTask;
     }
 }

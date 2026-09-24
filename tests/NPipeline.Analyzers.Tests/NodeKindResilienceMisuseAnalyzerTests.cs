@@ -1,3 +1,5 @@
+using Microsoft.CodeAnalysis;
+
 namespace NPipeline.Analyzers.Tests;
 
 public sealed class NodeKindResilienceMisuseAnalyzerTests
@@ -24,7 +26,7 @@ public sealed class NodeKindResilienceMisuseAnalyzerTests
 
                                  """;
 
-    private static Task<IReadOnlyList<Microsoft.CodeAnalysis.Diagnostic>> AnalyzeAsync(string body)
+    private static Task<IReadOnlyList<Diagnostic>> AnalyzeAsync(string body)
     {
         var source = Nodes + $$"""
                                public static class Setup
@@ -42,7 +44,7 @@ public sealed class NodeKindResilienceMisuseAnalyzerTests
         return AnalyzeCoreAsync(source);
     }
 
-    private static async Task<IReadOnlyList<Microsoft.CodeAnalysis.Diagnostic>> AnalyzeCoreAsync(string source)
+    private static async Task<IReadOnlyList<Diagnostic>> AnalyzeCoreAsync(string source)
     {
         var diagnostics = await ResilienceAnalyzerTestHelper.GetDiagnosticsAsync<NodeKindResilienceMisuseAnalyzer>(source);
         return diagnostics.Where(d => d.Id == NodeKindResilienceMisuseAnalyzer.NodeKindResilienceMisuseId).ToList();
@@ -59,7 +61,7 @@ public sealed class NodeKindResilienceMisuseAnalyzerTests
         var diagnostics = await AnalyzeAsync(call);
 
         var diagnostic = Assert.Single(diagnostics);
-        Assert.Equal(Microsoft.CodeAnalysis.DiagnosticSeverity.Error, diagnostic.Severity);
+        Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
         Assert.Contains(setting, diagnostic.GetMessage());
     }
 
@@ -67,7 +69,7 @@ public sealed class NodeKindResilienceMisuseAnalyzerTests
     public async Task Reports_EverySettingInOneInitializer()
     {
         var diagnostics = await AnalyzeAsync(
-                "builder.WithResilience(sink, o => o with { ItemRetry = ItemRetryOptions.Default, CircuitBreaker = CircuitBreakerOptions.Default });");
+            "builder.WithResilience(sink, o => o with { ItemRetry = ItemRetryOptions.Default, CircuitBreaker = CircuitBreakerOptions.Default });");
 
         Assert.Equal(2, diagnostics.Count);
     }
@@ -77,8 +79,5 @@ public sealed class NodeKindResilienceMisuseAnalyzerTests
     [InlineData("builder.WithResilience(sink, o => o with { NodeRetry = new NodeRetryOptions { MaxRetries = 2 } });")]
     [InlineData("builder.WithResilience(sink, o => o with { ItemRetry = o.ItemRetry, OnItemFailure = ItemFailureAction.Skip });")]
     [InlineData("builder.WithResilience(o => o with { ItemRetry = ItemRetryOptions.Default });")]
-    public async Task DoesNotReport_SettingsTheBuildAccepts(string call)
-    {
-        Assert.Empty(await AnalyzeAsync(call));
-    }
+    public async Task DoesNotReport_SettingsTheBuildAccepts(string call) => Assert.Empty(await AnalyzeAsync(call));
 }

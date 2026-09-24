@@ -74,7 +74,7 @@ public sealed class PostgresRetryIntegrationTests(PostgresTestContainerFixture f
 
         var configuration = new PostgresConfiguration
         {
-            Resilience = NResilience.Resilience.None,
+            Resilience = Resilience.None,
             BatchSize = 3,
             UseBinaryCopy = binaryCopy,
         };
@@ -99,11 +99,12 @@ public sealed class PostgresRetryIntegrationTests(PostgresTestContainerFixture f
                             CREATE OR REPLACE FUNCTION {table}_slow() RETURNS trigger AS $$
                             BEGIN PERFORM pg_sleep(1); RETURN NEW; END; $$ LANGUAGE plpgsql
                             """);
+
         await ExecuteAsync($"CREATE TRIGGER {table}_slow BEFORE INSERT ON {qualified} FOR EACH ROW EXECUTE FUNCTION {table}_slow()");
 
         var configuration = new PostgresConfiguration
         {
-            Resilience = NResilience.Resilience.None,
+            Resilience = Resilience.None,
             BatchSize = 3,
             UseBinaryCopy = binaryCopy,
             CopyTimeout = 1,
@@ -175,18 +176,22 @@ public sealed class PostgresRetryIntegrationTests(PostgresTestContainerFixture f
         _ = await act.Should().ThrowAsync<OperationCanceledException>();
     }
 
-    private static NResilience.Resilience Transient(string sqlState)
+    private static Resilience Transient(string sqlState)
     {
         return PostgresConnectorResilience.Default with
         {
             Backoff = Backoff.Default with { TransientBase = TimeSpan.FromMilliseconds(1) },
             Classifier = PostgresConnectorResilience.Classifier
-                .On<Npgsql.PostgresException>(e => e.SqlState == sqlState ? Verdict.Transient : Verdict.Permanent)
-                .On<PipelinePostgresException>(e => e.ErrorCode == sqlState ? Verdict.Transient : Verdict.Permanent),
+                .On<PostgresException>(e => e.SqlState == sqlState
+                    ? Verdict.Transient
+                    : Verdict.Permanent)
+                .On<PipelinePostgresException>(e => e.ErrorCode == sqlState
+                    ? Verdict.Transient
+                    : Verdict.Permanent),
         };
     }
 
-    private async Task<List<int>> ReadAsync(string sql, NResilience.Resilience resilience, List<int>? emitted = null,
+    private async Task<List<int>> ReadAsync(string sql, Resilience resilience, List<int>? emitted = null,
         CancellationToken cancellationToken = default)
     {
         emitted ??= [];
@@ -234,10 +239,7 @@ public sealed class PostgresRetryIntegrationTests(PostgresTestContainerFixture f
         return qualified;
     }
 
-    private static string Quote(string identifier)
-    {
-        return $"\"{identifier.Replace("\"", "\"\"")}\"";
-    }
+    private static string Quote(string identifier) => $"\"{identifier.Replace("\"", "\"\"")}\"";
 
     private async Task<PostgresDatabaseConnection> OpenAsync()
     {

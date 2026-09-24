@@ -1,10 +1,8 @@
-using NPipeline.Execution;
 using System.Reflection;
 using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NPipeline.Extensions.DependencyInjection;
 using NPipeline.Extensions.Testing;
-using NPipeline.Graph;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 using NPipeline.Reliability;
@@ -58,28 +56,21 @@ public sealed class GraphLevelErrorHandlingTests
             if (_callCount <= failCount)
                 throw new InvalidOperationException($"FlakyNode failed on call {_callCount}");
 
-            return ValueTask.FromResult<int>(item);
+            return ValueTask.FromResult(item);
         }
     }
 
     // Test Error Handler
     private sealed class RestartingResiliencePolicy : IResiliencePolicy
     {
-        public ValueTask<ResilienceDecision> DecideNodeFailureAsync(NodeFailure failure, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult(ResilienceDecision.Fail);
-        }
+        public ValueTask<ResilienceDecision> DecideNodeFailureAsync(NodeFailure failure, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(ResilienceDecision.Fail);
 
-        public ValueTask<ResilienceDecision> DecideRestartAsync(StreamFailure failure, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult(ResilienceDecision.RestartNode);
-        }
+        public ValueTask<ResilienceDecision> DecideRestartAsync(StreamFailure failure, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(ResilienceDecision.RestartNode);
 
-        public ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult(ResilienceDecision.Fail);
-        }
-
+        public ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(ResilienceDecision.Fail);
     }
 
     // Test Pipeline Definition
@@ -95,7 +86,9 @@ public sealed class GraphLevelErrorHandlingTests
                 .Connect(flaky, sink);
 
             builder.AddResiliencePolicy<RestartingResiliencePolicy>();
-            builder.WithResilience(o => o with { NodeRestart = new NodeRestartOptions { MaxRestarts = 3, MaxReplayWindow = 1000, Backoff = RetryBackoff.None } });
+
+            builder.WithResilience(o =>
+                o with { NodeRestart = new NodeRestartOptions { MaxRestarts = 3, MaxReplayWindow = 1000, Backoff = RetryBackoff.None } });
         }
     }
 }

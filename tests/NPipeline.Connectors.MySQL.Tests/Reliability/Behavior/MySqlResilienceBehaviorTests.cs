@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using FakeItEasy;
+using MySqlConnector;
 using NPipeline.Connectors.MySql.Configuration;
 using NPipeline.Connectors.MySql.Reliability;
 using NPipeline.Connectors.MySql.Writers;
@@ -15,7 +16,7 @@ namespace NPipeline.Connectors.MySql.Tests.Reliability.Behavior;
 public sealed class MySqlResilienceBehaviorTests
 {
     // The shipped preset with near-zero backoff, so the tests barely wait between attempts.
-    private static readonly NResilience.Resilience Fast = MySqlConnectorResilience.Default with
+    private static readonly Resilience Fast = MySqlConnectorResilience.Default with
     {
         Backoff = MySqlConnectorResilience.Default.Backoff with
         {
@@ -76,7 +77,7 @@ public sealed class MySqlResilienceBehaviorTests
 
         var act = () => writer.WriteAsync(new Row { Id = 1 });
 
-        _ = await act.Should().ThrowAsync<MySqlConnector.MySqlException>();
+        _ = await act.Should().ThrowAsync<MySqlException>();
         connection.Executed.Should().HaveCount(4);
     }
 
@@ -88,15 +89,18 @@ public sealed class MySqlResilienceBehaviorTests
 
         var act = () => writer.WriteAsync(new Row { Id = 1 });
 
-        _ = await act.Should().ThrowAsync<MySqlConnector.MySqlException>();
+        _ = await act.Should().ThrowAsync<MySqlException>();
         connection.Executed.Should().ContainSingle();
     }
 
     [Fact]
     public async Task Batch_RetriesOnlyTheChunkThatFailed()
     {
-        var connection = new ScriptedConnection((index, _) => index == 2 ? MySqlExceptions.WithNumber(1205) : null);
-        var writer = BatchWriter(connection, batchSize: 2);
+        var connection = new ScriptedConnection((index, _) => index == 2
+            ? MySqlExceptions.WithNumber(1205)
+            : null);
+
+        var writer = BatchWriter(connection, 2);
 
         await writer.WriteBatchAsync(Rows(6));
 
@@ -108,10 +112,10 @@ public sealed class MySqlResilienceBehaviorTests
     public async Task Batch_DoesNotResendAFailedChunkWhenDisposed()
     {
         var connection = new ScriptedConnection((_, _) => MySqlExceptions.WithNumber(1062));
-        var writer = BatchWriter(connection, batchSize: 10);
+        var writer = BatchWriter(connection, 10);
 
         var act = () => writer.WriteBatchAsync(Rows(3));
-        _ = await act.Should().ThrowAsync<MySqlConnector.MySqlException>();
+        _ = await act.Should().ThrowAsync<MySqlException>();
 
         await writer.DisposeAsync();
 
@@ -129,10 +133,10 @@ public sealed class MySqlResilienceBehaviorTests
         };
 
         var perRow = () => PerRowWriter(connection).WriteAsync(new Row { Id = 1 });
-        _ = await perRow.Should().ThrowAsync<MySqlConnector.MySqlException>();
+        _ = await perRow.Should().ThrowAsync<MySqlException>();
 
-        var batch = () => BatchWriter(connection, batchSize: 10).WriteBatchAsync(Rows(2));
-        _ = await batch.Should().ThrowAsync<MySqlConnector.MySqlException>();
+        var batch = () => BatchWriter(connection, 10).WriteBatchAsync(Rows(2));
+        _ = await batch.Should().ThrowAsync<MySqlException>();
 
         connection.Executed.Should().HaveCount(2);
     }
@@ -168,15 +172,11 @@ public sealed class MySqlResilienceBehaviorTests
         connection.Executed.Should().ContainSingle();
     }
 
-    private static MySqlPerRowWriter<Row> PerRowWriter(IDatabaseConnection connection, NResilience.Resilience? resilience = null)
-    {
-        return new MySqlPerRowWriter<Row>(connection, "rows", null, new MySqlConfiguration { Resilience = resilience ?? Fast });
-    }
+    private static MySqlPerRowWriter<Row> PerRowWriter(IDatabaseConnection connection, Resilience? resilience = null) =>
+        new(connection, "rows", null, new MySqlConfiguration { Resilience = resilience ?? Fast });
 
-    private static MySqlBatchWriter<Row> BatchWriter(IDatabaseConnection connection, int batchSize)
-    {
-        return new MySqlBatchWriter<Row>(connection, "rows", null, new MySqlConfiguration { Resilience = Fast, BatchSize = batchSize });
-    }
+    private static MySqlBatchWriter<Row> BatchWriter(IDatabaseConnection connection, int batchSize) =>
+        new(connection, "rows", null, new MySqlConfiguration { Resilience = Fast, BatchSize = batchSize });
 
     private static IEnumerable<Row> Rows(int count)
     {

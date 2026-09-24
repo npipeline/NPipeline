@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataStreams;
 using NPipeline.Execution;
 using NPipeline.Execution.Caching;
 using NPipeline.Execution.Plans;
@@ -177,20 +176,34 @@ public sealed class ExecutionPlanCacheKeyTests
 
     private static PipelineGraph WithSinkKind(PipelineGraph graph, NodeKind kind)
     {
-        return graph with { Nodes = [.. graph.Nodes.Select(n => n.Id == "snk" ? n with { Kind = kind } : n)] };
+        return graph with
+        {
+            Nodes =
+            [
+                .. graph.Nodes.Select(n => n.Id == "snk"
+                    ? n with { Kind = kind }
+                    : n),
+            ],
+        };
     }
 
     private static PipelineGraph WithSourceStrategy(PipelineGraph graph, IExecutionStrategy strategy)
     {
-        return graph with { Nodes = [.. graph.Nodes.Select(n => n.Id == "src" ? n.WithExecutionStrategy(strategy) : n)] };
+        return graph with
+        {
+            Nodes =
+            [
+                .. graph.Nodes.Select(n => n.Id == "src"
+                    ? n.WithExecutionStrategy(strategy)
+                    : n),
+            ],
+        };
     }
 
     private sealed class Source : SourceNode<int>
     {
-        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
-        {
-            return new NPipeline.DataFlow.DataStreams.InMemoryDataStream<int>([1, 2, 3], "src");
-        }
+        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken) =>
+            new NPipeline.DataFlow.DataStreams.InMemoryDataStream<int>([1, 2, 3], "src");
     }
 
     private sealed class Sink : SinkNode<int>

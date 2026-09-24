@@ -103,20 +103,13 @@ public sealed class LookupNodeTests
     // Test Node for complex lookups
     public class ProfileLookupNode(IUserProfileService profileService) : LookupNode<EnrichedUser, int, UserProfile, FullyEnrichedUser>
     {
-        protected override int ExtractKey(EnrichedUser input, PipelineContext context)
-        {
-            return input.Id;
-        }
+        protected override int ExtractKey(EnrichedUser input, PipelineContext context) => input.Id;
 
-        protected override async Task<UserProfile?> LookupAsync(int key, PipelineContext context, CancellationToken cancellationToken)
-        {
-            return await profileService.GetProfileAsync(key, cancellationToken);
-        }
+        protected override async Task<UserProfile?> LookupAsync(int key, PipelineContext context, CancellationToken cancellationToken) =>
+            await profileService.GetProfileAsync(key, cancellationToken);
 
-        protected override FullyEnrichedUser CreateOutput(EnrichedUser input, UserProfile? lookupValue, PipelineContext context)
-        {
-            return new FullyEnrichedUser(input.Id, input.Name, input.CountryName, lookupValue?.Bio);
-        }
+        protected override FullyEnrichedUser CreateOutput(EnrichedUser input, UserProfile? lookupValue, PipelineContext context) =>
+            new(input.Id, input.Name, input.CountryName, lookupValue?.Bio);
     }
 
     // Test Pipeline Definitions

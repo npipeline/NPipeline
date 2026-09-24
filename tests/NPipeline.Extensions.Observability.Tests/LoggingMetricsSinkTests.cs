@@ -22,11 +22,9 @@ public sealed class LoggingMetricsSinkTests
         double? throughputItemsPerSec = null,
         double? averageItemProcessingMs = null,
         long itemsProcessed = 100,
-        long itemsEmitted = 95)
-    {
-        return new NodeMetrics("testNode", DateTimeOffset.UtcNow.AddSeconds(-1), DateTimeOffset.UtcNow, 1000, success, itemsProcessed, itemsEmitted, exception,
+        long itemsEmitted = 95) =>
+        new NodeMetrics("testNode", DateTimeOffset.UtcNow.AddSeconds(-1), DateTimeOffset.UtcNow, 1000, success, itemsProcessed, itemsEmitted, exception,
             retryCount, peakMemoryMb, processorTimeMs, throughputItemsPerSec, averageItemProcessingMs, 1, s_pipelineId);
-    }
 
     private static ILogger<LoggingMetricsSink> CreateLogger()
     {

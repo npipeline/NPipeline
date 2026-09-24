@@ -1,6 +1,5 @@
 // ReSharper disable ClassNeverInstantiated.Local
 
-using NPipeline.Execution;
 using System.Reflection;
 using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
@@ -10,7 +9,6 @@ using NPipeline.DataFlow.DataStreams;
 using NPipeline.ErrorHandling;
 using NPipeline.Extensions.DependencyInjection;
 using NPipeline.Extensions.Testing;
-using NPipeline.Graph;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 using NPipeline.Reliability;
@@ -87,7 +85,7 @@ public sealed class ContextPropagationTests
         public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             observedIds.Add(context.NodeEnvironment.GetNodeId(this));
-            return ValueTask.FromResult<int>(item);
+            return ValueTask.FromResult(item);
         }
     }
 
@@ -112,26 +110,18 @@ public sealed class ContextPropagationTests
             Called = true;
             return ValueTask.FromResult(ResilienceDecision.Fail);
         }
-
     }
 
     private sealed class RedirectingNodePolicy : IResiliencePolicy
     {
-        public ValueTask<ResilienceDecision> DecideNodeFailureAsync(NodeFailure failure, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult(ResilienceDecision.Fail);
-        }
+        public ValueTask<ResilienceDecision> DecideNodeFailureAsync(NodeFailure failure, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(ResilienceDecision.Fail);
 
-        public ValueTask<ResilienceDecision> DecideRestartAsync(StreamFailure failure, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult(ResilienceDecision.Fail);
-        }
+        public ValueTask<ResilienceDecision> DecideRestartAsync(StreamFailure failure, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(ResilienceDecision.Fail);
 
-        public ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult(ResilienceDecision.DeadLetter);
-        }
-
+        public ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(ResilienceDecision.DeadLetter);
     }
 
     private sealed class FailingTransform : TransformNode<int, int>
@@ -141,7 +131,7 @@ public sealed class ContextPropagationTests
             if (item == 42)
                 throw new InvalidOperationException("boom");
 
-            return ValueTask.FromResult<int>(item);
+            return ValueTask.FromResult(item);
         }
     }
 

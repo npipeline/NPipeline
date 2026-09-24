@@ -2,7 +2,6 @@ using System.Diagnostics;
 using DuckDB.NET.Data;
 using NPipeline.Connectors.DuckDB.Configuration;
 using NPipeline.Connectors.DuckDB.Nodes;
-using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.Pipeline;
 

@@ -1,10 +1,8 @@
-using NPipeline.Execution;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using AwesomeAssertions;
 using NPipeline.Configuration;
 using NPipeline.ErrorHandling;
-using NPipeline.Graph;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 using NPipeline.Reliability;
@@ -49,6 +47,21 @@ public sealed class BranchNodeTests
 
     #endregion
 
+    #region Disposal Tests
+
+    [Fact]
+    public void BranchNode_HoldsNoResources_AndIsNotDisposable()
+    {
+        BranchNode<int> node = new();
+        node.AddOutput(async x => await Task.Yield());
+
+        // A node opts into disposal only when it owns something; this one does not.
+        node.Should().NotBeAssignableTo<IAsyncDisposable>();
+        node.Should().NotBeAssignableTo<IDisposable>();
+    }
+
+    #endregion
+
     #region Helper Classes
 
     private sealed class TestObject
@@ -59,10 +72,8 @@ public sealed class BranchNodeTests
 
     private sealed class ContinueResiliencePolicy(Action onCalled) : IResiliencePolicy
     {
-        public ValueTask<ResilienceDecision> DecideNodeFailureAsync(NodeFailure failure, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult(ResilienceDecision.Fail);
-        }
+        public ValueTask<ResilienceDecision> DecideNodeFailureAsync(NodeFailure failure, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(ResilienceDecision.Fail);
 
         public ValueTask<ResilienceDecision> DecideRestartAsync(StreamFailure failure, CancellationToken cancellationToken)
         {
@@ -70,19 +81,14 @@ public sealed class BranchNodeTests
             return ValueTask.FromResult(ResilienceDecision.ContinueWithoutNode);
         }
 
-        public ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult(ResilienceDecision.Fail);
-        }
-
+        public ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(ResilienceDecision.Fail);
     }
 
     private sealed class FailResiliencePolicy(Action onCalled) : IResiliencePolicy
     {
-        public ValueTask<ResilienceDecision> DecideNodeFailureAsync(NodeFailure failure, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult(ResilienceDecision.Fail);
-        }
+        public ValueTask<ResilienceDecision> DecideNodeFailureAsync(NodeFailure failure, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(ResilienceDecision.Fail);
 
         public ValueTask<ResilienceDecision> DecideRestartAsync(StreamFailure failure, CancellationToken cancellationToken)
         {
@@ -90,11 +96,8 @@ public sealed class BranchNodeTests
             return ValueTask.FromResult(ResilienceDecision.Fail);
         }
 
-        public ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult(ResilienceDecision.Fail);
-        }
-
+        public ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(ResilienceDecision.Fail);
     }
 
     #endregion
@@ -629,21 +632,6 @@ public sealed class BranchNodeTests
 
         // Assert
         _ = executionCounts.Should().HaveCount(1);
-    }
-
-    #endregion
-
-    #region Disposal Tests
-
-    [Fact]
-    public void BranchNode_HoldsNoResources_AndIsNotDisposable()
-    {
-        BranchNode<int> node = new();
-        node.AddOutput(async x => await Task.Yield());
-
-        // A node opts into disposal only when it owns something; this one does not.
-        node.Should().NotBeAssignableTo<IAsyncDisposable>();
-        node.Should().NotBeAssignableTo<IDisposable>();
     }
 
     #endregion

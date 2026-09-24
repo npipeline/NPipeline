@@ -2,8 +2,6 @@ using System.Reflection;
 using AwesomeAssertions;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
-using NPipeline.Execution;
-using NPipeline.Execution.Strategies;
 using NPipeline.Graph;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
@@ -111,51 +109,30 @@ public sealed class BuiltInRulesTests
             }
         }
 
-        public ValueTask DisposeAsync()
-        {
-            return ValueTask.CompletedTask;
-        }
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 
     private sealed class IntToString : ITransformNode<int, string>
     {
+        public ValueTask<string> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken) =>
+            ValueTask.FromResult<string>(item.ToString());
 
-        public ValueTask<string> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult<string>(item.ToString());
-        }
-
-        public ValueTask DisposeAsync()
-        {
-            return ValueTask.CompletedTask;
-        }
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 
     private sealed class StringSink : ISinkNode<string>
     {
-        public Task ConsumeAsync(IDataStream<string> input, PipelineContext context, CancellationToken cancellationToken)
-        {
-            return Task.CompletedTask;
-        }
+        public Task ConsumeAsync(IDataStream<string> input, PipelineContext context, CancellationToken cancellationToken) => Task.CompletedTask;
 
 
-        public ValueTask DisposeAsync()
-        {
-            return ValueTask.CompletedTask;
-        }
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 
     private sealed class BadSink : ISinkNode<int>
     {
-        public Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken cancellationToken)
-        {
-            return Task.CompletedTask;
-        }
+        public Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken cancellationToken) => Task.CompletedTask;
 
 
-        public ValueTask DisposeAsync()
-        {
-            return ValueTask.CompletedTask;
-        }
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 }

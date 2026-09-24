@@ -3,7 +3,6 @@ using NPipeline.ErrorHandling;
 using NPipeline.Execution;
 using NPipeline.Execution.Lineage;
 using NPipeline.Execution.Services;
-using NPipeline.Graph;
 using NPipeline.Lineage;
 using NPipeline.Nodes;
 using NPipeline.Observability.Tracing;
@@ -34,15 +33,15 @@ public sealed class PerItemRetryExecutorTests
         try
         {
             var result = await executor.ExecuteWithRetryAsync(
-                item: 7,
-                node: transform,
+                7,
+                transform,
                 context,
                 NodeId,
                 Options(3),
-                hasLineageIndex: true,
-                lineageInputIndex: 0,
-                lineageOutcomeWriter: LineageNodeOutcomeRegistry.GetWriter(pipelineId, NodeId),
-                itemActivity: activity,
+                true,
+                0,
+                LineageNodeOutcomeRegistry.GetWriter(pipelineId, NodeId),
+                activity,
                 CancellationToken.None);
 
             _ = result.Outcome.Should().Be(ItemExecutionOutcome.Skipped);
@@ -78,15 +77,15 @@ public sealed class PerItemRetryExecutorTests
         try
         {
             var result = await executor.ExecuteWithRetryAsync(
-                item: 42,
-                node: transform,
+                42,
+                transform,
                 context,
                 NodeId,
                 Options(2),
-                hasLineageIndex: true,
-                lineageInputIndex: 0,
-                lineageOutcomeWriter: LineageNodeOutcomeRegistry.GetWriter(pipelineId, NodeId),
-                itemActivity: null,
+                true,
+                0,
+                LineageNodeOutcomeRegistry.GetWriter(pipelineId, NodeId),
+                null,
                 CancellationToken.None);
 
             _ = result.Outcome.Should().Be(ItemExecutionOutcome.DeadLettered);
@@ -120,15 +119,15 @@ public sealed class PerItemRetryExecutorTests
         try
         {
             var result = await executor.ExecuteWithRetryAsync(
-                item: 10,
-                node: transform,
+                10,
+                transform,
                 context,
                 NodeId,
                 Options(3),
-                hasLineageIndex: true,
-                lineageInputIndex: 0,
-                lineageOutcomeWriter: LineageNodeOutcomeRegistry.GetWriter(pipelineId, NodeId),
-                itemActivity: activity,
+                true,
+                0,
+                LineageNodeOutcomeRegistry.GetWriter(pipelineId, NodeId),
+                activity,
                 CancellationToken.None);
 
             _ = result.Outcome.Should().Be(ItemExecutionOutcome.Emitted);
@@ -169,15 +168,15 @@ public sealed class PerItemRetryExecutorTests
         try
         {
             var act = async () => await executor.ExecuteWithRetryAsync(
-                item: 11,
-                node: transform,
+                11,
+                transform,
                 context,
                 NodeId,
                 Options(0),
-                hasLineageIndex: true,
-                lineageInputIndex: 0,
-                lineageOutcomeWriter: LineageNodeOutcomeRegistry.GetWriter(pipelineId, NodeId),
-                itemActivity: null,
+                true,
+                0,
+                LineageNodeOutcomeRegistry.GetWriter(pipelineId, NodeId),
+                null,
                 CancellationToken.None);
 
             var thrown = await act.Should().ThrowAsync<InvalidOperationException>();
@@ -204,6 +203,7 @@ public sealed class PerItemRetryExecutorTests
     {
         var executor = PerItemRetryExecutor.Instance;
         var transform = new ScriptedTransform(new InvalidOperationException("first"), new InvalidOperationException("second"));
+
         // One retry, then Fail: the policy, not a cap in the executor, ends the retries.
         var resiliencePolicy = new SequenceDecisionPolicy(ResilienceDecision.Retry);
         var recorder = new RecordingSampleRecorder();
@@ -216,15 +216,15 @@ public sealed class PerItemRetryExecutorTests
         try
         {
             var act = async () => await executor.ExecuteWithRetryAsync(
-                item: 18,
-                node: transform,
+                18,
+                transform,
                 context,
                 NodeId,
                 Options(1),
-                hasLineageIndex: true,
-                lineageInputIndex: 0,
-                lineageOutcomeWriter: LineageNodeOutcomeRegistry.GetWriter(pipelineId, NodeId),
-                itemActivity: null,
+                true,
+                0,
+                LineageNodeOutcomeRegistry.GetWriter(pipelineId, NodeId),
+                null,
                 CancellationToken.None);
 
             // C4: exhaustion is a RetryExhaustedException, as at the other two layers.
@@ -247,10 +247,8 @@ public sealed class PerItemRetryExecutorTests
         }
     }
 
-    private static PipelineResilienceOptions Options(int maxRetries)
-    {
-        return PipelineResilienceOptions.None with { ItemRetry = new ItemRetryOptions { MaxRetries = maxRetries } };
-    }
+    private static PipelineResilienceOptions Options(int maxRetries) =>
+        PipelineResilienceOptions.None with { ItemRetry = new ItemRetryOptions { MaxRetries = maxRetries } };
 
     private static (PipelineContext Context, Guid PipelineId) CreateTrackedContext()
     {
@@ -275,14 +273,14 @@ public sealed class PerItemRetryExecutorTests
             InvocationCount++;
 
             if (_outcomes.Count == 0)
-                return ValueTask.FromResult<int>(item);
+                return ValueTask.FromResult(item);
 
             var outcome = _outcomes.Dequeue();
 
             if (outcome is Exception exception)
                 throw exception;
 
-            return ValueTask.FromResult<int>((int)outcome);
+            return ValueTask.FromResult((int)outcome);
         }
     }
 
@@ -293,15 +291,11 @@ public sealed class PerItemRetryExecutorTests
 
         public int CallCount { get; private set; }
 
-        public ValueTask<ResilienceDecision> DecideNodeFailureAsync(NodeFailure failure, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult(ResilienceDecision.Fail);
-        }
+        public ValueTask<ResilienceDecision> DecideNodeFailureAsync(NodeFailure failure, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(ResilienceDecision.Fail);
 
-        public ValueTask<ResilienceDecision> DecideRestartAsync(StreamFailure failure, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult(ResilienceDecision.Fail);
-        }
+        public ValueTask<ResilienceDecision> DecideRestartAsync(StreamFailure failure, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(ResilienceDecision.Fail);
 
         public ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken)
         {

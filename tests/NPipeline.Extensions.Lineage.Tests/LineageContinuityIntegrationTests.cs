@@ -1,17 +1,16 @@
-using NPipeline.Execution;
+using System.Runtime.CompilerServices;
 using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NPipeline.Configuration;
 using NPipeline.DataFlow;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Extensions.DependencyInjection;
 using NPipeline.Extensions.Parallelism;
-using NPipeline.Graph;
 using NPipeline.Lineage;
 using NPipeline.Lineage.DependencyInjection;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 using NPipeline.Reliability;
-using System.Runtime.CompilerServices;
 
 namespace NPipeline.Extensions.Lineage.Tests;
 
@@ -193,10 +192,7 @@ public sealed class LineageContinuityIntegrationTests
         return (context, sink);
     }
 
-    private static string Qualified(PipelineContext context, string nodeId)
-    {
-        return $"{context.RunIdentity.PipelineId:N}::{nodeId.Replace('_', '-')}";
-    }
+    private static string Qualified(PipelineContext context, string nodeId) => $"{context.RunIdentity.PipelineId:N}::{nodeId.Replace('_', '-')}";
 
     private static async Task RunPipelineAsync<TPipeline>(PipelineContext context)
         where TPipeline : IPipelineDefinition, new()
@@ -239,82 +235,59 @@ public sealed class LineageContinuityIntegrationTests
 
     private sealed class NumbersSourceNode : SourceNode<int>
     {
-        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
-        {
-            return new NPipeline.DataFlow.DataStreams.InMemoryDataStream<int>([1, 2, 3, 4], "numbers");
-        }
+        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken) =>
+            new InMemoryDataStream<int>([1, 2, 3, 4], "numbers");
     }
 
     private sealed class LeftSourceNode : SourceNode<int>
     {
-        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
-        {
-            return new NPipeline.DataFlow.DataStreams.InMemoryDataStream<int>([1, 2, 3], "left");
-        }
+        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken) =>
+            new InMemoryDataStream<int>([1, 2, 3], "left");
     }
 
     private sealed class RightSourceNode : SourceNode<long>
     {
-        public override IDataStream<long> OpenStream(PipelineContext context, CancellationToken cancellationToken)
-        {
-            return new NPipeline.DataFlow.DataStreams.InMemoryDataStream<long>([10L, 20L], "right");
-        }
+        public override IDataStream<long> OpenStream(PipelineContext context, CancellationToken cancellationToken) =>
+            new InMemoryDataStream<long>([10L, 20L], "right");
     }
 
     private sealed class FanInLeftSourceNode : SourceNode<int>
     {
-        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
-        {
-            return new NPipeline.DataFlow.DataStreams.InMemoryDataStream<int>([1, 2], "fanin-left");
-        }
+        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken) =>
+            new InMemoryDataStream<int>([1, 2], "fanin-left");
     }
 
     private sealed class FanInRightSourceNode : SourceNode<int>
     {
-        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
-        {
-            return new NPipeline.DataFlow.DataStreams.InMemoryDataStream<int>([3, 4], "fanin-right");
-        }
+        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken) =>
+            new InMemoryDataStream<int>([3, 4], "fanin-right");
     }
 
     private sealed class SamplingSourceNode : SourceNode<int>
     {
-        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
-        {
-            return new NPipeline.DataFlow.DataStreams.InMemoryDataStream<int>(Enumerable.Range(1, 100).ToArray(), "sampling");
-        }
+        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken) =>
+            new InMemoryDataStream<int>(Enumerable.Range(1, 100).ToArray(), "sampling");
     }
 
     private sealed class EmptySourceNode : SourceNode<int>
     {
-        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
-        {
-            return new NPipeline.DataFlow.DataStreams.InMemoryDataStream<int>([], "empty");
-        }
+        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken) => new InMemoryDataStream<int>([], "empty");
     }
 
     private sealed class IncrementTransformNode : TransformNode<int, int>
     {
-        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult<int>(item + 1);
-        }
+        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken) => ValueTask.FromResult(item + 1);
     }
 
     private sealed class LeftTransformNode : TransformNode<int, int>
     {
-        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult<int>(item * 2);
-        }
+        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken) => ValueTask.FromResult(item * 2);
     }
 
     private sealed class RightTransformNode : TransformNode<long, long>
     {
-        public override ValueTask<long> TransformAsync(long item, PipelineContext context, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult<long>(item + 100);
-        }
+        public override ValueTask<long> TransformAsync(long item, PipelineContext context, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(item + 100);
     }
 
     private sealed class ParallelTransformNode : TransformNode<int, int>
@@ -328,10 +301,7 @@ public sealed class LineageContinuityIntegrationTests
 
     private sealed class SingleValueSourceNode : SourceNode<int>
     {
-        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
-        {
-            return new NPipeline.DataFlow.DataStreams.InMemoryDataStream<int>([5], "single");
-        }
+        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken) => new InMemoryDataStream<int>([5], "single");
     }
 
     private sealed class RetryMetadataTransformNode : TransformNode<int, int>
@@ -346,7 +316,7 @@ public sealed class LineageContinuityIntegrationTests
                 throw new InvalidOperationException("transient");
             }
 
-            return ValueTask.FromResult<int>(item + 1);
+            return ValueTask.FromResult(item + 1);
         }
     }
 
@@ -355,12 +325,10 @@ public sealed class LineageContinuityIntegrationTests
     /// </summary>
     private sealed class RetryWithinLimitPolicy : ResiliencePolicyBase
     {
-        public override ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult(failure.Attempt <= failure.MaxRetries
+        public override ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(failure.Attempt <= failure.MaxRetries
                 ? ResilienceDecision.Retry
                 : ResilienceDecision.Fail);
-        }
     }
 
     private sealed class SumAggregateNode : IAggregateNode
@@ -378,23 +346,15 @@ public sealed class LineageContinuityIntegrationTests
             return sum;
         }
 
-        public ValueTask DisposeAsync()
-        {
-            return ValueTask.CompletedTask;
-        }
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 
     private sealed class PassThroughAggregateNode : IAggregateNode
     {
-        public ValueTask<object?> ExecuteAsync(IAsyncEnumerable<object?> inputStream, CancellationToken cancellationToken = default)
-        {
-            return ValueTask.FromResult<object?>(inputStream);
-        }
+        public ValueTask<object?> ExecuteAsync(IAsyncEnumerable<object?> inputStream, CancellationToken cancellationToken = default) =>
+            ValueTask.FromResult<object?>(inputStream);
 
-        public ValueTask DisposeAsync()
-        {
-            return ValueTask.CompletedTask;
-        }
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 
     private sealed class EmitConstantOnEmptyAggregateNode : IAggregateNode
@@ -408,10 +368,7 @@ public sealed class LineageContinuityIntegrationTests
             return 999;
         }
 
-        public ValueTask DisposeAsync()
-        {
-            return ValueTask.CompletedTask;
-        }
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 
     private sealed class CollapsingJoinNode : IJoinNode
@@ -419,15 +376,10 @@ public sealed class LineageContinuityIntegrationTests
         public ValueTask<IAsyncEnumerable<object?>> ExecuteAsync(
             IAsyncEnumerable<object?> inputStream,
             PipelineContext context,
-            CancellationToken cancellationToken = default)
-        {
-            return ValueTask.FromResult<IAsyncEnumerable<object?>>(Execute(inputStream, cancellationToken));
-        }
+            CancellationToken cancellationToken = default) =>
+            ValueTask.FromResult<IAsyncEnumerable<object?>>(Execute(inputStream, cancellationToken));
 
-        public ValueTask DisposeAsync()
-        {
-            return ValueTask.CompletedTask;
-        }
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
         private static async IAsyncEnumerable<object?> Execute(
             IAsyncEnumerable<object?> inputStream,
@@ -438,13 +390,9 @@ public sealed class LineageContinuityIntegrationTests
             await foreach (var item in inputStream.WithCancellation(cancellationToken))
             {
                 if (item is int value)
-                {
                     total += value;
-                }
                 else if (item is long longValue)
-                {
                     total += (int)longValue;
-                }
             }
 
             yield return total;
@@ -477,13 +425,13 @@ public sealed class LineageContinuityIntegrationTests
 
     private abstract class BaseLineagePipeline : IPipelineDefinition
     {
+        public abstract void Define(PipelineBuilder builder, PipelineContext context);
+
         protected static void EnableLineage(PipelineBuilder builder, PipelineContext context)
         {
             builder.EnableItemLevelLineage();
             builder.AddLineageSink((ILineageSink)context.Items[LineageSinkContextKey]);
         }
-
-        public abstract void Define(PipelineBuilder builder, PipelineContext context);
     }
 
     private sealed class AggregateContinuityPipeline : BaseLineagePipeline
@@ -545,8 +493,10 @@ public sealed class LineageContinuityIntegrationTests
             EnableLineage(builder, context);
 
             var source = builder.AddSource<NumbersSourceNode, int>("source");
+
             var parallel = builder.AddTransform<ParallelTransformNode, int, int>("parallel_transform")
-                .WithBlockingParallelism(builder, maxDegreeOfParallelism: 4, maxQueueLength: 32);
+                .WithBlockingParallelism(builder, 4, 32);
+
             var aggregate = builder.AddAggregate<PassThroughAggregateNode, int, int, int>("aggregate");
             var sink = builder.AddSink<DrainSinkNode<int>, int>("sink");
 

@@ -3,10 +3,10 @@ using System.Text;
 using System.Text.Json;
 using NPipeline.Connectors.Http.Configuration;
 using NPipeline.Connectors.Http.Nodes;
-using NPipeline.Connectors.Http.Reliability;
 using NPipeline.Connectors.Http.Tests.Helpers;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.Pipeline;
+using NResilience;
 
 namespace NPipeline.Connectors.Http.Tests.Nodes;
 
@@ -14,10 +14,7 @@ public class HttpSinkNodeTests
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
-    private static HttpClient CreateClient(MockHttpMessageHandler handler)
-    {
-        return new HttpClient(handler);
-    }
+    private static HttpClient CreateClient(MockHttpMessageHandler handler) => new(handler);
 
     private static DataStream<T> PipeOf<T>(params T[] items)
     {
@@ -201,7 +198,7 @@ public class HttpSinkNodeTests
         var config = new HttpSinkConfiguration
         {
             Uri = new Uri("https://api.example.com/items"),
-            Resilience = NResilience.Resilience.None,
+            Resilience = Resilience.None,
         };
 
         var node = new HttpSinkNode<Item>(config, httpClient);
@@ -222,7 +219,7 @@ public class HttpSinkNodeTests
         {
             Uri = new Uri("https://api.example.com/items"),
             CaptureErrorResponses = true,
-            Resilience = NResilience.Resilience.None,
+            Resilience = Resilience.None,
         };
 
         var node = new HttpSinkNode<Item>(config, httpClient);
@@ -265,7 +262,7 @@ public class HttpSinkNodeTests
         var config = new HttpSinkConfiguration
         {
             Uri = new Uri("https://api.example.com/items"),
-            Resilience = NResilience.Resilience.None with { AttemptTimeout = TimeSpan.FromMilliseconds(50) },
+            Resilience = Resilience.None with { AttemptTimeout = TimeSpan.FromMilliseconds(50) },
         };
 
         var node = new HttpSinkNode<Item>(config, httpClient);
@@ -293,9 +290,6 @@ public class HttpSinkNodeTests
 
     private sealed class MockHttpClientFactory(HttpClient client) : IHttpClientFactory
     {
-        public HttpClient CreateClient(string name)
-        {
-            return client;
-        }
+        public HttpClient CreateClient(string name) => client;
     }
 }

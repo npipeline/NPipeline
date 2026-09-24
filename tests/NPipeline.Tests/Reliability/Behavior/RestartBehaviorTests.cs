@@ -1,12 +1,9 @@
 using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using AwesomeAssertions;
-using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataStreams;
 using NPipeline.ErrorHandling;
 using NPipeline.Execution;
 using NPipeline.Extensions.Parallelism;
-using NPipeline.Graph;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 using NPipeline.Reliability;
@@ -78,10 +75,11 @@ public sealed class RestartBehaviorTests
         var observer = new RecordingObserver();
 
         await BehaviorPipeline.RunAsync(b => Wire(b, StreamingSource<int>.Of(Enumerable.Range(1, 20)), transform, sink, strategy,
-            new NodeRestartOptions { MaxRestarts = 3, Backoff = RetryBackoff.None }), observer: observer);
+            new NodeRestartOptions { MaxRestarts = 3, Backoff = RetryBackoff.None }), observer);
 
         // R3: nothing delivered before a failure is delivered again, and nothing is lost.
         sink.Items.Should().Equal(Enumerable.Range(1, 20));
+
         // In parallel, items 12 and 13 can fail in the same run, so one restart may cover both.
         observer.Retries.Should().HaveCountGreaterThanOrEqualTo(2).And.OnlyContain(e => e.Kind == RetryKind.NodeRestart);
 
@@ -160,7 +158,7 @@ public sealed class RestartBehaviorTests
         var source = new StreamingSource<int>(ct => FailAfter([1, 2], new TimeoutException("the source's connection dropped"), ct));
 
         var act = () => BehaviorPipeline.RunAsync(b => Wire(b, source, new FailsOnceOn(), sink, "sequential",
-            new NodeRestartOptions { MaxRestarts = 3, Backoff = RetryBackoff.None }), observer: observer);
+            new NodeRestartOptions { MaxRestarts = 3, Backoff = RetryBackoff.None }), observer);
 
         // The input cannot be read again, so a restart could only fail the same way or lose items.
         var thrown = await act.Should().ThrowAsync<Exception>();
@@ -172,7 +170,7 @@ public sealed class RestartBehaviorTests
     [Fact]
     public async Task ExhaustedRestarts_SurfaceARetryExhaustedExceptionNamingTheNode()
     {
-        var act = () => BehaviorPipeline.RunAsync(b => Wire(b, StreamingSource<int>.Of([1, 2, 3]), new FlakyTransform(failuresPerItem: 100),
+        var act = () => BehaviorPipeline.RunAsync(b => Wire(b, StreamingSource<int>.Of([1, 2, 3]), new FlakyTransform(100),
             new CollectingSink<int>(), "sequential", new NodeRestartOptions { MaxRestarts = 2, Backoff = RetryBackoff.None }));
 
         var thrown = await act.Should().ThrowAsync<Exception>();
@@ -197,7 +195,8 @@ public sealed class RestartBehaviorTests
     [Fact]
     public async Task WithoutResetAfterItems_RestartsAreCountedOverTheWholeStream()
     {
-        var act = () => BehaviorPipeline.RunAsync(b => Wire(b, StreamingSource<int>.Of(Enumerable.Range(1, 30)), new FailsOnceOn(5, 15), new CollectingSink<int>(),
+        var act = () => BehaviorPipeline.RunAsync(b => Wire(b, StreamingSource<int>.Of(Enumerable.Range(1, 30)), new FailsOnceOn(5, 15),
+            new CollectingSink<int>(),
             "sequential", new NodeRestartOptions { MaxRestarts = 1, Backoff = RetryBackoff.None }));
 
         var thrown = await act.Should().ThrowAsync<Exception>();
@@ -244,9 +243,9 @@ public sealed class RestartBehaviorTests
         _ = builder.WithParallelOptions(t, strategy switch
         {
             "parallel-unordered" => new ParallelOptions(4, PreserveOrdering: false),
-            "parallel-drop-oldest" => new ParallelOptions(4, MaxQueueLength: 10_000, QueuePolicy: BoundedQueuePolicy.DropOldest),
-            "parallel-drop-newest" => new ParallelOptions(4, MaxQueueLength: 10_000, QueuePolicy: BoundedQueuePolicy.DropNewest),
-            _ => new ParallelOptions(4, MaxQueueLength: 8),
+            "parallel-drop-oldest" => new ParallelOptions(4, 10_000, BoundedQueuePolicy.DropOldest),
+            "parallel-drop-newest" => new ParallelOptions(4, 10_000, BoundedQueuePolicy.DropNewest),
+            _ => new ParallelOptions(4, 8),
         });
     }
 
@@ -280,10 +279,7 @@ public sealed class RestartBehaviorTests
 
         public int[] AlwaysInvalid { get; init; } = [];
 
-        public int CallsFor(int item)
-        {
-            return _calls.GetValueOrDefault(item);
-        }
+        public int CallsFor(int item) => _calls.GetValueOrDefault(item);
 
         public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
@@ -304,12 +300,10 @@ public sealed class RestartBehaviorTests
     /// </summary>
     private sealed class DeadLetterInvalidData : ResiliencePolicyBase
     {
-        public override ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken)
-        {
-            return failure.Exception is InvalidDataException
+        public override ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken) =>
+            failure.Exception is InvalidDataException
                 ? ValueTask.FromResult(ResilienceDecision.DeadLetter)
                 : base.DecideItemFailureAsync(failure, cancellationToken);
-        }
     }
 
     private sealed class RecordingRestartPolicy : ResiliencePolicyBase

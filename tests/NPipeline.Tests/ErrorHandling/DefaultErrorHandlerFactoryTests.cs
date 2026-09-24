@@ -88,10 +88,8 @@ public sealed class DefaultErrorHandlerFactoryTests
         public Task HandleAsync(
             DeadLetterEnvelope envelope,
             PipelineContext context,
-            CancellationToken cancellationToken)
-        {
-            return Task.CompletedTask;
-        }
+            CancellationToken cancellationToken) =>
+            Task.CompletedTask;
     }
 
     private abstract class AbstractDeadLetterSink : IDeadLetterSink
@@ -109,10 +107,8 @@ public sealed class DefaultErrorHandlerFactoryTests
         public Task HandleAsync(
             DeadLetterEnvelope envelope,
             PipelineContext context,
-            CancellationToken cancellationToken)
-        {
-            return Task.CompletedTask;
-        }
+            CancellationToken cancellationToken) =>
+            Task.CompletedTask;
     }
 
     private sealed class TypeWithoutParameterlessConstructor

@@ -285,12 +285,10 @@ public sealed class SqlServerStorageUriIntegrationTests
         }
     }
 
-    private static SqlConnectionEncryptOption ParseEncryptOption(string value)
-    {
-        return bool.Parse(value)
+    private static SqlConnectionEncryptOption ParseEncryptOption(string value) =>
+        bool.Parse(value)
             ? SqlConnectionEncryptOption.Mandatory
             : SqlConnectionEncryptOption.Optional;
-    }
 
     private static (string Host, int? Port) ParseDataSource(string dataSource)
     {
@@ -308,19 +306,15 @@ public sealed class SqlServerStorageUriIntegrationTests
         return (parts[0], null);
     }
 
-    private static string BuildHostSegment(string host, int? port)
-    {
-        return port.HasValue
+    private static string BuildHostSegment(string host, int? port) =>
+        port.HasValue
             ? $"{host}:{port.Value}"
             : host;
-    }
 
-    private static string BuildDataSource(string host, int? port)
-    {
-        return port.HasValue
+    private static string BuildDataSource(string host, int? port) =>
+        port.HasValue
             ? $"{host},{port.Value}"
             : host;
-    }
 
     private sealed class TestRecord
     {

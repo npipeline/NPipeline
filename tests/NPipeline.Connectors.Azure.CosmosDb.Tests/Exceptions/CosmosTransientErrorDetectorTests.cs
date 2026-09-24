@@ -260,39 +260,34 @@ public class CosmosTransientErrorDetectorTests
 
     #region Helper Methods
 
-    private static CosmosException CreateCosmosException(HttpStatusCode statusCode, int subStatusCode)
-    {
+    private static CosmosException CreateCosmosException(HttpStatusCode statusCode, int subStatusCode) =>
+
         // CosmosException requires specific parameters - use the constructor that takes individual values
-        return new CosmosException(
+        new(
             $"Test CosmosException with status {statusCode}",
             statusCode,
             subStatusCode,
             $"activity-{Guid.NewGuid()}",
             0.0
         );
-    }
 
-    private static CosmosException CreateCosmosExceptionWithRetryAfter(HttpStatusCode statusCode)
-    {
-        return new CosmosException(
+    private static CosmosException CreateCosmosExceptionWithRetryAfter(HttpStatusCode statusCode) =>
+        new(
             $"Test CosmosException with status {statusCode}",
             statusCode,
             0,
             $"activity-{Guid.NewGuid()}",
             0.0
         );
-    }
 
-    private static CosmosException CreateCosmosExceptionWithActivityId(HttpStatusCode statusCode, string activityId)
-    {
-        return new CosmosException(
+    private static CosmosException CreateCosmosExceptionWithActivityId(HttpStatusCode statusCode, string activityId) =>
+        new(
             "Test CosmosException with activity ID",
             statusCode,
             0,
             activityId,
             0.0
         );
-    }
 
     #endregion
 }

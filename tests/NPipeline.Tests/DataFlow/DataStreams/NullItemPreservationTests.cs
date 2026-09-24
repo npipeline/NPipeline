@@ -210,9 +210,6 @@ public sealed class NullItemPreservationTests
     /// </summary>
     private sealed class PassthroughDataStream<T>(IDataStream<T> inner) : DataStreamBase<T>(inner)
     {
-        public override IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
-        {
-            return Inner.GetAsyncEnumerator(cancellationToken);
-        }
+        public override IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default) => Inner.GetAsyncEnumerator(cancellationToken);
     }
 }

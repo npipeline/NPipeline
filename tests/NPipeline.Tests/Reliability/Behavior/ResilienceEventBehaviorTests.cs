@@ -1,6 +1,5 @@
+using System.Globalization;
 using AwesomeAssertions;
-using NPipeline.Configuration;
-using NPipeline.ErrorHandling;
 using NPipeline.Execution;
 using NPipeline.Extensions.Parallelism;
 using NPipeline.Graph;
@@ -27,14 +26,15 @@ public sealed class ResilienceEventBehaviorTests
 
         var act = () => BehaviorPipeline.RunAsync(b =>
         {
-            var t = Wire(b, new FlakyTransform(failuresPerItem: 100), new CollectingSink<int>(), [7], strategy);
+            var t = Wire(b, new FlakyTransform(100), new CollectingSink<int>(), [7], strategy);
             _ = b.WithResilience(t, o => o with { ItemRetry = new ItemRetryOptions { MaxRetries = 2 } });
-        }, observer: observer);
+        }, observer);
 
         _ = await act.Should().ThrowAsync<Exception>();
 
         observer.Retries.Should().OnlyContain(e => e.Kind == RetryKind.ItemRetry && e.NodeId == "transform");
-        observer.Retries.Select(e => e.Attempt).Should().Equal([1, 2]);
+        observer.Retries.Select(e => e.Attempt).Should().Equal(1, 2);
+
         observer.Exhaustions.Should().ContainSingle()
             .Which.Should().Match<RetryExhaustedEvent>(e =>
                 e.NodeId == "transform" && e.Kind == RetryKind.ItemRetry && e.Attempts == 3 && e.LastException is TimeoutException);
@@ -51,7 +51,7 @@ public sealed class ResilienceEventBehaviorTests
             // A permanent failure: the default classifier declines to retry it, so nothing was exhausted.
             var t = Wire(b, new FailOn(2, () => new InvalidOperationException("bad record")), new CollectingSink<int>(), [2], strategy);
             _ = b.WithResilience(t, o => o with { ItemRetry = new ItemRetryOptions { MaxRetries = 2 } });
-        }, observer: observer);
+        }, observer);
 
         _ = await act.Should().ThrowAsync<Exception>();
 
@@ -106,7 +106,7 @@ public sealed class ResilienceEventBehaviorTests
 
         await runner.RunAsync(new BehaviorPipeline(b =>
         {
-            var t = Wire(b, new FlakyTransform(failuresPerItem: 2), new CollectingSink<int>(), [1, 2, 3], "parallel-blocking");
+            var t = Wire(b, new FlakyTransform(2), new CollectingSink<int>(), [1, 2, 3], "parallel-blocking");
             _ = b.WithResilience(t, o => o with { ItemRetry = new ItemRetryOptions { MaxRetries = 3 } });
         }), context);
 
@@ -124,17 +124,19 @@ public sealed class ResilienceEventBehaviorTests
 
         var act = () => BehaviorPipeline.RunAsync(b =>
         {
-            var t = Wire(b, new FlakyTransform(failuresPerItem: 100), new CollectingSink<int>(), [1], "sequential");
+            var t = Wire(b, new FlakyTransform(100), new CollectingSink<int>(), [1], "sequential");
+
             _ = b.WithResilience(t, o => o with
             {
                 ItemRetry = ItemRetryOptions.None,
                 NodeRestart = new NodeRestartOptions { MaxRestarts = 1, MaxReplayWindow = 100, Backoff = RetryBackoff.None },
             });
-        }, observer: observer);
+        }, observer);
 
         _ = await act.Should().ThrowAsync<Exception>();
 
         observer.Retries.Should().ContainSingle().Which.Kind.Should().Be(RetryKind.NodeRestart);
+
         observer.Exhaustions.Should().ContainSingle()
             .Which.Should().Match<RetryExhaustedEvent>(e => e.NodeId == "transform" && e.Kind == RetryKind.NodeRestart && e.Attempts == 2);
     }
@@ -146,13 +148,14 @@ public sealed class ResilienceEventBehaviorTests
 
         var act = () => BehaviorPipeline.RunAsync(b =>
         {
-            var t = Wire(b, new FlakyTransform(failuresPerItem: 100), new CollectingSink<int>(), [1], "sequential");
+            var t = Wire(b, new FlakyTransform(100), new CollectingSink<int>(), [1], "sequential");
+
             _ = b.WithResilience(t, o => o with
             {
                 ItemRetry = new ItemRetryOptions { MaxRetries = 5 },
                 CircuitBreaker = new CircuitBreakerOptions { ConsecutiveFailures = 1 },
             });
-        }, observer: observer);
+        }, observer);
 
         _ = await act.Should().ThrowAsync<Exception>();
 
@@ -189,8 +192,8 @@ public sealed class ResilienceEventBehaviorTests
         var options = strategy switch
         {
             "parallel-unordered" => new ParallelOptions(2, PreserveOrdering: false),
-            "parallel-drop-oldest" => new ParallelOptions(2, MaxQueueLength: 1_000, QueuePolicy: BoundedQueuePolicy.DropOldest),
-            "parallel-drop-newest" => new ParallelOptions(2, MaxQueueLength: 1_000, QueuePolicy: BoundedQueuePolicy.DropNewest),
+            "parallel-drop-oldest" => new ParallelOptions(2, 1_000, BoundedQueuePolicy.DropOldest),
+            "parallel-drop-newest" => new ParallelOptions(2, 1_000, BoundedQueuePolicy.DropNewest),
             _ => new ParallelOptions(2),
         };
 
@@ -213,9 +216,9 @@ public sealed class ResilienceEventBehaviorTests
 
     private sealed class NullForEven : TransformNode<int, string?>
     {
-        public override ValueTask<string?> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult(item % 2 == 0 ? null : item.ToString(System.Globalization.CultureInfo.InvariantCulture));
-        }
+        public override ValueTask<string?> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken) => ValueTask.FromResult(
+            item % 2 == 0
+                ? null
+                : item.ToString(CultureInfo.InvariantCulture));
     }
 }

@@ -1,10 +1,8 @@
 using System.Collections.Concurrent;
 using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NPipeline.Configuration;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
-using NPipeline.Execution;
 using NPipeline.Extensions.DependencyInjection;
 using NPipeline.Extensions.Parallelism;
 using NPipeline.Lineage;
@@ -22,6 +20,13 @@ namespace NPipeline.Extensions.Lineage.Tests;
 /// </summary>
 public sealed class LineageItemContextTests
 {
+    public enum Strategy
+    {
+        Sequential,
+        BlockingParallel,
+        DropOldestParallel,
+    }
+
     private const string LineageSinkKey = "test.lineage.sink";
     private const string StrategyKey = "test.strategy";
     private const string RestartKey = "test.restart";
@@ -33,13 +38,6 @@ public sealed class LineageItemContextTests
     private const int SkippedItem = 2;
     private const int RetriedItem = 3;
     private const int RestartItem = 4;
-
-    public enum Strategy
-    {
-        Sequential,
-        BlockingParallel,
-        DropOldestParallel,
-    }
 
     [Theory]
     [InlineData(Strategy.Sequential, false)]
@@ -69,9 +67,12 @@ public sealed class LineageItemContextTests
         state.Restarted.Should().Be(restart);
 
         // Only a failure that ends the item's processing records an error sample: here, the one that restarts the node.
-        samples.Errors.Should().HaveCount(restart ? 1 : 0);
+        samples.Errors.Should().HaveCount(restart
+            ? 1
+            : 0);
+
         samples.Errors.Should().OnlyContain(e => e.NodeId == "transform" && e.CorrelationId != Guid.Empty
-                                                 && e.ExceptionType == typeof(InvalidOperationException).FullName);
+                                                                         && e.ExceptionType == typeof(InvalidOperationException).FullName);
 
         var transformRecords = lineage.Records.Where(static r => r.NodeId == "transform").ToList();
 
@@ -94,7 +95,9 @@ public sealed class LineageItemContextTests
 
         // Each sink record continues the lineage of the transform record for the same data.
         foreach (var record in lineage.Records.Where(static r => r.NodeId == "sink"))
+        {
             record.CorrelationId.Should().Be(correlationOf[(int)record.Data! / 10]);
+        }
 
         // The retried item's hop carries its retry count, from the outcome recorded under its input index.
         emitted.Should().ContainSingle(static r => r.RetryCount == 2)
@@ -115,10 +118,8 @@ public sealed class LineageItemContextTests
 
     private sealed class NumbersSource : SourceNode<int>
     {
-        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
-        {
-            return new InMemoryDataStream<int>([1, 2, 3, 4, 5, 6], "numbers");
-        }
+        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken) =>
+            new InMemoryDataStream<int>([1, 2, 3, 4, 5, 6], "numbers");
     }
 
     private sealed class FlakyTransform : TransformNode<int, int>
@@ -184,8 +185,8 @@ public sealed class LineageItemContextTests
 
             _ = (Strategy)context.Items[StrategyKey] switch
             {
-                Strategy.BlockingParallel => transform.WithBlockingParallelism(builder, maxDegreeOfParallelism: 3, maxQueueLength: 16),
-                Strategy.DropOldestParallel => transform.WithDropOldestParallelism(builder, maxDegreeOfParallelism: 3, maxQueueLength: 64),
+                Strategy.BlockingParallel => transform.WithBlockingParallelism(builder, 3, 16),
+                Strategy.DropOldestParallel => transform.WithDropOldestParallelism(builder, 3, 64),
                 _ => transform,
             };
 
@@ -194,7 +195,9 @@ public sealed class LineageItemContextTests
             builder.WithResilience(transform, o => o with
             {
                 ItemRetry = new ItemRetryOptions { MaxRetries = 3 },
-                NodeRestart = restart ? new NodeRestartOptions { MaxRestarts = 1, Backoff = RetryBackoff.None } : NodeRestartOptions.None,
+                NodeRestart = restart
+                    ? new NodeRestartOptions { MaxRestarts = 1, Backoff = RetryBackoff.None }
+                    : NodeRestartOptions.None,
             });
 
             builder.AddResiliencePolicy(transform, new SkipArgumentExceptions());

@@ -1,3 +1,4 @@
+using System.Text.Json;
 using NPipeline.Connectors.DataLake.Manifest;
 using NPipeline.Connectors.DataLake.Reliability;
 using NPipeline.StorageProviders;
@@ -10,7 +11,7 @@ namespace NPipeline.Connectors.DataLake.Tests.Reliability.Behavior;
 public sealed class ManifestWriterResilienceBehaviorTests : IDisposable
 {
     // Same attempts and classifier as the preset, without the backoff delay
-    private static readonly NResilience.Resilience Fast = DataLakeConnectorResilience.ManifestWrite with
+    private static readonly Resilience Fast = DataLakeConnectorResilience.ManifestWrite with
     {
         Backoff = Backoff.None,
     };
@@ -195,7 +196,7 @@ public sealed class ManifestWriterResilienceBehaviorTests : IDisposable
         var content = await File.ReadAllTextAsync(Path.Combine(_tempDir, "_manifest", "manifest.ndjson"));
 
         return content.Split('\n', StringSplitOptions.RemoveEmptyEntries)
-            .Select(line => System.Text.Json.JsonDocument.Parse(line).RootElement.GetProperty("path").GetString()!)
+            .Select(line => JsonDocument.Parse(line).RootElement.GetProperty("path").GetString()!)
             .ToList();
     }
 
@@ -249,11 +250,9 @@ public sealed class ManifestWriterResilienceBehaviorTests : IDisposable
             CancellationToken cancellationToken = default) =>
             _inner.ListAsync(prefix, recursive, cancellationToken);
 
-        public Task<StorageMetadata?> GetMetadataAsync(StorageUri uri, CancellationToken cancellationToken = default)
-        {
-            return MetadataFailures.TryDequeue(out var failure)
+        public Task<StorageMetadata?> GetMetadataAsync(StorageUri uri, CancellationToken cancellationToken = default) =>
+            MetadataFailures.TryDequeue(out var failure)
                 ? Task.FromException<StorageMetadata?>(failure)
                 : _inner.GetMetadataAsync(uri, cancellationToken);
-        }
     }
 }

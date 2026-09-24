@@ -1,4 +1,3 @@
-using NPipeline.Execution;
 using System.Reflection;
 using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
@@ -6,7 +5,6 @@ using NPipeline.Configuration;
 using NPipeline.ErrorHandling;
 using NPipeline.Extensions.DependencyInjection;
 using NPipeline.Extensions.Testing;
-using NPipeline.Graph;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 using NPipeline.Reliability;
@@ -66,7 +64,7 @@ public sealed class ResilientRestartLimitTests
             if (_attempt <= 3)
                 throw new InvalidOperationException("boom");
 
-            return ValueTask.FromResult<int>(item);
+            return ValueTask.FromResult(item);
         }
     }
 
@@ -74,10 +72,8 @@ public sealed class ResilientRestartLimitTests
     {
         private int _fails;
 
-        public ValueTask<ResilienceDecision> DecideNodeFailureAsync(NodeFailure failure, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult(ResilienceDecision.Fail);
-        }
+        public ValueTask<ResilienceDecision> DecideNodeFailureAsync(NodeFailure failure, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(ResilienceDecision.Fail);
 
         public ValueTask<ResilienceDecision> DecideRestartAsync(StreamFailure failure, CancellationToken cancellationToken)
         {
@@ -89,11 +85,8 @@ public sealed class ResilientRestartLimitTests
                 : ResilienceDecision.Fail);
         }
 
-        public ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult(ResilienceDecision.Fail);
-        }
-
+        public ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(ResilienceDecision.Fail);
     }
 
     private sealed class TestPipeline : IPipelineDefinition
@@ -105,7 +98,9 @@ public sealed class ResilientRestartLimitTests
             var k = builder.AddInMemorySink<int>("snkRL");
             _ = builder.Connect(s, t).Connect(t, k);
             builder.AddResiliencePolicy<RestartingPolicy>();
-            builder.WithResilience(o => o with { NodeRestart = new NodeRestartOptions { MaxRestarts = 2, MaxReplayWindow = 128, Backoff = RetryBackoff.None } }); // gate at 2 failures
+
+            builder.WithResilience(o =>
+                o with { NodeRestart = new NodeRestartOptions { MaxRestarts = 2, MaxReplayWindow = 128, Backoff = RetryBackoff.None } }); // gate at 2 failures
         }
     }
 }

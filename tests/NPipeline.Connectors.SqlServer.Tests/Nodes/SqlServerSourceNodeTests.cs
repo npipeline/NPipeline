@@ -54,10 +54,7 @@ public class SqlServerSourceNodeTests
         const string connectionString = "Server=localhost;Database=test";
         const string query = "SELECT * FROM test_table";
 
-        static TestRecord Mapper(SqlServerRow row)
-        {
-            return new TestRecord();
-        }
+        static TestRecord Mapper(SqlServerRow row) => new();
 
         // Act
         var node = new SqlServerSourceNode<TestRecord>(connectionString, query, Mapper);

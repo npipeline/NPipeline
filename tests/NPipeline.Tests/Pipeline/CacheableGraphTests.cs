@@ -1,4 +1,3 @@
-using System.Runtime.CompilerServices;
 using AwesomeAssertions;
 using NPipeline.Attributes;
 using NPipeline.Configuration;
@@ -146,14 +145,11 @@ public sealed class CacheableGraphTests
         await runner.RunAsync<CacheablePipeline>(NewContext());
         var secondRun = recorder.TakeConsumed();
 
-        firstRun.Should().Equal([0, 2, 4]);
+        firstRun.Should().Equal(0, 2, 4);
         secondRun.Should().Equal([0, 2, 4], "reusing the graph must not change observable behaviour");
     }
 
-    private static PipelineContext NewContext()
-    {
-        return new PipelineContext(new PipelineContextConfiguration(new Dictionary<string, object> { ["count"] = 3 }));
-    }
+    private static PipelineContext NewContext() => new(new PipelineContextConfiguration(new Dictionary<string, object> { ["count"] = 3 }));
 
     /// <summary>
     ///     Ambient recorder shared by the definitions and nodes, which the framework instantiates itself.
@@ -322,7 +318,10 @@ public sealed class CacheableGraphTests
             if (_disposed)
                 DefineRecorder.Current?.RecordUseAfterDispose();
 
-            var count = context.Parameters.TryGetValue("count", out var value) ? Convert.ToInt32(value) : 0;
+            var count = context.Parameters.TryGetValue("count", out var value)
+                ? Convert.ToInt32(value)
+                : 0;
+
             return new DataStream<int>(Generate(count), "source");
         }
 
@@ -339,10 +338,7 @@ public sealed class CacheableGraphTests
 
     private sealed class Doubler : TransformNode<int, int>
     {
-        public override ValueTask<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
-        {
-            return new ValueTask<int>(input * 2);
-        }
+        public override ValueTask<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken) => new(input * 2);
     }
 
     private sealed class CollectingSink : SinkNode<int>, IDisposable

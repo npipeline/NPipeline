@@ -1,8 +1,10 @@
+using Microsoft.CodeAnalysis;
+
 namespace NPipeline.Analyzers.Tests;
 
 public sealed class UnconditionalRetryDecisionAnalyzerTests
 {
-    private static async Task<IReadOnlyList<Microsoft.CodeAnalysis.Diagnostic>> AnalyzeAsync(string source)
+    private static async Task<IReadOnlyList<Diagnostic>> AnalyzeAsync(string source)
     {
         var diagnostics = await ResilienceAnalyzerTestHelper.GetDiagnosticsAsync<UnconditionalRetryDecisionAnalyzer>(source);
         return diagnostics.Where(d => d.Id == UnconditionalRetryDecisionAnalyzer.UnconditionalRetryDecisionId).ToList();

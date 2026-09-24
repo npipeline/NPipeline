@@ -8,10 +8,7 @@ namespace NPipeline.Connectors.Http.Tests.Configuration;
 
 public class HttpSinkConfigurationTests
 {
-    private static HttpSinkConfiguration ValidConfig()
-    {
-        return new HttpSinkConfiguration { Uri = new Uri("https://api.example.com/items") };
-    }
+    private static HttpSinkConfiguration ValidConfig() => new() { Uri = new Uri("https://api.example.com/items") };
 
     [Fact]
     public void Validate_WithStaticUri_DoesNotThrow()

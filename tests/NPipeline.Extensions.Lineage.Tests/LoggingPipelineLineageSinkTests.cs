@@ -190,7 +190,8 @@ public class LoggingPipelineLineageSinkTests
         var logger = new TestLogger();
         var sink = new LoggingPipelineLineageSink(logger);
 
-        var report = new PipelineLineageReport("Pipeline with <special> & \"characters\"", Guid.NewGuid(), [new NodeLineageInfo("node1", "Transform", "int", "int")], [], s_pipelineId);
+        var report = new PipelineLineageReport("Pipeline with <special> & \"characters\"", Guid.NewGuid(),
+            [new NodeLineageInfo("node1", "Transform", "int", "int")], [], s_pipelineId);
 
         // Act
         await sink.RecordAsync(report, CancellationToken.None);
@@ -269,43 +270,33 @@ public class LoggingPipelineLineageSinkTests
         exception.Should().BeNull();
     }
 
-    private static PipelineLineageReport CreateTestReport(string pipelineName = "TestPipeline")
-    {
-        return new PipelineLineageReport(pipelineName, Guid.NewGuid(), [
-                new NodeLineageInfo("node1", "Transform", "int", "int"),
-                new NodeLineageInfo("node2", "Transform", "int", "int"),
-            ], [
-                new EdgeLineageInfo("node1", "node2"),
-            ], s_pipelineId);
-    }
+    private static PipelineLineageReport CreateTestReport(string pipelineName = "TestPipeline") =>
+        new(pipelineName, Guid.NewGuid(), [
+            new NodeLineageInfo("node1", "Transform", "int", "int"),
+            new NodeLineageInfo("node2", "Transform", "int", "int"),
+        ], [
+            new EdgeLineageInfo("node1", "node2"),
+        ], s_pipelineId);
 
-    private static PipelineLineageReport CreateComplexReport()
-    {
-        return new PipelineLineageReport("ComplexPipeline", Guid.NewGuid(), [
-                new NodeLineageInfo("source1", "Source", null, "int"),
-                new NodeLineageInfo("node1", "Transform", "int", "int"),
-                new NodeLineageInfo("node2", "Transform", "int", "int"),
-                new NodeLineageInfo("sink1", "Sink", "int", null),
-            ], [
-                new EdgeLineageInfo("source1", "node1"),
-                new EdgeLineageInfo("node1", "node2"),
-                new EdgeLineageInfo("node2", "sink1"),
-            ], s_pipelineId);
-    }
+    private static PipelineLineageReport CreateComplexReport() =>
+        new("ComplexPipeline", Guid.NewGuid(), [
+            new NodeLineageInfo("source1", "Source", null, "int"),
+            new NodeLineageInfo("node1", "Transform", "int", "int"),
+            new NodeLineageInfo("node2", "Transform", "int", "int"),
+            new NodeLineageInfo("sink1", "Sink", "int", null),
+        ], [
+            new EdgeLineageInfo("source1", "node1"),
+            new EdgeLineageInfo("node1", "node2"),
+            new EdgeLineageInfo("node2", "sink1"),
+        ], s_pipelineId);
 
     private sealed class TestLogger : ILogger<LoggingPipelineLineageSink>
     {
         public List<LogEntry> LogEntries { get; } = [];
 
-        public IDisposable? BeginScope<TState>(TState state) where TState : notnull
-        {
-            return null;
-        }
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
 
-        public bool IsEnabled(LogLevel logLevel)
-        {
-            return true;
-        }
+        public bool IsEnabled(LogLevel logLevel) => true;
 
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
         {

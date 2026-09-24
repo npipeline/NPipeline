@@ -22,7 +22,7 @@ public sealed class RetryKindTests
         var restartBackoff = new ConcurrentQueue<int>();
         var observer = new RecordingObserver();
 
-        await RunAsync(new FlakyItemTransform(failuresBeforeSuccess: 2), itemBackoff, restartBackoff, observer, wrapForRestart: false);
+        await RunAsync(new FlakyItemTransform(2), itemBackoff, restartBackoff, observer, false);
 
         itemBackoff.Should().Equal(1, 2);
         restartBackoff.Should().BeEmpty();
@@ -36,7 +36,7 @@ public sealed class RetryKindTests
         var restartBackoff = new ConcurrentQueue<int>();
         var observer = new RecordingObserver();
 
-        await RunAsync(new FailsOnceTransform(), itemBackoff, restartBackoff, observer, wrapForRestart: true);
+        await RunAsync(new FailsOnceTransform(), itemBackoff, restartBackoff, observer, true);
 
         restartBackoff.Should().Equal(1);
         itemBackoff.Should().BeEmpty();
@@ -93,10 +93,8 @@ public sealed class RetryKindTests
 
     private sealed class ListSource(IReadOnlyList<int> items) : SourceNode<int>
     {
-        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
-        {
-            return new NPipeline.DataFlow.DataStreams.InMemoryDataStream<int>(items);
-        }
+        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken) =>
+            new NPipeline.DataFlow.DataStreams.InMemoryDataStream<int>(items);
     }
 
     private sealed class DiscardSink : SinkNode<int>

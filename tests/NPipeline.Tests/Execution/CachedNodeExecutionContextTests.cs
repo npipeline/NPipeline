@@ -160,18 +160,12 @@ public sealed class CachedNodeExecutionContextTests
     {
         public IPipelineActivity? CurrentActivity => null;
 
-        public IPipelineActivity StartActivity(string name)
-        {
-            return NullPipelineActivity.Instance;
-        }
+        public IPipelineActivity StartActivity(string name) => NullPipelineActivity.Instance;
     }
 
     private sealed class TestPipelineLoggerFactory : ILoggerFactory
     {
-        public ILogger CreateLogger(string categoryName)
-        {
-            return NullLogger.Instance;
-        }
+        public ILogger CreateLogger(string categoryName) => NullLogger.Instance;
 
         public void AddProvider(ILoggerProvider provider)
         {

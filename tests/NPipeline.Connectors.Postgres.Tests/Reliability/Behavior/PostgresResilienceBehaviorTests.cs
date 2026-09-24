@@ -17,7 +17,7 @@ namespace NPipeline.Connectors.Postgres.Tests.Reliability.Behavior;
 public sealed class PostgresResilienceBehaviorTests
 {
     // The shipped preset with near-zero backoff, so the tests barely wait between attempts.
-    private static readonly NResilience.Resilience Fast = PostgresConnectorResilience.Default with
+    private static readonly Resilience Fast = PostgresConnectorResilience.Default with
     {
         Backoff = PostgresConnectorResilience.Default.Backoff with
         {
@@ -55,7 +55,7 @@ public sealed class PostgresResilienceBehaviorTests
     [InlineData("42P01", VerdictKind.Permanent)]
     public void Classifier_JudgesServerErrorsBySqlState(string sqlState, VerdictKind expected)
     {
-        var exception = new Npgsql.PostgresException("injected", "ERROR", "ERROR", sqlState);
+        var exception = new PostgresException("injected", "ERROR", "ERROR", sqlState);
 
         PostgresConnectorResilience.Classifier.ClassifyException(exception).Kind.Should().Be(expected);
     }
@@ -91,7 +91,7 @@ public sealed class PostgresResilienceBehaviorTests
 
         var act = () => writer.WriteAsync(new Row { Id = 1 });
 
-        _ = await act.Should().ThrowAsync<Npgsql.PostgresException>();
+        _ = await act.Should().ThrowAsync<PostgresException>();
         connection.Executed.Should().HaveCount(4);
     }
 
@@ -103,15 +103,18 @@ public sealed class PostgresResilienceBehaviorTests
 
         var act = () => writer.WriteAsync(new Row { Id = 1 });
 
-        _ = await act.Should().ThrowAsync<Npgsql.PostgresException>();
+        _ = await act.Should().ThrowAsync<PostgresException>();
         connection.Executed.Should().ContainSingle();
     }
 
     [Fact]
     public async Task Batch_RetriesOnlyTheChunkThatFailed()
     {
-        var connection = new ScriptedConnection((index, _) => index == 2 ? Server("40001") : null);
-        var writer = BatchWriter(connection, batchSize: 2);
+        var connection = new ScriptedConnection((index, _) => index == 2
+            ? Server("40001")
+            : null);
+
+        var writer = BatchWriter(connection, 2);
 
         await writer.WriteBatchAsync(Rows(6));
 
@@ -123,10 +126,10 @@ public sealed class PostgresResilienceBehaviorTests
     public async Task Batch_DoesNotResendAFailedChunkWhenDisposed()
     {
         var connection = new ScriptedConnection((_, _) => Server("23505"));
-        var writer = BatchWriter(connection, batchSize: 10);
+        var writer = BatchWriter(connection, 10);
 
         var act = () => writer.WriteBatchAsync(Rows(3));
-        _ = await act.Should().ThrowAsync<Npgsql.PostgresException>();
+        _ = await act.Should().ThrowAsync<PostgresException>();
 
         await writer.DisposeAsync();
 
@@ -144,10 +147,10 @@ public sealed class PostgresResilienceBehaviorTests
         };
 
         var perRow = () => PerRowWriter(connection).WriteAsync(new Row { Id = 1 });
-        _ = await perRow.Should().ThrowAsync<Npgsql.PostgresException>();
+        _ = await perRow.Should().ThrowAsync<PostgresException>();
 
-        var batch = () => BatchWriter(connection, batchSize: 10).WriteBatchAsync(Rows(2));
-        _ = await batch.Should().ThrowAsync<Npgsql.PostgresException>();
+        var batch = () => BatchWriter(connection, 10).WriteBatchAsync(Rows(2));
+        _ = await batch.Should().ThrowAsync<PostgresException>();
 
         connection.Executed.Should().HaveCount(2);
     }
@@ -183,22 +186,15 @@ public sealed class PostgresResilienceBehaviorTests
         connection.Executed.Should().ContainSingle();
     }
 
-    private static Npgsql.PostgresException Server(string sqlState)
-    {
-        return new Npgsql.PostgresException("injected", "ERROR", "ERROR", sqlState);
-    }
+    private static PostgresException Server(string sqlState) => new("injected", "ERROR", "ERROR", sqlState);
 
-    private static PostgresPerRowWriter<Row> PerRowWriter(IDatabaseConnection connection, NResilience.Resilience? resilience = null)
-    {
-        return new PostgresPerRowWriter<Row>(connection, "public", "rows", null,
+    private static PostgresPerRowWriter<Row> PerRowWriter(IDatabaseConnection connection, Resilience? resilience = null) =>
+        new(connection, "public", "rows", null,
             new PostgresConfiguration { Resilience = resilience ?? Fast });
-    }
 
-    private static PostgresBatchWriter<Row> BatchWriter(IDatabaseConnection connection, int batchSize)
-    {
-        return new PostgresBatchWriter<Row>(connection, "public", "rows", null,
+    private static PostgresBatchWriter<Row> BatchWriter(IDatabaseConnection connection, int batchSize) =>
+        new(connection, "public", "rows", null,
             new PostgresConfiguration { Resilience = Fast, BatchSize = batchSize });
-    }
 
     private static IEnumerable<Row> Rows(int count)
     {

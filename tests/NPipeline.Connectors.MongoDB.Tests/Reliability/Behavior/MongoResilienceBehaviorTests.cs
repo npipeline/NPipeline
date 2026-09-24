@@ -21,15 +21,10 @@ public sealed class MongoResilienceBehaviorTests
 {
     private static readonly ConnectionId Connection = new(new ServerId(new ClusterId(), new DnsEndPoint("localhost", 27017)));
 
-    internal static MongoConnectionException ConnectionError()
-    {
-        return new MongoConnectionException(Connection, "connection reset");
-    }
+    internal static MongoConnectionException ConnectionError() => new(Connection, "connection reset");
 
-    private static MongoCommandException CommandError(int code)
-    {
-        return new MongoCommandException(Connection, $"code {code}", new BsonDocument("ping", 1), new BsonDocument { { "ok", 0 }, { "code", code } });
-    }
+    private static MongoCommandException CommandError(int code) =>
+        new(Connection, $"code {code}", new BsonDocument("ping", 1), new BsonDocument { { "ok", 0 }, { "code", code } });
 
     // ── Presets ────────────────────────────────────────────────────────────────
 
@@ -124,15 +119,13 @@ public sealed class MongoResilienceBehaviorTests
         return (client, collection);
     }
 
-    private static MongoConfiguration SinkConfig(NResilience.Resilience? resilience = null)
-    {
-        return new MongoConfiguration
+    private static MongoConfiguration SinkConfig(Resilience? resilience = null) =>
+        new()
         {
             DatabaseName = "db",
             CollectionName = "widgets",
             Resilience = resilience ?? MongoConnectorResilience.Default with { Backoff = Backoff.None },
         };
-    }
 
     private static Task WriteAsync(IMongoClient client, MongoConfiguration configuration, Func<Widget, BsonDocument> mapper,
         CancellationToken cancellationToken = default)
@@ -208,6 +201,7 @@ public sealed class MongoResilienceBehaviorTests
         var act = () => WriteAsync(client, SinkConfig(), _ => throw new FormatException("bad widget"));
 
         _ = await act.Should().ThrowAsync<OurMongoWriteException>();
+
         A.CallTo(() => collection.BulkWriteAsync(A<IEnumerable<WriteModel<BsonDocument>>>._, A<BulkWriteOptions>._, A<CancellationToken>._))
             .MustNotHaveHappened();
     }
@@ -293,7 +287,7 @@ public sealed class MongoResilienceBehaviorTests
         return new ChangeStreamDocument<BsonDocument>(backing, BsonDocumentSerializer.Instance);
     }
 
-    private static MongoChangeStreamSourceNode<BsonDocument> ChangeStreamNode(IMongoClient client, NResilience.Resilience? resilience = null)
+    private static MongoChangeStreamSourceNode<BsonDocument> ChangeStreamNode(IMongoClient client, Resilience? resilience = null)
     {
         var configuration = new MongoChangeStreamConfiguration
         {
@@ -393,7 +387,10 @@ public sealed class MongoResilienceBehaviorTests
             .ReturnsLazily(call =>
             {
                 seen.Add(call.GetArgument<ChangeStreamOptions>(1)!);
-                return Task.FromResult(seen.Count == 1 ? Cursor(Change("t1", 1), Change("t2", 2)) : Cursor());
+
+                return Task.FromResult(seen.Count == 1
+                    ? Cursor(Change("t1", 1), Change("t2", 2))
+                    : Cursor());
             });
 
         var node = ChangeStreamNode(client);

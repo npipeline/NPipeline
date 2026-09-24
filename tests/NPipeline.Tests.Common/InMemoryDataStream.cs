@@ -15,10 +15,7 @@ public sealed class InMemoryDataStream<T>(IEnumerable<T> data, string streamName
 
     public string StreamName { get; } = streamName;
 
-    public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
-    {
-        return new InMemoryDataStreamEnumerator(_data, cancellationToken);
-    }
+    public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default) => new InMemoryDataStreamEnumerator(_data, cancellationToken);
 
     public async IAsyncEnumerable<object?> ToAsyncEnumerable([EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
@@ -29,10 +26,7 @@ public sealed class InMemoryDataStream<T>(IEnumerable<T> data, string streamName
         }
     }
 
-    public Type GetDataType()
-    {
-        return typeof(T);
-    }
+    public Type GetDataType() => typeof(T);
 
     public ValueTask DisposeAsync()
     {
@@ -59,9 +53,6 @@ public sealed class InMemoryDataStream<T>(IEnumerable<T> data, string streamName
             return new ValueTask<bool>(_currentIndex < data.Count);
         }
 
-        public ValueTask DisposeAsync()
-        {
-            return ValueTask.CompletedTask;
-        }
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 }

@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using FakeItEasy;
-using NPipeline.ErrorHandling;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 using NPipeline.Reliability;
@@ -145,9 +144,8 @@ public sealed class DefaultErrorHandlersTests
         decision.Should().Be(ResilienceDecision.Skip);
     }
 
-    private static ItemFailure<TIn> Failure<TIn>(INode node, TIn item, Exception exception, PipelineContext context)
-    {
-        return new ItemFailure<TIn>
+    private static ItemFailure<TIn> Failure<TIn>(INode node, TIn item, Exception exception, PipelineContext context) =>
+        new()
         {
             Item = item,
             Node = node,
@@ -156,5 +154,4 @@ public sealed class DefaultErrorHandlersTests
             Attempt = 1,
             Context = context,
         };
-    }
 }

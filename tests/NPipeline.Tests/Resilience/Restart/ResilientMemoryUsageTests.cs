@@ -1,16 +1,13 @@
 // ReSharper disable ClassNeverInstantiated.Local
 
-using NPipeline.Execution;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
-using NPipeline.ErrorHandling;
 using NPipeline.Extensions.DependencyInjection;
 using NPipeline.Extensions.Testing;
-using NPipeline.Graph;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 using NPipeline.Reliability;
@@ -87,21 +84,14 @@ public sealed class ResilientMemoryUsageTests
     // Helper classes for the tests
     private sealed class MemoryTestResiliencePolicy : IResiliencePolicy
     {
-        public ValueTask<ResilienceDecision> DecideNodeFailureAsync(NodeFailure failure, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult(ResilienceDecision.Fail);
-        }
+        public ValueTask<ResilienceDecision> DecideNodeFailureAsync(NodeFailure failure, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(ResilienceDecision.Fail);
 
-        public ValueTask<ResilienceDecision> DecideRestartAsync(StreamFailure failure, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult(ResilienceDecision.Fail);
-        }
+        public ValueTask<ResilienceDecision> DecideRestartAsync(StreamFailure failure, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(ResilienceDecision.Fail);
 
-        public ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult(ResilienceDecision.Fail);
-        }
-
+        public ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(ResilienceDecision.Fail);
     }
 
     private sealed class LargeStreamSource : SourceNode<int>
@@ -148,7 +138,7 @@ public sealed class ResilientMemoryUsageTests
         {
             // Simulate some memory-intensive processing
             var data = new byte[1024]; // 1KB per item
-            return ValueTask.FromResult<int>(item);
+            return ValueTask.FromResult(item);
         }
     }
 
@@ -160,7 +150,10 @@ public sealed class ResilientMemoryUsageTests
             var t = builder.AddTransform<MemoryIntensiveTransform, int, int>("memTx");
             var k = builder.AddInMemorySink<int>("testSink");
             builder.Connect(s, t).Connect(t, k);
-            builder.WithResilience(o => o with { NodeRestart = new NodeRestartOptions { MaxRestarts = 1, MaxReplayWindow = 100, Backoff = RetryBackoff.None } });
+
+            builder.WithResilience(o =>
+                o with { NodeRestart = new NodeRestartOptions { MaxRestarts = 1, MaxReplayWindow = 100, Backoff = RetryBackoff.None } });
+
             builder.AddResiliencePolicy<MemoryTestResiliencePolicy>();
         }
     }
@@ -173,7 +166,10 @@ public sealed class ResilientMemoryUsageTests
             var t = builder.AddTransform<MemoryIntensiveTransform, int, int>("memTx");
             var k = builder.AddInMemorySink<int>("testSink");
             builder.Connect(s, t).Connect(t, k);
-            builder.WithResilience(o => o with { NodeRestart = new NodeRestartOptions { MaxRestarts = 1, MaxReplayWindow = 200, Backoff = RetryBackoff.None } });
+
+            builder.WithResilience(o =>
+                o with { NodeRestart = new NodeRestartOptions { MaxRestarts = 1, MaxReplayWindow = 200, Backoff = RetryBackoff.None } });
+
             builder.AddResiliencePolicy<MemoryTestResiliencePolicy>();
         }
     }

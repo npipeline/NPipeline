@@ -221,6 +221,7 @@ public class PipelineGraphTests
     {
         var resilience = PipelineResilienceOptions.None with { NodeRetry = new NodeRetryOptions { MaxRetries = 2 } };
         var nodeResilience = ImmutableDictionary<string, PipelineResilienceOptions>.Empty.Add("node", resilience);
+
         ErrorHandlingConfiguration config = new()
         {
             Resilience = resilience,

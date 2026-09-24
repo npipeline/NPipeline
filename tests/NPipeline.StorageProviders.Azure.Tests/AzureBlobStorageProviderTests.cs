@@ -25,10 +25,8 @@ internal sealed class TestAsyncPageable<T> : AsyncPageable<T> where T : notnull
         _items = items;
     }
 
-    public override IAsyncEnumerable<Page<T>> AsPages(string? continuationToken = null, int? pageSizeHint = null)
-    {
-        return GetPagesAsync(continuationToken, pageSizeHint);
-    }
+    public override IAsyncEnumerable<Page<T>> AsPages(string? continuationToken = null, int? pageSizeHint = null) =>
+        GetPagesAsync(continuationToken, pageSizeHint);
 
     private async IAsyncEnumerable<Page<T>> GetPagesAsync(string? continuationToken, int? pageSizeHint)
     {
@@ -44,10 +42,7 @@ internal sealed class TestAsyncPageable<T> : AsyncPageable<T> where T : notnull
         yield return Page<T>.FromValues(items, null, A.Fake<Response>());
     }
 
-    public override IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
-    {
-        return _items.GetAsyncEnumerator(cancellationToken);
-    }
+    public override IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default) => _items.GetAsyncEnumerator(cancellationToken);
 }
 
 /// <summary>
@@ -62,10 +57,7 @@ internal sealed class SimpleAsyncEnumerable<T> : IAsyncEnumerable<T>
         _items = items;
     }
 
-    public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
-    {
-        return new SimpleAsyncEnumerator<T>(_items, cancellationToken);
-    }
+    public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default) => new SimpleAsyncEnumerator<T>(_items, cancellationToken);
 }
 
 /// <summary>
@@ -111,10 +103,8 @@ internal sealed class AsyncEnumerableWrapper<T> : IAsyncEnumerable<T>
         _items = items;
     }
 
-    public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
-    {
-        return new AsyncEnumeratorWrapper<T>(_items.GetEnumerator(), cancellationToken);
-    }
+    public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default) =>
+        new AsyncEnumeratorWrapper<T>(_items.GetEnumerator(), cancellationToken);
 }
 
 /// <summary>
@@ -158,10 +148,7 @@ internal sealed class PageAsyncEnumerable<T> : IAsyncEnumerable<Page<T>> where T
         _items = items;
     }
 
-    public IAsyncEnumerator<Page<T>> GetAsyncEnumerator(CancellationToken cancellationToken = default)
-    {
-        return new PageAsyncEnumerator<T>(_items, cancellationToken);
-    }
+    public IAsyncEnumerator<Page<T>> GetAsyncEnumerator(CancellationToken cancellationToken = default) => new PageAsyncEnumerator<T>(_items, cancellationToken);
 }
 
 /// <summary>
@@ -194,10 +181,7 @@ internal sealed class PageAsyncEnumerator<T> : IAsyncEnumerator<Page<T>> where T
         return new ValueTask<bool>(true);
     }
 
-    public ValueTask DisposeAsync()
-    {
-        return default;
-    }
+    public ValueTask DisposeAsync() => default;
 }
 
 public class AzureBlobStorageProviderTests
@@ -1094,10 +1078,8 @@ public class AzureBlobStorageProviderTests
             _items = items;
         }
 
-        public override IAsyncEnumerable<Page<BlobItem>> AsPages(string? continuationToken = null, int? pageSizeHint = null)
-        {
-            return GetPagesAsync(continuationToken, pageSizeHint);
-        }
+        public override IAsyncEnumerable<Page<BlobItem>> AsPages(string? continuationToken = null, int? pageSizeHint = null) =>
+            GetPagesAsync(continuationToken, pageSizeHint);
 
         private async IAsyncEnumerable<Page<BlobItem>> GetPagesAsync(string? continuationToken, int? pageSizeHint)
         {
@@ -1108,10 +1090,8 @@ public class AzureBlobStorageProviderTests
             yield return Page<BlobItem>.FromValues(items, null, A.Fake<Response>());
         }
 
-        public override IAsyncEnumerator<BlobItem> GetAsyncEnumerator(CancellationToken cancellationToken = default)
-        {
-            return new TestBlobItemAsyncEnumerator(_items, cancellationToken);
-        }
+        public override IAsyncEnumerator<BlobItem> GetAsyncEnumerator(CancellationToken cancellationToken = default) =>
+            new TestBlobItemAsyncEnumerator(_items, cancellationToken);
     }
 
     /// <summary>
@@ -1155,10 +1135,8 @@ public class AzureBlobStorageProviderTests
             _items = items;
         }
 
-        public override IAsyncEnumerable<Page<BlobHierarchyItem>> AsPages(string? continuationToken = null, int? pageSizeHint = null)
-        {
-            return GetPagesAsync(continuationToken, pageSizeHint);
-        }
+        public override IAsyncEnumerable<Page<BlobHierarchyItem>> AsPages(string? continuationToken = null, int? pageSizeHint = null) =>
+            GetPagesAsync(continuationToken, pageSizeHint);
 
         private async IAsyncEnumerable<Page<BlobHierarchyItem>> GetPagesAsync(string? continuationToken, int? pageSizeHint)
         {
@@ -1169,10 +1147,8 @@ public class AzureBlobStorageProviderTests
             yield return Page<BlobHierarchyItem>.FromValues(items, null, A.Fake<Response>());
         }
 
-        public override IAsyncEnumerator<BlobHierarchyItem> GetAsyncEnumerator(CancellationToken cancellationToken = default)
-        {
-            return new TestBlobHierarchyItemAsyncEnumerator(_items, cancellationToken);
-        }
+        public override IAsyncEnumerator<BlobHierarchyItem> GetAsyncEnumerator(CancellationToken cancellationToken = default) =>
+            new TestBlobHierarchyItemAsyncEnumerator(_items, cancellationToken);
     }
 
     /// <summary>

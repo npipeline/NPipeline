@@ -1,8 +1,10 @@
+using Microsoft.CodeAnalysis;
+
 namespace NPipeline.Analyzers.Tests;
 
 public sealed class TimeoutConfigurationAnalyzerTests
 {
-    private static async Task<IReadOnlyList<Microsoft.CodeAnalysis.Diagnostic>> AnalyzeAsync(string expression)
+    private static async Task<IReadOnlyList<Diagnostic>> AnalyzeAsync(string expression)
     {
         var source = $$"""
                        public static class Setup
@@ -26,7 +28,8 @@ public sealed class TimeoutConfigurationAnalyzerTests
     }
 
     [Theory]
-    [InlineData("new CircuitBreakerOptions { WhenOpen = BreakerOpenBehavior.Pause, OpenDuration = TimeSpan.FromMinutes(1), MaxPause = TimeSpan.FromSeconds(10) }")]
+    [InlineData(
+        "new CircuitBreakerOptions { WhenOpen = BreakerOpenBehavior.Pause, OpenDuration = TimeSpan.FromMinutes(1), MaxPause = TimeSpan.FromSeconds(10) }")]
     [InlineData("new CircuitBreakerOptions { WhenOpen = BreakerOpenBehavior.Pause, MaxPause = TimeSpan.FromSeconds(10) }")]
     [InlineData("new CircuitBreakerOptions { WhenOpen = BreakerOpenBehavior.Pause, OpenDuration = TimeSpan.FromMinutes(10) }")]
     [InlineData("existing with { WhenOpen = BreakerOpenBehavior.Pause, OpenDuration = TimeSpan.FromMinutes(2), MaxPause = TimeSpan.FromMinutes(1) }")]
@@ -38,12 +41,10 @@ public sealed class TimeoutConfigurationAnalyzerTests
 
     [Theory]
     [InlineData("new CircuitBreakerOptions { WhenOpen = BreakerOpenBehavior.Pause }")]
-    [InlineData("new CircuitBreakerOptions { WhenOpen = BreakerOpenBehavior.Pause, OpenDuration = TimeSpan.FromSeconds(30), MaxPause = TimeSpan.FromSeconds(30) }")]
+    [InlineData(
+        "new CircuitBreakerOptions { WhenOpen = BreakerOpenBehavior.Pause, OpenDuration = TimeSpan.FromSeconds(30), MaxPause = TimeSpan.FromSeconds(30) }")]
     [InlineData("new CircuitBreakerOptions { OpenDuration = TimeSpan.FromMinutes(1), MaxPause = TimeSpan.FromSeconds(10) }")]
     [InlineData("existing with { WhenOpen = BreakerOpenBehavior.Pause, MaxPause = TimeSpan.FromSeconds(1) }")]
     [InlineData("new CircuitBreakerOptions { OpenDuration = TimeSpan.FromMilliseconds(250), Window = TimeSpan.FromHours(1) }")]
-    public async Task DoesNotReport_WorkableTimings(string expression)
-    {
-        Assert.Empty(await AnalyzeAsync(expression));
-    }
+    public async Task DoesNotReport_WorkableTimings(string expression) => Assert.Empty(await AnalyzeAsync(expression));
 }

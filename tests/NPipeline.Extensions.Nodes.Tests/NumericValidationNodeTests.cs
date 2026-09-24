@@ -13,7 +13,10 @@ public class NumericValidationNodeTests
         node.IsPositive(x => x.IntValue);
 
         var item = new TestObject { IntValue = -5 };
-        var exception = await Assert.ThrowsAsync<ValidationException>(() => node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
+
+        var exception = await Assert.ThrowsAsync<ValidationException>(() =>
+            node.TransformAsync(item, PipelineContext.CreateDefault(), CancellationToken.None).AsTask());
+
         Assert.Contains(nameof(TestObject.IntValue), exception.PropertyPath);
     }
 

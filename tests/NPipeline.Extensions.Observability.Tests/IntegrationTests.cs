@@ -1,6 +1,6 @@
+using System.Runtime.CompilerServices;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using System.Runtime.CompilerServices;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.ErrorHandling;
@@ -22,10 +22,7 @@ public sealed class IntegrationTests
 {
     private static readonly Guid s_pipelineId = Guid.Parse("11111111-1111-1111-1111-111111111111");
 
-    private static INodeMetrics? GetNodeMetricsById(IObservabilityCollector collector, string nodeId)
-    {
-        return TestHelpers.GetNodeMetricsById(collector, nodeId);
-    }
+    private static INodeMetrics? GetNodeMetricsById(IObservabilityCollector collector, string nodeId) => TestHelpers.GetNodeMetricsById(collector, nodeId);
 
     #region Multiple Observers Tests
 
@@ -1407,10 +1404,7 @@ public sealed class IntegrationTests
 
     private sealed class TestTransformNode<T> : TransformNode<T, T>
     {
-        public override ValueTask<T> TransformAsync(T item, PipelineContext context, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult<T>(item);
-        }
+        public override ValueTask<T> TransformAsync(T item, PipelineContext context, CancellationToken cancellationToken) => ValueTask.FromResult<T>(item);
     }
 
     private sealed class TestMidStreamFailingTransformNode : TransformNode<int, int>
@@ -1423,7 +1417,7 @@ public sealed class IntegrationTests
 
             // Fail on 4th item
             if (_count != 4)
-                return ValueTask.FromResult<int>(item * 2);
+                return ValueTask.FromResult(item * 2);
 
             throw new InvalidOperationException("Intentional failure on 4th item");
         }
@@ -1440,10 +1434,8 @@ public sealed class IntegrationTests
 
     private sealed class TestDelayedSourceNode : SourceNode<int>
     {
-        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
-        {
-            return new DataStream<int>(ProduceWithDelay(cancellationToken), "delayed-source-output");
-        }
+        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken) =>
+            new DataStream<int>(ProduceWithDelay(cancellationToken), "delayed-source-output");
 
         private static async IAsyncEnumerable<int> ProduceWithDelay([EnumeratorCancellation] CancellationToken cancellationToken)
         {
@@ -1585,18 +1577,13 @@ public sealed class IntegrationTests
 
     private sealed class TestTransformNode : TransformNode<int, int>
     {
-        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult<int>(item * 2);
-        }
+        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken) => ValueTask.FromResult(item * 2);
     }
 
     private sealed class TestFailingTransformNode : TransformNode<int, int>
     {
-        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
-        {
+        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken) =>
             throw new InvalidOperationException("Intentional failure");
-        }
     }
 
     private sealed class TestSinkNode : SinkNode<int>
@@ -1627,20 +1614,11 @@ public sealed class IntegrationTests
 
     private sealed class TestObservabilityFactory : IObservabilityFactory
     {
-        public IObservabilityCollector ResolveObservabilityCollector()
-        {
-            throw new NotImplementedException();
-        }
+        public IObservabilityCollector ResolveObservabilityCollector() => throw new NotImplementedException();
 
-        public IMetricsSink ResolveMetricsSink()
-        {
-            throw new NotImplementedException();
-        }
+        public IMetricsSink ResolveMetricsSink() => throw new NotImplementedException();
 
-        public IPipelineMetricsSink ResolvePipelineMetricsSink()
-        {
-            throw new NotImplementedException();
-        }
+        public IPipelineMetricsSink ResolvePipelineMetricsSink() => throw new NotImplementedException();
     }
 
     public sealed class TestNodeMetricsSink : IMetricsSink

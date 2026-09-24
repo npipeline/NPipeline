@@ -11,24 +11,38 @@ public sealed class MetricsCollectingExecutionObserverTests
 {
     private static readonly Guid s_pipelineId = Guid.Parse("11111111-1111-1111-1111-111111111111");
 
+    #region Performance Metrics Guard Tests
+
+    [Fact]
+    public void OnNodeCompleted_ShouldPreserveExistingPerfMetrics_WhenAvgItemMsAlreadySet()
+    {
+        var collector = new ObservabilityCollector(new TestObservabilityFactory());
+        var observer = new MetricsCollectingExecutionObserver(collector);
+        var nodeId = "streamNode";
+        var startTime = DateTimeOffset.UtcNow;
+
+        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", startTime, s_pipelineId));
+        collector.RecordItemMetrics(nodeId, 8, 8, s_pipelineId);
+        collector.RecordPerformanceMetrics(nodeId, 0.38, 2600.0, s_pipelineId);
+
+        observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, "TransformNode", TimeSpan.FromMilliseconds(5), true, null, s_pipelineId));
+
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
+        Assert.NotNull(metrics);
+        Assert.InRange(metrics.AverageItemProcessingMs!.Value, 2550, 2650);
+    }
+
+    #endregion
+
     #region Test Helpers
 
     private sealed class TestObservabilityFactory : IObservabilityFactory
     {
-        public IObservabilityCollector ResolveObservabilityCollector()
-        {
-            throw new NotImplementedException();
-        }
+        public IObservabilityCollector ResolveObservabilityCollector() => throw new NotImplementedException();
 
-        public IMetricsSink ResolveMetricsSink()
-        {
-            throw new NotImplementedException();
-        }
+        public IMetricsSink ResolveMetricsSink() => throw new NotImplementedException();
 
-        public IPipelineMetricsSink ResolvePipelineMetricsSink()
-        {
-            throw new NotImplementedException();
-        }
+        public IPipelineMetricsSink ResolvePipelineMetricsSink() => throw new NotImplementedException();
     }
 
     #endregion
@@ -282,6 +296,7 @@ public sealed class MetricsCollectingExecutionObserverTests
         observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, "TransformNode", TimeSpan.FromMilliseconds(25), true, null, s_pipelineId));
 
         var dataflowEnd = startTime.AddSeconds(2);
+
         observer.OnNodeDataflowCompleted(new NodeDataflowCompleted(
             nodeId,
             "TransformNode",
@@ -314,6 +329,7 @@ public sealed class MetricsCollectingExecutionObserverTests
 
         // Act
         var dataflowEnd = startTime.AddMilliseconds(900);
+
         observer.OnNodeDataflowCompleted(new NodeDataflowCompleted(
             nodeId,
             "TransformNode",
@@ -347,6 +363,7 @@ public sealed class MetricsCollectingExecutionObserverTests
 
         // Dataflow completes before execution completion and before item metrics are available.
         var dataflowEnd = startTime.AddSeconds(2);
+
         observer.OnNodeDataflowCompleted(new NodeDataflowCompleted(
             nodeId,
             "TransformNode",
@@ -417,29 +434,6 @@ public sealed class MetricsCollectingExecutionObserverTests
 
         Assert.InRange(metrics.DurationMs.Value, 119, 121);
         Assert.InRange(metrics.WallDurationMs!.Value, 319, 321);
-    }
-
-    #endregion
-
-    #region Performance Metrics Guard Tests
-
-    [Fact]
-    public void OnNodeCompleted_ShouldPreserveExistingPerfMetrics_WhenAvgItemMsAlreadySet()
-    {
-        var collector = new ObservabilityCollector(new TestObservabilityFactory());
-        var observer = new MetricsCollectingExecutionObserver(collector);
-        var nodeId = "streamNode";
-        var startTime = DateTimeOffset.UtcNow;
-
-        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", startTime, s_pipelineId));
-        collector.RecordItemMetrics(nodeId, 8, 8, s_pipelineId);
-        collector.RecordPerformanceMetrics(nodeId, 0.38, 2600.0, s_pipelineId);
-
-        observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, "TransformNode", TimeSpan.FromMilliseconds(5), true, null, s_pipelineId));
-
-        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
-        Assert.NotNull(metrics);
-        Assert.InRange(metrics.AverageItemProcessingMs!.Value, 2550, 2650);
     }
 
     #endregion

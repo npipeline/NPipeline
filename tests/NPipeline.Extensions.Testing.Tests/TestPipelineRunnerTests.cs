@@ -74,17 +74,11 @@ public class TestPipelineRunnerTests
 
     private sealed class MultiplyByTwoTransform : TransformNode<int, int>
     {
-        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult<int>(item * 2);
-        }
+        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken) => ValueTask.FromResult(item * 2);
     }
 
     public class SimpleNodeFactory : INodeFactory
     {
-        public INode Create(NodeDefinition nodeDefinition, PipelineGraph graph)
-        {
-            return (INode)Activator.CreateInstance(nodeDefinition.NodeType)!;
-        }
+        public INode Create(NodeDefinition nodeDefinition, PipelineGraph graph) => (INode)Activator.CreateInstance(nodeDefinition.NodeType)!;
     }
 }

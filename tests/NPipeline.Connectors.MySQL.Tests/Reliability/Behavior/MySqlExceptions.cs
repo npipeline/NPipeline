@@ -9,9 +9,9 @@ namespace NPipeline.Connectors.MySql.Tests.Reliability.Behavior;
 /// </summary>
 internal static class MySqlExceptions
 {
-    public static MySqlConnector.MySqlException WithNumber(int number)
+    public static MySqlException WithNumber(int number)
     {
-        var constructor = typeof(MySqlConnector.MySqlException)
+        var constructor = typeof(MySqlException)
             .GetConstructors(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public)
             .Where(c => c.GetParameters() is [{ ParameterType: var first }, ..] && first == typeof(MySqlErrorCode))
             .OrderBy(c => c.GetParameters().Length)
@@ -19,8 +19,10 @@ internal static class MySqlExceptions
 
         var arguments = constructor.GetParameters().Select((p, i) => i == 0
             ? Enum.ToObject(typeof(MySqlErrorCode), number)
-            : p.ParameterType == typeof(string) ? $"injected {number}" : null).ToArray();
+            : p.ParameterType == typeof(string)
+                ? $"injected {number}"
+                : null).ToArray();
 
-        return (MySqlConnector.MySqlException)constructor.Invoke(arguments);
+        return (MySqlException)constructor.Invoke(arguments);
     }
 }

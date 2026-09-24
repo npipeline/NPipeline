@@ -452,10 +452,9 @@ public class AssertionExtensionsTests
             return false;
         }
 
-        public override int GetHashCode()
-        {
+        public override int GetHashCode() =>
+
             // ReSharper disable once NonReadonlyMemberInGetHashCode
-            return HashCode.Combine(Name, Value);
-        }
+            HashCode.Combine(Name, Value);
     }
 }

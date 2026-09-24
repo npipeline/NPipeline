@@ -37,26 +37,13 @@ public sealed class StorageResolverTests
     {
         public StorageScheme Scheme => new("foo");
 
-        public bool CanHandle(StorageUri uri)
-        {
-            return false;
+        public bool CanHandle(StorageUri uri) => false;
 
-            // force fallback path
-        }
+        // force fallback path
+        public Task<Stream> OpenReadAsync(StorageUri uri, CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
-        public Task<Stream> OpenReadAsync(StorageUri uri, CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
+        public Task<Stream> OpenWriteAsync(StorageUri uri, CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
-        public Task<Stream> OpenWriteAsync(StorageUri uri, CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        public Task<bool> ExistsAsync(StorageUri uri, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(false);
-        }
+        public Task<bool> ExistsAsync(StorageUri uri, CancellationToken cancellationToken = default) => Task.FromResult(false);
     }
 }

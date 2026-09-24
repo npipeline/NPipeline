@@ -1,7 +1,7 @@
 using AwesomeAssertions;
-using NPipeline.Execution;
 using NPipeline.DataFlow;
 using NPipeline.ErrorHandling;
+using NPipeline.Execution;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 using NPipeline.Reliability;
@@ -48,12 +48,14 @@ public sealed class NodeRetryBehaviorTests
         {
             WireSource(b, new FailsToOpenOnceSource([1]), sink);
             _ = b.WithResilience(o => o with { NodeRetry = new NodeRetryOptions { MaxRetries = 1, Backoff = RetryBackoff.None } });
-        }, observer: observer);
+        }, observer);
 
-        sink.Items.Should().Equal([1]);
+        sink.Items.Should().Equal(1);
+
         observer.Retries.Should().ContainSingle()
             .Which.Should().Match<NodeRetryEvent>(e =>
                 e.NodeId == "source" && e.Kind == RetryKind.NodeRetry && e.Attempt == 1 && e.LastException is TimeoutException);
+
         observer.Exhaustions.Should().BeEmpty("the retry succeeded");
     }
 
@@ -70,16 +72,16 @@ public sealed class NodeRetryBehaviorTests
             var k = b.AddSink<CollectingSink<int>, int>("sink");
 
             _ = b.AddPreconfiguredNodeInstance(s.Id, StreamingSource<int>.Of([1]))
-                .AddPreconfiguredNodeInstance(t.Id, new FlakyTransform(failuresPerItem: 2))
+                .AddPreconfiguredNodeInstance(t.Id, new FlakyTransform(2))
                 .AddPreconfiguredNodeInstance(k.Id, sink)
                 .Connect(s, t)
                 .Connect(t, k)
                 .WithResilience(o => o with { ItemRetry = new ItemRetryOptions { MaxRetries = 3 } });
-        }, observer: observer);
+        }, observer);
 
-        sink.Items.Should().Equal([1]);
+        sink.Items.Should().Equal(1);
         observer.Retries.Should().OnlyContain(e => e.Kind == RetryKind.ItemRetry && e.NodeId == "transform");
-        observer.Retries.Select(e => e.Attempt).Should().Equal([1, 2]);
+        observer.Retries.Select(e => e.Attempt).Should().Equal(1, 2);
     }
 
     private static void WireSource(PipelineBuilder builder, FailsToOpenOnceSource source, CollectingSink<int> sink)
@@ -121,17 +123,21 @@ public sealed class NodeRetryBehaviorTests
             var k = b.AddSink<CollectingSink<int>, int>("sink");
             _ = b.AddPreconfiguredNodeInstance(s.Id, source).AddPreconfiguredNodeInstance(k.Id, new CollectingSink<int>()).Connect(s, k);
             _ = b.WithResilience(o => o with { NodeRetry = new NodeRetryOptions { MaxRetries = 2, Backoff = RetryBackoff.None } });
-        }, observer: observer);
+        }, observer);
 
         var thrown = await act.Should().ThrowAsync<Exception>();
 
         var exhausted = thrown.Which;
+
         while (exhausted is not null and not RetryExhaustedException)
+        {
             exhausted = exhausted.InnerException;
+        }
 
         exhausted.Should().BeOfType<RetryExhaustedException>().Which.NodeId.Should().Be("source");
         source.Opens.Should().Be(3);
         observer.Retries.Should().HaveCount(2).And.OnlyContain(e => e.Kind == RetryKind.NodeRetry);
+
         observer.Exhaustions.Should().ContainSingle()
             .Which.Should().Match<RetryExhaustedEvent>(e =>
                 e.NodeId == "source" && e.Kind == RetryKind.NodeRetry && e.Attempts == 3 && e.LastException is TimeoutException);
@@ -142,7 +148,7 @@ public sealed class NodeRetryBehaviorTests
     {
         // C15: a sink that fails mid-stream cannot be executed again. Its forward-only input has already been partly
         // read, so a second execution would lose the items consumed so far or read them twice.
-        var sink = new FailsAfterItemsSink(failAfter: 2);
+        var sink = new FailsAfterItemsSink(2);
         var observer = new RecordingObserver();
 
         var act = () => BehaviorPipeline.RunAsync(b =>
@@ -151,13 +157,13 @@ public sealed class NodeRetryBehaviorTests
             var k = b.AddSink<FailsAfterItemsSink, int>("sink");
             _ = b.AddPreconfiguredNodeInstance(s.Id, StreamingSource<int>.Of([1, 2, 3, 4, 5])).AddPreconfiguredNodeInstance(k.Id, sink).Connect(s, k);
             _ = b.WithResilience(o => o with { NodeRetry = new NodeRetryOptions { MaxRetries = 3, Backoff = RetryBackoff.None } });
-        }, observer: observer);
+        }, observer);
 
         var thrown = await act.Should().ThrowAsync<Exception>();
 
         thrown.Which.Should().NotBeOfType<RetryExhaustedException>();
         sink.Executions.Should().Be(1, "node retry covers setup only; a sink that has read input is not run again");
-        sink.Items.Should().Equal([1, 2]);
+        sink.Items.Should().Equal(1, 2);
         observer.Retries.Should().BeEmpty();
     }
 
@@ -175,7 +181,7 @@ public sealed class NodeRetryBehaviorTests
         });
 
         sink.Executions.Should().Be(2);
-        sink.Items.Should().Equal([1, 2, 3]);
+        sink.Items.Should().Equal(1, 2, 3);
     }
 
     /// <summary>

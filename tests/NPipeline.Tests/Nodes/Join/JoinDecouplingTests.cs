@@ -38,20 +38,11 @@ public sealed class JoinDecouplingTests
     [KeySelector(typeof(Right), nameof(Right.Id))]
     private sealed class DummyJoinNode : KeyedJoinNode<int, Left, Right, int>
     {
-        public override int CreateOutput(Left item1, Right item2)
-        {
-            return item1.Id + item2.Id;
-        }
+        public override int CreateOutput(Left item1, Right item2) => item1.Id + item2.Id;
 
-        public override int CreateOutputFromLeft(Left item1)
-        {
-            return item1.Id;
-        }
+        public override int CreateOutputFromLeft(Left item1) => item1.Id;
 
-        public override int CreateOutputFromRight(Right item2)
-        {
-            return item2.Id;
-        }
+        public override int CreateOutputFromRight(Right item2) => item2.Id;
     }
 
     private sealed record Left(int Id);

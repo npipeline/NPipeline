@@ -1,6 +1,4 @@
-using NPipeline.Execution;
 using AwesomeAssertions;
-using NPipeline.Configuration;
 using NPipeline.DataFlow;
 using NPipeline.Execution.Annotations;
 using NPipeline.Execution.Strategies;
@@ -28,10 +26,8 @@ public sealed class NodeConfigurationExtensionsTests
 
     private sealed class TestTransformNode : TransformNode<int, string>
     {
-        public override ValueTask<string> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult<string>(item.ToString());
-        }
+        public override ValueTask<string> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken) =>
+            ValueTask.FromResult<string>(item.ToString());
     }
 
     private sealed class TestSinkNode : SinkNode<string>
@@ -52,21 +48,14 @@ public sealed class NodeConfigurationExtensionsTests
 
     private sealed class TestErrorHandler : IResiliencePolicy
     {
-        public ValueTask<ResilienceDecision> DecideNodeFailureAsync(NodeFailure failure, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult(ResilienceDecision.Fail);
-        }
+        public ValueTask<ResilienceDecision> DecideNodeFailureAsync(NodeFailure failure, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(ResilienceDecision.Fail);
 
-        public ValueTask<ResilienceDecision> DecideRestartAsync(StreamFailure failure, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult(ResilienceDecision.Fail);
-        }
+        public ValueTask<ResilienceDecision> DecideRestartAsync(StreamFailure failure, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(ResilienceDecision.Fail);
 
-        public ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult(ResilienceDecision.Skip);
-        }
-
+        public ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(ResilienceDecision.Skip);
     }
 
     #endregion

@@ -383,7 +383,10 @@ public sealed class ExcelSinkNodeTests
             // Cancel after a short delay
             cts.CancelAfter(100);
 
-            await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => { await sink.ConsumeAsync(input, PipelineContext.CreateDefault(), cts.Token); });
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(async () =>
+            {
+                await sink.ConsumeAsync(input, PipelineContext.CreateDefault(), cts.Token);
+            });
         }
         finally
         {
@@ -705,29 +708,20 @@ public sealed class ExcelSinkNodeTests
         }
     }
 
-    private static int MapIntRow(ExcelRow row)
-    {
-        return row.GetByIndex(0, 0);
-    }
+    private static int MapIntRow(ExcelRow row) => row.GetByIndex(0, 0);
 
-    private static string MapStringRow(ExcelRow row)
-    {
-        return row.GetByIndex(0, string.Empty) ?? string.Empty;
-    }
+    private static string MapStringRow(ExcelRow row) => row.GetByIndex(0, string.Empty) ?? string.Empty;
 
-    private static TestRecord MapTestRecordFromHeaders(ExcelRow row)
-    {
-        return new TestRecord
+    private static TestRecord MapTestRecordFromHeaders(ExcelRow row) =>
+        new()
         {
             Id = row.Get("Id", 0),
             Name = row.Get("Name", string.Empty) ?? string.Empty,
             Age = row.Get("Age", 0),
         };
-    }
 
-    private static ComplexRecord MapComplexRecordFromHeaders(ExcelRow row)
-    {
-        return new ComplexRecord
+    private static ComplexRecord MapComplexRecordFromHeaders(ExcelRow row) =>
+        new()
         {
             Id = row.Get("Id", 0),
             Name = row.Get("Name", string.Empty) ?? string.Empty,
@@ -738,53 +732,42 @@ public sealed class ExcelSinkNodeTests
             Score = row.Get("Score", 0d),
             NullableValue = row.Get<int?>("NullableValue"),
         };
-    }
 
-    private static NullableRecord MapNullableRecordFromHeaders(ExcelRow row)
-    {
-        return new NullableRecord
+    private static NullableRecord MapNullableRecordFromHeaders(ExcelRow row) =>
+        new()
         {
             Id = row.Get("Id", 0),
             NullableInt = row.Get<int?>("NullableInt"),
             NullableString = row.Get<string>("NullableString"),
         };
-    }
 
-    private static DateTimeRecord MapDateTimeRecordFromHeaders(ExcelRow row)
-    {
-        return new DateTimeRecord
+    private static DateTimeRecord MapDateTimeRecordFromHeaders(ExcelRow row) =>
+        new()
         {
             Id = row.Get("Id", 0),
             Date = row.Get("Date", default(DateTime)),
         };
-    }
 
-    private static BoolRecord MapBoolRecordFromHeaders(ExcelRow row)
-    {
-        return new BoolRecord
+    private static BoolRecord MapBoolRecordFromHeaders(ExcelRow row) =>
+        new()
         {
             Id = row.Get("Id", 0),
             IsActive = row.Get("IsActive", false),
         };
-    }
 
-    private static DecimalRecord MapDecimalRecordFromHeaders(ExcelRow row)
-    {
-        return new DecimalRecord
+    private static DecimalRecord MapDecimalRecordFromHeaders(ExcelRow row) =>
+        new()
         {
             Id = row.Get("Id", 0),
             Amount = row.Get("Amount", 0m),
         };
-    }
 
-    private static DoubleRecord MapDoubleRecordFromHeaders(ExcelRow row)
-    {
-        return new DoubleRecord
+    private static DoubleRecord MapDoubleRecordFromHeaders(ExcelRow row) =>
+        new()
         {
             Id = row.Get("Id", 0),
             Value = row.Get("Value", 0d),
         };
-    }
 
     // Test record classes
     private sealed record TestRecord

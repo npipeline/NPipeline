@@ -49,8 +49,8 @@ public sealed class PipelineExecutionSetupStageTests
             .Returns(nodeInstances);
 
         _ = A.CallTo(() => nodeInstantiationService.BuildPlans(
-            A<PipelineGraph>._,
-            A<IReadOnlyDictionary<string, INode>>._))
+                A<PipelineGraph>._,
+                A<IReadOnlyDictionary<string, INode>>._))
             .Returns(plans);
 
         var stage = new PipelineExecutionSetupStage(
@@ -81,8 +81,8 @@ public sealed class PipelineExecutionSetupStageTests
             .MustHaveHappenedOnceExactly();
 
         _ = A.CallTo(() => nodeInstantiationService.BuildPlans(
-            A<PipelineGraph>._,
-            A<IReadOnlyDictionary<string, INode>>._))
+                A<PipelineGraph>._,
+                A<IReadOnlyDictionary<string, INode>>._))
             .MustHaveHappenedOnceExactly();
     }
 
@@ -145,36 +145,27 @@ public sealed class PipelineExecutionSetupStageTests
             .MustHaveHappenedOnceExactly();
     }
 
-    private static PipelineGraph BuildGraph(string nodeId, Dictionary<string, object>? annotations = null)
-    {
-        return PipelineGraphBuilder.Create()
+    private static PipelineGraph BuildGraph(string nodeId, Dictionary<string, object>? annotations = null) =>
+        PipelineGraphBuilder.Create()
             .WithNodes([CreateSourceNodeDefinition(nodeId)])
             .WithEdges([])
             .WithPreconfiguredNodeInstances(ImmutableDictionary<string, INode>.Empty)
             .WithNodeExecutionAnnotations(annotations)
             .Build();
-    }
 
-    private static NodeDefinition CreateSourceNodeDefinition(string nodeId)
-    {
-        return new NodeDefinition(
+    private static NodeDefinition CreateSourceNodeDefinition(string nodeId) =>
+        new(
             new NodeIdentity(nodeId, nodeId),
             new NodeTypeSystem(typeof(FakeSourceNode), NodeKind.Source, null, typeof(object)),
             new NodeExecutionConfig(),
             new NodeMergeConfig(),
             new NodeLineageConfig());
-    }
 
     private sealed class FakeSourceNode : ISourceNode<object>
     {
-        public IDataStream<object> OpenStream(PipelineContext context, CancellationToken cancellationToken)
-        {
-            return new InMemoryDataStream<object>([], "fake-source");
-        }
+        public IDataStream<object> OpenStream(PipelineContext context, CancellationToken cancellationToken) =>
+            new InMemoryDataStream<object>([], "fake-source");
 
-        public ValueTask DisposeAsync()
-        {
-            return ValueTask.CompletedTask;
-        }
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 }

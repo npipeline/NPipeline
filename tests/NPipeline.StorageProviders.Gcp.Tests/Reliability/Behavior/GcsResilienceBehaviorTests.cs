@@ -5,6 +5,8 @@ using AwesomeAssertions;
 using FakeItEasy;
 using Google;
 using Google.Apis.Auth.OAuth2;
+using Google.Apis.Download;
+using Google.Apis.Upload;
 using Google.Cloud.Storage.V1;
 using NPipeline.StorageProviders.Gcp.Reliability;
 using NPipeline.StorageProviders.Models;
@@ -18,14 +20,11 @@ public sealed class GcsResilienceBehaviorTests
     private static readonly StorageUri Uri = StorageUri.Parse("gs://test-bucket/test-object.txt");
 
     // The default preset with no delay between attempts, so tests of transient failures stay fast.
-    private static readonly NResilience.Resilience FastRetry = GcsStorageResilience.Default with { Backoff = Backoff.None };
+    private static readonly Resilience FastRetry = GcsStorageResilience.Default with { Backoff = Backoff.None };
 
-    private static GoogleApiException ApiError(HttpStatusCode status)
-    {
-        return new GoogleApiException("storage", $"status {(int)status}") { HttpStatusCode = status };
-    }
+    private static GoogleApiException ApiError(HttpStatusCode status) => new("storage", $"status {(int)status}") { HttpStatusCode = status };
 
-    private static (GcsStorageProvider Provider, StorageClient Client) CreateProvider(NResilience.Resilience resilience)
+    private static (GcsStorageProvider Provider, StorageClient Client) CreateProvider(Resilience resilience)
     {
         var options = new GcsStorageProviderOptions { Resilience = resilience };
 
@@ -173,7 +172,7 @@ public sealed class GcsResilienceBehaviorTests
         var attempts = 0;
 
         A.CallTo(() => client.DownloadObjectAsync(
-                A<string>._, A<string>._, A<Stream>._, A<DownloadObjectOptions>._, A<CancellationToken>._, A<IProgress<Google.Apis.Download.IDownloadProgress>>._))
+                A<string>._, A<string>._, A<Stream>._, A<DownloadObjectOptions>._, A<CancellationToken>._, A<IProgress<IDownloadProgress>>._))
             .ReturnsLazily(call =>
             {
                 attempts++;
@@ -203,7 +202,7 @@ public sealed class GcsResilienceBehaviorTests
         var (provider, client) = CreateProvider(FastRetry);
         var uploads = new List<byte[]>();
 
-        A.CallTo(() => client.UploadObjectAsync(A<Object>._, A<Stream>._, A<UploadObjectOptions>._, A<CancellationToken>._, A<IProgress<Google.Apis.Upload.IUploadProgress>>._))
+        A.CallTo(() => client.UploadObjectAsync(A<Object>._, A<Stream>._, A<UploadObjectOptions>._, A<CancellationToken>._, A<IProgress<IUploadProgress>>._))
             .ReturnsLazily(call =>
             {
                 var source = call.GetArgument<Stream>(1)!;
@@ -240,7 +239,7 @@ public sealed class GcsResilienceBehaviorTests
         var (provider, client) = CreateProvider(FastRetry);
         var attempts = 0;
 
-        A.CallTo(() => client.UploadObjectAsync(A<Object>._, A<Stream>._, A<UploadObjectOptions>._, A<CancellationToken>._, A<IProgress<Google.Apis.Upload.IUploadProgress>>._))
+        A.CallTo(() => client.UploadObjectAsync(A<Object>._, A<Stream>._, A<UploadObjectOptions>._, A<CancellationToken>._, A<IProgress<IUploadProgress>>._))
             .ReturnsLazily(() =>
             {
                 attempts++;
@@ -299,7 +298,7 @@ public sealed class GcsResilienceBehaviorTests
     public async Task FactoryClient_SendsEachRequestOnce_SoOnlyNResilienceRetries()
     {
         using var server = new FakeGcsServer(_ => (HttpStatusCode.ServiceUnavailable, null));
-        var provider = CreateRealProvider(server, NResilience.Resilience.None);
+        var provider = CreateRealProvider(server, Resilience.None);
 
         _ = await Assert.ThrowsAsync<GcsStorageException>(() => provider.ExistsAsync(Uri));
 
@@ -353,7 +352,7 @@ public sealed class GcsResilienceBehaviorTests
             ? (HttpStatusCode.ServiceUnavailable, null)
             : (HttpStatusCode.OK, null));
 
-        var provider = CreateRealProvider(server, NResilience.Resilience.None);
+        var provider = CreateRealProvider(server, Resilience.None);
 
         var stream = await provider.OpenWriteAsync(Uri);
         await stream.WriteAsync(new byte[] { 1, 2, 3 });
@@ -385,7 +384,7 @@ public sealed class GcsResilienceBehaviorTests
         server.Requests.Should().Be(4); // two session starts, two data requests
     }
 
-    private static GcsStorageProvider CreateRealProvider(FakeGcsServer server, NResilience.Resilience resilience)
+    private static GcsStorageProvider CreateRealProvider(FakeGcsServer server, Resilience resilience)
     {
         var options = new GcsStorageProviderOptions
         {
@@ -489,7 +488,9 @@ public sealed class GcsResilienceBehaviorTests
 
                 for (var i = 0; i < 8; i++)
                 {
-                    crc = (crc & 1) != 0 ? (crc >> 1) ^ 0x82F63B78u : crc >> 1;
+                    crc = (crc & 1) != 0
+                        ? (crc >> 1) ^ 0x82F63B78u
+                        : crc >> 1;
                 }
             }
 

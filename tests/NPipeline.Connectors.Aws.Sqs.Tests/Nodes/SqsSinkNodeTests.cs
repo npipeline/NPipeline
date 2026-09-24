@@ -13,10 +13,7 @@ namespace NPipeline.Connectors.Aws.Sqs.Tests.Nodes;
 
 public class SqsSinkNodeTests
 {
-    private static IDataStream<T> CreateDataStream<T>(T[] items)
-    {
-        return new TestDataStream<T>(items);
-    }
+    private static IDataStream<T> CreateDataStream<T>(T[] items) => new TestDataStream<T>(items);
 
     private static SqsMessage<TestModel> CreateSqsMessage(
         string messageId = "test-id",
@@ -38,14 +35,12 @@ public class SqsSinkNodeTests
             [body, messageId, receiptHandle, attributes, timestamp, callback]);
     }
 
-    private static SqsConfiguration CreateValidConfiguration()
-    {
-        return new SqsConfiguration
+    private static SqsConfiguration CreateValidConfiguration() =>
+        new()
         {
             SourceQueueUrl = "https://sqs.us-east-1.amazonaws.com/123456789012/source-queue",
             SinkQueueUrl = "https://sqs.us-east-1.amazonaws.com/123456789012/sink-queue",
         };
-    }
 
     public class Constructor
     {
@@ -273,6 +268,7 @@ public class SqsSinkNodeTests
                 message.IsAcknowledged.Should().BeTrue();
                 return Task.CompletedTask;
             };
+
             await checkAcknowledged.Should().NotThrowAfterAsync(TimeSpan.FromSeconds(2), TimeSpan.FromMilliseconds(50));
         }
 
@@ -821,10 +817,7 @@ public class SqsSinkNodeTests
 
         public string StreamName => "test-stream";
 
-        public Type GetDataType()
-        {
-            return typeof(T);
-        }
+        public Type GetDataType() => typeof(T);
 
         public IAsyncEnumerable<object?> ToAsyncEnumerable(CancellationToken cancellationToken = default)
         {
@@ -837,9 +830,7 @@ public class SqsSinkNodeTests
             await Task.CompletedTask;
         }
 
-        public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
-        {
-            return _items.ToAsyncEnumerable().GetAsyncEnumerator(cancellationToken);
-        }
+        public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default) =>
+            _items.ToAsyncEnumerable().GetAsyncEnumerator(cancellationToken);
     }
 }

@@ -6,7 +6,6 @@ using NPipeline.DataFlow.DataStreams;
 using NPipeline.ErrorHandling;
 using NPipeline.Execution;
 using NPipeline.Execution.Strategies;
-using NPipeline.Graph;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 using NPipeline.Reliability;
@@ -21,6 +20,8 @@ namespace NPipeline.Tests.Resilience.Restart;
 /// </summary>
 public sealed class ResilientCancellationTests
 {
+    private static readonly PassthroughNode Node = new();
+
     [Fact]
     public async Task AlreadyCancelledToken_ThrowsBeforeTheFirstAttempt()
     {
@@ -128,11 +129,10 @@ public sealed class ResilientCancellationTests
         policy.PipelineFailureDecisions.Should().BeGreaterThan(0, "an unrelated timeout is a failure the policy should rule on");
     }
 
-    private static readonly PassthroughNode Node = new();
-
     private static PipelineContext CreateContext(IResiliencePolicy policy, RetryBackoff restartBackoff = default)
     {
         var context = new PipelineContext(new PipelineContextConfiguration(ResiliencePolicy: policy));
+
         context.ExecutionConfiguration.Resilience = PipelineResilienceOptions.None with
         {
             NodeRestart = new NodeRestartOptions { MaxRestarts = 3, MaxReplayWindow = 128, Backoff = restartBackoff },
@@ -147,11 +147,10 @@ public sealed class ResilientCancellationTests
         return (new ResilientExecutionStrategy(inner), inner);
     }
 
-    private static IDataStream<int> Input()
-    {
+    private static IDataStream<int> Input() =>
+
         // The stub strategy ignores its input, so the test exercises only the restart loop.
-        return new NPipeline.DataFlow.DataStreams.InMemoryDataStream<int>([0], "input");
-    }
+        new NPipeline.DataFlow.DataStreams.InMemoryDataStream<int>([0], "input");
 
     private static async Task<List<int>> DrainAsync(IDataStream<int> stream, CancellationToken cancellationToken)
     {
@@ -164,24 +163,6 @@ public sealed class ResilientCancellationTests
 
         return received;
     }
-
-#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
-    private static async IAsyncEnumerable<int> Produce(IEnumerable<int> items)
-    {
-        foreach (var item in items)
-        {
-            yield return item;
-        }
-    }
-
-    private static async IAsyncEnumerable<int> Fail(Exception exception)
-    {
-        if (exception is not null)
-            throw exception;
-
-        yield break;
-    }
-#pragma warning restore CS1998
 
     /// <summary>
     ///     Yields the given items, then cancels the pipeline and observes the token, as a node should.
@@ -211,18 +192,13 @@ public sealed class ResilientCancellationTests
         }
 
         public Task<IDataStream<TOut>> ExecuteFromAsync<TIn, TOut>(IDataStream<TIn> input, long offset, RestartCheckpoint checkpoint,
-            ITransformNode<TIn, TOut> node, PipelineContext context, string nodeId, CancellationToken cancellationToken)
-        {
-            return ExecuteAsync(input, node, context, nodeId, cancellationToken);
-        }
+            ITransformNode<TIn, TOut> node, PipelineContext context, string nodeId, CancellationToken cancellationToken) =>
+            ExecuteAsync(input, node, context, nodeId, cancellationToken);
     }
 
     private sealed class PassthroughNode : TransformNode<int, int>
     {
-        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult<int>(item);
-        }
+        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken) => ValueTask.FromResult(item);
     }
 
     private sealed class RecordingPolicy : IResiliencePolicy
@@ -233,10 +209,8 @@ public sealed class ResilientCancellationTests
 
         public CancellationTokenSource? CancellationSource { get; set; }
 
-        public ValueTask<ResilienceDecision> DecideNodeFailureAsync(NodeFailure failure, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult(ResilienceDecision.Fail);
-        }
+        public ValueTask<ResilienceDecision> DecideNodeFailureAsync(NodeFailure failure, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(ResilienceDecision.Fail);
 
         public ValueTask<ResilienceDecision> DecideRestartAsync(StreamFailure failure, CancellationToken cancellationToken)
         {
@@ -246,12 +220,30 @@ public sealed class ResilientCancellationTests
             if (CancelDuringRetryDelay)
                 CancellationSource?.Cancel();
 
-            return ValueTask.FromResult(failure.CanRestart ? ResilienceDecision.RestartNode : ResilienceDecision.Fail);
+            return ValueTask.FromResult(failure.CanRestart
+                ? ResilienceDecision.RestartNode
+                : ResilienceDecision.Fail);
         }
 
-        public ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken)
+        public ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(ResilienceDecision.Fail);
+    }
+
+#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
+    private static async IAsyncEnumerable<int> Produce(IEnumerable<int> items)
+    {
+        foreach (var item in items)
         {
-            return ValueTask.FromResult(ResilienceDecision.Fail);
+            yield return item;
         }
     }
+
+    private static async IAsyncEnumerable<int> Fail(Exception exception)
+    {
+        if (exception is not null)
+            throw exception;
+
+        yield break;
+    }
+#pragma warning restore CS1998
 }

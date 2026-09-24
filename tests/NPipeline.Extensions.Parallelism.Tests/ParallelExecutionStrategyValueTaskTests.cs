@@ -142,16 +142,14 @@ public sealed class ParallelExecutionStrategyValueTaskTests
         public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             ExecuteValueTaskCallCount++;
-            return ValueTask.FromResult<int>(item + 1);
+            return ValueTask.FromResult(item + 1);
         }
     }
 
     private sealed class ThrowingTransform : TransformNode<int, int>
     {
-        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
-        {
+        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken) =>
             throw new InvalidOperationException("parallel boom");
-        }
     }
 
     private sealed class RecordingSampleRecorder : IPipelineSampleRecorder
@@ -164,7 +162,8 @@ public sealed class ParallelExecutionStrategyValueTaskTests
         {
         }
 
-        public void RecordError(string nodeId, string originNodeId, Guid correlationId, int[]? ancestryInputIndices, object? serializedRecord, string errorMessage,
+        public void RecordError(string nodeId, string originNodeId, Guid correlationId, int[]? ancestryInputIndices, object? serializedRecord,
+            string errorMessage,
             string? exceptionType, string? stackTrace, int retryCount = 0, string? pipelineName = null, Guid? runId = null,
             DateTimeOffset timestamp = default)
         {

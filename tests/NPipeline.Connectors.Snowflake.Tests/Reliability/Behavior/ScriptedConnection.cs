@@ -47,20 +47,11 @@ internal sealed class ScriptedConnection : IDatabaseConnection
         return Task.CompletedTask;
     }
 
-    public Task<IDatabaseTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default)
-    {
-        throw new NotSupportedException();
-    }
+    public Task<IDatabaseTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
-    public Task<IDatabaseCommand> CreateCommandAsync(CancellationToken cancellationToken = default)
-    {
-        return Task.FromResult<IDatabaseCommand>(new Command(this));
-    }
+    public Task<IDatabaseCommand> CreateCommandAsync(CancellationToken cancellationToken = default) => Task.FromResult<IDatabaseCommand>(new Command(this));
 
-    public ValueTask DisposeAsync()
-    {
-        return ValueTask.CompletedTask;
-    }
+    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
     private Task<int> ExecuteAsync(ExecutedCommand command, CancellationToken cancellationToken)
     {
@@ -99,20 +90,13 @@ internal sealed class ScriptedConnection : IDatabaseConnection
             _parameters.Add(value);
         }
 
-        public Task<IDatabaseReader> ExecuteReaderAsync(CancellationToken cancellationToken = default)
-        {
-            return connection.QueryAsync(new ExecutedCommand(CommandText, [.. _parameters]), cancellationToken);
-        }
+        public Task<IDatabaseReader> ExecuteReaderAsync(CancellationToken cancellationToken = default) =>
+            connection.QueryAsync(new ExecutedCommand(CommandText, [.. _parameters]), cancellationToken);
 
-        public Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken = default)
-        {
-            return connection.ExecuteAsync(new ExecutedCommand(CommandText, [.. _parameters]), cancellationToken);
-        }
+        public Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken = default) =>
+            connection.ExecuteAsync(new ExecutedCommand(CommandText, [.. _parameters]), cancellationToken);
 
-        public ValueTask DisposeAsync()
-        {
-            return ValueTask.CompletedTask;
-        }
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 
     private sealed class Reader(IReadOnlyList<IReadOnlyDictionary<string, object?>> rows) : IDatabaseReader
@@ -125,39 +109,18 @@ internal sealed class ScriptedConnection : IDatabaseConnection
 
         public int FieldCount => Current.Count;
 
-        public string GetName(int ordinal)
-        {
-            return Current.Keys.ElementAt(ordinal);
-        }
+        public string GetName(int ordinal) => Current.Keys.ElementAt(ordinal);
 
-        public Type GetFieldType(int ordinal)
-        {
-            return Current.Values.ElementAt(ordinal)?.GetType() ?? typeof(object);
-        }
+        public Type GetFieldType(int ordinal) => Current.Values.ElementAt(ordinal)?.GetType() ?? typeof(object);
 
-        public Task<bool> ReadAsync(CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(++_index < rows.Count);
-        }
+        public Task<bool> ReadAsync(CancellationToken cancellationToken = default) => Task.FromResult(++_index < rows.Count);
 
-        public Task<bool> NextResultAsync(CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(false);
-        }
+        public Task<bool> NextResultAsync(CancellationToken cancellationToken = default) => Task.FromResult(false);
 
-        public T? GetFieldValue<T>(int ordinal)
-        {
-            return (T?)Current.Values.ElementAt(ordinal);
-        }
+        public T? GetFieldValue<T>(int ordinal) => (T?)Current.Values.ElementAt(ordinal);
 
-        public bool IsDBNull(int ordinal)
-        {
-            return Current.Values.ElementAt(ordinal) is null;
-        }
+        public bool IsDBNull(int ordinal) => Current.Values.ElementAt(ordinal) is null;
 
-        public ValueTask DisposeAsync()
-        {
-            return ValueTask.CompletedTask;
-        }
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 }

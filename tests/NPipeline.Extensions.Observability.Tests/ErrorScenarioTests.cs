@@ -521,9 +521,8 @@ public sealed class ErrorScenarioTests
         double? throughputItemsPerSec = null,
         double? averageItemProcessingMs = null,
         long itemsProcessed = 100,
-        long itemsEmitted = 95)
-    {
-        return new NodeMetrics(
+        long itemsEmitted = 95) =>
+        new NodeMetrics(
             "testNode",
             DateTimeOffset.UtcNow.AddSeconds(-1),
             DateTimeOffset.UtcNow,
@@ -539,14 +538,11 @@ public sealed class ErrorScenarioTests
             averageItemProcessingMs,
             1,
             s_pipelineId);
-    }
 
     private static IPipelineMetrics CreatePipelineMetrics(bool success, Exception? exception = null, IReadOnlyList<INodeMetrics>? nodeMetrics = null,
-        long totalItemsProcessed = 285, double? durationMs = 5000)
-    {
-        return new PipelineMetrics("TestPipeline", s_pipelineId, Guid.NewGuid(), DateTimeOffset.UtcNow.AddSeconds(-5), DateTimeOffset.UtcNow, durationMs,
+        long totalItemsProcessed = 285, double? durationMs = 5000) =>
+        new PipelineMetrics("TestPipeline", s_pipelineId, Guid.NewGuid(), DateTimeOffset.UtcNow.AddSeconds(-5), DateTimeOffset.UtcNow, durationMs,
             success, totalItemsProcessed, nodeMetrics ?? [], exception);
-    }
 
     private sealed class TestObservabilityFactory : IObservabilityFactory
     {
@@ -559,24 +555,17 @@ public sealed class ErrorScenarioTests
         public TestMetricsSink NodeMetricsSink { get; } = new();
         public TestPipelineMetricsSink PipelineMetricsSink { get; } = new();
 
-        public IObservabilityCollector ResolveObservabilityCollector()
-        {
-            throw new NotImplementedException();
-        }
+        public IObservabilityCollector ResolveObservabilityCollector() => throw new NotImplementedException();
 
-        public IMetricsSink? ResolveMetricsSink()
-        {
-            return NodeMetricsSink.IsEnabled
+        public IMetricsSink? ResolveMetricsSink() =>
+            NodeMetricsSink.IsEnabled
                 ? NodeMetricsSink
                 : null;
-        }
 
-        public IPipelineMetricsSink? ResolvePipelineMetricsSink()
-        {
-            return PipelineMetricsSink.IsEnabled
+        public IPipelineMetricsSink? ResolvePipelineMetricsSink() =>
+            PipelineMetricsSink.IsEnabled
                 ? PipelineMetricsSink
                 : null;
-        }
     }
 
     private sealed class TestMetricsSink : IMetricsSink
@@ -617,40 +606,28 @@ public sealed class ErrorScenarioTests
         public ThrowingMetricsSink NodeMetricsSink { get; } = new();
         public ThrowingPipelineMetricsSink PipelineMetricsSink { get; } = new();
 
-        public IObservabilityCollector ResolveObservabilityCollector()
-        {
-            throw new NotImplementedException();
-        }
+        public IObservabilityCollector ResolveObservabilityCollector() => throw new NotImplementedException();
 
-        public IMetricsSink? ResolveMetricsSink()
-        {
-            return _throwInNodeSink
+        public IMetricsSink? ResolveMetricsSink() =>
+            _throwInNodeSink
                 ? NodeMetricsSink
                 : null;
-        }
 
-        public IPipelineMetricsSink? ResolvePipelineMetricsSink()
-        {
-            return _throwInPipelineSink
+        public IPipelineMetricsSink? ResolvePipelineMetricsSink() =>
+            _throwInPipelineSink
                 ? PipelineMetricsSink
                 : null;
-        }
     }
 
     private sealed class ThrowingMetricsSink : IMetricsSink
     {
-        public Task RecordAsync(INodeMetrics metrics, CancellationToken cancellationToken = default)
-        {
-            throw new InvalidOperationException("Sink exception");
-        }
+        public Task RecordAsync(INodeMetrics metrics, CancellationToken cancellationToken = default) => throw new InvalidOperationException("Sink exception");
     }
 
     private sealed class ThrowingPipelineMetricsSink : IPipelineMetricsSink
     {
-        public Task RecordAsync(IPipelineMetrics metrics, CancellationToken cancellationToken = default)
-        {
+        public Task RecordAsync(IPipelineMetrics metrics, CancellationToken cancellationToken = default) =>
             throw new InvalidOperationException("Pipeline sink exception");
-        }
     }
 
     #endregion

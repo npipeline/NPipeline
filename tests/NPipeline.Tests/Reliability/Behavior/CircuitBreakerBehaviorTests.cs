@@ -22,12 +22,13 @@ public sealed class CircuitBreakerBehaviorTests
     [Fact]
     public async Task Breaker_StopsItemRetries_OnceItOpens()
     {
-        var transform = new FlakyTransform(failuresPerItem: 100);
+        var transform = new FlakyTransform(100);
         var observer = new RecordingObserver();
 
         var act = () => BehaviorPipeline.RunAsync(b =>
         {
             var t = Wire(b, transform, new CollectingSink<int>(), [1], "sequential");
+
             _ = b.WithResilience(t, o => o with
             {
                 ItemRetry = new ItemRetryOptions { MaxRetries = 10 },
@@ -39,6 +40,7 @@ public sealed class CircuitBreakerBehaviorTests
 
         transform.TotalAttempts.Should().Be(3, "the fourth attempt is refused by the open breaker");
         Chain(failure.Which).Should().Contain(e => e is CircuitBreakerOpenException);
+
         observer.CircuitChanges.Should().ContainSingle()
             .Which.Should().Match<CircuitStateChangedEvent>(e => e.NodeId == "transform" && e.State == CircuitState.Open);
     }
@@ -47,12 +49,13 @@ public sealed class CircuitBreakerBehaviorTests
     [MemberData(nameof(Strategies))]
     public async Task Breaker_StopsCallsToADeadDependency_ForEveryStrategy(string strategy)
     {
-        var transform = new FlakyTransform(failuresPerItem: 100);
+        var transform = new FlakyTransform(100);
         var items = Enumerable.Range(1, 200).ToArray();
 
         var act = () => BehaviorPipeline.RunAsync(b =>
         {
             var t = Wire(b, transform, new CollectingSink<int>(), items, strategy);
+
             _ = b.WithResilience(t, o => o with
             {
                 ItemRetry = ItemRetryOptions.None,
@@ -65,6 +68,7 @@ public sealed class CircuitBreakerBehaviorTests
 
         Chain(failure.Which).Should().Contain(e => e is CircuitBreakerOpenException,
             "an open breaker fails the node rather than skipping every remaining item");
+
         transform.TotalAttempts.Should().BeLessThan(items.Length);
     }
 
@@ -78,6 +82,7 @@ public sealed class CircuitBreakerBehaviorTests
         await BehaviorPipeline.RunAsync(b =>
         {
             var t = Wire(b, transform, sink, Enumerable.Range(1, 20), "sequential");
+
             _ = b.WithResilience(t, o => o with
             {
                 OnItemFailure = ItemFailureAction.Skip,
@@ -99,6 +104,7 @@ public sealed class CircuitBreakerBehaviorTests
         var act = () => BehaviorPipeline.RunAsync(b =>
         {
             var t = Wire(b, transform, new CollectingSink<int>(), Enumerable.Range(1, 100), "sequential");
+
             _ = b.WithResilience(t, o => o with
             {
                 ItemRetry = ItemRetryOptions.None,
@@ -122,11 +128,11 @@ public sealed class CircuitBreakerBehaviorTests
         var breaker = new CircuitBreakerOptions { ConsecutiveFailures = 2, OpenDuration = TimeSpan.FromMinutes(1) };
 
         // Run 1: the dependency is down, and the breaker opens.
-        var firstRun = () => BehaviorPipeline.RunAsync(b => Configure(b, new FlakyTransform(failuresPerItem: 100)), runner: runner);
+        var firstRun = () => BehaviorPipeline.RunAsync(b => Configure(b, new FlakyTransform(100)), runner: runner);
         _ = await firstRun.Should().ThrowAsync<Exception>();
 
         // Run 2, straight after: the dependency is back, but the breaker is still open, so no attempt is made.
-        var recovered = new FlakyTransform(failuresPerItem: 0);
+        var recovered = new FlakyTransform(0);
         var secondRun = () => BehaviorPipeline.RunAsync(b => Configure(b, recovered), runner: runner);
         var refused = await secondRun.Should().ThrowAsync<Exception>();
 
@@ -141,7 +147,7 @@ public sealed class CircuitBreakerBehaviorTests
         sink.Items.Should().Equal(1, 2, 3);
 
         // A different factory knows nothing of this breaker.
-        var fresh = new FlakyTransform(failuresPerItem: 0);
+        var fresh = new FlakyTransform(0);
         await BehaviorPipeline.RunAsync(b => Configure(b, fresh));
         fresh.TotalAttempts.Should().Be(3);
 
@@ -156,13 +162,14 @@ public sealed class CircuitBreakerBehaviorTests
     public async Task Pause_WaitsForTheBreaker_ThenCarriesOn()
     {
         var time = new FakeTimeProvider();
-        var transform = new FailsFirstTransform(failures: 2);
+        var transform = new FailsFirstTransform(2);
         var sink = new CollectingSink<int>();
         var observer = new RecordingObserver();
 
         var run = BehaviorPipeline.RunAsync(b =>
         {
             var t = Wire(b, transform, sink, [1, 2, 3], "sequential");
+
             _ = b.WithResilience(t, o => o with
             {
                 ItemRetry = new ItemRetryOptions { MaxRetries = 5 },
@@ -185,11 +192,12 @@ public sealed class CircuitBreakerBehaviorTests
     public async Task Pause_GivesUpAfterMaxPause()
     {
         var time = new FakeTimeProvider();
-        var transform = new FlakyTransform(failuresPerItem: 100);
+        var transform = new FlakyTransform(100);
 
         var run = BehaviorPipeline.RunAsync(b =>
         {
             var t = Wire(b, transform, new CollectingSink<int>(), [1], "sequential");
+
             _ = b.WithResilience(t, o => o with
             {
                 ItemRetry = new ItemRetryOptions { MaxRetries = 5 },
@@ -209,6 +217,7 @@ public sealed class CircuitBreakerBehaviorTests
 
         Chain(failure.Which).OfType<CircuitBreakerOpenException>().Should().ContainSingle()
             .Which.Message.Should().Contain("MaxPause");
+
         transform.TotalAttempts.Should().Be(1);
     }
 
@@ -216,12 +225,13 @@ public sealed class CircuitBreakerBehaviorTests
     public async Task Pause_EndsWhenThePipelineIsCancelled()
     {
         using var cts = new CancellationTokenSource();
-        var transform = new FlakyTransform(failuresPerItem: 100);
+        var transform = new FlakyTransform(100);
         var observer = new RecordingObserver();
 
         var run = BehaviorPipeline.RunAsync(b =>
         {
             var t = Wire(b, transform, new CollectingSink<int>(), [1], "sequential");
+
             _ = b.WithResilience(t, o => o with
             {
                 ItemRetry = new ItemRetryOptions { MaxRetries = 5, Backoff = RetryBackoff.None },
@@ -256,7 +266,7 @@ public sealed class CircuitBreakerBehaviorTests
 
     private static IEnumerable<Exception> Chain(Exception exception)
     {
-        for (Exception? current = exception; current is not null; current = current.InnerException)
+        for (var current = exception; current is not null; current = current.InnerException)
         {
             yield return current;
         }

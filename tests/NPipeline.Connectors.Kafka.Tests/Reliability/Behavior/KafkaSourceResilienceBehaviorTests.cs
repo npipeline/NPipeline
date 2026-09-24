@@ -14,13 +14,41 @@ namespace NPipeline.Connectors.Kafka.Tests.Reliability.Behavior;
 /// </summary>
 public sealed class KafkaSourceResilienceBehaviorTests
 {
-    private static readonly NResilience.Resilience FastRetries = KafkaConnectorResilience.Default with
+    private static readonly Resilience FastRetries = KafkaConnectorResilience.Default with
     {
         Backoff = KafkaConnectorResilience.Default.Backoff with
         {
             TransientBase = TimeSpan.FromMilliseconds(1),
             ThrottledBase = TimeSpan.FromMilliseconds(1),
         },
+    };
+
+    // Classifier
+
+    public static TheoryData<Exception, VerdictKind> ClassifiedExceptions => new()
+    {
+        { ConsumeError(ErrorCode.Local_Transport), VerdictKind.Transient },
+        { ConsumeError(ErrorCode.Local_AllBrokersDown), VerdictKind.Transient },
+        { ConsumeError(ErrorCode.Local_TimedOut), VerdictKind.Transient },
+        { ConsumeError(ErrorCode.NotLeaderForPartition), VerdictKind.Transient },
+        { ConsumeError(ErrorCode.GroupCoordinatorNotAvailable), VerdictKind.Transient },
+        { ConsumeError(ErrorCode.Local_MaxPollExceeded), VerdictKind.Transient },
+        { new KafkaRetriableException(new Error(ErrorCode.Local_Fail)), VerdictKind.Transient },
+        { new KafkaException(ErrorCode.NetworkException), VerdictKind.Transient },
+        { ConsumeError(ErrorCode.ThrottlingQuotaExceeded), VerdictKind.Throttled },
+        { ProduceError(ErrorCode.Local_QueueFull), VerdictKind.Throttled },
+        { ConsumeError(new Error(ErrorCode.Local_Transport, "fenced", true)), VerdictKind.Permanent },
+        { ConsumeError(new Error(ErrorCode.Local_Fatal, "fatal", true)), VerdictKind.Permanent },
+        { ConsumeError(ErrorCode.Local_ValueDeserialization), VerdictKind.Permanent },
+        { ConsumeError(ErrorCode.Local_KeyDeserialization), VerdictKind.Permanent },
+        { ConsumeError(ErrorCode.TopicAuthorizationFailed), VerdictKind.Permanent },
+        { ConsumeError(ErrorCode.GroupAuthorizationFailed), VerdictKind.Permanent },
+        { ConsumeError(ErrorCode.OffsetOutOfRange), VerdictKind.Permanent },
+        { ConsumeError(ErrorCode.Local_UnknownPartition), VerdictKind.Permanent },
+        { new KafkaTxnRequiresAbortException(new Error(ErrorCode.Local_Transport)), VerdictKind.Permanent },
+        { ProduceError(ErrorCode.Local_MsgTimedOut), VerdictKind.Permanent },
+        { ProduceError(ErrorCode.MsgSizeTooLarge), VerdictKind.Permanent },
+        { new InvalidOperationException("bug"), VerdictKind.Permanent },
     };
 
     // Preset
@@ -105,34 +133,6 @@ public sealed class KafkaSourceResilienceBehaviorTests
         _ = await act.Should().ThrowAsync<ConsumeException>();
         bodies.Should().Equal("order-1");
     }
-
-    // Classifier
-
-    public static TheoryData<Exception, VerdictKind> ClassifiedExceptions => new()
-    {
-        { ConsumeError(ErrorCode.Local_Transport), VerdictKind.Transient },
-        { ConsumeError(ErrorCode.Local_AllBrokersDown), VerdictKind.Transient },
-        { ConsumeError(ErrorCode.Local_TimedOut), VerdictKind.Transient },
-        { ConsumeError(ErrorCode.NotLeaderForPartition), VerdictKind.Transient },
-        { ConsumeError(ErrorCode.GroupCoordinatorNotAvailable), VerdictKind.Transient },
-        { ConsumeError(ErrorCode.Local_MaxPollExceeded), VerdictKind.Transient },
-        { new KafkaRetriableException(new Error(ErrorCode.Local_Fail)), VerdictKind.Transient },
-        { new KafkaException(ErrorCode.NetworkException), VerdictKind.Transient },
-        { ConsumeError(ErrorCode.ThrottlingQuotaExceeded), VerdictKind.Throttled },
-        { ProduceError(ErrorCode.Local_QueueFull), VerdictKind.Throttled },
-        { ConsumeError(new Error(ErrorCode.Local_Transport, "fenced", true)), VerdictKind.Permanent },
-        { ConsumeError(new Error(ErrorCode.Local_Fatal, "fatal", true)), VerdictKind.Permanent },
-        { ConsumeError(ErrorCode.Local_ValueDeserialization), VerdictKind.Permanent },
-        { ConsumeError(ErrorCode.Local_KeyDeserialization), VerdictKind.Permanent },
-        { ConsumeError(ErrorCode.TopicAuthorizationFailed), VerdictKind.Permanent },
-        { ConsumeError(ErrorCode.GroupAuthorizationFailed), VerdictKind.Permanent },
-        { ConsumeError(ErrorCode.OffsetOutOfRange), VerdictKind.Permanent },
-        { ConsumeError(ErrorCode.Local_UnknownPartition), VerdictKind.Permanent },
-        { new KafkaTxnRequiresAbortException(new Error(ErrorCode.Local_Transport)), VerdictKind.Permanent },
-        { ProduceError(ErrorCode.Local_MsgTimedOut), VerdictKind.Permanent },
-        { ProduceError(ErrorCode.MsgSizeTooLarge), VerdictKind.Permanent },
-        { new InvalidOperationException("bug"), VerdictKind.Permanent },
-    };
 
     [Theory]
     [MemberData(nameof(ClassifiedExceptions), DisableDiscoveryEnumeration = true)]
@@ -226,38 +226,29 @@ public sealed class KafkaSourceResilienceBehaviorTests
         var next = 0;
 
         A.CallTo(() => consumer.Consume(A<TimeSpan>._))
-            .ReturnsLazily(() => (next < steps.Length ? steps[next++]() : null)!);
+            .ReturnsLazily(() => (next < steps.Length
+                ? steps[next++]()
+                : null)!);
 
         return consumer;
     }
 
-    private static ConsumeResult<string, string> Result(string value, long offset)
-    {
-        return new ConsumeResult<string, string>
+    private static ConsumeResult<string, string> Result(string value, long offset) =>
+        new()
         {
             TopicPartitionOffset = new TopicPartitionOffset("orders", 0, offset),
             Message = new Message<string, string> { Key = value, Value = value, Timestamp = Timestamp.Default },
         };
-    }
 
-    private static ConsumeException ConsumeError(ErrorCode code)
-    {
-        return ConsumeError(new Error(code));
-    }
+    private static ConsumeException ConsumeError(ErrorCode code) => ConsumeError(new Error(code));
 
-    private static ConsumeException ConsumeError(Error error)
-    {
-        return new ConsumeException(new ConsumeResult<byte[], byte[]>(), error);
-    }
+    private static ConsumeException ConsumeError(Error error) => new(new ConsumeResult<byte[], byte[]>(), error);
 
-    private static ProduceException<string, string> ProduceError(ErrorCode code)
-    {
-        return new ProduceException<string, string>(new Error(code), new DeliveryResult<string, string>());
-    }
+    private static ProduceException<string, string> ProduceError(ErrorCode code) => new(new Error(code), new DeliveryResult<string, string>());
 
     private static KafkaSourceNode<string> CreateNode(
         IConsumer<string, string> consumer,
-        NResilience.Resilience resilience,
+        Resilience resilience,
         IKafkaMetrics? metrics = null)
     {
         var configuration = new KafkaConfiguration

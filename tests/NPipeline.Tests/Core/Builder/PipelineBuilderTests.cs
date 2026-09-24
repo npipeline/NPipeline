@@ -1,9 +1,7 @@
-using NPipeline.Execution;
 using AwesomeAssertions;
 using NPipeline.DataFlow;
 using NPipeline.Execution.Annotations;
 using NPipeline.Execution.Strategies;
-using NPipeline.ErrorHandling;
 using NPipeline.Graph;
 using NPipeline.Graph.Validation;
 using NPipeline.Nodes;
@@ -191,6 +189,7 @@ public sealed class PipelineBuilderTests(ITestOutputHelper output)
 
         // Assert
         var nodeDef = pipeline.Graph.Nodes.Single(n => n.Id == "transform");
+
         nodeDef.ExecutionStrategy.Should().BeOfType<ResilientExecutionStrategy>()
             .Which.InnerStrategy.Should().BeNull("the node had no strategy of its own, so its default is resolved when it runs");
     }
@@ -247,62 +246,43 @@ public sealed class PipelineBuilderTests(ITestOutputHelper output)
     // Test Node Implementations
     private sealed class TestSourceNode : SourceNode<string>
     {
-        public override IDataStream<string> OpenStream(PipelineContext context, CancellationToken cancellationToken)
-        {
-            throw new NotImplementedException();
-        }
+        public override IDataStream<string> OpenStream(PipelineContext context, CancellationToken cancellationToken) => throw new NotImplementedException();
     }
 
     private sealed class TestTransformNode : TransformNode<string, int>
     {
-        public override ValueTask<int> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
-        {
+        public override ValueTask<int> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken) =>
             throw new NotImplementedException();
-        }
     }
 
     private sealed class TestSinkNode : SinkNode<int>
     {
         public override Task ConsumeAsync(IDataStream<int> input, PipelineContext context,
-            CancellationToken cancellationToken)
-        {
+            CancellationToken cancellationToken) =>
             throw new NotImplementedException();
-        }
     }
 
     private sealed class TestResiliencePolicy : IResiliencePolicy
     {
-        public ValueTask<ResilienceDecision> DecideNodeFailureAsync(NodeFailure failure, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult(ResilienceDecision.Fail);
-        }
+        public ValueTask<ResilienceDecision> DecideNodeFailureAsync(NodeFailure failure, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(ResilienceDecision.Fail);
 
-        public ValueTask<ResilienceDecision> DecideRestartAsync(StreamFailure failure, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult(ResilienceDecision.Fail);
-        }
+        public ValueTask<ResilienceDecision> DecideRestartAsync(StreamFailure failure, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(ResilienceDecision.Fail);
 
-        public ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult(ResilienceDecision.Fail);
-        }
-
+        public ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(ResilienceDecision.Fail);
     }
 
     private sealed class AutoSourceNode : SourceNode<int>
     {
-        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
-        {
-            return new NPipeline.DataFlow.DataStreams.InMemoryDataStream<int>([1]);
-        }
+        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken) =>
+            new NPipeline.DataFlow.DataStreams.InMemoryDataStream<int>([1]);
     }
 
     private sealed class AutoTransformNode : TransformNode<int, int>
     {
-        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult<int>(item);
-        }
+        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken) => ValueTask.FromResult(item);
     }
 
     private sealed class AutoSinkNode : SinkNode<int>

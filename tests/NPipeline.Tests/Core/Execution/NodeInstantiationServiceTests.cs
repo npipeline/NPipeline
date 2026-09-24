@@ -1,7 +1,6 @@
 using System.Runtime.CompilerServices;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
-using NPipeline.Execution;
 using NPipeline.Execution.Factories;
 using NPipeline.Execution.Services;
 using NPipeline.Execution.Strategies;
@@ -78,7 +77,6 @@ public sealed class NodeInstantiationServiceTests
 
     private sealed class NonStreamStrategyPassthroughNode : IStreamTransformNode<int, int>
     {
-
         public async IAsyncEnumerable<int> TransformAsync(
             IAsyncEnumerable<int> items,
             PipelineContext context,
@@ -90,26 +88,18 @@ public sealed class NodeInstantiationServiceTests
             }
         }
 
-        public ValueTask DisposeAsync()
-        {
-            return ValueTask.CompletedTask;
-        }
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 
     private sealed class TestSourceNode : SourceNode<int>
     {
-        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
-        {
-            return new DataStream<int>(Array.Empty<int>().ToAsyncEnumerable(), "test-source");
-        }
+        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken) =>
+            new DataStream<int>(Array.Empty<int>().ToAsyncEnumerable(), "test-source");
     }
 
     private sealed class TestSinkNode : SinkNode<int>
     {
-        public override Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken cancellationToken)
-        {
-            return Task.CompletedTask;
-        }
+        public override Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken cancellationToken) => Task.CompletedTask;
     }
 
     private sealed class StatefulNode : IStatefulNode;
@@ -137,14 +127,8 @@ public sealed class NodeInstantiationServiceTests
             _nodes.Remove(nodeId);
         }
 
-        public IReadOnlyDictionary<string, object> GetRegisteredNodes()
-        {
-            return _nodes;
-        }
+        public IReadOnlyDictionary<string, object> GetRegisteredNodes() => _nodes;
 
-        public bool TryGetNode(string nodeId, out object? nodeInstance)
-        {
-            return _nodes.TryGetValue(nodeId, out nodeInstance);
-        }
+        public bool TryGetNode(string nodeId, out object? nodeInstance) => _nodes.TryGetValue(nodeId, out nodeInstance);
     }
 }

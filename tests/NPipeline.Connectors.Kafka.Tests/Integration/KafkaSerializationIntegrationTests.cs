@@ -23,11 +23,10 @@ public sealed class KafkaSerializationIntegrationTests : IAsyncLifetime
         _output = output;
     }
 
-    public async Task InitializeAsync()
-    {
+    public async Task InitializeAsync() =>
+
         // Schema Registry is not currently supported
         _output.WriteLine("BootstrapServers: {0}", _fixture.BootstrapServers);
-    }
 
     public async Task DisposeAsync()
     {

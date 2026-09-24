@@ -15,7 +15,7 @@ public sealed class ResumableInputTests
     public async Task AReopenedInput_StartsAtTheCheckpoint_AndReplaysOnlyUndeliveredItems()
     {
         var source = new CountingSource(Enumerable.Range(0, 10));
-        await using var input = new ResumableInput<int>(source.Stream, maxRetained: 100, CancellationToken.None);
+        await using var input = new ResumableInput<int>(source.Stream, 100, CancellationToken.None);
 
         var (first, checkpoint) = input.Open(out var offset);
         offset.Should().Be(0);
@@ -36,7 +36,7 @@ public sealed class ResumableInputTests
     public async Task AFullWindow_StopsReading_UntilTheCheckpointAdvances()
     {
         var source = new CountingSource(Enumerable.Range(0, 100));
-        await using var input = new ResumableInput<int>(source.Stream, maxRetained: 3, CancellationToken.None);
+        await using var input = new ResumableInput<int>(source.Stream, 3, CancellationToken.None);
         var (stream, checkpoint) = input.Open(out _);
         await using var enumerator = stream.GetAsyncEnumerator();
 
@@ -60,7 +60,7 @@ public sealed class ResumableInputTests
     [Fact]
     public async Task OpeningAgain_EndsTheEarlierEnumeration()
     {
-        await using var input = new ResumableInput<int>(new CountingSource(Enumerable.Range(0, 10)).Stream, maxRetained: 100, CancellationToken.None);
+        await using var input = new ResumableInput<int>(new CountingSource(Enumerable.Range(0, 10)).Stream, 100, CancellationToken.None);
         var (stale, staleCheckpoint) = input.Open(out _);
         await using var staleEnumerator = stale.GetAsyncEnumerator();
         (await staleEnumerator.MoveNextAsync()).Should().BeTrue();
@@ -79,7 +79,7 @@ public sealed class ResumableInputTests
     public async Task AFailedSource_IsReportedAsTheInputFault()
     {
         var failure = new IOException("connection dropped");
-        await using var input = new ResumableInput<int>(new DataStream<int>(FailAfterOne(failure)), maxRetained: 10, CancellationToken.None);
+        await using var input = new ResumableInput<int>(new DataStream<int>(FailAfterOne(failure)), 10, CancellationToken.None);
         var (stream, _) = input.Open(out _);
 
         var act = () => DrainAsync(stream);
@@ -92,7 +92,7 @@ public sealed class ResumableInputTests
     public async Task Disposing_DisposesTheSourceEnumerator()
     {
         var source = new CountingSource(Enumerable.Range(0, 10));
-        var input = new ResumableInput<int>(source.Stream, maxRetained: 10, CancellationToken.None);
+        var input = new ResumableInput<int>(source.Stream, 10, CancellationToken.None);
         _ = await TakeAsync(input.Open(out _).Input, 2);
 
         await input.DisposeAsync();
@@ -149,6 +149,7 @@ public sealed class ResumableInputTests
     {
         await Task.Yield();
         yield return 0;
+
         throw failure;
     }
 

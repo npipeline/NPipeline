@@ -1,6 +1,7 @@
 using NPipeline.DataFlow.Routing;
 using NPipeline.Execution;
 using NPipeline.Extensions.Testing;
+using NPipeline.Graph;
 using NPipeline.Pipeline;
 
 namespace NPipeline.Extensions.AI.Decisions.Tests;
@@ -13,6 +14,7 @@ public sealed class AIRouteTests
         var item = new TestItem("billing");
         var selected = new InMemorySinkNode<TestItem>();
         var fallback = new InMemorySinkNode<TestItem>();
+
         var context = CreateContext(
             item,
             Classification(RouteLabel.Billing, 0.9, (RouteLabel.Billing, 0.9), (RouteLabel.Technical, 0.1)),
@@ -32,6 +34,7 @@ public sealed class AIRouteTests
         var item = new TestItem("ambiguous");
         var selected = new InMemorySinkNode<TestItem>();
         var fallback = new InMemorySinkNode<TestItem>();
+
         var context = CreateContext(
             item,
             Classification(RouteLabel.Billing, 0.4, (RouteLabel.Billing, 0.6), (RouteLabel.Technical, 0.4)),
@@ -52,8 +55,10 @@ public sealed class AIRouteTests
         var secondary = new InMemorySinkNode<TestItem>();
         var context = PipelineContext.CreateDefault();
         context.Items["item"] = item;
+
         context.Items["classifier"] = new FakeClassifier(
             Classification(RouteLabel.Billing, 0.55, (RouteLabel.Billing, 0.65), (RouteLabel.Technical, 0.35)));
+
         context.Items["selected"] = primary;
         context.Items["fallback"] = secondary;
 
@@ -71,8 +76,10 @@ public sealed class AIRouteTests
         var second = new InMemorySinkNode<TestItem>();
         var context = PipelineContext.CreateDefault();
         context.Items["item"] = item;
+
         context.Items["classifier"] = new FakeClassifier(
             Classification(RouteLabel.Billing, 0.8, (RouteLabel.Billing, 0.8), (RouteLabel.Technical, 0.2)));
+
         context.Items["selected"] = first;
         context.Items["fallback"] = second;
 
@@ -91,7 +98,7 @@ public sealed class AIRouteTests
     {
         var builder = new PipelineBuilder();
         var target = builder.AddSink<InMemorySinkNode<TestItem>, TestItem>("sink");
-        var route = builder.AddAIRoute<TestItem, RouteLabel>(new FakeClassifier(Classification(RouteLabel.Billing, 1)));
+        var route = builder.AddAIRoute(new FakeClassifier(Classification(RouteLabel.Billing, 1)));
 
         Assert.Throws<ArgumentOutOfRangeException>(() => route.WhenLabel(RouteLabel.Billing, target, threshold));
     }
@@ -100,11 +107,13 @@ public sealed class AIRouteTests
     public async Task ClassificationNode_ForwardsCancellationToken()
     {
         CancellationToken observed = default;
+
         var classifier = new DelegateClassifier((_, cancellationToken) =>
         {
             observed = cancellationToken;
             return ValueTask.FromResult(Classification(RouteLabel.Billing, 1));
         });
+
         var node = new AIClassificationNode<TestItem, RouteLabel>(classifier);
         using var cancellation = new CancellationTokenSource();
 
@@ -135,6 +144,7 @@ public sealed class AIRouteTests
         var distribution = probabilities.Length == 0
             ? new Dictionary<RouteLabel, double> { [label] = 1 }
             : probabilities.ToDictionary(entry => entry.Label, entry => entry.Probability);
+
         return new AIClassification<RouteLabel>(
             label,
             confidence,
@@ -147,9 +157,9 @@ public sealed class AIRouteTests
         PipelineContext context,
         out InMemorySinkNode<TestItem> selected,
         out InMemorySinkNode<TestItem> fallback,
-        out NPipeline.Graph.SourceNodeHandle<TestItem> source,
-        out NPipeline.Graph.SinkNodeHandle<TestItem> selectedHandle,
-        out NPipeline.Graph.SinkNodeHandle<TestItem> fallbackHandle)
+        out SourceNodeHandle<TestItem> source,
+        out SinkNodeHandle<TestItem> selectedHandle,
+        out SinkNodeHandle<TestItem> fallbackHandle)
     {
         selected = (InMemorySinkNode<TestItem>)context.Items["selected"];
         fallback = (InMemorySinkNode<TestItem>)context.Items["fallback"];
@@ -166,9 +176,11 @@ public sealed class AIRouteTests
         {
             AddCommonNodes(builder, context, out _, out _, out var source, out var selected, out var fallback);
             var classifier = (IAIClassifier<TestItem, RouteLabel>)context.Items["classifier"];
+
             var route = builder.AddAIRoute(classifier, "decision")
-                .WhenLabel(RouteLabel.Billing, selected, minimumConfidence: 0.75)
+                .WhenLabel(RouteLabel.Billing, selected, 0.75)
                 .Otherwise(fallback);
+
             builder.Connect(source, route);
         }
     }
@@ -179,10 +191,12 @@ public sealed class AIRouteTests
         {
             AddCommonNodes(builder, context, out _, out _, out var source, out var primary, out var secondary);
             var classifier = (IAIClassifier<TestItem, RouteLabel>)context.Items["classifier"];
+
             var route = builder.AddAIRoute(classifier, "decision")
                 .WithMatchMode(RouteMatchMode.AllMatches)
-                .WhenLabel(RouteLabel.Billing, primary, minimumConfidence: 0.5)
+                .WhenLabel(RouteLabel.Billing, primary, 0.5)
                 .WhenProbability(RouteLabel.Technical, 0.25, secondary);
+
             builder.Connect(source, route);
         }
     }
@@ -193,29 +207,27 @@ public sealed class AIRouteTests
         {
             AddCommonNodes(builder, context, out _, out _, out var source, out var first, out var second);
             var classifier = (IAIClassifier<TestItem, RouteLabel>)context.Items["classifier"];
+
             var route = builder.AddAIRoute(classifier, "decision")
                 .When(_ => true, first)
                 .When(_ => true, second);
+
             builder.Connect(source, route);
         }
     }
 
     private sealed class FakeClassifier(AIClassification<RouteLabel> classification) : IAIClassifier<TestItem, RouteLabel>
     {
-        public ValueTask<AIClassification<RouteLabel>> ClassifyAsync(TestItem input, CancellationToken cancellationToken = default)
-        {
-            return ValueTask.FromResult(classification);
-        }
+        public ValueTask<AIClassification<RouteLabel>> ClassifyAsync(TestItem input, CancellationToken cancellationToken = default) =>
+            ValueTask.FromResult(classification);
     }
 
     private sealed class DelegateClassifier(
         Func<TestItem, CancellationToken, ValueTask<AIClassification<RouteLabel>>> classify)
         : IAIClassifier<TestItem, RouteLabel>
     {
-        public ValueTask<AIClassification<RouteLabel>> ClassifyAsync(TestItem input, CancellationToken cancellationToken = default)
-        {
-            return classify(input, cancellationToken);
-        }
+        public ValueTask<AIClassification<RouteLabel>> ClassifyAsync(TestItem input, CancellationToken cancellationToken = default) =>
+            classify(input, cancellationToken);
     }
 
     private sealed record TestItem(string Text);

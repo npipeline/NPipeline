@@ -134,9 +134,8 @@ public sealed class KafkaValueSerializerSchemaRegistryTests(KafkaTestContainerFi
         (await ReadOneAsync<long>(longTopic, registry)).Should().Be(42L);
     }
 
-    private KafkaConfiguration SinkConfiguration(string topic, SchemaRegistryConfiguration registry)
-    {
-        return new KafkaConfiguration
+    private KafkaConfiguration SinkConfiguration(string topic, SchemaRegistryConfiguration registry) =>
+        new()
         {
             BootstrapServers = fixture.BootstrapServers,
             SinkTopic = topic,
@@ -144,7 +143,6 @@ public sealed class KafkaValueSerializerSchemaRegistryTests(KafkaTestContainerFi
             SerializationFormat = SerializationFormat.Avro,
             SchemaRegistry = registry,
         };
-    }
 
     private async Task<T> ReadOneAsync<T>(string topic, SchemaRegistryConfiguration registry)
     {

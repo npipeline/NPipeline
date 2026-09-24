@@ -1,7 +1,9 @@
 using AwesomeAssertions;
 using NPipeline.Configuration;
+using NPipeline.DataFlow;
 using NPipeline.Execution;
 using NPipeline.Execution.Strategies;
+using NPipeline.Extensions.Parallelism;
 using NPipeline.Extensions.Testing;
 using NPipeline.Graph;
 using NPipeline.Graph.Validation;
@@ -28,6 +30,7 @@ public sealed class ResilienceConfigurationRuleTests
         var ok = builder.TryBuild(out _, out var result);
 
         ok.Should().BeFalse();
+
         result.Issues.Should().ContainSingle(i => i.Severity == ValidationSeverity.Error && i.Category == "Resilience")
             .Which.Message.Should().Contain(ErrorCodes.NodeRestartRequiresResumableStrategy).And.Contain(nameof(NonResumableStrategy));
     }
@@ -51,7 +54,7 @@ public sealed class ResilienceConfigurationRuleTests
         var builder = new PipelineBuilder();
         var transform = Wire(builder);
 
-        builder.WithExecutionStrategy(transform, new NPipeline.Extensions.Parallelism.ParallelExecutionStrategy(2));
+        builder.WithExecutionStrategy(transform, new ParallelExecutionStrategy(2));
         builder.WithResilience(transform, o => o with { NodeRestart = new NodeRestartOptions { MaxRestarts = 3 } });
 
         var ok = builder.TryBuild(out var pipeline, out var result);
@@ -154,37 +157,23 @@ public sealed class ResilienceConfigurationRuleTests
 
     private sealed class ResilientTransform : ITransformNode<int, int>
     {
-        public ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult<int>(item);
-        }
+        public ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken) => ValueTask.FromResult(item);
 
-        public ValueTask DisposeAsync()
-        {
-            return ValueTask.CompletedTask;
-        }
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 
     private sealed class RegularTransform : ITransformNode<int, int>
     {
-        public ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult<int>(item);
-        }
+        public ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken) => ValueTask.FromResult(item);
 
-        public ValueTask DisposeAsync()
-        {
-            return ValueTask.CompletedTask;
-        }
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 
     private sealed class NonResumableStrategy : IExecutionStrategy
     {
-        public Task<NPipeline.DataFlow.IDataStream<TOut>> ExecuteAsync<TIn, TOut>(NPipeline.DataFlow.IDataStream<TIn> input,
-            ITransformNode<TIn, TOut> node, PipelineContext context, string nodeId, CancellationToken cancellationToken)
-        {
-            return SequentialExecutionStrategy.Instance.ExecuteAsync(input, node, context, nodeId, cancellationToken);
-        }
+        public Task<IDataStream<TOut>> ExecuteAsync<TIn, TOut>(IDataStream<TIn> input,
+            ITransformNode<TIn, TOut> node, PipelineContext context, string nodeId, CancellationToken cancellationToken) =>
+            SequentialExecutionStrategy.Instance.ExecuteAsync(input, node, context, nodeId, cancellationToken);
     }
 }
 
@@ -356,15 +345,9 @@ public sealed class ParallelConfigurationRuleTests
 
     private sealed class ParallelTransform : ITransformNode<int, int>
     {
-        public ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult<int>(item);
-        }
+        public ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken) => ValueTask.FromResult(item);
 
-        public ValueTask DisposeAsync()
-        {
-            return ValueTask.CompletedTask;
-        }
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 
     // Mock parallel options annotation for testing

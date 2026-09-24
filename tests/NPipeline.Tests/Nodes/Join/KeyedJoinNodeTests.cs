@@ -96,10 +96,7 @@ public sealed class KeyedJoinNodeTests
     [KeySelector(typeof(UserProfile), nameof(UserProfile.Id))]
     private sealed class UserEnrichmentNode : KeyedJoinNode<int, User, UserProfile, EnrichedUser>
     {
-        public override EnrichedUser CreateOutput(User item1, UserProfile item2)
-        {
-            return new EnrichedUser(item1.Id, item1.Name, item2.ProfileInfo);
-        }
+        public override EnrichedUser CreateOutput(User item1, UserProfile item2) => new(item1.Id, item1.Name, item2.ProfileInfo);
     }
 
     private sealed class EnrichedUserSink(ConcurrentQueue<EnrichedUser> store) : SinkNode<EnrichedUser>
@@ -173,10 +170,7 @@ public sealed class KeyedJoinNodeTests
     [KeySelector(typeof(PayStub), nameof(PayStub.EmployeeId), nameof(PayStub.PayCode))]
     private sealed class PayrollJoinNode : KeyedJoinNode<(int, string), Employee, PayStub, PayrollRecord>
     {
-        public override PayrollRecord CreateOutput(Employee item1, PayStub item2)
-        {
-            return new PayrollRecord(item1.EmployeeId, item1.PayCode, item1.Name, item2.Amount);
-        }
+        public override PayrollRecord CreateOutput(Employee item1, PayStub item2) => new(item1.EmployeeId, item1.PayCode, item1.Name, item2.Amount);
     }
 
     private sealed class PayrollRecordSink(ConcurrentQueue<PayrollRecord> store) : SinkNode<PayrollRecord>

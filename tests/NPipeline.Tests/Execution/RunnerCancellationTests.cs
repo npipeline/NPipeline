@@ -62,6 +62,7 @@ public sealed class RunnerCancellationTests
         {
             var s = b.AddSource<ContextTokenProbe, int>("source");
             var k = b.AddSink<CollectingSink<int>, int>("sink");
+
             _ = b.AddPreconfiguredNodeInstance(s.Id, probe)
                 .AddPreconfiguredNodeInstance(k.Id, new CollectingSink<int>())
                 .Connect(s, k);
@@ -86,6 +87,7 @@ public sealed class RunnerCancellationTests
         {
             var s = b.AddSource<StreamingSource<int>, int>("source");
             var k = b.AddSink<CollectingSink<int>, int>("sink");
+
             _ = b.AddPreconfiguredNodeInstance(s.Id, StreamingSource<int>.Of([1]))
                 .AddPreconfiguredNodeInstance(k.Id, new CollectingSink<int>())
                 .Connect(s, k);
@@ -103,6 +105,7 @@ public sealed class RunnerCancellationTests
         {
             var s = b.AddSource<StreamingSource<int>, int>("source");
             var k = b.AddSink<CollectingSink<int>, int>("sink");
+
             _ = b.AddPreconfiguredNodeInstance(s.Id, StreamingSource<int>.Unbounded([1, 2, 3]))
                 .AddPreconfiguredNodeInstance(k.Id, sink)
                 .Connect(s, k);
@@ -118,10 +121,8 @@ public sealed class RunnerCancellationTests
 
         public Task<CancellationToken> ContextToken => _contextToken.Task;
 
-        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
-        {
-            return new DataStream<int>(Stream(context), "probe");
-        }
+        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken) =>
+            new DataStream<int>(Stream(context), "probe");
 
         private async IAsyncEnumerable<int> Stream(PipelineContext context)
         {

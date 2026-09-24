@@ -26,7 +26,7 @@ public sealed class SnowflakeResilienceBehaviorTests
     private const int SessionGone = 390111;
 
     // The shipped preset with near-zero backoff, so the tests barely wait between attempts.
-    private static readonly NResilience.Resilience Fast = SnowflakeConnectorResilience.Default with
+    private static readonly Resilience Fast = SnowflakeConnectorResilience.Default with
     {
         Backoff = SnowflakeConnectorResilience.Default.Backoff with
         {
@@ -123,8 +123,11 @@ public sealed class SnowflakeResilienceBehaviorTests
     [Fact]
     public async Task Batch_RetriesOnlyTheChunkThatFailed()
     {
-        var connection = new ScriptedConnection((index, _) => index == 2 ? new FakeSnowflakeException("network", NetworkError) : null);
-        var writer = new SnowflakeBatchWriter<Row>(connection, "PUBLIC", "ROWS", null, Configuration(batchSize: 2));
+        var connection = new ScriptedConnection((index, _) => index == 2
+            ? new FakeSnowflakeException("network", NetworkError)
+            : null);
+
+        var writer = new SnowflakeBatchWriter<Row>(connection, "PUBLIC", "ROWS", null, Configuration(2));
 
         await writer.WriteBatchAsync(Enumerable.Range(1, 6).Select(i => new Row { Id = i }));
 
@@ -138,12 +141,13 @@ public sealed class SnowflakeResilienceBehaviorTests
         // The first COPY INTO fails as if its reply were lost. Retrying it against the same staged file lets Snowflake's
         // load metadata skip the file if it was in fact loaded; uploading a new file would load the rows a second time.
         var copies = 0;
+
         var connection = new ScriptedConnection((_, command) =>
             command.Text.StartsWith("COPY INTO", StringComparison.Ordinal) && copies++ == 0
                 ? new FakeSnowflakeException("network", NetworkError)
                 : null, StageResults());
 
-        var writer = new SnowflakeStagedCopyWriter<Row>(connection, "PUBLIC", "ROWS", null, Configuration(batchSize: 10));
+        var writer = new SnowflakeStagedCopyWriter<Row>(connection, "PUBLIC", "ROWS", null, Configuration(10));
 
         await writer.WriteBatchAsync(Enumerable.Range(1, 3).Select(i => new Row { Id = i }));
 
@@ -159,9 +163,12 @@ public sealed class SnowflakeResilienceBehaviorTests
     [Fact]
     public async Task StagedCopy_RetriesAFailedUploadBeforeCopying()
     {
-        var connection = new ScriptedConnection((index, _) => index == 0 ? new FakeSnowflakeException("network", NetworkError) : null,
+        var connection = new ScriptedConnection((index, _) => index == 0
+                ? new FakeSnowflakeException("network", NetworkError)
+                : null,
             StageResults());
-        var writer = new SnowflakeStagedCopyWriter<Row>(connection, "PUBLIC", "ROWS", null, Configuration(batchSize: 10));
+
+        var writer = new SnowflakeStagedCopyWriter<Row>(connection, "PUBLIC", "ROWS", null, Configuration(10));
 
         await writer.WriteBatchAsync([new Row { Id = 1 }]);
 
@@ -175,7 +182,7 @@ public sealed class SnowflakeResilienceBehaviorTests
             ? new FakeSnowflakeException("Object does not exist", ObjectDoesNotExist)
             : null, StageResults());
 
-        var writer = new SnowflakeStagedCopyWriter<Row>(connection, "PUBLIC", "ROWS", null, Configuration(batchSize: 10));
+        var writer = new SnowflakeStagedCopyWriter<Row>(connection, "PUBLIC", "ROWS", null, Configuration(10));
 
         var act = () => writer.WriteBatchAsync([new Row { Id = 1 }]);
         _ = await act.Should().ThrowAsync<FakeSnowflakeException>();
@@ -190,13 +197,14 @@ public sealed class SnowflakeResilienceBehaviorTests
     {
         // The driver reports an upload that failed even after its own retries as a result row, not an exception. Copying
         // anyway would load nothing and lose the flush without an error.
-        var connection = new ScriptedConnection(results: StageResults(putStatus: "ERROR", putMessage: "Access Denied"));
-        var writer = new SnowflakeStagedCopyWriter<Row>(connection, "PUBLIC", "ROWS", null, Configuration(batchSize: 10));
+        var connection = new ScriptedConnection(results: StageResults("ERROR", "Access Denied"));
+        var writer = new SnowflakeStagedCopyWriter<Row>(connection, "PUBLIC", "ROWS", null, Configuration(10));
 
         var act = () => writer.WriteBatchAsync([new Row { Id = 1 }]);
 
         var thrown = await act.Should().ThrowAsync<SnowflakeException>();
         thrown.Which.Message.Should().Contain("ERROR").And.Contain("Access Denied");
+
         connection.Executed.Should().ContainSingle("the upload was not retried and nothing was copied")
             .Which.Text.Should().StartWith("PUT");
     }
@@ -205,7 +213,7 @@ public sealed class SnowflakeResilienceBehaviorTests
     public async Task StagedCopy_FailsWhenTheFirstCopyProcessesNoFiles()
     {
         var connection = new ScriptedConnection(results: StageResults(copyLoadsFile: _ => false));
-        var writer = new SnowflakeStagedCopyWriter<Row>(connection, "PUBLIC", "ROWS", null, Configuration(batchSize: 10));
+        var writer = new SnowflakeStagedCopyWriter<Row>(connection, "PUBLIC", "ROWS", null, Configuration(10));
 
         var act = () => writer.WriteBatchAsync([new Row { Id = 1 }]);
 
@@ -220,13 +228,14 @@ public sealed class SnowflakeResilienceBehaviorTests
         // The first COPY INTO loaded the file but its reply was lost; the retry finds the file already loaded (load
         // metadata) and processes nothing. That is success, not a missing file.
         var copies = 0;
+
         var connection = new ScriptedConnection(
             (_, command) => command.Text.StartsWith("COPY INTO", StringComparison.Ordinal) && copies++ == 0
                 ? new FakeSnowflakeException("network", NetworkError)
                 : null,
             StageResults(copyLoadsFile: _ => false));
 
-        var writer = new SnowflakeStagedCopyWriter<Row>(connection, "PUBLIC", "ROWS", null, Configuration(batchSize: 10));
+        var writer = new SnowflakeStagedCopyWriter<Row>(connection, "PUBLIC", "ROWS", null, Configuration(10));
 
         await writer.WriteBatchAsync([new Row { Id = 1 }]);
 
@@ -244,8 +253,9 @@ public sealed class SnowflakeResilienceBehaviorTests
         var perRow = () => new SnowflakePerRowWriter<Row>(connection, "PUBLIC", "ROWS", null, Configuration()).WriteAsync(new Row { Id = 1 });
         _ = await perRow.Should().ThrowAsync<FakeSnowflakeException>();
 
-        var batch = () => new SnowflakeBatchWriter<Row>(connection, "PUBLIC", "ROWS", null, Configuration(batchSize: 10))
+        var batch = () => new SnowflakeBatchWriter<Row>(connection, "PUBLIC", "ROWS", null, Configuration(10))
             .WriteBatchAsync([new Row { Id = 1 }]);
+
         _ = await batch.Should().ThrowAsync<FakeSnowflakeException>();
 
         connection.Executed.Should().HaveCount(2);
@@ -283,16 +293,12 @@ public sealed class SnowflakeResilienceBehaviorTests
         connection.Executed.Should().ContainSingle();
     }
 
-    private static SnowflakeConfiguration Configuration(int batchSize = 100)
-    {
-        return new SnowflakeConfiguration { Resilience = Fast, BatchSize = batchSize };
-    }
+    private static SnowflakeConfiguration Configuration(int batchSize = 100) => new() { Resilience = Fast, BatchSize = batchSize };
 
-    private static string StagedFile(string putSql)
-    {
+    private static string StagedFile(string putSql) =>
+
         // PUT 'file://...' '@~/npipeline_..._0.csv' ... -> @~/npipeline_..._0.csv
-        return putSql.Split('\'')[3];
-    }
+        putSql.Split('\'')[3];
 
     // What Snowflake answers PUT and COPY INTO with. COPY INTO that finds nothing to load answers with a single status row
     // and no file column.
@@ -334,10 +340,7 @@ public sealed class SnowflakeResilienceBehaviorTests
         };
     }
 
-    private static SnowflakeDbException Server(int vendorCode, string message)
-    {
-        return new SnowflakeDbException("XX000", vendorCode, message, "query-id");
-    }
+    private static SnowflakeDbException Server(int vendorCode, string message) => new("XX000", vendorCode, message, "query-id");
 
     private sealed class FakeSnowflakeException(string message, int errorCode) : DbException(message, errorCode);
 

@@ -1,6 +1,4 @@
 using AwesomeAssertions;
-using NPipeline.Execution;
-using NPipeline.Execution.Strategies;
 using NPipeline.Extensions.Testing;
 using NPipeline.Graph.Validation;
 using NPipeline.Nodes;
@@ -49,15 +47,8 @@ public sealed class CustomGraphRuleTests
 
     private sealed class Passthrough : ITransformNode<int, int>
     {
+        public ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken) => ValueTask.FromResult(item);
 
-        public ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult<int>(item);
-        }
-
-        public ValueTask DisposeAsync()
-        {
-            return ValueTask.CompletedTask;
-        }
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 }

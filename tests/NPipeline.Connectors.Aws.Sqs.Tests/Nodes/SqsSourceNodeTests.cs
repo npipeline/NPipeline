@@ -12,14 +12,12 @@ namespace NPipeline.Connectors.Aws.Sqs.Tests.Nodes;
 
 public class SqsSourceNodeTests
 {
-    private static SqsConfiguration CreateValidConfiguration()
-    {
-        return new SqsConfiguration
+    private static SqsConfiguration CreateValidConfiguration() =>
+        new()
         {
             SourceQueueUrl = "https://sqs.us-east-1.amazonaws.com/123456789012/source-queue",
             SinkQueueUrl = "https://sqs.us-east-1.amazonaws.com/123456789012/sink-queue",
         };
-    }
 
     public class Constructor
     {

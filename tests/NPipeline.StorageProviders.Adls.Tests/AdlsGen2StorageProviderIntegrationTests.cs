@@ -46,10 +46,7 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
     /// <summary>
     ///     Generates a unique filesystem name for each test.
     /// </summary>
-    private string GetUniqueFilesystemName()
-    {
-        return $"testfs{Guid.NewGuid():N}".Substring(0, 20); // Filesystem names max 63 chars
-    }
+    private string GetUniqueFilesystemName() => $"testfs{Guid.NewGuid():N}".Substring(0, 20); // Filesystem names max 63 chars
 
     /// <summary>
     ///     Creates a test file using the Blob API (compatible with Azurite which does not support

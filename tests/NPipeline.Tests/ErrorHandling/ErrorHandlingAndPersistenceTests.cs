@@ -85,19 +85,14 @@ public sealed class ErrorHandlingAndPersistenceTests
             throw new InvalidOperationException("fail");
         }
 
-        public ValueTask DisposeAsync()
-        {
-            return ValueTask.CompletedTask;
-        }
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 
     private sealed class DummyStrategy : IExecutionStrategy
     {
         public Task<IDataStream<TOut>> ExecuteAsync<TIn, TOut>(IDataStream<TIn> input, ITransformNode<TIn, TOut> node, PipelineContext context,
-            string nodeId, CancellationToken cancellationToken)
-        {
-            return Task.FromResult<IDataStream<TOut>>(new NPipeline.DataFlow.DataStreams.InMemoryDataStream<TOut>(new List<TOut>(), "empty"));
-        }
+            string nodeId, CancellationToken cancellationToken) =>
+            Task.FromResult<IDataStream<TOut>>(new NPipeline.DataFlow.DataStreams.InMemoryDataStream<TOut>(new List<TOut>(), "empty"));
     }
 
     private sealed class RestartingPolicy(int restartLimit) : IResiliencePolicy
@@ -114,16 +109,11 @@ public sealed class ErrorHandlingAndPersistenceTests
             return ValueTask.FromResult(ResilienceDecision.Fail);
         }
 
-        public ValueTask<ResilienceDecision> DecideRestartAsync(StreamFailure failure, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult(ResilienceDecision.Fail);
-        }
+        public ValueTask<ResilienceDecision> DecideRestartAsync(StreamFailure failure, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(ResilienceDecision.Fail);
 
-        public ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult(ResilienceDecision.Fail);
-        }
-
+        public ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(ResilienceDecision.Fail);
     }
 
     private sealed class SnapshotStateManager : IPipelineStateManager
@@ -136,10 +126,7 @@ public sealed class ErrorHandlingAndPersistenceTests
             return ValueTask.CompletedTask;
         }
 
-        public ValueTask<bool> TryRestoreAsync(PipelineContext context, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult(false);
-        }
+        public ValueTask<bool> TryRestoreAsync(PipelineContext context, CancellationToken cancellationToken) => ValueTask.FromResult(false);
 
         public void MarkNodeCompleted(string nodeId, PipelineContext context)
         {

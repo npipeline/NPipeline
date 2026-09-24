@@ -42,20 +42,11 @@ internal sealed class ScriptedConnection : IDatabaseConnection
         return Task.CompletedTask;
     }
 
-    public Task<IDatabaseTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default)
-    {
-        throw new NotSupportedException();
-    }
+    public Task<IDatabaseTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
-    public Task<IDatabaseCommand> CreateCommandAsync(CancellationToken cancellationToken = default)
-    {
-        return Task.FromResult<IDatabaseCommand>(new Command(this));
-    }
+    public Task<IDatabaseCommand> CreateCommandAsync(CancellationToken cancellationToken = default) => Task.FromResult<IDatabaseCommand>(new Command(this));
 
-    public ValueTask DisposeAsync()
-    {
-        return ValueTask.CompletedTask;
-    }
+    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
     private Task<int> ExecuteAsync(ExecutedCommand command, CancellationToken cancellationToken)
     {
@@ -88,19 +79,11 @@ internal sealed class ScriptedConnection : IDatabaseConnection
             _parameters.Add(value);
         }
 
-        public Task<IDatabaseReader> ExecuteReaderAsync(CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
+        public Task<IDatabaseReader> ExecuteReaderAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
-        public Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken = default)
-        {
-            return connection.ExecuteAsync(new ExecutedCommand(CommandText, [.. _parameters]), cancellationToken);
-        }
+        public Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken = default) =>
+            connection.ExecuteAsync(new ExecutedCommand(CommandText, [.. _parameters]), cancellationToken);
 
-        public ValueTask DisposeAsync()
-        {
-            return ValueTask.CompletedTask;
-        }
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 }

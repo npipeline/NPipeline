@@ -79,9 +79,6 @@ public sealed class RetryExhaustedAttributionTests
 
     private sealed class FailingNode : INode
     {
-        public ValueTask DisposeAsync()
-        {
-            return ValueTask.CompletedTask;
-        }
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 }

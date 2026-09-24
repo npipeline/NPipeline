@@ -22,7 +22,7 @@ public sealed class HttpResilienceBehaviorTests
 
     // The shipped preset with near-zero backoff, so the tests barely wait between attempts. Not Backoff.None, whose zero
     // maximum delay would also clamp a server's Retry-After to nothing.
-    private static readonly NResilience.Resilience Fast = HttpConnectorResilience.Default with
+    private static readonly Resilience Fast = HttpConnectorResilience.Default with
     {
         Backoff = HttpConnectorResilience.Default.Backoff with
         {
@@ -64,7 +64,7 @@ public sealed class HttpResilienceBehaviorTests
     [InlineData(HttpStatusCode.TooManyRequests)]
     public async Task Sink_RetriesATransientStatusFourTimesThenThrows(HttpStatusCode status)
     {
-        var handler = RespondWith(status, times: 10);
+        var handler = RespondWith(status, 10);
 
         var act = () => RunSinkAsync(handler, new HttpSinkConfiguration { Uri = Endpoint, Method = SinkHttpMethod.Put, Resilience = Fast });
 
@@ -76,7 +76,7 @@ public sealed class HttpResilienceBehaviorTests
     [Fact]
     public async Task Sink_DoesNotRetryAPermanentStatus()
     {
-        var handler = RespondWith(HttpStatusCode.BadRequest, times: 10);
+        var handler = RespondWith(HttpStatusCode.BadRequest, 10);
 
         var act = () => RunSinkAsync(handler, new HttpSinkConfiguration { Uri = Endpoint, Method = SinkHttpMethod.Put, Resilience = Fast });
 
@@ -107,7 +107,7 @@ public sealed class HttpResilienceBehaviorTests
     public async Task Sink_SendsANonIdempotentWriteWithoutAnIdempotencyKeyOnce(SinkHttpMethod method)
     {
         // D-6: retrying a POST or PATCH the server already applied would duplicate it.
-        var handler = RespondWith(HttpStatusCode.ServiceUnavailable, times: 10);
+        var handler = RespondWith(HttpStatusCode.ServiceUnavailable, 10);
 
         var act = () => RunSinkAsync(handler, new HttpSinkConfiguration { Uri = Endpoint, Method = method, Resilience = Fast });
 
@@ -118,7 +118,7 @@ public sealed class HttpResilienceBehaviorTests
     [Fact]
     public async Task Sink_RetriesAPostThatCarriesAnIdempotencyKey_SendingTheSameKeyEachTime()
     {
-        var handler = RespondWith(HttpStatusCode.ServiceUnavailable, times: 2).Respond(HttpStatusCode.Created);
+        var handler = RespondWith(HttpStatusCode.ServiceUnavailable, 2).Respond(HttpStatusCode.Created);
 
         var configuration = new HttpSinkConfiguration
         {
@@ -162,7 +162,7 @@ public sealed class HttpResilienceBehaviorTests
     [Fact]
     public async Task Sink_CapturesAPersistentErrorResponseWithoutThrowing()
     {
-        var handler = RespondWith(HttpStatusCode.ServiceUnavailable, times: 10);
+        var handler = RespondWith(HttpStatusCode.ServiceUnavailable, 10);
 
         var configuration = new HttpSinkConfiguration
         {
@@ -199,7 +199,7 @@ public sealed class HttpResilienceBehaviorTests
     [Fact]
     public async Task Sink_RetriesAnAttemptThatTimesOut()
     {
-        var handler = new SlowThenFastHandler(slowAttempts: 1, TimeSpan.FromSeconds(5));
+        var handler = new SlowThenFastHandler(1, TimeSpan.FromSeconds(5));
 
         var configuration = new HttpSinkConfiguration
         {
@@ -217,7 +217,7 @@ public sealed class HttpResilienceBehaviorTests
     public async Task Sink_RetriesAClientTimeout()
     {
         // HttpClient.Timeout surfaces as a TaskCanceledException that the pipeline did not cause.
-        var handler = new SlowThenFastHandler(slowAttempts: 1, TimeSpan.FromSeconds(5));
+        var handler = new SlowThenFastHandler(1, TimeSpan.FromSeconds(5));
         using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMilliseconds(100) };
 
         var sink = new HttpSinkNode<int>(new HttpSinkConfiguration { Uri = Endpoint, Method = SinkHttpMethod.Put, Resilience = Fast }, client);
@@ -231,7 +231,7 @@ public sealed class HttpResilienceBehaviorTests
     public async Task Sink_PipelineCancellationStopsWithoutRetrying()
     {
         using var cts = new CancellationTokenSource();
-        var handler = new SlowThenFastHandler(slowAttempts: 10, TimeSpan.FromSeconds(30), onAttempt: cts.Cancel);
+        var handler = new SlowThenFastHandler(10, TimeSpan.FromSeconds(30), cts.Cancel);
 
         var act = () => RunSinkAsync(handler, new HttpSinkConfiguration { Uri = Endpoint, Method = SinkHttpMethod.Put, Resilience = Fast },
             cancellationToken: cts.Token);
@@ -262,7 +262,7 @@ public sealed class HttpResilienceBehaviorTests
     [Fact]
     public async Task Source_RetriesATransientStatusFourTimesThenThrows()
     {
-        var handler = RespondWith(HttpStatusCode.BadGateway, times: 10);
+        var handler = RespondWith(HttpStatusCode.BadGateway, 10);
         var metrics = new RecordingMetrics();
 
         var act = () => DrainSourceAsync(handler, new HttpSourceConfiguration { BaseUri = Endpoint, Resilience = Fast }, metrics);
@@ -277,7 +277,7 @@ public sealed class HttpResilienceBehaviorTests
     [Fact]
     public async Task Source_DoesNotRetryANotFound()
     {
-        var handler = RespondWith(HttpStatusCode.NotFound, times: 10);
+        var handler = RespondWith(HttpStatusCode.NotFound, 10);
 
         var act = () => DrainSourceAsync(handler, new HttpSourceConfiguration { BaseUri = Endpoint, Resilience = Fast });
 
@@ -324,9 +324,9 @@ public sealed class HttpResilienceBehaviorTests
     [Fact]
     public async Task Source_WithNoneSendsOnce()
     {
-        var handler = RespondWith(HttpStatusCode.ServiceUnavailable, times: 10);
+        var handler = RespondWith(HttpStatusCode.ServiceUnavailable, 10);
 
-        var act = () => DrainSourceAsync(handler, new HttpSourceConfiguration { BaseUri = Endpoint, Resilience = NResilience.Resilience.None });
+        var act = () => DrainSourceAsync(handler, new HttpSourceConfiguration { BaseUri = Endpoint, Resilience = Resilience.None });
 
         _ = await act.Should().ThrowAsync<HttpRequestException>();
         handler.Requests.Should().ContainSingle();

@@ -20,10 +20,7 @@ public static class DuckDBTestHelper
     /// <summary>
     ///     Returns a unique temp file path for a DuckDB database.
     /// </summary>
-    public static string GetTempDatabasePath()
-    {
-        return Path.Combine(Path.GetTempPath(), $"npipeline_test_{Guid.NewGuid():N}.duckdb");
-    }
+    public static string GetTempDatabasePath() => Path.Combine(Path.GetTempPath(), $"npipeline_test_{Guid.NewGuid():N}.duckdb");
 
     /// <summary>
     ///     Deletes a temp database file and its related files (.wal etc.).

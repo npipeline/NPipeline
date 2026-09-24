@@ -3,7 +3,6 @@ using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
-using NPipeline.Execution;
 using NPipeline.Extensions.DependencyInjection;
 using NPipeline.Lineage;
 using NPipeline.Lineage.DependencyInjection;
@@ -39,6 +38,7 @@ public sealed class StreamTransformLineageTests
         // Dropped items end at the filter, each with its own lineage.
         var dropped = filterRecords.Where(static r => r.OutcomeReason == LineageOutcomeReason.FilteredOut).ToList();
         dropped.Should().OnlyContain(static r => r.IsTerminal);
+
         dropped.Select(static r => ((int)r.Data!, r.CorrelationId))
             .Should().BeEquivalentTo([(10, correlationOf[10]), (30, correlationOf[30]), (50, correlationOf[50])]);
 
@@ -56,8 +56,10 @@ public sealed class StreamTransformLineageTests
         // Item n * 10 expands into n copies of itself; the item 0 expands into nothing.
         lineage.Where(static r => r.NodeId == "expand" && r.OutcomeReason == LineageOutcomeReason.Emitted)
             .Select(static r => ((int)r.Data!, r.CorrelationId))
-            .Should().BeEquivalentTo([(10, correlationOf[10]), (20, correlationOf[20]), (20, correlationOf[20]),
-                (30, correlationOf[30]), (30, correlationOf[30]), (30, correlationOf[30])]);
+            .Should().BeEquivalentTo([
+                (10, correlationOf[10]), (20, correlationOf[20]), (20, correlationOf[20]),
+                (30, correlationOf[30]), (30, correlationOf[30]), (30, correlationOf[30]),
+            ]);
 
         lineage.Should().ContainSingle(static r => r.NodeId == "expand" && r.OutcomeReason == LineageOutcomeReason.ConsumedWithoutEmission)
             .Which.CorrelationId.Should().Be(correlationOf[0]);
@@ -117,26 +119,20 @@ public sealed class StreamTransformLineageTests
 
     private sealed class NumbersSource : SourceNode<int>
     {
-        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
-        {
-            return new InMemoryDataStream<int>([1, 2, 3, 4, 5, 6], "numbers");
-        }
+        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken) =>
+            new InMemoryDataStream<int>([1, 2, 3, 4, 5, 6], "numbers");
     }
 
     private sealed class SmallNumbersSource : SourceNode<int>
     {
-        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
-        {
-            return new InMemoryDataStream<int>([1, 0, 2, 3], "numbers");
-        }
+        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken) =>
+            new InMemoryDataStream<int>([1, 0, 2, 3], "numbers");
     }
 
     private sealed class TimesTen : TransformNode<int, int>
     {
-        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult(item * 10);
-        }
+        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(item * 10);
     }
 
     private sealed class DrainSink : SinkNode<int>

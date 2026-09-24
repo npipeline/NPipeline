@@ -206,10 +206,7 @@ public sealed class NodeExecutionScopeRegistryTests
             RecordedFailure = exception;
         }
 
-        public Exception? GetFailureException()
-        {
-            return RecordedFailure;
-        }
+        public Exception? GetFailureException() => RecordedFailure;
 
         public void AddInputWait(TimeSpan duration)
         {

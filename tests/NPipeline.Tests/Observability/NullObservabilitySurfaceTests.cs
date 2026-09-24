@@ -1,5 +1,4 @@
 using System.Collections.Immutable;
-using NPipeline.Execution;
 using NPipeline.Graph;
 using NPipeline.Nodes;
 using NPipeline.Observability;
@@ -24,11 +23,13 @@ public sealed class NullObservabilitySurfaceTests
         var surface = NullObservabilitySurface.Instance;
         var ctx = PipelineContext.CreateDefault();
         var act = surface.BeginPipeline<TestDefinition>(ctx);
+
         var graph = PipelineGraphBuilder.Create()
             .WithNodes(ImmutableList<NodeDefinition>.Empty)
             .WithEdges(ImmutableList<Edge>.Empty)
             .WithPreconfiguredNodeInstances(ImmutableDictionary<string, INode>.Empty)
             .Build();
+
         await surface.CompletePipeline<TestDefinition>(ctx, graph, act);
     }
 
@@ -46,15 +47,18 @@ public sealed class NullObservabilitySurfaceTests
     {
         var surface = NullObservabilitySurface.Instance;
         var ctx = PipelineContext.CreateDefault();
+
         var def = new NodeDefinition(
             new NodeIdentity("n1", "n1"),
             new NodeTypeSystem(typeof(object), NodeKind.Source, null, typeof(object)),
             new NodeExecutionConfig(), new NodeMergeConfig(), new NodeLineageConfig());
+
         var graph = PipelineGraphBuilder.Create()
             .WithNodes(ImmutableList<NodeDefinition>.Empty)
             .WithEdges(ImmutableList<Edge>.Empty)
             .WithPreconfiguredNodeInstances(ImmutableDictionary<string, INode>.Empty)
             .Build();
+
         var scope = surface.BeginNode(ctx, graph, def, new NullNode());
         Assert.Null(scope.AutoObservabilityScope);
     }
@@ -64,15 +68,18 @@ public sealed class NullObservabilitySurfaceTests
     {
         var surface = NullObservabilitySurface.Instance;
         var ctx = PipelineContext.CreateDefault();
+
         var def = new NodeDefinition(
             new NodeIdentity("n1", "n1"),
             new NodeTypeSystem(typeof(object), NodeKind.Source, null, typeof(object)),
             new NodeExecutionConfig(), new NodeMergeConfig(), new NodeLineageConfig());
+
         var graph = PipelineGraphBuilder.Create()
             .WithNodes(ImmutableList<NodeDefinition>.Empty)
             .WithEdges(ImmutableList<Edge>.Empty)
             .WithPreconfiguredNodeInstances(ImmutableDictionary<string, INode>.Empty)
             .Build();
+
         var scope = surface.BeginNode(ctx, graph, def, new NullNode());
         var completed = surface.CompleteNodeSuccess(ctx, scope);
         Assert.True(completed.Success);
@@ -83,15 +90,18 @@ public sealed class NullObservabilitySurfaceTests
     {
         var surface = NullObservabilitySurface.Instance;
         var ctx = PipelineContext.CreateDefault();
+
         var def = new NodeDefinition(
             new NodeIdentity("n1", "n1"),
             new NodeTypeSystem(typeof(object), NodeKind.Source, null, typeof(object)),
             new NodeExecutionConfig(), new NodeMergeConfig(), new NodeLineageConfig());
+
         var graph = PipelineGraphBuilder.Create()
             .WithNodes(ImmutableList<NodeDefinition>.Empty)
             .WithEdges(ImmutableList<Edge>.Empty)
             .WithPreconfiguredNodeInstances(ImmutableDictionary<string, INode>.Empty)
             .Build();
+
         var scope = surface.BeginNode(ctx, graph, def, new NullNode());
         var completed = surface.CompleteNodeFailure(ctx, scope, new Exception("fail"));
         Assert.False(completed.Success);
@@ -100,7 +110,9 @@ public sealed class NullObservabilitySurfaceTests
 
     private sealed class TestDefinition : IPipelineDefinition
     {
-        public void Define(PipelineBuilder builder, PipelineContext context) { }
+        public void Define(PipelineBuilder builder, PipelineContext context)
+        {
+        }
     }
 
     private sealed class NullNode : INode

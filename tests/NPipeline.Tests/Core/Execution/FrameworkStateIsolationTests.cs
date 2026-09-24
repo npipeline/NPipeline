@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using NPipeline.Configuration;
 using NPipeline.Execution;
 using NPipeline.Pipeline;
 
@@ -41,7 +40,7 @@ public sealed class FrameworkStateIsolationTests
 
         _ = context.NodeEnvironment.EnumerateNodeStatuses()
             .Select(kv => kv.Key)
-            .Should().BeEquivalentTo(["numbers", "collect"]);
+            .Should().BeEquivalentTo("numbers", "collect");
     }
 
     [Fact]

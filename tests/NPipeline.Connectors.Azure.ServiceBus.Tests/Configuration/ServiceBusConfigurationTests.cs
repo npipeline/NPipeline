@@ -8,42 +8,34 @@ namespace NPipeline.Connectors.Azure.ServiceBus.Tests.Configuration;
 
 public class ServiceBusConfigurationTests
 {
-    private static ServiceBusConfiguration CreateValidQueueSourceConfig()
-    {
-        return new ServiceBusConfiguration
+    private static ServiceBusConfiguration CreateValidQueueSourceConfig() =>
+        new()
         {
             ConnectionString = "Endpoint=sb://test.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123=",
             QueueName = "test-queue",
         };
-    }
 
-    private static ServiceBusConfiguration CreateValidQueueSinkConfig()
-    {
-        return new ServiceBusConfiguration
+    private static ServiceBusConfiguration CreateValidQueueSinkConfig() =>
+        new()
         {
             ConnectionString = "Endpoint=sb://test.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123=",
             QueueName = "test-queue",
         };
-    }
 
-    private static ServiceBusConfiguration CreateValidTopicSinkConfig()
-    {
-        return new ServiceBusConfiguration
+    private static ServiceBusConfiguration CreateValidTopicSinkConfig() =>
+        new()
         {
             ConnectionString = "Endpoint=sb://test.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123=",
             TopicName = "test-topic",
         };
-    }
 
-    private static ServiceBusConfiguration CreateValidSubscriptionSourceConfig()
-    {
-        return new ServiceBusConfiguration
+    private static ServiceBusConfiguration CreateValidSubscriptionSourceConfig() =>
+        new()
         {
             ConnectionString = "Endpoint=sb://test.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123=",
             TopicName = "test-topic",
             SubscriptionName = "test-subscription",
         };
-    }
 
     public class Defaults
     {

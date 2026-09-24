@@ -21,7 +21,7 @@ internal static class SqlExceptions
         var create = typeof(SqlException)
             .GetMethods(BindingFlags.Static | BindingFlags.NonPublic)
             .First(m => m.Name == "CreateException" && m.GetParameters() is [{ ParameterType: var first }, { ParameterType: var second }]
-                        && first == typeof(SqlErrorCollection) && second == typeof(string));
+                                                    && first == typeof(SqlErrorCollection) && second == typeof(string));
 
         return (SqlException)create.Invoke(null, [collection, "16.0"])!;
     }

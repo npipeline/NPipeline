@@ -706,17 +706,12 @@ public sealed class DependencyInjectionTests
             }
         }
 
-        public IReadOnlyList<INodeMetrics> GetNodeMetrics()
-        {
-            return [.. _nodeMetrics.Values];
-        }
+        public IReadOnlyList<INodeMetrics> GetNodeMetrics() => [.. _nodeMetrics.Values];
 
-        public INodeMetrics? GetNodeMetrics(string nodeId, Guid pipelineId)
-        {
-            return _nodeMetrics.TryGetValue(BuildKey(nodeId, pipelineId), out var metrics)
+        public INodeMetrics? GetNodeMetrics(string nodeId, Guid pipelineId) =>
+            _nodeMetrics.TryGetValue(BuildKey(nodeId, pipelineId), out var metrics)
                 ? metrics
                 : null;
-        }
 
         public IPipelineMetrics CreatePipelineMetrics(string pipelineName, Guid pipelineId, Guid runId, DateTimeOffset startTime,
             DateTimeOffset? endTime, bool success, Exception? exception = null)
@@ -742,16 +737,12 @@ public sealed class DependencyInjectionTests
         }
 
         public Task EmitMetricsAsync(string pipelineName, Guid pipelineId, Guid runId, DateTimeOffset startTime, DateTimeOffset? endTime,
-            bool success, Exception? exception = null, CancellationToken cancellationToken = default)
-        {
-            // Custom implementation - no-op for test
-            return Task.CompletedTask;
-        }
+            bool success, Exception? exception = null, CancellationToken cancellationToken = default) =>
 
-        private static string BuildKey(string nodeId, Guid pipelineId)
-        {
-            return string.Concat(pipelineId.ToString("N"), "::", nodeId);
-        }
+            // Custom implementation - no-op for test
+            Task.CompletedTask;
+
+        private static string BuildKey(string nodeId, Guid pipelineId) => string.Concat(pipelineId.ToString("N"), "::", nodeId);
     }
 
     #endregion

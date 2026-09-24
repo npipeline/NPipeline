@@ -6,7 +6,6 @@ using AwesomeAssertions;
 using NPipeline.Configuration;
 using NPipeline.Execution;
 using NPipeline.Execution.Annotations;
-using NPipeline.Execution.Strategies;
 using NPipeline.Extensions.Testing;
 using NPipeline.Graph;
 using NPipeline.Graph.Validation;
@@ -182,11 +181,13 @@ public sealed class PipelineBuilderCharacterizationTests
     {
         var b = new PipelineBuilder().WithoutExtendedValidation();
         var s = b.AddSource<InMemorySourceNode<int>, int>("s");
+
         var lookup = b.AddInMemoryLookup<int, int, string, string>(
             "myLookup",
             new Dictionary<int, string> { { 1, "one" } },
             i => i,
             (_, v) => v ?? "unknown");
+
         var k = b.AddSink<InMemorySinkNode<string>, string>("k");
         b.Connect(s, lookup).Connect(lookup, k);
 
@@ -300,10 +301,7 @@ public sealed class PipelineBuilderCharacterizationTests
 
     private sealed class PassthroughTransform : TransformNode<int, int>
     {
-        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult<int>(item);
-        }
+        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken) => ValueTask.FromResult(item);
     }
 
     private sealed class TestJoinNode : IJoinNode
@@ -315,46 +313,30 @@ public sealed class PipelineBuilderCharacterizationTests
             {
                 await foreach (var item in inputStream.WithCancellation(ct))
 
-                // Pass through only int items for determinism
+                    // Pass through only int items for determinism
                 {
                     if (item is int i)
                         yield return i;
                 }
             }
 
-            return ValueTask.FromResult<IAsyncEnumerable<object?>>(Impl(cancellationToken));
+            return ValueTask.FromResult(Impl(cancellationToken));
         }
 
-        public ValueTask DisposeAsync()
-        {
-            return ValueTask.CompletedTask;
-        }
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 
     private sealed class IdentityAggregate() : AdvancedAggregateNode<int, int, int, int>(new AggregateNodeConfiguration<int>(
         AggregateWindows.Tumbling(TimeSpan.FromMinutes(1))))
     {
-        public override int GetKey(int item)
-        {
-            return item;
+        public override int GetKey(int item) => item;
 
-            // key by value
-        }
+        // key by value
+        public override int CreateAccumulator() => 0;
 
-        public override int CreateAccumulator()
-        {
-            return 0;
-        }
+        public override int Accumulate(int accumulator, int item) => accumulator + item;
 
-        public override int Accumulate(int accumulator, int item)
-        {
-            return accumulator + item;
-        }
-
-        public override int GetResult(int accumulator)
-        {
-            return accumulator;
-        }
+        public override int GetResult(int accumulator) => accumulator;
     }
 
     private sealed class TestObserver : IExecutionObserver
@@ -386,7 +368,9 @@ public sealed class PipelineBuilderCharacterizationTests
             [EnumeratorCancellation] CancellationToken cancellationToken)
         {
             await foreach (var item in items.WithCancellation(cancellationToken))
+            {
                 yield return item;
+            }
         }
 
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;

@@ -18,6 +18,8 @@ namespace NPipeline.Connectors.MySql.Tests.Reliability.Behavior;
 [Collection("MySql")]
 public sealed class MySqlRetryIdempotencyIntegrationTests(MySqlTestContainerFixture fixture)
 {
+    private string ConnectionString => new MySqlConnectionStringBuilder(fixture.ConnectionString) { AllowLoadLocalInfile = true }.ConnectionString;
+
     [Theory]
     [InlineData(MySqlWriteStrategy.PerRow)]
     [InlineData(MySqlWriteStrategy.Batch)]
@@ -50,7 +52,7 @@ public sealed class MySqlRetryIdempotencyIntegrationTests(MySqlTestContainerFixt
         var resilience = (MySqlConnectorResilience.Default with
         {
             Backoff = Backoff.Default with { TransientBase = TimeSpan.FromMilliseconds(1) },
-            Classifier = MySqlConnectorResilience.Classifier.On<MySqlConnector.MySqlException>(e => e.Number == 1644
+            Classifier = MySqlConnectorResilience.Classifier.On<MySqlException>(e => e.Number == 1644
                 ? Verdict.Transient
                 : Verdict.Permanent),
         }).WithListener(e =>
@@ -88,8 +90,6 @@ public sealed class MySqlRetryIdempotencyIntegrationTests(MySqlTestContainerFixt
             _ => new MySqlBulkLoadWriter<Row>(connection, table, null, configuration),
         };
     }
-
-    private string ConnectionString => new MySqlConnectionStringBuilder(fixture.ConnectionString) { AllowLoadLocalInfile = true }.ConnectionString;
 
     private async Task<MySqlDatabaseConnection> OpenAsync()
     {

@@ -206,7 +206,9 @@ public sealed class CircuitBreakerTests
                     _ = Interlocked.Decrement(ref probesInFlight);
                 }
 
-                _ = (i + worker) % 3 == 0 ? breaker.RecordFailure(permit) : breaker.RecordSuccess(permit);
+                _ = (i + worker) % 3 == 0
+                    ? breaker.RecordFailure(permit)
+                    : breaker.RecordSuccess(permit);
             }
         })).ToArray();
 
@@ -245,10 +247,7 @@ public sealed class CircuitBreakerTests
         registry.Resolve("node", PipelineResilienceOptions.None).Should().BeNull();
     }
 
-    private CircuitBreaker Create(CircuitBreakerOptions options)
-    {
-        return new CircuitBreaker("node", options, _time);
-    }
+    private CircuitBreaker Create(CircuitBreakerOptions options) => new("node", options, _time);
 
     private CircuitBreaker HalfOpen(CircuitBreakerOptions options, out BreakerPermit probe)
     {
@@ -286,7 +285,6 @@ public sealed class CircuitBreakerTests
 
             if (value <= current)
                 return;
-        }
-        while (Interlocked.CompareExchange(ref target, value, current) != current);
+        } while (Interlocked.CompareExchange(ref target, value, current) != current);
     }
 }

@@ -278,15 +278,18 @@ public sealed class TapNodeTests
         public override Task ConsumeAsync(
             IDataStream<T> input,
             PipelineContext context,
-            CancellationToken cancellationToken)
-        {
+            CancellationToken cancellationToken) =>
             throw new InvalidOperationException("Sink failed intentionally");
-        }
     }
 
     private sealed class DisposableSink<T> : SinkNode<T>, IAsyncDisposable
     {
         public bool IsDisposed { get; private set; }
+
+        public async ValueTask DisposeAsync()
+        {
+            IsDisposed = true;
+        }
 
         public override async Task ConsumeAsync(
             IDataStream<T> input,
@@ -297,11 +300,6 @@ public sealed class TapNodeTests
             {
                 // No-op
             }
-        }
-
-        public async ValueTask DisposeAsync()
-        {
-            IsDisposed = true;
         }
     }
 

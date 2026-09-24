@@ -201,12 +201,12 @@ public sealed class ExcelMapperBuilderTests
         public int Id { get; set; }
 
         [IgnoreColumn]
-        public string IgnoredProperty { get; set; } = string.Empty;
+        public string IgnoredProperty { get; } = string.Empty;
 
         public string Name { get; set; } = string.Empty;
 
         [Column("ignored", Ignore = true)]
-        public string AlsoIgnored { get; set; } = string.Empty;
+        public string AlsoIgnored { get; } = string.Empty;
     }
 
     private sealed class PocoWithNullableTypes

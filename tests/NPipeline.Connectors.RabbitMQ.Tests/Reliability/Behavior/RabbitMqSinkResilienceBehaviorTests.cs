@@ -1,5 +1,8 @@
+using System.Collections.Concurrent;
+using System.Runtime.CompilerServices;
 using System.Security.Authentication;
 using FakeItEasy;
+using FakeItEasy.Core;
 using NPipeline.Connectors.Abstractions;
 using NPipeline.Connectors.RabbitMQ.Configuration;
 using NPipeline.Connectors.RabbitMQ.Connection;
@@ -7,7 +10,6 @@ using NPipeline.Connectors.RabbitMQ.Metrics;
 using NPipeline.Connectors.RabbitMQ.Nodes;
 using NPipeline.Connectors.RabbitMQ.Reliability;
 using NPipeline.Connectors.Serialization;
-using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.Pipeline;
 using NResilience;
@@ -22,9 +24,34 @@ namespace NPipeline.Connectors.RabbitMQ.Tests.Reliability.Behavior;
 /// </summary>
 public sealed class RabbitMqSinkResilienceBehaviorTests
 {
-    private static readonly NResilience.Resilience FastRetries = RabbitMqConnectorResilience.Default with
+    private static readonly Resilience FastRetries = RabbitMqConnectorResilience.Default with
     {
         Backoff = RabbitMqConnectorResilience.Default.Backoff with { TransientBase = TimeSpan.FromMilliseconds(1) },
+    };
+
+    // Classifier
+
+    public static TheoryData<Exception, VerdictKind> ClassifiedExceptions => new()
+    {
+        { ConnectionLost(), VerdictKind.Transient },
+        { Closed(Constants.InternalError), VerdictKind.Transient },
+        { new BrokerUnreachableException(new IOException("connection refused")), VerdictKind.Transient },
+        { new ConnectFailureException("connect failed", new IOException("reset")), VerdictKind.Transient },
+        { new ChannelAllocationException(), VerdictKind.Transient },
+        { new PublishException(1, false), VerdictKind.Transient },
+        { new TimeoutException(), VerdictKind.Transient },
+        { Closed(Constants.AccessRefused), VerdictKind.Permanent },
+        { Closed(Constants.NotFound), VerdictKind.Permanent },
+        { Closed(Constants.PreconditionFailed), VerdictKind.Permanent },
+        { Closed(Constants.ResourceLocked), VerdictKind.Permanent },
+        { Closed(Constants.NotAllowed), VerdictKind.Permanent },
+        { new OperationInterruptedException(Shutdown(Constants.NotFound, ShutdownInitiator.Peer)), VerdictKind.Permanent },
+        { Closed(Constants.ReplySuccess, ShutdownInitiator.Application), VerdictKind.Permanent },
+        { new PublishReturnException(1, "returned", "orders", "missing", Constants.NoRoute, "NO_ROUTE"), VerdictKind.Permanent },
+        { new BrokerUnreachableException(new AuthenticationFailureException("ACCESS_REFUSED")), VerdictKind.Permanent },
+        { new AuthenticationFailureException("ACCESS_REFUSED"), VerdictKind.Permanent },
+        { new AuthenticationException("tls"), VerdictKind.Permanent },
+        { new InvalidOperationException("serializer"), VerdictKind.Permanent },
     };
 
     // Preset
@@ -61,31 +88,6 @@ public sealed class RabbitMqSinkResilienceBehaviorTests
         PublishCount(channel).Should().Be(4, "MaxRetries = 3 made one call and three retries");
         A.CallTo(() => metrics.RecordPublishError("orders", A<string>._)).MustHaveHappenedOnceExactly();
     }
-
-    // Classifier
-
-    public static TheoryData<Exception, VerdictKind> ClassifiedExceptions => new()
-    {
-        { ConnectionLost(), VerdictKind.Transient },
-        { Closed(Constants.InternalError), VerdictKind.Transient },
-        { new BrokerUnreachableException(new IOException("connection refused")), VerdictKind.Transient },
-        { new ConnectFailureException("connect failed", new IOException("reset")), VerdictKind.Transient },
-        { new ChannelAllocationException(), VerdictKind.Transient },
-        { new PublishException(1, false), VerdictKind.Transient },
-        { new TimeoutException(), VerdictKind.Transient },
-        { Closed(Constants.AccessRefused), VerdictKind.Permanent },
-        { Closed(Constants.NotFound), VerdictKind.Permanent },
-        { Closed(Constants.PreconditionFailed), VerdictKind.Permanent },
-        { Closed(Constants.ResourceLocked), VerdictKind.Permanent },
-        { Closed(Constants.NotAllowed), VerdictKind.Permanent },
-        { new OperationInterruptedException(Shutdown(Constants.NotFound, ShutdownInitiator.Peer)), VerdictKind.Permanent },
-        { Closed(Constants.ReplySuccess, ShutdownInitiator.Application), VerdictKind.Permanent },
-        { new PublishReturnException(1, "returned", "orders", "missing", Constants.NoRoute, "NO_ROUTE"), VerdictKind.Permanent },
-        { new BrokerUnreachableException(new AuthenticationFailureException("ACCESS_REFUSED")), VerdictKind.Permanent },
-        { new AuthenticationFailureException("ACCESS_REFUSED"), VerdictKind.Permanent },
-        { new AuthenticationException("tls"), VerdictKind.Permanent },
-        { new InvalidOperationException("serializer"), VerdictKind.Permanent },
-    };
 
     [Theory]
     [MemberData(nameof(ClassifiedExceptions), DisableDiscoveryEnumeration = true)]
@@ -323,7 +325,7 @@ public sealed class RabbitMqSinkResilienceBehaviorTests
     public async Task LingerFlush_RacingSizeFlushes_NeverOverlaps_AndPublishesEachMessageOnce()
     {
         var (channel, connectionManager) = CreateChannel();
-        var published = new System.Collections.Concurrent.ConcurrentBag<string>();
+        var published = new ConcurrentBag<string>();
         var active = 0;
         var overlapped = false;
 
@@ -464,7 +466,9 @@ public sealed class RabbitMqSinkResilienceBehaviorTests
         PublishCalls(channel).Select(call => (string)call.Arguments[1]!).Should().Equal("order-1", "order-2", "order-3");
 
         foreach (var message in messages)
+        {
             A.CallTo(() => message.AcknowledgeAsync(A<CancellationToken>._)).MustHaveHappenedOnceExactly();
+        }
     }
 
     [Fact]
@@ -492,7 +496,9 @@ public sealed class RabbitMqSinkResilienceBehaviorTests
         (DateTime.UtcNow - started).Should().BeLessThan(TimeSpan.FromSeconds(5));
 
         foreach (var message in messages)
+        {
             A.CallTo(() => message.AcknowledgeAsync(A<CancellationToken>._)).MustNotHaveHappened();
+        }
     }
 
     [Fact]
@@ -528,7 +534,9 @@ public sealed class RabbitMqSinkResilienceBehaviorTests
         PublishCalls(channel).Select(call => (string)call.Arguments[1]!).Should().Equal("order-1", "order-2", "order-2", "order-3");
 
         foreach (var message in messages)
+        {
             A.CallTo(() => message.AcknowledgeAsync(A<CancellationToken>._)).MustHaveHappenedOnceExactly();
+        }
     }
 
     private static RabbitMqSinkOptions BatchedOptions()
@@ -553,10 +561,12 @@ public sealed class RabbitMqSinkResilienceBehaviorTests
     private static async IAsyncEnumerable<IAcknowledgableMessage> ThenCancelAsync(
         IEnumerable<IAcknowledgableMessage> items,
         CancellationTokenSource cts,
-        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         foreach (var item in items)
+        {
             yield return item;
+        }
 
         cts.CancelAfter(TimeSpan.FromMilliseconds(50));
         await Task.Delay(Timeout.Infinite, cancellationToken).ConfigureAwait(false);
@@ -607,28 +617,18 @@ public sealed class RabbitMqSinkResilienceBehaviorTests
             rule.NumberOfTimes(count);
     }
 
-    private static IEnumerable<FakeItEasy.Core.ICompletedFakeObjectCall> PublishCalls(IChannel channel)
+    private static IEnumerable<ICompletedFakeObjectCall> PublishCalls(IChannel channel)
     {
         return Fake.GetCalls(channel).Where(call => call.Method.Name == nameof(IChannel.BasicPublishAsync));
     }
 
-    private static int PublishCount(IChannel channel)
-    {
-        return PublishCalls(channel).Count();
-    }
+    private static int PublishCount(IChannel channel) => PublishCalls(channel).Count();
 
-    private static RabbitMqSinkNode<string> CreateSink(
-        RabbitMqSinkOptions options,
-        IRabbitMqConnectionManager connectionManager,
-        IRabbitMqMetrics? metrics = null)
-    {
-        return new RabbitMqSinkNode<string>(options, connectionManager, A.Fake<IMessageSerializer>(), metrics);
-    }
+    private static RabbitMqSinkNode<string> CreateSink(RabbitMqSinkOptions options, IRabbitMqConnectionManager connectionManager,
+        IRabbitMqMetrics? metrics = null) =>
+        new(options, connectionManager, A.Fake<IMessageSerializer>(), metrics);
 
-    private static Task RunAsync(RabbitMqSinkNode<string> sink, params string[] items)
-    {
-        return RunAsync(sink, CancellationToken.None, items);
-    }
+    private static Task RunAsync(RabbitMqSinkNode<string> sink, params string[] items) => RunAsync(sink, CancellationToken.None, items);
 
     private static async Task RunAsync(RabbitMqSinkNode<string> sink, CancellationToken cancellationToken, params string[] items)
     {
@@ -636,18 +636,10 @@ public sealed class RabbitMqSinkResilienceBehaviorTests
         await sink.ConsumeAsync(input, new PipelineContext(), cancellationToken);
     }
 
-    private static ShutdownEventArgs Shutdown(ushort replyCode, ShutdownInitiator initiator)
-    {
-        return new ShutdownEventArgs(initiator, replyCode, "closed", (object?)null, CancellationToken.None);
-    }
+    private static ShutdownEventArgs Shutdown(ushort replyCode, ShutdownInitiator initiator) =>
+        new(initiator, replyCode, "closed", (object?)null, CancellationToken.None);
 
-    private static AlreadyClosedException Closed(ushort replyCode, ShutdownInitiator initiator = ShutdownInitiator.Peer)
-    {
-        return new AlreadyClosedException(Shutdown(replyCode, initiator));
-    }
+    private static AlreadyClosedException Closed(ushort replyCode, ShutdownInitiator initiator = ShutdownInitiator.Peer) => new(Shutdown(replyCode, initiator));
 
-    private static AlreadyClosedException ConnectionLost()
-    {
-        return Closed(Constants.ConnectionForced);
-    }
+    private static AlreadyClosedException ConnectionLost() => Closed(Constants.ConnectionForced);
 }

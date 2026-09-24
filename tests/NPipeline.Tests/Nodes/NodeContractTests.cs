@@ -97,7 +97,7 @@ public sealed class NodeContractTests
         }, sink);
 
         disposable.DisposeCount.Should().Be(1, "a node that opts into IAsyncDisposable is still disposed by the run");
-        sink.Items.Should().Equal([1, 2, 3]);
+        sink.Items.Should().Equal(1, 2, 3);
     }
 
     [Fact]
@@ -143,10 +143,8 @@ public sealed class NodeContractTests
 
     private sealed class NumbersSource : SourceNode<int>
     {
-        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
-        {
-            return new NPipeline.DataFlow.DataStreams.InMemoryDataStream<int>([1, 2, 3], "numbers");
-        }
+        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken) =>
+            new NPipeline.DataFlow.DataStreams.InMemoryDataStream<int>([1, 2, 3], "numbers");
     }
 
     private sealed class CollectingSink : SinkNode<int>
@@ -164,10 +162,7 @@ public sealed class NodeContractTests
 
     private sealed class DoublingNode : TransformNode<int, int>
     {
-        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult(item * 2);
-        }
+        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken) => ValueTask.FromResult(item * 2);
     }
 
     private sealed class PassthroughNode : TransformNode<int, int>, IExecutionStrategyProvider
@@ -176,10 +171,7 @@ public sealed class NodeContractTests
 
         public IExecutionStrategy DefaultExecutionStrategy => NodeDefault;
 
-        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult(item);
-        }
+        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken) => ValueTask.FromResult(item);
     }
 
     private sealed class DisposableTransform : TransformNode<int, int>, IAsyncDisposable
@@ -192,10 +184,7 @@ public sealed class NodeContractTests
             return ValueTask.CompletedTask;
         }
 
-        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult(item);
-        }
+        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken) => ValueTask.FromResult(item);
     }
 
     private sealed class SyncDisposableTransform : TransformNode<int, int>, IDisposable
@@ -207,10 +196,7 @@ public sealed class NodeContractTests
             DisposeCount++;
         }
 
-        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult(item);
-        }
+        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken) => ValueTask.FromResult(item);
     }
 
     /// <summary>
@@ -222,11 +208,6 @@ public sealed class NodeContractTests
 
         public int Executions { get; private set; }
 
-        public void Reset()
-        {
-            Executions = 0;
-        }
-
         public Task<IDataStream<TOut>> ExecuteAsync<TIn, TOut>(
             IDataStream<TIn> input,
             ITransformNode<TIn, TOut> node,
@@ -236,6 +217,11 @@ public sealed class NodeContractTests
         {
             Executions++;
             return _inner.ExecuteAsync(input, node, context, nodeId, cancellationToken);
+        }
+
+        public void Reset()
+        {
+            Executions = 0;
         }
     }
 }

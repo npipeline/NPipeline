@@ -96,6 +96,7 @@ public class ParallelExecutionStrategyTests
         var act = async () => await runner.RunAsync<OrderedSourceFaultingPipeline>(ctx);
 
         var thrown = await act.Should().ThrowAsync<Exception>();
+
         thrown.Which.GetBaseException().Should().BeOfType<InvalidOperationException>()
             .Which.Message.Should().Be("source-boom");
     }
@@ -109,6 +110,7 @@ public class ParallelExecutionStrategyTests
         var act = async () => await runner.RunAsync<UnorderedSourceFaultingPipeline>(ctx);
 
         var thrown = await act.Should().ThrowAsync<Exception>();
+
         thrown.Which.GetBaseException().Should().BeOfType<InvalidOperationException>()
             .Which.Message.Should().Be("source-boom");
     }
@@ -141,10 +143,7 @@ public class ParallelExecutionStrategyTests
         options.PreserveOrdering.Should().BeFalse();
     }
 
-    private static IReadOnlyList<int> GetOrderedSinkItems(PipelineContext ctx)
-    {
-        return ((OrderedSink)ctx.Items[OrderedSink.ContextKey]).Items;
-    }
+    private static IReadOnlyList<int> GetOrderedSinkItems(PipelineContext ctx) => ((OrderedSink)ctx.Items[OrderedSink.ContextKey]).Items;
 
     private sealed class OrderedPipeline : IPipelineDefinition
     {
@@ -164,8 +163,10 @@ public class ParallelExecutionStrategyTests
         public void Define(PipelineBuilder builder, PipelineContext context)
         {
             var s = builder.AddInMemorySourceWithDataFromContext(context, "Source", Enumerable.Range(0, 64));
+
             var t = builder.AddTransform<VariableDelayTransform, int, int>("Transform")
                 .WithUnorderedParallelism(builder, 4);
+
             var k = builder.AddInMemorySink<int>("Sink");
             builder.Connect(s, t).Connect(t, k);
         }
@@ -215,8 +216,10 @@ public class ParallelExecutionStrategyTests
         public void Define(PipelineBuilder builder, PipelineContext context)
         {
             var s = builder.AddInMemorySourceWithDataFromContext(context, "Source", Enumerable.Range(0, 64));
+
             var t = builder.AddTransform<FaultingTransform, int, int>("Transform")
                 .WithUnorderedParallelism(builder, 4);
+
             var k = builder.AddInMemorySink<int>("Sink");
             builder.Connect(s, t).Connect(t, k);
         }
@@ -240,8 +243,10 @@ public class ParallelExecutionStrategyTests
         public void Define(PipelineBuilder builder, PipelineContext context)
         {
             var s = builder.AddSource<FaultingSource, int>("Source");
+
             var t = builder.AddTransform<VariableDelayTransform, int, int>("Transform")
                 .WithUnorderedParallelism(builder, 4);
+
             var k = builder.AddInMemorySink<int>("Sink");
             builder.Connect(s, t).Connect(t, k);
         }
@@ -260,7 +265,9 @@ public class ParallelExecutionStrategyTests
             context.Items[ContextKey] = this;
 
             await foreach (var item in input.WithCancellation(cancellationToken))
+            {
                 _items.Add(item);
+            }
         }
     }
 
@@ -269,7 +276,7 @@ public class ParallelExecutionStrategyTests
         public override async ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             // Earlier items wait longer so completion order diverges from input order.
-            await Task.Delay((3 - (item % 4)) * 3, cancellationToken);
+            await Task.Delay((3 - item % 4) * 3, cancellationToken);
             return item * 2;
         }
     }
@@ -289,10 +296,8 @@ public class ParallelExecutionStrategyTests
 
     public sealed class FaultingSource : SourceNode<int>
     {
-        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
-        {
-            return new DataStream<int>(Enumerate(cancellationToken));
-        }
+        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken) =>
+            new DataStream<int>(Enumerate(cancellationToken));
 
         private static async IAsyncEnumerable<int> Enumerate([EnumeratorCancellation] CancellationToken cancellationToken)
         {
@@ -308,4 +313,3 @@ public class ParallelExecutionStrategyTests
         }
     }
 }
-

@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using NPipeline.Execution;
 using NPipeline.Extensions.Testing;
-using NPipeline.Graph;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 using NPipeline.Reliability;

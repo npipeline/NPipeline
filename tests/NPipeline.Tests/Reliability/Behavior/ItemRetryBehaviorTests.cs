@@ -23,7 +23,7 @@ public sealed class ItemRetryBehaviorTests
     {
         // The docs promise that under the Default profile a failed item is retried automatically, with no explicit
         // configuration (C1).
-        var transform = new FlakyTransform(failuresPerItem: 1);
+        var transform = new FlakyTransform(1);
         var sink = new CollectingSink<int>();
 
         await BehaviorPipeline.RunAsync(b =>
@@ -61,7 +61,7 @@ public sealed class ItemRetryBehaviorTests
     [Fact]
     public async Task HighThroughputProfile_DoesNotRetry()
     {
-        var transform = new FlakyTransform(failuresPerItem: 1);
+        var transform = new FlakyTransform(1);
 
         var act = () => BehaviorPipeline.RunAsync(b =>
         {
@@ -77,7 +77,7 @@ public sealed class ItemRetryBehaviorTests
     public async Task ExhaustedItemRetries_ThrowRetryExhausted()
     {
         // C4: exhaustion used to surface as a bare InvalidOperationException.
-        var transform = new FlakyTransform(failuresPerItem: int.MaxValue);
+        var transform = new FlakyTransform(int.MaxValue);
 
         var act = () => BehaviorPipeline.RunAsync(b =>
         {
@@ -102,7 +102,7 @@ public sealed class ItemRetryBehaviorTests
 
         var act = () => BehaviorPipeline.RunAsync(b =>
         {
-            var t = Wire(b, StreamingSource<int>.Of([1, 2]), new FlakyTransform(failuresPerItem: int.MaxValue), sink);
+            var t = Wire(b, StreamingSource<int>.Of([1, 2]), new FlakyTransform(int.MaxValue), sink);
 
             if (parallel)
                 _ = b.WithExecutionStrategy(t, new ParallelExecutionStrategy(2));
@@ -120,7 +120,7 @@ public sealed class ItemRetryBehaviorTests
     [Fact]
     public async Task DeadLetterOption_WithoutADeadLetterSink_FailsBeforeAnyNodeRuns()
     {
-        var transform = new FlakyTransform(failuresPerItem: 0);
+        var transform = new FlakyTransform(0);
 
         var act = () => BehaviorPipeline.RunAsync(b =>
         {
@@ -146,7 +146,7 @@ public sealed class ItemRetryBehaviorTests
             _ = b.WithResilience(o => o with { OnItemFailure = ItemFailureAction.DeadLetter });
         }), context);
 
-        sink.Items.Should().Equal([2]);
+        sink.Items.Should().Equal(2);
         deadLetters.Envelopes.Should().ContainSingle();
     }
 
@@ -165,14 +165,17 @@ public sealed class ItemRetryBehaviorTests
             _ = b.AddDeadLetterSink(deadLetters);
         });
 
-        sink.Items.Should().Equal([2]);
-        deadLetters.Envelopes.Should().HaveCount(deadLettered ? 1 : 0);
+        sink.Items.Should().Equal(2);
+
+        deadLetters.Envelopes.Should().HaveCount(deadLettered
+            ? 1
+            : 0);
     }
 
     [Fact]
     public async Task PolicyRetryRule_UnderHighThroughput_RetriesItsOwnCountThenDeadLetters()
     {
-        var transform = new FlakyTransform(failuresPerItem: int.MaxValue);
+        var transform = new FlakyTransform(int.MaxValue);
         var deadLetters = new CollectingDeadLetterSink();
 
         var policy = ResiliencePolicyBuilder.ForNode<FlakyTransform, int>()
@@ -195,7 +198,7 @@ public sealed class ItemRetryBehaviorTests
     [Fact]
     public async Task PolicyThatAlwaysRetries_HitsTheSafetyCeiling()
     {
-        var transform = new FlakyTransform(failuresPerItem: int.MaxValue);
+        var transform = new FlakyTransform(int.MaxValue);
 
         var act = () => BehaviorPipeline.RunAsync(b =>
         {
@@ -220,7 +223,7 @@ public sealed class ItemRetryBehaviorTests
 
         await BehaviorPipeline.RunAsync(b =>
         {
-            var t = Wire(b, StreamingSource<int>.Of([1]), new FlakyTransform(failuresPerItem: 2), sink);
+            var t = Wire(b, StreamingSource<int>.Of([1]), new FlakyTransform(2), sink);
 
             if (parallel)
                 _ = b.WithExecutionStrategy(t, new ParallelExecutionStrategy(2));
@@ -228,7 +231,7 @@ public sealed class ItemRetryBehaviorTests
             _ = b.WithResilience(o => o with { ItemRetry = new ItemRetryOptions { MaxRetries = 3, Backoff = backoff.Backoff } });
         });
 
-        sink.Items.Should().Equal([1]);
+        sink.Items.Should().Equal(1);
         backoff.Requests.Should().Equal([1, 2], "without a backoff the retries spin against a failing dependency");
     }
 
@@ -242,13 +245,13 @@ public sealed class ItemRetryBehaviorTests
 
         await BehaviorPipeline.RunAsync(b =>
         {
-            var t = Wire(b, StreamingSource<int>.Of([1]), new FlakyTransform(failuresPerItem: 2), sink);
+            var t = Wire(b, StreamingSource<int>.Of([1]), new FlakyTransform(2), sink);
             _ = b.WithResilience(o => o with { ItemRetry = new ItemRetryOptions { MaxRetries = 3, Backoff = pipelineBackoff.Backoff } });
             _ = b.WithResilience(t, o => o with { ItemRetry = o.ItemRetry with { Backoff = nodeBackoff.Backoff } });
         });
 
-        sink.Items.Should().Equal([1]);
-        nodeBackoff.Requests.Should().Equal([1, 2]);
+        sink.Items.Should().Equal(1);
+        nodeBackoff.Requests.Should().Equal(1, 2);
         pipelineBackoff.Requests.Should().BeEmpty();
     }
 
@@ -260,7 +263,8 @@ public sealed class ItemRetryBehaviorTests
 
         var run = BehaviorPipeline.RunAsync(b =>
         {
-            _ = Wire(b, StreamingSource<int>.Of([1]), new FlakyTransform(failuresPerItem: 1), sink);
+            _ = Wire(b, StreamingSource<int>.Of([1]), new FlakyTransform(1), sink);
+
             _ = b.WithResilience(o => o with
             {
                 ItemRetry = new ItemRetryOptions { MaxRetries = 1, Backoff = RetryBackoff.Constant(TimeSpan.FromHours(1)) },
@@ -275,7 +279,7 @@ public sealed class ItemRetryBehaviorTests
         time.Advance(TimeSpan.FromHours(1));
         await run.WaitAsync(TimeSpan.FromSeconds(10));
 
-        sink.Items.Should().Equal([1]);
+        sink.Items.Should().Equal(1);
     }
 
     [Fact]
@@ -289,7 +293,7 @@ public sealed class ItemRetryBehaviorTests
             _ = b.AddResiliencePolicy(t, new FixedDecisionPolicy(ResilienceDecision.Skip));
         });
 
-        sink.Items.Should().Equal([2]);
+        sink.Items.Should().Equal(2);
     }
 
     [Fact]
@@ -366,11 +370,9 @@ public sealed class ItemRetryBehaviorTests
     /// </summary>
     private sealed class FailsOnTransform(int failingItem) : TransformNode<int, int>
     {
-        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
-        {
-            return item == failingItem
+        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken) =>
+            item == failingItem
                 ? throw new FormatException($"item {item} is malformed")
                 : ValueTask.FromResult(item);
-        }
     }
 }

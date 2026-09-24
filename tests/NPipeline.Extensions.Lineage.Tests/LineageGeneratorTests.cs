@@ -1,8 +1,6 @@
 using AwesomeAssertions;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
-using NPipeline.Execution;
-using NPipeline.Execution.Strategies;
 using NPipeline.Lineage;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
@@ -201,27 +199,18 @@ public sealed class LineageGeneratorTests
             }
         }
 
-        public ValueTask DisposeAsync()
-        {
-            return ValueTask.CompletedTask;
-        }
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 
     private sealed class DummyTransform : ITransformNode<int, string>
     {
-
         public ValueTask<string> TransformAsync(
             int item,
             PipelineContext context,
-            CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult<string>(item.ToString());
-        }
+            CancellationToken cancellationToken) =>
+            ValueTask.FromResult<string>(item.ToString());
 
-        public ValueTask DisposeAsync()
-        {
-            return ValueTask.CompletedTask;
-        }
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 
     #endregion

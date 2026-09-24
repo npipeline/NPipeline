@@ -14,20 +14,11 @@ public class MongoConnectorEndToEndTests(MongoTestContainerFixture fixture)
 {
     // ── helpers ──────────────────────────────────────────────────────────────
 
-    private MongoClient CreateClient()
-    {
-        return new MongoClient(fixture.ConnectionString);
-    }
+    private MongoClient CreateClient() => new(fixture.ConnectionString);
 
-    private static string UniqueCollection()
-    {
-        return $"col_{Guid.NewGuid():N}";
-    }
+    private static string UniqueCollection() => $"col_{Guid.NewGuid():N}";
 
-    private static PipelineContext DefaultContext()
-    {
-        return new PipelineContext();
-    }
+    private static PipelineContext DefaultContext() => new();
 
     private static async Task SeedAsync(
         IMongoDatabase db, string collection, IEnumerable<BsonDocument> docs)

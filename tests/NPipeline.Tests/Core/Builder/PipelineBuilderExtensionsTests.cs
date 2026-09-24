@@ -62,10 +62,7 @@ public sealed class PipelineBuilderExtensionsTests
         // Arrange
         PipelineBuilder builder = new();
 
-        ISinkNode<string> CreateSink()
-        {
-            return new NoOpSink();
-        }
+        ISinkNode<string> CreateSink() => new NoOpSink();
 
         // Act
         var handle = builder.AddTap(CreateSink);
@@ -81,10 +78,7 @@ public sealed class PipelineBuilderExtensionsTests
         // Arrange
         PipelineBuilder builder = new();
 
-        ISinkNode<string> CreateSink()
-        {
-            return new NoOpSink();
-        }
+        ISinkNode<string> CreateSink() => new NoOpSink();
 
         const string name = "FactoryTap";
 
@@ -101,10 +95,7 @@ public sealed class PipelineBuilderExtensionsTests
         // Arrange
         PipelineBuilder builder = new();
 
-        ISinkNode<string> CreateSink()
-        {
-            return new NoOpSink();
-        }
+        ISinkNode<string> CreateSink() => new NoOpSink();
 
         // Act
         var handle = builder.AddTap(CreateSink);

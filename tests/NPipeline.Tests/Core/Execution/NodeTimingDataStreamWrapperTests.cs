@@ -73,10 +73,7 @@ public sealed class NodeTimingDataStreamWrapperTests
         {
         }
 
-        public Exception? GetFailureException()
-        {
-            return null;
-        }
+        public Exception? GetFailureException() => null;
 
         public void AddInputWait(TimeSpan duration)
         {

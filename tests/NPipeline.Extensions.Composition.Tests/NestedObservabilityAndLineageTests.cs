@@ -22,9 +22,11 @@ public class NestedObservabilityAndLineageTests
     {
         // Arrange
         var observer = new RecordingExecutionObserver();
+
         var runner = new PipelineRunnerBuilder()
             .WithObservabilitySurface(new ObservabilitySurface())
             .Build();
+
         var context = new PipelineContext();
         context.Observability.ExecutionObserver = observer;
 
@@ -60,7 +62,7 @@ public class NestedObservabilityAndLineageTests
             null,
             null,
             Guid.Empty,
-            PipelineName: "ParentPipeline");
+            "ParentPipeline");
 
         var childMetric = new NodeMetrics(
             "child-transform",
@@ -78,7 +80,7 @@ public class NestedObservabilityAndLineageTests
             null,
             null,
             Guid.Empty,
-            PipelineName: "ChildSubPipeline");
+            "ChildSubPipeline");
 
         // Assert
         parentMetric.PipelineName.Should().Be("ParentPipeline");
@@ -170,9 +172,11 @@ public class NestedObservabilityAndLineageTests
     {
         // Arrange
         var observer = new RecordingExecutionObserver();
+
         var runner = new PipelineRunnerBuilder()
             .WithObservabilitySurface(new ObservabilitySurface())
             .Build();
+
         var context = new PipelineContext();
         context.Observability.ExecutionObserver = observer;
 
@@ -227,9 +231,11 @@ public class NestedObservabilityAndLineageTests
     {
         // Arrange
         var observer = new RecordingExecutionObserver();
+
         var runner = new PipelineRunnerBuilder()
             .WithObservabilitySurface(new ObservabilitySurface())
             .Build();
+
         var context = new PipelineContext();
         context.Observability.ExecutionObserver = observer;
 
@@ -294,7 +300,7 @@ public class NestedObservabilityAndLineageTests
 
         // Act - replace with a new instance
         var replacementTransform = new DoubleTransform();
-        builder.SetPreconfiguredNodeInstance("transform", replacementTransform, replaceExisting: true);
+        builder.SetPreconfiguredNodeInstance("transform", replacementTransform, true);
 
         // Assert - build should succeed with the replacement
         var buildResult = builder.TryBuild(out var pipeline, out var errors);
@@ -319,7 +325,7 @@ public class NestedObservabilityAndLineageTests
 
         // Act & Assert
         var replacementTransform = new DoubleTransform();
-        var act = () => builder.SetPreconfiguredNodeInstance("transform", replacementTransform, replaceExisting: false);
+        var act = () => builder.SetPreconfiguredNodeInstance("transform", replacementTransform, false);
         act.Should().Throw<InvalidOperationException>();
     }
 
@@ -343,7 +349,7 @@ public class NestedObservabilityAndLineageTests
             null,
             null,
             Guid.Empty,
-            PipelineName: "TestPipeline");
+            "TestPipeline");
 
         // Assert
         metrics.PipelineName.Should().Be("TestPipeline");
@@ -361,7 +367,7 @@ public class NestedObservabilityAndLineageTests
             LineageOutcomeReason.Emitted,
             false,
             [],
-            PipelineName: "TestPipeline");
+            "TestPipeline");
 
         // Assert
         record.PipelineName.Should().Be("TestPipeline");
@@ -374,35 +380,44 @@ public class NestedObservabilityAndLineageTests
 
     private sealed class RecordingExecutionObserver : IExecutionObserver
     {
-        private readonly ConcurrentBag<string> _startedNodeIds = [];
         private readonly ConcurrentBag<string> _completedNodeIds = [];
+        private readonly ConcurrentBag<string> _startedNodeIds = [];
 
         public IReadOnlyList<string> StartedNodeIds => [.. _startedNodeIds];
         public IReadOnlyList<string> CompletedNodeIds => [.. _completedNodeIds];
 
         public void OnNodeStarted(NodeExecutionStarted e) => _startedNodeIds.Add(e.NodeId);
         public void OnNodeCompleted(NodeExecutionCompleted e) => _completedNodeIds.Add(e.NodeId);
-        public void OnRetry(NodeRetryEvent e) { }
-        public void OnDrop(QueueDropEvent e) { }
-        public void OnQueueMetrics(QueueMetricsEvent e) { }
+
+        public void OnRetry(NodeRetryEvent e)
+        {
+        }
+
+        public void OnDrop(QueueDropEvent e)
+        {
+        }
+
+        public void OnQueueMetrics(QueueMetricsEvent e)
+        {
+        }
     }
 
     private sealed class TestSource : ISourceNode<int>, IAsyncDisposable
     {
-        public IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
-            => new InMemoryDataStream<int>([1, 2, 3], "TestSource");
-
         public ValueTask DisposeAsync()
         {
             GC.SuppressFinalize(this);
             return ValueTask.CompletedTask;
         }
+
+        public IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
+            => new InMemoryDataStream<int>([1, 2, 3], "TestSource");
     }
 
     private sealed class DoubleTransform : TransformNode<int, int>
     {
         public override ValueTask<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
-            => ValueTask.FromResult<int>(input * 2);
+            => ValueTask.FromResult(input * 2);
     }
 
     private sealed class RunIdCaptureTransform : TransformNode<int, int>
@@ -412,7 +427,7 @@ public class NestedObservabilityAndLineageTests
         public override ValueTask<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
         {
             CapturedRunId = context.RunIdentity.RunId;
-            return ValueTask.FromResult<int>(input);
+            return ValueTask.FromResult(input);
         }
     }
 
@@ -423,7 +438,7 @@ public class NestedObservabilityAndLineageTests
         public override ValueTask<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
         {
             CapturedRunId = context.RunIdentity.RunId;
-            return ValueTask.FromResult<int>(input);
+            return ValueTask.FromResult(input);
         }
     }
 
@@ -431,18 +446,20 @@ public class NestedObservabilityAndLineageTests
     {
         public static readonly List<int> ReceivedItems = [];
 
+        public ValueTask DisposeAsync()
+        {
+            GC.SuppressFinalize(this);
+            return ValueTask.CompletedTask;
+        }
+
         public async Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken cancellationToken)
         {
             ReceivedItems.Clear();
 
             await foreach (var item in input.WithCancellation(cancellationToken))
+            {
                 ReceivedItems.Add(item);
-        }
-
-        public ValueTask DisposeAsync()
-        {
-            GC.SuppressFinalize(this);
-            return ValueTask.CompletedTask;
+            }
         }
     }
 
@@ -516,12 +533,14 @@ public class NestedObservabilityAndLineageTests
         {
             var source = builder.AddSource<TestSource, int>("source");
             var captureParent = builder.AddTransform<ParentRunIdCaptureTransform, int, int>("capture-parent-runid");
+
             var composite = builder.AddComposite<int, int, RunIdCaptureChildPipeline>(
                 "composite",
                 new CompositeContextConfiguration
                 {
                     InheritRunIdentity = true,
                 });
+
             var sink = builder.AddSink<TestSink, int>("sink");
 
             builder.Connect(source, captureParent);
@@ -536,12 +555,14 @@ public class NestedObservabilityAndLineageTests
         {
             var source = builder.AddSource<TestSource, int>("source");
             var captureParent = builder.AddTransform<ParentRunIdCaptureTransform, int, int>("capture-parent-runid");
+
             var composite = builder.AddComposite<int, int, RunIdCaptureChildPipeline>(
                 "composite",
                 new CompositeContextConfiguration
                 {
                     InheritRunIdentity = false,
                 });
+
             var sink = builder.AddSink<TestSink, int>("sink");
 
             builder.Connect(source, captureParent);

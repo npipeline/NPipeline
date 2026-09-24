@@ -6,7 +6,6 @@ using Microsoft.Extensions.DependencyInjection;
 using NPipeline.DataFlow;
 using NPipeline.ErrorHandling;
 using NPipeline.Execution;
-using NPipeline.Execution.Services;
 using NPipeline.Extensions.Testing;
 using NPipeline.Lineage;
 using NPipeline.Nodes;
@@ -149,6 +148,7 @@ public sealed class ServiceCollectionExtensionsTests
         services.AddNPipeline(builder => builder
             .AddPipeline<TestPipelineDefinition>()
             .AddPipeline<TestPipelineDefinition>());
+
         var serviceProvider = services.BuildServiceProvider();
 
         // Assert
@@ -346,15 +346,9 @@ public sealed class ServiceCollectionExtensionsTests
     // TryAdd behavior
     private sealed class FakeRunner : IPipelineRunner
     {
-        public Task RunAsync<TDefinition>(PipelineContext context) where TDefinition : IPipelineDefinition, new()
-        {
-            return Task.CompletedTask;
-        }
+        public Task RunAsync<TDefinition>(PipelineContext context) where TDefinition : IPipelineDefinition, new() => Task.CompletedTask;
 
-        public Task RunAsync(IPipelineDefinition definition, PipelineContext context, CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
-        }
+        public Task RunAsync(IPipelineDefinition definition, PipelineContext context, CancellationToken cancellationToken = default) => Task.CompletedTask;
     }
 
     // DI-owned disposal detection
@@ -362,16 +356,11 @@ public sealed class ServiceCollectionExtensionsTests
     {
         public static int DisposeCount;
 
-        public override Task ConsumeAsync(IDataStream<string> input, PipelineContext context,
-            CancellationToken cancellationToken)
-        {
-            return Task.CompletedTask;
-        }
+        public async ValueTask DisposeAsync() => Interlocked.Increment(ref DisposeCount);
 
-        public async ValueTask DisposeAsync()
-        {
-            Interlocked.Increment(ref DisposeCount);
-        }
+        public override Task ConsumeAsync(IDataStream<string> input, PipelineContext context,
+            CancellationToken cancellationToken) =>
+            Task.CompletedTask;
     }
 
     private sealed class DisposablePipelineDefinition : IPipelineDefinition

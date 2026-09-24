@@ -12,7 +12,7 @@ namespace NPipeline.Connectors.DataLake.Tests.Reliability.Behavior;
 public sealed class ManifestReaderResilienceBehaviorTests : IDisposable
 {
     // Same attempts and classifier as the preset, without the backoff delay
-    private static readonly NResilience.Resilience Fast = DataLakeConnectorResilience.ManifestRead with
+    private static readonly Resilience Fast = DataLakeConnectorResilience.ManifestRead with
     {
         Backoff = Backoff.None,
     };
@@ -233,11 +233,9 @@ public sealed class ManifestReaderResilienceBehaviorTests : IDisposable
             }
         }
 
-        public Task<StorageMetadata?> GetMetadataAsync(StorageUri uri, CancellationToken cancellationToken = default)
-        {
-            return MetadataFailures.TryDequeue(out var failure)
+        public Task<StorageMetadata?> GetMetadataAsync(StorageUri uri, CancellationToken cancellationToken = default) =>
+            MetadataFailures.TryDequeue(out var failure)
                 ? Task.FromException<StorageMetadata?>(failure)
                 : _inner.GetMetadataAsync(uri, cancellationToken);
-        }
     }
 }

@@ -641,9 +641,8 @@ public class AdlsGen2StorageProviderTests
 
     #region Helper Methods
 
-    private static PathItem CreatePathItem(string path, bool isDirectory, long contentLength)
-    {
-        return PathItemFactory.CreatePathItem(
+    private static PathItem CreatePathItem(string path, bool isDirectory, long contentLength) =>
+        PathItemFactory.CreatePathItem(
             path,
             isDirectory,
             contentLength,
@@ -653,22 +652,16 @@ public class AdlsGen2StorageProviderTests
             "owner",
             "group",
             "permissions");
-    }
 
-    private static PathProperties CreatePathProperties(long contentLength, string contentType, DateTimeOffset lastModified, string etag)
-    {
-        return PathPropertiesFactory.CreatePathProperties(
+    private static PathProperties CreatePathProperties(long contentLength, string contentType, DateTimeOffset lastModified, string etag) =>
+        PathPropertiesFactory.CreatePathProperties(
             contentLength,
             contentType,
             lastModified,
             etag,
             new Dictionary<string, string>());
-    }
 
-    private static AsyncPageable<PathItem> CreateAsyncPageable(IEnumerable<PathItem> items)
-    {
-        return new FakeAsyncPageable<PathItem>(items);
-    }
+    private static AsyncPageable<PathItem> CreateAsyncPageable(IEnumerable<PathItem> items) => new FakeAsyncPageable<PathItem>(items);
 
     #endregion
 }
@@ -743,10 +736,7 @@ internal sealed class FakeAsyncPageable<T> : AsyncPageable<T> where T : notnull
         _items = items;
     }
 
-    public override IAsyncEnumerable<Page<T>> AsPages(string? continuationToken = null, int? pageSizeHint = null)
-    {
-        return GetPagesAsync();
-    }
+    public override IAsyncEnumerable<Page<T>> AsPages(string? continuationToken = null, int? pageSizeHint = null) => GetPagesAsync();
 
     private async IAsyncEnumerable<Page<T>> GetPagesAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
     {

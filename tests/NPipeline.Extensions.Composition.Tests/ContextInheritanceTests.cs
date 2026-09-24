@@ -132,16 +132,13 @@ public class ContextInheritanceTests
 
     private sealed class SimpleIntSource : ISourceNode<int>, IAsyncDisposable
     {
-        public IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
-        {
-            return new InMemoryDataStream<int>([1], "SimpleIntSource");
-        }
-
         public ValueTask DisposeAsync()
         {
             GC.SuppressFinalize(this);
             return ValueTask.CompletedTask;
         }
+
+        public IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken) => new InMemoryDataStream<int>([1], "SimpleIntSource");
     }
 
     private sealed class ParameterCheckTransform : TransformNode<int, int>
@@ -153,7 +150,7 @@ public class ContextInheritanceTests
         {
             FoundParameter = context.Parameters.TryGetValue("TestParam", out var value);
             ParameterValue = value?.ToString();
-            return ValueTask.FromResult<int>(input);
+            return ValueTask.FromResult(input);
         }
     }
 
@@ -166,7 +163,7 @@ public class ContextInheritanceTests
         {
             FoundItem = context.Items.TryGetValue("TestItem", out var value);
             ItemValue = value?.ToString();
-            return ValueTask.FromResult<int>(input);
+            return ValueTask.FromResult(input);
         }
     }
 
@@ -179,7 +176,7 @@ public class ContextInheritanceTests
         {
             FoundProperty = context.Properties.TryGetValue("TestProperty", out var value);
             PropertyValue = value?.ToString();
-            return ValueTask.FromResult<int>(input);
+            return ValueTask.FromResult(input);
         }
     }
 
@@ -194,7 +191,7 @@ public class ContextInheritanceTests
             HasParameter = context.Parameters.ContainsKey("Param");
             HasItem = context.Items.ContainsKey("Item");
             HasProperty = context.Properties.ContainsKey("Property");
-            return ValueTask.FromResult<int>(input);
+            return ValueTask.FromResult(input);
         }
     }
 
@@ -207,7 +204,7 @@ public class ContextInheritanceTests
         {
             HasParameter = context.Parameters.ContainsKey("OnlyParam");
             HasItem = context.Items.ContainsKey("OnlyItem");
-            return ValueTask.FromResult<int>(input);
+            return ValueTask.FromResult(input);
         }
     }
 
@@ -219,7 +216,7 @@ public class ContextInheritanceTests
             if (context.Parameters.ContainsKey("SharedKey"))
                 context.Parameters["SharedKey"] = "ModifiedInSubPipeline";
 
-            return ValueTask.FromResult<int>(input);
+            return ValueTask.FromResult(input);
         }
     }
 
@@ -303,6 +300,12 @@ public class ContextInheritanceTests
 
     private sealed class DummySink : ISinkNode<int>, IAsyncDisposable
     {
+        public ValueTask DisposeAsync()
+        {
+            GC.SuppressFinalize(this);
+            return ValueTask.CompletedTask;
+        }
+
         public async Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken cancellationToken)
         {
             await foreach (var _ in input.WithCancellation(cancellationToken))
@@ -310,17 +313,17 @@ public class ContextInheritanceTests
                 // Consume
             }
         }
+    }
+
+    private sealed class ModificationCheckSink : ISinkNode<int>, IAsyncDisposable
+    {
+        public static string? ValueAfterSubPipeline { get; private set; }
 
         public ValueTask DisposeAsync()
         {
             GC.SuppressFinalize(this);
             return ValueTask.CompletedTask;
         }
-    }
-
-    private sealed class ModificationCheckSink : ISinkNode<int>, IAsyncDisposable
-    {
-        public static string? ValueAfterSubPipeline { get; private set; }
 
         public async Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken cancellationToken)
         {
@@ -330,12 +333,6 @@ public class ContextInheritanceTests
                     ? value?.ToString()
                     : null;
             }
-        }
-
-        public ValueTask DisposeAsync()
-        {
-            GC.SuppressFinalize(this);
-            return ValueTask.CompletedTask;
         }
     }
 

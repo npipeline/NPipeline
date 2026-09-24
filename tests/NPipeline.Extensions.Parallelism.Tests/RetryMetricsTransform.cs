@@ -15,6 +15,6 @@ public sealed class RetryMetricsTransform : TransformNode<int, int>
         if (count < 3)
             throw new InvalidOperationException("forced failure for retry");
 
-        return ValueTask.FromResult<int>(item * 2);
+        return ValueTask.FromResult(item * 2);
     }
 }

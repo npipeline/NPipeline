@@ -3,18 +3,15 @@ using System.Text;
 using NPipeline.Connectors.Http.Configuration;
 using NPipeline.Connectors.Http.Nodes;
 using NPipeline.Connectors.Http.Pagination;
-using NPipeline.Connectors.Http.Reliability;
 using NPipeline.Connectors.Http.Tests.Helpers;
 using NPipeline.Pipeline;
+using NResilience;
 
 namespace NPipeline.Connectors.Http.Tests.Nodes;
 
 public class HttpSourceNodeTests
 {
-    private static HttpClient CreateClient(MockHttpMessageHandler handler)
-    {
-        return new HttpClient(handler) { BaseAddress = null };
-    }
+    private static HttpClient CreateClient(MockHttpMessageHandler handler) => new(handler) { BaseAddress = null };
 
     [Fact]
     public async Task Initialize_WithRootJsonArray_YieldsAllItems()
@@ -223,7 +220,7 @@ public class HttpSourceNodeTests
         var config = new HttpSourceConfiguration
         {
             BaseUri = new Uri("https://api.example.com/items"),
-            Resilience = NResilience.Resilience.None,
+            Resilience = Resilience.None,
         };
 
         var node = new HttpSourceNode<Item>(config, httpClient);
@@ -271,7 +268,7 @@ public class HttpSourceNodeTests
         var config = new HttpSourceConfiguration
         {
             BaseUri = new Uri("https://api.example.com/items"),
-            Resilience = NResilience.Resilience.None with { AttemptTimeout = TimeSpan.FromMilliseconds(50) },
+            Resilience = Resilience.None with { AttemptTimeout = TimeSpan.FromMilliseconds(50) },
         };
 
         var node = new HttpSourceNode<Item>(config, httpClient);

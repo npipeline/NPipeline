@@ -92,9 +92,8 @@ public sealed class KafkaConnectorIntegrationTests : IAsyncLifetime
         }
     }
 
-    private KafkaConfiguration CreateSourceConfig(string topic, string consumerGroup)
-    {
-        return new KafkaConfiguration
+    private KafkaConfiguration CreateSourceConfig(string topic, string consumerGroup) =>
+        new()
         {
             BootstrapServers = _fixture.BootstrapServers,
             ClientId = $"test-consumer-{Guid.NewGuid():N}",
@@ -106,11 +105,9 @@ public sealed class KafkaConnectorIntegrationTests : IAsyncLifetime
             AcknowledgmentStrategy = AcknowledgmentStrategy.AutoOnSinkSuccess,
             MaxPollRecords = 100,
         };
-    }
 
-    private KafkaConfiguration CreateSinkConfig(string topic)
-    {
-        return new KafkaConfiguration
+    private KafkaConfiguration CreateSinkConfig(string topic) =>
+        new()
         {
             BootstrapServers = _fixture.BootstrapServers,
             ClientId = $"test-producer-{Guid.NewGuid():N}",
@@ -122,7 +119,6 @@ public sealed class KafkaConnectorIntegrationTests : IAsyncLifetime
             DeliverySemantic = KafkaDeliverySemantic.AtLeastOnce,
             AcknowledgmentStrategy = AcknowledgmentStrategy.AutoOnSinkSuccess,
         };
-    }
 
     [Fact]
     public async Task EndToEnd_SourceToSink_TransfersMessagesCorrectly()

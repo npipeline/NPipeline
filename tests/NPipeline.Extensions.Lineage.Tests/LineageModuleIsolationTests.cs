@@ -4,8 +4,8 @@ using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.Execution;
 using NPipeline.Extensions.DependencyInjection;
-using NPipeline.Lineage.DependencyInjection;
 using NPipeline.Lineage;
+using NPipeline.Lineage.DependencyInjection;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 
@@ -26,8 +26,8 @@ public sealed class LineageModuleIsolationTests
     [Fact]
     public void EnablingLineageInOneContainer_DoesNotLeakIntoAnother()
     {
-        using var withLineage = BuildProvider(addLineage: true);
-        using var withoutLineage = BuildProvider(addLineage: false);
+        using var withLineage = BuildProvider(true);
+        using var withoutLineage = BuildProvider(false);
 
         _ = withLineage.GetRequiredService<ILineage>().SupportsItemLevelLineage.Should().BeTrue();
 
@@ -38,7 +38,7 @@ public sealed class LineageModuleIsolationTests
     [Fact]
     public void EnablingLineageInOneContainer_DoesNotLeakIntoAStandaloneBuilder()
     {
-        using var withLineage = BuildProvider(addLineage: true);
+        using var withLineage = BuildProvider(true);
         _ = withLineage.GetRequiredService<ILineage>().SupportsItemLevelLineage.Should().BeTrue();
 
         // A builder created directly, with no module supplied, tracks nothing regardless of container state.
@@ -52,8 +52,8 @@ public sealed class LineageModuleIsolationTests
     public async Task RunningThroughAContainerWithoutLineage_IsUnaffectedByAContainerThatHasIt()
     {
         // Order matters: the container that enables lineage is built first, which is what used to poison the static.
-        using var withLineage = BuildProvider(addLineage: true);
-        using var withoutLineage = BuildProvider(addLineage: false);
+        using var withLineage = BuildProvider(true);
+        using var withoutLineage = BuildProvider(false);
 
         using var scope = withoutLineage.CreateScope();
         var runner = scope.ServiceProvider.GetRequiredService<IPipelineRunner>();
@@ -69,7 +69,7 @@ public sealed class LineageModuleIsolationTests
     [Fact]
     public void BuilderResolvedFromAContainer_UsesThatContainersModule()
     {
-        using var provider = BuildProvider(addLineage: true);
+        using var provider = BuildProvider(true);
         using var scope = provider.CreateScope();
 
         var builder = scope.ServiceProvider.GetRequiredService<PipelineBuilder>();
@@ -130,10 +130,8 @@ public sealed class LineageModuleIsolationTests
 
     private sealed class EmptySource : SourceNode<int>
     {
-        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
-        {
-            return new InMemoryDataStream<int>([1, 2, 3], "source");
-        }
+        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken) =>
+            new InMemoryDataStream<int>([1, 2, 3], "source");
     }
 
     private sealed class DiscardSink : SinkNode<int>

@@ -643,36 +643,21 @@ public sealed class EdgeCaseTests
 
     private sealed class TestObservabilityFactory : IObservabilityFactory
     {
-        public IObservabilityCollector ResolveObservabilityCollector()
-        {
-            throw new NotImplementedException();
-        }
+        public IObservabilityCollector ResolveObservabilityCollector() => throw new NotImplementedException();
 
-        public IMetricsSink? ResolveMetricsSink()
-        {
-            return new TestMetricsSink();
-        }
+        public IMetricsSink? ResolveMetricsSink() => new TestMetricsSink();
 
-        public IPipelineMetricsSink? ResolvePipelineMetricsSink()
-        {
-            return new TestPipelineMetricsSink();
-        }
+        public IPipelineMetricsSink? ResolvePipelineMetricsSink() => new TestPipelineMetricsSink();
     }
 
     private sealed class TestMetricsSink : IMetricsSink
     {
-        public Task RecordAsync(INodeMetrics metrics, CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
-        }
+        public Task RecordAsync(INodeMetrics metrics, CancellationToken cancellationToken = default) => Task.CompletedTask;
     }
 
     private sealed class TestPipelineMetricsSink : IPipelineMetricsSink
     {
-        public Task RecordAsync(IPipelineMetrics metrics, CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
-        }
+        public Task RecordAsync(IPipelineMetrics metrics, CancellationToken cancellationToken = default) => Task.CompletedTask;
     }
 
     #endregion

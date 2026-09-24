@@ -5,6 +5,7 @@ using Google;
 using Google.Cloud.Storage.V1;
 using NPipeline.StorageProviders.Gcp.Reliability;
 using NPipeline.StorageProviders.Models;
+using NResilience;
 using Object = Google.Apis.Storage.v1.Data.Object;
 
 namespace NPipeline.StorageProviders.Gcp.Tests;
@@ -12,7 +13,7 @@ namespace NPipeline.StorageProviders.Gcp.Tests;
 public class GcsStorageProviderTests
 {
     // The default preset with no delay between attempts, so tests of transient failures stay fast.
-    private static readonly NResilience.Resilience FastRetry = GcsStorageResilience.Default with { Backoff = NResilience.Backoff.None };
+    private static readonly Resilience FastRetry = GcsStorageResilience.Default with { Backoff = Backoff.None };
 
     private readonly GcsClientFactory _fakeClientFactory;
     private readonly StorageClient _fakeStorageClient;
