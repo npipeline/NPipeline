@@ -168,6 +168,7 @@ public sealed class DropOldestParallelStrategy : ParallelExecutionStrategyBase
                             {
                                 // A dropped item will never produce output, so its outcome is delivered.
                                 metrics.IncrementDroppedOldest();
+                                ReportDropped(cachedContext.LineageOutcomeWriter, dropped.Sequence);
                                 checkpoint?.Complete(dropped.Sequence);
                                 dropAttempts++;
 
@@ -193,6 +194,7 @@ public sealed class DropOldestParallelStrategy : ParallelExecutionStrategyBase
                         if (dropAttempts >= maxDropAttempts)
                         {
                             ParallelExecutionStrategyLogMessages.EnqueueFailed(logger, nodeId, item?.ToString(), maxDropAttempts);
+                            ReportDropped(cachedContext.LineageOutcomeWriter, indexedItem.Sequence);
                             checkpoint?.Complete(indexedItem.Sequence);
                         }
                     }
@@ -236,6 +238,6 @@ public sealed class DropOldestParallelStrategy : ParallelExecutionStrategyBase
 
         return Task.FromResult<IDataStream<TOut>>(
             new DataStream<TOut>(CreateOutputEnumerable(outChannel, nodeId, context, metrics, currentActivity, observabilityScope, checkpoint,
-                cancellationToken)));
+                cachedContext.LineageOutcomeWriter, cancellationToken)));
     }
 }

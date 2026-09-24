@@ -96,7 +96,8 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
         var currentActivity = context.Observability.Tracer.CurrentActivity;
 
         var cachedContext = CachedNodeExecutionContext.Create(context, nodeId);
-        var trackLineage = cachedContext.LineageOutcomeWriter.IsActive;
+        var lineage = cachedContext.LineageOutcomeWriter;
+        var trackLineage = lineage.IsActive;
         var logger = context.Observability.LoggerFactory.CreateLogger(nameof(BlockingParallelStrategy));
         ParallelExecutionStrategyLogMessages.FinalMaxRetries(logger, nodeId, cachedContext.Resilience.ItemRetry.MaxRetries);
 
@@ -334,6 +335,7 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
                         if (current.HasValue)
                         {
                             observabilityScope.IncrementEmitted();
+                            lineage.ReportOutput(offset + current.Sequence);
                             yield return current.Value;
                         }
 
@@ -364,6 +366,7 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
 
                     _ = window?.Release();
                     observabilityScope.IncrementEmitted();
+                    lineage.ReportOutput(offset + result.Sequence);
                     yield return result.Value;
 
                     // Reached once the consumer asks for the next output, so this one has been delivered.

@@ -19,7 +19,7 @@ namespace NPipeline.Execution.Strategies;
 ///     Resumable: a restarted node resumes after the last item whose outcome was delivered, so across restarts each
 ///     output is delivered exactly once, and no item is skipped or dead-lettered twice.
 /// </remarks>
-public sealed class SequentialExecutionStrategy : IResumableExecutionStrategy
+public sealed class SequentialExecutionStrategy : IResumableExecutionStrategy, ILineageProvenanceStrategy
 {
     /// <summary>
     ///     The strategy used when a node's graph definition configures none. The type holds no per-run state, so one
@@ -39,6 +39,12 @@ public sealed class SequentialExecutionStrategy : IResumableExecutionStrategy
     internal SequentialExecutionStrategy(IPerItemRetryExecutor perItemRetryExecutor)
     {
         _perItemRetryExecutor = perItemRetryExecutor ?? throw new ArgumentNullException(nameof(perItemRetryExecutor));
+    }
+
+    /// <inheritdoc />
+    bool ILineageProvenanceStrategy.ReportsLineageProvenance(INode node)
+    {
+        return true;
     }
 
     /// <inheritdoc />
@@ -168,6 +174,7 @@ public sealed class SequentialExecutionStrategy : IResumableExecutionStrategy
                 {
                     // Track item emitted
                     observabilityScope.IncrementEmitted();
+                    cached.LineageOutcomeWriter.ReportOutput(inputIndex);
                     yield return output!;
                 }
 

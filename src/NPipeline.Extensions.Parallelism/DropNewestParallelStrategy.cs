@@ -158,6 +158,7 @@ public sealed class DropNewestParallelStrategy : ParallelExecutionStrategyBase
                     {
                         // Drop the incoming item (newest). It will never produce output, so its outcome is delivered.
                         metrics.IncrementDroppedNewest();
+                        ReportDropped(cachedContext.LineageOutcomeWriter, indexedItem.Sequence);
                         checkpoint?.Complete(indexedItem.Sequence);
 
                         observer?.OnDrop(new QueueDropEvent(nodeId, nameof(BoundedQueuePolicy.DropNewest),
@@ -204,6 +205,6 @@ public sealed class DropNewestParallelStrategy : ParallelExecutionStrategyBase
 
         return Task.FromResult<IDataStream<TOut>>(
             new DataStream<TOut>(CreateOutputEnumerable(outChannel, nodeId, context, metrics, currentActivity, observabilityScope, checkpoint,
-                cancellationToken)));
+                cachedContext.LineageOutcomeWriter, cancellationToken)));
     }
 }

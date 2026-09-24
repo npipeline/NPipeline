@@ -161,6 +161,59 @@ internal abstract class LineageMappingStrategyBase
             retryCount);
     }
 
+    /// <summary>
+    ///     Appends the terminal hop of an item that ends in this node without an output.
+    /// </summary>
+    protected static ImmutableArray<LineageRecord> AppendTerminalHop(
+        ImmutableArray<LineageRecord> existing,
+        Guid correlationId,
+        IReadOnlyList<string> traversalPath,
+        string nodeId,
+        Guid pipelineId,
+        string? pipelineName,
+        LineageOptions? opts,
+        LineageOutcomeReason outcomeReason,
+        object? inputSnapshot,
+        int? retryCount)
+    {
+        return AppendRecord(
+            existing,
+            correlationId,
+            traversalPath,
+            nodeId,
+            pipelineId,
+            pipelineName,
+            opts,
+            outcomeReason,
+            true,
+            ObservedCardinality.Zero,
+            null,
+            null,
+            null,
+            0,
+            inputSnapshot,
+            null,
+            retryCount);
+    }
+
+    /// <summary>
+    ///     Wraps an output whose input is unknown in a packet with fresh lineage, starting at this node.
+    /// </summary>
+    protected static LineagePacket<TOut> MintPacket<TOut>(TOut outputData, string nodeId, Guid pipelineId, string? pipelineName, LineageOptions? opts)
+    {
+        var correlationId = Guid.NewGuid();
+        var traversalPath = ImmutableArray.Create(QualifyNodeId(nodeId, pipelineId));
+        var records = ImmutableArray<LineageRecord>.Empty;
+
+        if (opts?.EmitIntermediateNodeRecords != false)
+        {
+            records = AppendHop(records, correlationId, traversalPath, nodeId, pipelineId, pipelineName, opts, LineageOutcomeReason.Emitted,
+                ObservedCardinality.Zero, null, null, null, null, outputData, null);
+        }
+
+        return new LineagePacket<TOut>(outputData, correlationId, traversalPath) { Collect = true, LineageRecords = records };
+    }
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     protected static ImmutableArray<LineageRecord> AppendHop(
         ImmutableArray<LineageRecord> existing,
@@ -203,7 +256,7 @@ internal abstract class LineageMappingStrategyBase
     protected static (LineageOutcomeReason Outcome, int? RetryCount) ResolveRecordedOutcome(
         Guid pipelineId,
         string nodeId,
-        int inputIndex,
+        long inputIndex,
         LineageOutcomeReason baseOutcome)
     {
         if (!LineageNodeOutcomeRegistry.TryGet(pipelineId, nodeId, inputIndex, out var recorded))

@@ -109,6 +109,7 @@ internal sealed class PerItemRetryExecutor : IPerItemRetryExecutor
                 {
                     case ResilienceDecision.Skip:
                         RecordLineageOutcome(hasLineageIndex, lineageInputIndex, in lineageOutcomeWriter, context, nodeId, LineageOutcomeReason.FilteredOut, retries);
+                        ReportNoOutput(hasLineageIndex, lineageInputIndex, in lineageOutcomeWriter, LineageOutcomeReason.FilteredOut);
                         return ItemExecutionResult<TOut>.Skipped(retries);
 
                     case ResilienceDecision.DeadLetter:
@@ -123,6 +124,7 @@ internal sealed class PerItemRetryExecutor : IPerItemRetryExecutor
 
                         await DispatchDeadLetterAsync(context.DeadLetterSink, item, ex, context, nodeId, retries, cancellationToken).ConfigureAwait(false);
                         RecordLineageOutcome(hasLineageIndex, lineageInputIndex, in lineageOutcomeWriter, context, nodeId, LineageOutcomeReason.DeadLettered, retries);
+                        ReportNoOutput(hasLineageIndex, lineageInputIndex, in lineageOutcomeWriter, LineageOutcomeReason.DeadLettered);
                         return ItemExecutionResult<TOut>.DeadLettered(retries);
 
                     case ResilienceDecision.Retry:
@@ -201,6 +203,17 @@ internal sealed class PerItemRetryExecutor : IPerItemRetryExecutor
     {
         if (hasLineageIndex && lineageOutcomeWriter.TryGetInput(lineageInputIndex, out var lineage))
             PipelineSampleErrorReporter.TryRecordError(context, nodeId, item, exception, retryCount, lineage.CorrelationId, lineage.AncestryInputIndices);
+    }
+
+    /// <summary>
+    ///     Reports that the item ends here without an output, so the lineage mapper records it as ended instead of
+    ///     waiting for an output. An emitted item is reported by the strategy, where it yields the output.
+    /// </summary>
+    private static void ReportNoOutput(bool hasLineageIndex, long lineageInputIndex, in LineageNodeOutcomeWriter lineageOutcomeWriter,
+        LineageOutcomeReason outcome)
+    {
+        if (hasLineageIndex)
+            lineageOutcomeWriter.ReportDone(lineageInputIndex, outcome);
     }
 
     private static void RecordLineageOutcome(

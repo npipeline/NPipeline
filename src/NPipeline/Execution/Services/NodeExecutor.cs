@@ -5,6 +5,7 @@ using NPipeline.DataFlow.DataStreams;
 using NPipeline.DataFlow.Routing;
 using NPipeline.Execution;
 using NPipeline.Execution.Annotations;
+using NPipeline.Execution.Lineage;
 using NPipeline.Execution.Plans;
 using NPipeline.Graph;
 using NPipeline.Lineage;
@@ -93,6 +94,10 @@ public sealed class NodeExecutor(
         if (graph.Lineage.ItemLevelLineageEnabled)
         {
             var adapter = nodeDef.LineageAdapter ?? throw new InvalidOperationException(ErrorMessages.LineageAdapterMissing(plan.NodeId));
+
+            // Started here, not by the adapter, because only the executor knows the strategy the node runs under.
+            LineageNodeOutcomeRegistry.BeginNode(context.RunIdentity.PipelineId, plan.NodeId,
+                LineageProvenanceSupport.Reports(strategy, instance), context.Lineage.LineageSink);
 
             var (unwrapped, rewrap) = adapter(input, plan.NodeId, context.RunIdentity.PipelineId, context.RunIdentity.PipelineName,
                 nodeDef.DeclaredCardinality ?? TransformCardinality.OneToOne, graph.Lineage.LineageOptions, context.CancellationToken);

@@ -27,12 +27,12 @@ public sealed class LineageItemContextTests
     private const string RestartKey = "test.restart";
     private const string StateKey = "test.state";
 
-    // Item 3 fails transiently twice, then succeeds. Item 6 always fails permanently and is skipped; it is last, because
-    // the 1:1 lineage mapping pairs outputs with inputs by position. With restart on, item 4 fails once, which fails
-    // the node and restarts it.
+    // Item 2 always fails permanently and is skipped, so every later item's output would be paired with the wrong input
+    // if lineage were mapped by position. Item 3 fails transiently twice, then succeeds. With restart on, item 4 fails
+    // once, which fails the node and restarts it.
+    private const int SkippedItem = 2;
     private const int RetriedItem = 3;
     private const int RestartItem = 4;
-    private const int SkippedItem = 6;
 
     public enum Strategy
     {
@@ -73,20 +73,31 @@ public sealed class LineageItemContextTests
         samples.Errors.Should().OnlyContain(e => e.NodeId == "transform" && e.CorrelationId != Guid.Empty
                                                  && e.ExceptionType == typeof(InvalidOperationException).FullName);
 
-        // An unordered strategy's outputs are paired with inputs by position, and a restart can deliver an item twice,
-        // so its hops can't be matched to items.
-        if (strategy == Strategy.DropOldestParallel)
+        var transformRecords = lineage.Records.Where(static r => r.NodeId == "transform").ToList();
+
+        // The skipped item ends at the transform: its terminal hop is recorded there, with its own input as the data.
+        var skipped = transformRecords.Should().ContainSingle(static r => r.OutcomeReason == LineageOutcomeReason.FilteredOut).Which;
+        skipped.IsTerminal.Should().BeTrue();
+        skipped.Data.Should().Be(SkippedItem);
+
+        // An unordered strategy's restart can deliver an item twice; the duplicate starts fresh lineage.
+        if (strategy == Strategy.DropOldestParallel && restart)
             return;
 
-        // Transform hops carry the output (item * 10), so they identify the item. The skipped item has no output.
-        var transformRecords = lineage.Records.Where(static r => r.NodeId == "transform").ToList();
-        transformRecords.Should().HaveCount(5);
+        // Every output carries the lineage of the item that produced it (hops carry the output, item * 10), whatever
+        // the order outputs come in and whatever items were dropped before them.
+        var emitted = transformRecords.Where(static r => r.OutcomeReason != LineageOutcomeReason.FilteredOut).ToList();
+        emitted.Should().HaveCount(5);
+        var correlationOf = emitted.ToDictionary(static r => (int)r.Data! / 10, static r => r.CorrelationId);
+        correlationOf.Keys.Should().BeEquivalentTo([1, 3, 4, 5, 6]);
+        correlationOf.Values.Append(skipped.CorrelationId).Should().OnlyHaveUniqueItems();
 
-        var correlationOf = transformRecords.ToDictionary(static r => (int)r.Data! / 10, static r => r.CorrelationId);
-        correlationOf.Keys.Should().BeEquivalentTo([1, 2, 3, 4, 5]);
+        // Each sink record continues the lineage of the transform record for the same data.
+        foreach (var record in lineage.Records.Where(static r => r.NodeId == "sink"))
+            record.CorrelationId.Should().Be(correlationOf[(int)record.Data! / 10]);
 
         // The retried item's hop carries its retry count, from the outcome recorded under its input index.
-        transformRecords.Should().ContainSingle(static r => r.RetryCount == 2)
+        emitted.Should().ContainSingle(static r => r.RetryCount == 2)
             .Which.CorrelationId.Should().Be(correlationOf[RetriedItem]);
 
         // The failure that restarted the node is correlated to the item that failed, and the item is processed again

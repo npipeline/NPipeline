@@ -2,7 +2,9 @@ using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using NPipeline.DataFlow;
 using NPipeline.Execution;
+using NPipeline.Execution.Lineage;
 using NPipeline.Execution.Services;
+using NPipeline.Lineage;
 using NPipeline.Nodes;
 using NPipeline.Observability;
 using NPipeline.Observability.Tracing;
@@ -21,7 +23,7 @@ namespace NPipeline.Extensions.Parallelism
     ///     outputs that were delivered ahead of the checkpoint are delivered again, at most the number in flight at the
     ///     failure.
     /// </remarks>
-    public abstract class ParallelExecutionStrategyBase(int? maxDegreeOfParallelism = null) : IResumableExecutionStrategy
+    public abstract class ParallelExecutionStrategyBase(int? maxDegreeOfParallelism = null) : IResumableExecutionStrategy, ILineageProvenanceStrategy
     {
         /// <summary>
         /// Work item wrapper carrying optional lineage input index for per-item outcome correlation.
@@ -42,6 +44,19 @@ namespace NPipeline.Extensions.Parallelism
         /// <param name="Sequence">The <see cref="IndexedWorkItem{T}.Sequence" /> of the item that produced the output.</param>
         /// <param name="Value">The output.</param>
         protected readonly record struct IndexedResult<T>(long Sequence, T Value);
+
+        /// <inheritdoc />
+        /// <remarks>
+        ///     Only the strategies in this assembly report: a subclass that replaces how outputs are produced would not.
+        /// </remarks>
+        bool ILineageProvenanceStrategy.ReportsLineageProvenance(INode node)
+        {
+            var type = GetType();
+
+            return type == typeof(BlockingParallelStrategy) || type == typeof(ParallelExecutionStrategy)
+                                                            || type == typeof(DropOldestParallelStrategy)
+                                                            || type == typeof(DropNewestParallelStrategy);
+        }
 
         /// <summary>
         ///     Gets the configured maximum degree of parallelism for the strategy.
@@ -65,6 +80,16 @@ namespace NPipeline.Extensions.Parallelism
         /// <inheritdoc />
         public abstract Task<IDataStream<TOut>> ExecuteFromAsync<TIn, TOut>(IDataStream<TIn> input, long offset, RestartCheckpoint checkpoint,
             ITransformNode<TIn, TOut> node, PipelineContext context, string nodeId, CancellationToken cancellationToken);
+
+        /// <summary>
+        ///     Records that the input item at <paramref name="inputIndex" /> was dropped by the bounded queue, so it will
+        ///     never produce an output.
+        /// </summary>
+        private protected static void ReportDropped(LineageNodeOutcomeWriter lineage, long inputIndex)
+        {
+            lineage.Record(inputIndex, LineageOutcomeReason.DroppedByBackpressure, 0);
+            lineage.ReportDone(inputIndex, LineageOutcomeReason.DroppedByBackpressure);
+        }
 
         /// <summary>
         ///     Transforms one work item through the core item executor, which applies the node's item retry, backoff,
@@ -196,7 +221,7 @@ namespace NPipeline.Extensions.Parallelism
         /// <param name="checkpoint">Where to report delivered outputs when the node is restartable; otherwise <see langword="null" />.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns>An async enumerable of output items.</returns>
-        protected static async IAsyncEnumerable<TOut> CreateOutputEnumerable<TOut>(
+        protected static IAsyncEnumerable<TOut> CreateOutputEnumerable<TOut>(
             Channel<IndexedResult<TOut>> outChannel,
             string nodeId,
             PipelineContext context,
@@ -204,6 +229,38 @@ namespace NPipeline.Extensions.Parallelism
             IPipelineActivity? currentActivity,
             IAutoObservabilityScope observabilityScope,
             RestartCheckpoint? checkpoint,
+            CancellationToken cancellationToken)
+        {
+            return CreateOutputEnumerable(outChannel, nodeId, context, metrics, currentActivity, observabilityScope, checkpoint, default,
+                cancellationToken);
+        }
+
+        /// <summary>
+        ///     Creates an async enumerable that reads from the output channel and emits metrics on completion.
+        /// </summary>
+        /// <typeparam name="TOut">The type of output data.</typeparam>
+        /// <param name="outChannel">The output channel to read from.</param>
+        /// <param name="nodeId">The node identifier for metrics tagging.</param>
+        /// <param name="context">The pipeline execution context.</param>
+        /// <param name="metrics">The metrics tracker.</param>
+        /// <param name="currentActivity">The current tracing activity.</param>
+        /// <param name="observabilityScope">Observability scope handle for recording item counts and scope disposal.</param>
+        /// <param name="checkpoint">Where to report delivered outputs when the node is restartable; otherwise <see langword="null" />.</param>
+        /// <param name="lineage">
+        ///     The node's lineage state, to report which input item each output came from. Item sequence numbers must
+        ///     be indexes in the node's input.
+        /// </param>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <returns>An async enumerable of output items.</returns>
+        private protected static async IAsyncEnumerable<TOut> CreateOutputEnumerable<TOut>(
+            Channel<IndexedResult<TOut>> outChannel,
+            string nodeId,
+            PipelineContext context,
+            ParallelExecutionMetrics metrics,
+            IPipelineActivity? currentActivity,
+            IAutoObservabilityScope observabilityScope,
+            RestartCheckpoint? checkpoint,
+            LineageNodeOutcomeWriter lineage,
             [EnumeratorCancellation] CancellationToken cancellationToken)
         {
             using var scope = observabilityScope;
@@ -213,6 +270,7 @@ namespace NPipeline.Extensions.Parallelism
                 await foreach (var item in outChannel.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
                 {
                     scope.IncrementEmitted();
+                    lineage.ReportOutput(item.Sequence);
                     yield return item.Value;
 
                     // Reached once the consumer asks for the next output, so this one has been delivered.

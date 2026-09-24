@@ -27,8 +27,8 @@ internal sealed class DefaultLineageAdapterBuilder
         return (transformInput, nodeId, pipelineId, pipelineName, declaredCardinality, options, cancellationToken) =>
         {
             var typedInput = (IDataStream<LineagePacket<TIn>>)transformInput;
-            LineageNodeOutcomeRegistry.BeginNode(pipelineId, nodeId);
-            var nodeLineage = LineageNodeOutcomeRegistry.GetWriter(pipelineId, nodeId);
+            // The node executor starts the node's lineage state, knowing whether its strategy reports provenance.
+            var nodeLineage = LineageNodeOutcomeRegistry.GetOrBeginNode(pipelineId, nodeId);
 
             // Read typed input once and fan out packets + raw values via channels.
             var dataChannel = Channel.CreateUnbounded<TIn>(new UnboundedChannelOptions { SingleWriter = true });
@@ -69,9 +69,13 @@ internal sealed class DefaultLineageAdapterBuilder
                 LineageOptions? lineageOptions,
                 CancellationToken ct)
             {
-                cachedStrategy ??= SelectLineageMappingStrategy<TIn, TOut>(lineageMapperType, transformCardinality, lineageOptions);
+                // A strategy that reports each output's input is mapped by index; a declared mapper still wins, and
+                // any other node is mapped by position.
+                var strategy = nodeLineage.ReportsProvenance && lineageMapperType is null
+                    ? ProvenanceMappingStrategy<TIn, TOut>.Instance
+                    : cachedStrategy ??= SelectLineageMappingStrategy<TIn, TOut>(lineageMapperType, transformCardinality, lineageOptions);
 
-                return cachedStrategy.MapAsync(
+                return strategy.MapAsync(
                     inputStream,
                     outputStream,
                     currentId,
@@ -177,7 +181,11 @@ internal sealed class DefaultLineageAdapterBuilder
             async IAsyncEnumerable<TIn> Project(IDataStream<LineagePacket<TIn>> input, [EnumeratorCancellation] CancellationToken token)
             {
                 var terminalCorrelations = new HashSet<Guid>();
-                var emittedRecordsByCorrelation = new Dictionary<Guid, HashSet<LineageRecord>>();
+
+                // Packets of the same item share the hop records made before they diverged: a node that emits several
+                // outputs for one input copies its input's records onto each. Each record is emitted once, found by
+                // reference. The table holds its keys weakly, so it keeps no record alive once no packet refers to it.
+                var emittedRecords = new ConditionalWeakTable<LineageRecord, object?>();
 
                 await foreach (var packet in input.WithCancellation(token).ConfigureAwait(false))
                 {
@@ -185,11 +193,9 @@ internal sealed class DefaultLineageAdapterBuilder
                     {
                         if (options?.EmitIntermediateNodeRecords != false)
                         {
-                            var emittedForCorrelation = GetOrCreateEmittedSet(packet.CorrelationId);
-
                             foreach (var record in packet.LineageRecords)
                             {
-                                if (emittedForCorrelation.Add(record))
+                                if (emittedRecords.TryAdd(record, null))
                                 {
                                     await lineageSink.RecordAsync(record, token).ConfigureAwait(false);
                                 }
@@ -230,25 +236,9 @@ internal sealed class DefaultLineageAdapterBuilder
 
                             await lineageSink.RecordAsync(terminalRecord, token).ConfigureAwait(false);
                         }
-
-                        if (packet.LineageRecords.Any(static r => r.IsTerminal) || terminalCorrelations.Contains(packet.CorrelationId))
-                        {
-                            _ = emittedRecordsByCorrelation.Remove(packet.CorrelationId);
-                        }
                     }
 
                     yield return packet.Data;
-                }
-
-                HashSet<LineageRecord> GetOrCreateEmittedSet(Guid correlationId)
-                {
-                    if (!emittedRecordsByCorrelation.TryGetValue(correlationId, out var emittedForCorrelation))
-                    {
-                        emittedForCorrelation = new HashSet<LineageRecord>(ReferenceEqualityComparer.Instance);
-                        emittedRecordsByCorrelation[correlationId] = emittedForCorrelation;
-                    }
-
-                    return emittedForCorrelation;
                 }
             }
         };
