@@ -51,9 +51,11 @@ Set the `JoinType` property to control matching behavior:
 | `RightOuter` | Emit all right items; match left when available | Right items call `CreateOutputFromRight` |
 | `FullOuter` | Emit all items from both sides | Both fallback methods called |
 
+Each item is paired with every item on the other side that shares its key. For example, one customer and three orders with the same `CustomerId` produce three outputs. Many-to-many keys produce every pairing. Outer joins call the fallback methods only for items that never matched anything.
+
 ### Memory Limits
 
-For outer joins, unmatched items are held in memory until the stream ends. Set `MaxCapacity` to bound this:
+A keyed join can't know whether another item with the same key will arrive later, so it keeps every item from both inputs in memory until the input streams end. This applies to every join type, including `Inner`. Set `MaxCapacity` to limit how many items each input retains:
 
 ```csharp
 public class MyJoin : KeyedJoinNode<int, Order, Customer, Result>
@@ -61,6 +63,8 @@ public class MyJoin : KeyedJoinNode<int, Order, Customer, Result>
     public MyJoin() { MaxCapacity = 10_000; }
 }
 ```
+
+When an input reaches capacity, its new items are still matched against the items already retained from the other input, but aren't retained themselves. As a result, they can't match items that arrive later. If an item that isn't retained also matched nothing, and the join type keeps its side (for example, a left item in a `LeftOuter` join), the join emits it immediately as unmatched. Otherwise, the join discards it.
 
 ## Time-Windowed Joins
 
@@ -82,7 +86,7 @@ public class TradeSettlementJoin
 }
 ```
 
-Time-windowed joins use [watermarks](../reference/glossary.md#watermark) to close expired windows and release memory.
+Within a window, time-windowed joins pair items the same way keyed joins do. They use [watermarks](../reference/glossary.md#watermark) to close expired windows and release memory. For outer joins, the unmatched items in a window are emitted when that window closes.
 
 ## In-Memory Lookups
 

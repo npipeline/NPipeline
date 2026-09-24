@@ -1,8 +1,9 @@
-using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using NPipeline.DataFlow.Timestamping;
 using NPipeline.DataFlow.Watermarks;
 using NPipeline.DataFlow.Windowing;
+using NPipeline.Nodes.Internal;
 using NPipeline.Pipeline;
 using NPipeline.Utils;
 
@@ -10,9 +11,13 @@ namespace NPipeline.Nodes;
 
 /// <summary>
 ///     An abstract base class for creating a node that performs a keyed join on two input streams
-///     within specific time windows. This node is stateful and will hold items in memory until
-///     a match is found based on both the specified key and time window.
+///     within specific time windows. Within each window, every item is paired with every item on the other input
+///     that shares its key.
 /// </summary>
+/// <remarks>
+///     This node is stateful: items are held in memory until the watermark passes the end of their window. When a window
+///     expires, outer joins emit the items in that window that never matched.
+/// </remarks>
 /// <typeparam name="TKey">The type of the key used for joining. Must be not-null.</typeparam>
 /// <typeparam name="TIn1">The type of the data from the first input stream.</typeparam>
 /// <typeparam name="TIn2">The type of the data from the second input stream.</typeparam>
@@ -22,12 +27,14 @@ public abstract class TimeWindowedJoinNode<TKey, TIn1, TIn2, TOut> : BaseJoinNod
     private readonly TimeSpan _maxOutOfOrderness;
     private readonly TimestampExtractor<TIn1>? _timestampExtractor1;
     private readonly TimestampExtractor<TIn2>? _timestampExtractor2;
-    private readonly ConcurrentDictionary<(IWindow Window, TKey Key), TIn1> _waitingList1 = new();
-    private readonly ConcurrentDictionary<(IWindow Window, TKey Key), TIn2> _waitingList2 = new();
     private readonly TimeSpan _watermarkInterval;
     private readonly WindowAssigner _windowAssigner;
+    private readonly PriorityQueue<IWindow, DateTimeOffset> _windowExpiry = new();
+    private readonly Dictionary<IWindow, WindowState> _windows = [];
     private long _maxWaitingItems1;
     private long _maxWaitingItems2;
+    private int _waitingItems1;
+    private int _waitingItems2;
 
     /// <summary>
     ///     Initializes a new instance of <see cref="TimeWindowedJoinNode{TKey, TIn1, TIn2, TOut}" /> class.
@@ -72,10 +79,15 @@ public abstract class TimeWindowedJoinNode<TKey, TIn1, TIn2, TOut> : BaseJoinNod
             cancellationToken);
 
         // Clear previous state for new execution
-        _waitingList1.Clear();
-        _waitingList2.Clear();
+        _windows.Clear();
+        _windowExpiry.Clear();
+        _waitingItems1 = 0;
+        _waitingItems2 = 0;
         _maxWaitingItems1 = 0;
         _maxWaitingItems2 = 0;
+
+        var emitUnmatchedLeft = JoinType is JoinType.LeftOuter or JoinType.FullOuter;
+        var emitUnmatchedRight = JoinType is JoinType.RightOuter or JoinType.FullOuter;
 
         var (getKey1, getKey2) = GetKeySelectors();
 
@@ -93,19 +105,21 @@ public abstract class TimeWindowedJoinNode<TKey, TIn1, TIn2, TOut> : BaseJoinNod
 
                     foreach (var window in windows)
                     {
-                        var windowKey = (window, key);
+                        var state = GetOrAddWindow(window);
+                        var matched = false;
 
-                        if (_waitingList2.TryRemove(windowKey, out var item2))
-                            yield return CreateOutput(item1, item2);
-                        else
+                        if (state.Right.TryMatch(key, out var matches))
                         {
-                            _waitingList1.TryAdd(windowKey, item1);
-                            var currentCount = _waitingList1.Count;
-                            var maxCount = Interlocked.Read(ref _maxWaitingItems1);
+                            matched = true;
 
-                            if (currentCount > maxCount)
-                                Interlocked.Exchange(ref _maxWaitingItems1, currentCount);
+                            for (var i = 0; i < matches.Count; i++)
+                            {
+                                yield return CreateOutput(item1, matches[i]);
+                            }
                         }
+
+                        state.Left.Add(key, item1, matched);
+                        TrackMax(ref _maxWaitingItems1, ++_waitingItems1);
                     }
                 }
                 else if (item is TIn2 item2)
@@ -116,66 +130,112 @@ public abstract class TimeWindowedJoinNode<TKey, TIn1, TIn2, TOut> : BaseJoinNod
 
                     foreach (var window in windows)
                     {
-                        var windowKey = (window, key);
+                        var state = GetOrAddWindow(window);
+                        var matched = false;
 
-                        if (_waitingList1.TryRemove(windowKey, out var matchedItem1))
-                            yield return CreateOutput(matchedItem1, item2);
-                        else
+                        if (state.Left.TryMatch(key, out var matches))
                         {
-                            _waitingList2.TryAdd(windowKey, item2);
-                            var currentCount = _waitingList2.Count;
-                            var maxCount = Interlocked.Read(ref _maxWaitingItems2);
+                            matched = true;
 
-                            if (currentCount > maxCount)
-                                Interlocked.Exchange(ref _maxWaitingItems2, currentCount);
+                            for (var i = 0; i < matches.Count; i++)
+                            {
+                                yield return CreateOutput(matches[i], item2);
+                            }
                         }
+
+                        state.Right.Add(key, item2, matched);
+                        TrackMax(ref _maxWaitingItems2, ++_waitingItems2);
                     }
                 }
             }
             else if (streamItem is StreamItem<object?>.WatermarkItem watermarkItem)
             {
-                var watermark = watermarkItem.Watermark;
+                var watermarkTimestamp = watermarkItem.Watermark.Timestamp;
 
-                // Clean up state for windows that have passed
-                CleanupExpiredWindows(_waitingList1, watermark.Timestamp);
-                CleanupExpiredWindows(_waitingList2, watermark.Timestamp);
+                // Release state for windows that have passed, emitting their unmatched items for outer joins
+                while (_windowExpiry.TryPeek(out var window, out var windowEnd) && windowEnd <= watermarkTimestamp)
+                {
+                    _windowExpiry.Dequeue();
+                    _windows.Remove(window, out var state);
+                    _waitingItems1 -= state!.Left.Count;
+                    _waitingItems2 -= state.Right.Count;
+
+                    if (emitUnmatchedLeft)
+                    {
+                        foreach (var unmatchedLeft in state.Left.Unmatched())
+                        {
+                            yield return CreateOutputFromLeft(unmatchedLeft);
+                        }
+                    }
+
+                    if (emitUnmatchedRight)
+                    {
+                        foreach (var unmatchedRight in state.Right.Unmatched())
+                        {
+                            yield return CreateOutputFromRight(unmatchedRight);
+                        }
+                    }
+                }
             }
         }
 
         // Handle unmatched items for outer joins at the end of the streams
-        if (JoinType is JoinType.LeftOuter or JoinType.FullOuter)
+        if (emitUnmatchedLeft)
         {
-            foreach (var unmatchedLeft in _waitingList1.Values)
+            foreach (var state in _windows.Values)
             {
-                yield return CreateOutputFromLeft(unmatchedLeft);
+                foreach (var unmatchedLeft in state.Left.Unmatched())
+                {
+                    yield return CreateOutputFromLeft(unmatchedLeft);
+                }
             }
         }
 
-        if (JoinType is JoinType.RightOuter or JoinType.FullOuter)
+        if (emitUnmatchedRight)
         {
-            foreach (var unmatchedRight in _waitingList2.Values)
+            foreach (var state in _windows.Values)
             {
-                yield return CreateOutputFromRight(unmatchedRight);
+                foreach (var unmatchedRight in state.Right.Unmatched())
+                {
+                    yield return CreateOutputFromRight(unmatchedRight);
+                }
             }
         }
     }
 
-    private void CleanupExpiredWindows<T>(ConcurrentDictionary<(IWindow Window, TKey Key), T> dictionary, DateTimeOffset watermarkTimestamp)
+    private WindowState GetOrAddWindow(IWindow window)
     {
-        var expiredKeys = dictionary.Keys
-            .Where(k => k.Window.End <= watermarkTimestamp)
-            .ToList();
+        ref var state = ref CollectionsMarshal.GetValueRefOrAddDefault(_windows, window, out var exists);
 
-        foreach (var key in expiredKeys)
+        if (!exists)
         {
-            dictionary.TryRemove(key, out _);
+            state = new WindowState();
+            _windowExpiry.Enqueue(window, window.End);
         }
+
+        return state!;
+    }
+
+    private static void TrackMax(ref long max, int currentCount)
+    {
+        if (currentCount > Interlocked.Read(ref max))
+            Interlocked.Exchange(ref max, currentCount);
     }
 
     /// <summary>
     ///     Gets metrics about the node's current state.
     /// </summary>
     /// <returns>A tuple containing the number of waiting items in each stream and maximum counts observed.</returns>
-    public (int WaitingList1Count, int WaitingList2Count, long MaxWaitingList1, long MaxWaitingList2) GetStateMetrics() => (_waitingList1.Count,
-        _waitingList2.Count, Interlocked.Read(ref _maxWaitingItems1), Interlocked.Read(ref _maxWaitingItems2));
+    public (int WaitingList1Count, int WaitingList2Count, long MaxWaitingList1, long MaxWaitingList2) GetStateMetrics() => (Volatile.Read(ref _waitingItems1),
+        Volatile.Read(ref _waitingItems2), Interlocked.Read(ref _maxWaitingItems1), Interlocked.Read(ref _maxWaitingItems2));
+
+    /// <summary>
+    ///     The retained items for one window, split by input.
+    /// </summary>
+    private sealed class WindowState
+    {
+        public JoinSide<TKey, TIn1> Left { get; } = new();
+
+        public JoinSide<TKey, TIn2> Right { get; } = new();
+    }
 }

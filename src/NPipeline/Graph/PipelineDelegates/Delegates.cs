@@ -30,15 +30,6 @@ public delegate IDataStream SinkLineageUnwrapDelegate(IDataStream lineageInput, 
     Guid pipelineId, string? pipelineName, LineageOptions? options, CancellationToken cancellationToken);
 
 /// <summary>
-///     Represents a pre-compiled delegate for extracting join keys from an item.
-/// </summary>
-/// <remarks>
-///     This delegate is compiled once during the builder phase to extract join keys
-///     efficiently at runtime without reflection overhead.
-/// </remarks>
-public delegate object? JoinKeySelectorDelegate(object item);
-
-/// <summary>
 ///     Delegate produced at build time that, given a transform node output pipe,
 ///     rewraps it in lineage packets using the original input lineage stream and declared cardinality.
 /// </summary>

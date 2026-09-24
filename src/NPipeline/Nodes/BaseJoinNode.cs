@@ -41,6 +41,10 @@ public abstract class BaseJoinNode<TKey, TIn1, TIn2, TOut> : IJoinNode where TKe
     {
         var outputStream = ExecuteJoinAsync(inputStream, context, cancellationToken);
 
+        // IAsyncEnumerable<T> is covariant, so a reference-type output stream needs no per-item re-yielding
+        if (outputStream is IAsyncEnumerable<object?> objectStream)
+            return ValueTask.FromResult(objectStream);
+
         return ValueTask.FromResult(ToObjectStream(outputStream, cancellationToken));
 
         async IAsyncEnumerable<object?> ToObjectStream(IAsyncEnumerable<TOut> source, [EnumeratorCancellation] CancellationToken ct = default)
@@ -99,17 +103,9 @@ public abstract class BaseJoinNode<TKey, TIn1, TIn2, TOut> : IJoinNode where TKe
     private (Func<TIn1, TKey>, Func<TIn2, TKey>) GetKeySelectorsInternal()
     {
         // Check if pre-compiled selectors are available from the builder phase
-        if (JoinKeySelectorRegistry.TryGetSelectors(GetType(), out var rawSelector1, out var rawSelector2))
-        {
-            if (rawSelector1 is not null && rawSelector2 is not null)
-            {
-                // Convert the untyped delegates back to typed selectors
-                // Use explicit non-null assertions since we've already checked for null
-                var sel1 = rawSelector1;
-                var sel2 = rawSelector2;
-                return (item => (TKey)sel1(item!)!, item => (TKey)sel2(item!)!);
-            }
-        }
+        if (JoinKeySelectorRegistry.TryGetSelectors(GetType(), out var rawSelector1, out var rawSelector2) &&
+            rawSelector1 is Func<TIn1, TKey> selector1 && rawSelector2 is Func<TIn2, TKey> selector2)
+            return (selector1, selector2);
 
         // Fall back to runtime compilation if pre-compiled selectors are not available
         var attributes = GetType().GetCustomAttributes<KeySelectorAttribute>().ToList();

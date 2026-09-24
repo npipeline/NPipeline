@@ -1,8 +1,6 @@
 using System.Collections.Concurrent;
 using System.Linq.Expressions;
 using System.Reflection;
-using System.Runtime.CompilerServices;
-using NPipeline.Pipeline;
 
 namespace NPipeline.Nodes.Internal;
 
@@ -55,12 +53,6 @@ internal sealed class SelfJoinNode<TKey, TLeft, TRight, TOut> : KeyedJoinNode<TK
     ///     If not set, the base implementation is used.
     /// </summary>
     public Func<object, TOut>? RightFallback { get; set; }
-
-    /// <summary>
-    ///     Gets or sets the type of join to perform.
-    ///     Defaults to <see cref="JoinType.Inner" />.
-    /// </summary>
-    public new JoinType JoinType { get; set; } = JoinType.Inner;
 
     /// <summary>
     ///     Creates the output item from the two joined input items.
@@ -119,90 +111,23 @@ internal sealed class SelfJoinNode<TKey, TLeft, TRight, TOut> : KeyedJoinNode<TK
     }
 
     /// <summary>
-    ///     Executes the join operation using runtime-configured key selectors instead of attributes.
-    ///     This custom implementation bypasses the base class's attribute-based key selector mechanism.
+    ///     Resolves key selectors from the runtime-configured <see cref="LeftKeySelector" /> and <see cref="RightKeySelector" />
+    ///     instead of the base class's attribute-based mechanism.
     /// </summary>
-    /// <param name="inputStream">The combined input stream from both sources.</param>
-    /// <param name="context">The pipeline context.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>An async enumerable of joined output items.</returns>
     /// <exception cref="InvalidOperationException">
     ///     Thrown when LeftKeySelector or RightKeySelector is not set.
     /// </exception>
-    protected override async IAsyncEnumerable<TOut> ExecuteJoinAsync(IAsyncEnumerable<object?> inputStream, PipelineContext context,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
+    private protected override (Func<TLeft, TKey> GetKey1, Func<TRight, TKey> GetKey2) ResolveKeySelectors()
     {
-        if (LeftKeySelector is null)
-        {
-            throw new InvalidOperationException(
-                $"{nameof(LeftKeySelector)} must be set before executing join.");
-        }
+        var leftKeySelector = LeftKeySelector ?? throw new InvalidOperationException(
+            $"{nameof(LeftKeySelector)} must be set before executing join.");
 
-        if (RightKeySelector is null)
-        {
-            throw new InvalidOperationException(
-                $"{nameof(RightKeySelector)} must be set before executing join.");
-        }
+        var rightKeySelector = RightKeySelector ?? throw new InvalidOperationException(
+            $"{nameof(RightKeySelector)} must be set before executing join.");
 
-        var leftBuckets = new Dictionary<TKey, List<StoredItem<TLeft>>>();
-        var rightBuckets = new Dictionary<TKey, List<StoredItem<TRight>>>();
-
-        await foreach (var item in inputStream.WithCancellation(cancellationToken))
-        {
-            if (item is TLeft item1)
-            {
-                var leftUnwrapped = UnwrapItem(item1, "left");
-                var key = LeftKeySelector(leftUnwrapped!);
-
-                var storedLeft = AddToBucket(leftBuckets, key, item1);
-
-                if (rightBuckets.TryGetValue(key, out var matchingRights))
-                {
-                    foreach (var rightItem in matchingRights)
-                    {
-                        yield return CreateOutput(item1, rightItem.Value);
-
-                        storedLeft.MarkMatched();
-                        rightItem.MarkMatched();
-                    }
-                }
-            }
-            else if (item is TRight item2)
-            {
-                var rightUnwrapped = UnwrapItem(item2, "right");
-                var key = RightKeySelector(rightUnwrapped!);
-
-                var storedRight = AddToBucket(rightBuckets, key, item2);
-
-                if (leftBuckets.TryGetValue(key, out var matchingLefts))
-                {
-                    foreach (var leftItem in matchingLefts)
-                    {
-                        yield return CreateOutput(leftItem.Value, item2);
-
-                        storedRight.MarkMatched();
-                        leftItem.MarkMatched();
-                    }
-                }
-            }
-        }
-
-        // Handle unmatched items for outer joins at the end of the streams
-        if (JoinType is JoinType.LeftOuter or JoinType.FullOuter)
-        {
-            foreach (var unmatchedLeft in EnumerateUnmatched(leftBuckets))
-            {
-                yield return CreateOutputFromLeft(unmatchedLeft);
-            }
-        }
-
-        if (JoinType is JoinType.RightOuter or JoinType.FullOuter)
-        {
-            foreach (var unmatchedRight in EnumerateUnmatched(rightBuckets))
-            {
-                yield return CreateOutputFromRight(unmatchedRight);
-            }
-        }
+        return (
+            left => leftKeySelector(UnwrapItem(left, "left")!),
+            right => rightKeySelector(UnwrapItem(right, "right")!));
     }
 
     private static object? UnwrapItem<TWrapper>(TWrapper wrapper, string wrapperRole) =>
@@ -210,31 +135,6 @@ internal sealed class SelfJoinNode<TKey, TLeft, TRight, TOut> : KeyedJoinNode<TK
             ? joinWrapper.Item
             : throw new InvalidOperationException(
                 $"Self-join {wrapperRole} wrapper of type '{typeof(TWrapper).FullName}' must implement {nameof(ISelfJoinWrapper)}.");
-
-    private static StoredItem<TItem> AddToBucket<TItem>(Dictionary<TKey, List<StoredItem<TItem>>> buckets, TKey key, TItem value)
-    {
-        if (!buckets.TryGetValue(key, out var list))
-        {
-            list = [];
-            buckets[key] = list;
-        }
-
-        var stored = new StoredItem<TItem>(value);
-        list.Add(stored);
-        return stored;
-    }
-
-    private static IEnumerable<TItem> EnumerateUnmatched<TItem>(Dictionary<TKey, List<StoredItem<TItem>>> buckets)
-    {
-        foreach (var bucket in buckets.Values)
-        {
-            foreach (var item in bucket)
-            {
-                if (!item.HasMatched)
-                    yield return item.Value;
-            }
-        }
-    }
 
     private static TOut ProjectUnwrappedItem(object value, string wrapperRole)
     {
@@ -289,17 +189,5 @@ internal sealed class SelfJoinNode<TKey, TLeft, TRight, TOut> : KeyedJoinNode<TK
         var convertedResult = Expression.Convert(invoke, typeof(TOut));
 
         return Expression.Lambda<Func<object?, TOut>>(convertedResult, sourceParameter).Compile();
-    }
-
-    private sealed class StoredItem<TItem>(TItem value)
-    {
-        public TItem Value { get; } = value;
-
-        public bool HasMatched { get; private set; }
-
-        public void MarkMatched()
-        {
-            HasMatched = true;
-        }
     }
 }

@@ -77,8 +77,11 @@ public sealed class DefaultNodeRegistrationPlannerTests
         var found = JoinKeySelectorRegistry.TryGetSelectors(typeof(PlannerJoinNode), out var selector1, out var selector2);
 
         found.Should().BeTrue();
-        selector1.Should().NotBeNull();
-        selector2.Should().NotBeNull();
+
+        // Strongly typed selectors let BaseJoinNode use them directly, without boxing value-type keys
+        selector1.Should().BeOfType<Func<PlannerLeft, int>>();
+        selector2.Should().BeOfType<Func<PlannerRight, int>>();
+        ((Func<PlannerLeft, int>)selector1!)(new PlannerLeft(7)).Should().Be(7);
     }
 
     private sealed class TypedCustomMergeNode : ICustomMergeNode<string>

@@ -2,7 +2,6 @@ using System.Collections.Concurrent;
 using System.Linq.Expressions;
 using System.Reflection;
 using NPipeline.Attributes.Nodes;
-using NPipeline.Graph.PipelineDelegates;
 
 namespace NPipeline.Pipeline.Internals;
 
@@ -13,10 +12,11 @@ namespace NPipeline.Pipeline.Internals;
 ///     This registry is populated during the builder phase when join nodes are added,
 ///     and consulted at runtime by BaseJoinNode to avoid reflection and expression tree compilation.
 ///     Uses Type object as key to avoid string allocation and handle edge cases with generic nested types.
+///     Selectors are compiled as strongly typed <c>Func&lt;TIn, TKey&gt;</c> delegates so that value-type keys are not boxed per item.
 /// </remarks>
 internal static class JoinKeySelectorRegistry
 {
-    private static readonly ConcurrentDictionary<Type, (JoinKeySelectorDelegate Selector1, JoinKeySelectorDelegate Selector2)>
+    private static readonly ConcurrentDictionary<Type, (Delegate Selector1, Delegate Selector2)>
         _cache = new();
 
     /// <summary>
@@ -27,8 +27,8 @@ internal static class JoinKeySelectorRegistry
     /// </remarks>
     public static void Register(
         Type joinNodeType,
-        JoinKeySelectorDelegate selector1,
-        JoinKeySelectorDelegate selector2)
+        Delegate selector1,
+        Delegate selector2)
     {
         _cache.TryAdd(joinNodeType, (selector1, selector2));
     }
@@ -42,8 +42,8 @@ internal static class JoinKeySelectorRegistry
     /// </remarks>
     public static bool TryGetSelectors(
         Type joinNodeType,
-        out JoinKeySelectorDelegate? selector1,
-        out JoinKeySelectorDelegate? selector2)
+        out Delegate? selector1,
+        out Delegate? selector2)
     {
         if (_cache.TryGetValue(joinNodeType, out var selectors))
         {
@@ -65,7 +65,7 @@ internal static class JoinKeySelectorRegistry
     ///     fallback to runtime compilation if needed.
     ///     Throws on configuration errors to provide fail-fast behavior and clear error messages.
     /// </remarks>
-    public static (JoinKeySelectorDelegate? Selector1, JoinKeySelectorDelegate? Selector2) Compile(
+    public static (Delegate? Selector1, Delegate? Selector2) Compile(
         Type joinNodeType, Type keyType, Type input1Type, Type input2Type)
     {
         var attributes = joinNodeType.GetCustomAttributes<KeySelectorAttribute>().ToList();
@@ -83,12 +83,10 @@ internal static class JoinKeySelectorRegistry
         return (compiled1, compiled2);
     }
 
-    private static JoinKeySelectorDelegate CompileKeySelector(
+    private static Delegate CompileKeySelector(
         Type inputType, Type keyType, IReadOnlyList<string> propertyNames)
     {
-        var itemParameter = Expression.Parameter(typeof(object), "item");
-        var typedItem = Expression.Variable(inputType, "typedItem");
-        var conversion = Expression.Assign(typedItem, Expression.Convert(itemParameter, inputType));
+        var typedItem = Expression.Parameter(inputType, "item");
 
         var propertyInfos = propertyNames
             .Select(name => inputType.GetProperty(name, BindingFlags.Public | BindingFlags.Instance))
@@ -115,7 +113,6 @@ internal static class JoinKeySelectorRegistry
             }
 
             keyExpression = Expression.Property(typedItem, propertyInfo);
-            keyExpression = Expression.Convert(keyExpression, typeof(object));
         }
         else
         {
@@ -146,7 +143,6 @@ internal static class JoinKeySelectorRegistry
                     throw new InvalidOperationException($"Could not find a constructor for the ValueTuple key type '{keyType.Name}'.");
 
                 keyExpression = Expression.New(tupleConstructor, propertyAccessors);
-                keyExpression = Expression.Convert(keyExpression, typeof(object));
             }
             else
             {
@@ -155,8 +151,7 @@ internal static class JoinKeySelectorRegistry
             }
         }
 
-        var blockExpression = Expression.Block(new[] { typedItem }, conversion, keyExpression);
-        var lambda = Expression.Lambda<JoinKeySelectorDelegate>(blockExpression, itemParameter);
-        return lambda.Compile();
+        var selectorType = typeof(Func<,>).MakeGenericType(inputType, keyType);
+        return Expression.Lambda(selectorType, keyExpression, typedItem).Compile();
     }
 }
