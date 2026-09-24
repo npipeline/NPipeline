@@ -16,10 +16,8 @@ public static class ServiceCollectionExtensions
     /// <param name="services">The service collection to add the provider to.</param>
     /// <returns>The same service collection for chaining.</returns>
     public static IServiceCollection AddStorageProvider<TProvider>(this IServiceCollection services)
-        where TProvider : class, IStorageProvider
-    {
-        return services.AddTransient<IStorageProvider, TProvider>();
-    }
+        where TProvider : class, IStorageProvider =>
+        services.AddTransient<IStorageProvider, TProvider>();
 
     /// <summary>
     ///     Registers a specific storage provider instance as a singleton.
@@ -96,10 +94,8 @@ public static class ServiceCollectionExtensions
     /// <returns>The same service collection for chaining.</returns>
     public static IServiceCollection AddConnectorsFromConfiguration(
         this IServiceCollection services,
-        Action<ConnectorConfiguration> configure)
-    {
-        return services
+        Action<ConnectorConfiguration> configure) =>
+        services
             .AddStorageProvidersFromConfiguration(configure)
             .AddStorageResolver(false); // don't auto-add file system, should be configured
-    }
 }

@@ -109,6 +109,7 @@ public class GcsClientFactory
             {
                 builder.Credential = GoogleCredential.GetApplicationDefault();
             }
+
             // Google.Apis.Auth reports missing credentials as an AggregateException around InvalidOperationException.
             catch (Exception ex) when (ex is InvalidOperationException or AggregateException { InnerException: InvalidOperationException } &&
                                        ShouldUseEmulatorFallback(serviceUrl))

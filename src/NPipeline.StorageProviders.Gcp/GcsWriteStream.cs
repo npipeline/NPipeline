@@ -2,6 +2,7 @@ using System.Runtime.ExceptionServices;
 using Google;
 using Google.Cloud.Storage.V1;
 using NPipeline.StorageProviders.Gcp.Reliability;
+using NResilience;
 using Object = Google.Apis.Storage.v1.Data.Object;
 
 namespace NPipeline.StorageProviders.Gcp;
@@ -18,7 +19,7 @@ public sealed class GcsWriteStream : Stream
     private readonly string? _contentType;
     private readonly CancellationToken _disposeCancellationToken;
     private readonly string _objectName;
-    private readonly NResilience.Resilience _resilience;
+    private readonly Resilience _resilience;
     private readonly StorageClient _storageClient;
     private int _disposeState; // 0 = not disposed, 1 = disposing, 2 = disposed
     private FileStream? _tempFileStream;
@@ -42,7 +43,7 @@ public sealed class GcsWriteStream : Stream
         string? contentType = null,
         int chunkSizeBytes = 16 * 1024 * 1024,
         CancellationToken disposeCancellationToken = default)
-        : this(storageClient, bucket, objectName, contentType, chunkSizeBytes, NResilience.Resilience.None, disposeCancellationToken)
+        : this(storageClient, bucket, objectName, contentType, chunkSizeBytes, Resilience.None, disposeCancellationToken)
     {
     }
 
@@ -52,7 +53,7 @@ public sealed class GcsWriteStream : Stream
         string objectName,
         string? contentType,
         int chunkSizeBytes,
-        NResilience.Resilience resilience,
+        Resilience resilience,
         CancellationToken disposeCancellationToken = default)
     {
         _storageClient = storageClient ?? throw new ArgumentNullException(nameof(storageClient));
@@ -113,23 +114,16 @@ public sealed class GcsWriteStream : Stream
     }
 
     /// <inheritdoc />
-    public override Task FlushAsync(CancellationToken cancellationToken)
-    {
+    public override Task FlushAsync(CancellationToken cancellationToken) =>
+
         // Flush is a no-op - upload happens on disposal
-        return Task.CompletedTask;
-    }
+        Task.CompletedTask;
 
     /// <inheritdoc />
-    public override int Read(byte[] buffer, int offset, int count)
-    {
-        throw new NotSupportedException();
-    }
+    public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
 
     /// <inheritdoc />
-    public override long Seek(long offset, SeekOrigin origin)
-    {
-        throw new NotSupportedException();
-    }
+    public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
 
     /// <inheritdoc />
     public override void SetLength(long value)

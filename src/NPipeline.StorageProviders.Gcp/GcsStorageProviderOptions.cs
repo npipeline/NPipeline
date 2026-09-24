@@ -1,5 +1,6 @@
 using Google.Apis.Auth.OAuth2;
 using NPipeline.StorageProviders.Gcp.Reliability;
+using NResilience;
 
 namespace NPipeline.StorageProviders.Gcp;
 
@@ -66,7 +67,7 @@ public sealed class GcsStorageProviderOptions
     ///     turned off. A custom factory that builds its own clients should set
     ///     <c>client.Service.HttpClient.MessageHandler.NumTries = 1</c> to keep it that way.
     /// </remarks>
-    public NResilience.Resilience Resilience { get; set; } = GcsStorageResilience.Default;
+    public Resilience Resilience { get; set; } = GcsStorageResilience.Default;
 
     /// <summary>
     ///     Validates the options and throws if invalid.

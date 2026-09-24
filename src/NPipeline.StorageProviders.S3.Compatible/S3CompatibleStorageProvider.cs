@@ -27,9 +27,8 @@ public sealed class S3CompatibleStorageProvider : S3CoreStorageProvider
     ///     Builds the provider metadata with S3-compatible-specific information.
     /// </summary>
     /// <returns>A <see cref="StorageProviderMetadata" /> object.</returns>
-    protected override StorageProviderMetadata BuildMetadata()
-    {
-        return new StorageProviderMetadata
+    protected override StorageProviderMetadata BuildMetadata() =>
+        new()
         {
             Name = "S3-Compatible",
             SupportedSchemes = ["s3"],
@@ -46,5 +45,4 @@ public sealed class S3CompatibleStorageProvider : S3CoreStorageProvider
                 ["signingRegion"] = _options.SigningRegion,
             },
         };
-    }
 }

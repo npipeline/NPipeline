@@ -79,9 +79,7 @@ public class AdlsGen2ClientFactory
         var client = _blobClientCache.GetOrAdd(cacheKey, _ =>
         {
             if (serviceUrl is null && !string.IsNullOrEmpty(connectionString))
-            {
                 return new BlobServiceClient(connectionString, blobClientOptions);
-            }
 
             var effectiveServiceUrl = serviceUrl is not null
                 ? new Uri(serviceUrl.ToString().Replace(".dfs.core.windows.net", ".blob.core.windows.net"))
@@ -102,9 +100,7 @@ public class AdlsGen2ClientFactory
             }
 
             if (credentialInfo?.TokenCredential is not null)
-            {
                 return new BlobServiceClient(effectiveServiceUrl, credentialInfo.TokenCredential, blobClientOptions);
-            }
 
             return new BlobServiceClient(effectiveServiceUrl, blobClientOptions);
         });
@@ -140,9 +136,7 @@ public class AdlsGen2ClientFactory
             // even when a connection string exists. This mirrors S3 behavior where URI parameters can override defaults
             // and avoids parsing potentially placeholder connection strings in tests.
             if (serviceUrl is null && !string.IsNullOrEmpty(connectionString))
-            {
                 return new DataLakeServiceClient(connectionString, clientOptions);
-            }
 
             // Build service URL if not provided
             var effectiveServiceUrl = serviceUrl ?? BuildDefaultServiceUrl(accountName ?? credentialInfo?.AccountName);
@@ -165,9 +159,7 @@ public class AdlsGen2ClientFactory
 
             // Handle token credential (DefaultAzureCredential or custom TokenCredential)
             if (credentialInfo?.TokenCredential is not null)
-            {
                 return new DataLakeServiceClient(effectiveServiceUrl, credentialInfo.TokenCredential, clientOptions);
-            }
 
             // No credentials provided - use anonymous access
             return new DataLakeServiceClient(effectiveServiceUrl, clientOptions);

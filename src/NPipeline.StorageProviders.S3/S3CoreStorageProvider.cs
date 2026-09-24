@@ -212,18 +212,14 @@ public class S3CoreStorageProvider : IStorageProvider, IStorageProviderMetadataP
     ///     Gets metadata describing this storage provider's capabilities.
     /// </summary>
     /// <returns>A <see cref="StorageProviderMetadata" /> object containing information about the provider's supported features.</returns>
-    public StorageProviderMetadata GetMetadata()
-    {
-        return BuildMetadata();
-    }
+    public StorageProviderMetadata GetMetadata() => BuildMetadata();
 
     /// <summary>
     ///     Builds the provider metadata. Subclasses can override this to provide environment-specific metadata.
     /// </summary>
     /// <returns>A <see cref="StorageProviderMetadata" /> object.</returns>
-    protected virtual StorageProviderMetadata BuildMetadata()
-    {
-        return new StorageProviderMetadata
+    protected virtual StorageProviderMetadata BuildMetadata() =>
+        new()
         {
             Name = "S3",
             SupportedSchemes = ["s3"],
@@ -237,7 +233,6 @@ public class S3CoreStorageProvider : IStorageProvider, IStorageProviderMetadataP
                 ["multipartUploadThresholdBytes"] = Options.MultipartUploadThresholdBytes,
             },
         };
-    }
 
     /// <summary>
     ///     Extracts the bucket and key from a storage URI.
@@ -414,35 +409,19 @@ public class S3CoreStorageProvider : IStorageProvider, IStorageProviderMetadataP
             _inner.Flush();
         }
 
-        public override Task FlushAsync(CancellationToken cancellationToken)
-        {
-            return _inner.FlushAsync(cancellationToken);
-        }
+        public override Task FlushAsync(CancellationToken cancellationToken) => _inner.FlushAsync(cancellationToken);
 
-        public override int Read(byte[] buffer, int offset, int count)
-        {
-            return _inner.Read(buffer, offset, count);
-        }
+        public override int Read(byte[] buffer, int offset, int count) => _inner.Read(buffer, offset, count);
 
-        public override int Read(Span<byte> buffer)
-        {
-            return _inner.Read(buffer);
-        }
+        public override int Read(Span<byte> buffer) => _inner.Read(buffer);
 
-        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-        {
-            return _inner.ReadAsync(buffer, offset, count, cancellationToken);
-        }
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
+            _inner.ReadAsync(buffer, offset, count, cancellationToken);
 
-        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
-        {
-            return _inner.ReadAsync(buffer, cancellationToken);
-        }
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default) =>
+            _inner.ReadAsync(buffer, cancellationToken);
 
-        public override long Seek(long offset, SeekOrigin origin)
-        {
-            return _inner.Seek(offset, origin);
-        }
+        public override long Seek(long offset, SeekOrigin origin) => _inner.Seek(offset, origin);
 
         public override void SetLength(long value)
         {
@@ -459,15 +438,11 @@ public class S3CoreStorageProvider : IStorageProvider, IStorageProviderMetadataP
             _inner.Write(buffer);
         }
 
-        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-        {
-            return _inner.WriteAsync(buffer, offset, count, cancellationToken);
-        }
+        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
+            _inner.WriteAsync(buffer, offset, count, cancellationToken);
 
-        public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
-        {
-            return _inner.WriteAsync(buffer, cancellationToken);
-        }
+        public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default) =>
+            _inner.WriteAsync(buffer, cancellationToken);
 
         protected override void Dispose(bool disposing)
         {

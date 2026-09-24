@@ -36,10 +36,7 @@ internal static class GcsRetryAfter
         }
     }
 
-    internal static TimeSpan? Read(Exception exception)
-    {
-        return exception.Data[DataKey] as TimeSpan?;
-    }
+    internal static TimeSpan? Read(Exception exception) => exception.Data[DataKey] as TimeSpan?;
 
     private sealed class RetryAfterHandler : IHttpUnsuccessfulResponseHandler
     {
@@ -47,10 +44,14 @@ internal static class GcsRetryAfter
         {
             if (Current.Value is { } box && args.Response.Headers.RetryAfter is { } header)
             {
-                var delay = header.Delta ?? (header.Date is { } date ? date - DateTimeOffset.UtcNow : null);
+                var delay = header.Delta ?? (header.Date is { } date
+                    ? date - DateTimeOffset.UtcNow
+                    : null);
 
                 if (delay is { } value)
-                    box.Value = value < TimeSpan.Zero ? TimeSpan.Zero : value;
+                    box.Value = value < TimeSpan.Zero
+                        ? TimeSpan.Zero
+                        : value;
             }
 
             // Never asks the SDK to retry: NResilience owns retries.

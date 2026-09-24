@@ -24,9 +24,8 @@ public class AwsS3StorageProvider : S3CoreStorageProvider
     ///     Builds the provider metadata with AWS-specific information.
     /// </summary>
     /// <returns>A <see cref="StorageProviderMetadata" /> object.</returns>
-    protected override StorageProviderMetadata BuildMetadata()
-    {
-        return new StorageProviderMetadata
+    protected override StorageProviderMetadata BuildMetadata() =>
+        new()
         {
             Name = "AWS S3",
             SupportedSchemes = ["s3"],
@@ -42,5 +41,4 @@ public class AwsS3StorageProvider : S3CoreStorageProvider
                 ["supportsServiceUrl"] = true,
             },
         };
-    }
 }

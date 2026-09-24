@@ -292,9 +292,8 @@ public sealed class AdlsGen2StorageProvider
     ///     Gets metadata describing this storage provider's capabilities.
     /// </summary>
     /// <returns>A <see cref="StorageProviderMetadata" /> object containing information about the provider's supported features.</returns>
-    public StorageProviderMetadata GetMetadata()
-    {
-        return new StorageProviderMetadata
+    public StorageProviderMetadata GetMetadata() =>
+        new()
         {
             Name = "Azure Data Lake Storage Gen2",
             SupportedSchemes = ["adls"],
@@ -316,7 +315,6 @@ public sealed class AdlsGen2StorageProvider
                 ["supportsDefaultCredentialChain"] = true,
             },
         };
-    }
 
     private async Task MoveViaBlobCopyAsync(
         StorageUri sourceUri,

@@ -46,8 +46,6 @@ public static class DatabaseIdentifierValidator
     /// <param name="identifier">The identifier to quote.</param>
     /// <param name="quoteChar">The quote character to use.</param>
     /// <returns>The quoted identifier.</returns>
-    public static string QuoteIdentifier(string identifier, string quoteChar = "\"")
-    {
-        return $"{quoteChar}{identifier.Replace(quoteChar, quoteChar + quoteChar)}{quoteChar}";
-    }
+    public static string QuoteIdentifier(string identifier, string quoteChar = "\"") =>
+        $"{quoteChar}{identifier.Replace(quoteChar, quoteChar + quoteChar)}{quoteChar}";
 }

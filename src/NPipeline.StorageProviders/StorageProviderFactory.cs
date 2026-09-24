@@ -77,10 +77,7 @@ public static class StorageProviderFactory
     /// <summary>
     ///     Returns a snapshot of current provider aliases.
     /// </summary>
-    public static IReadOnlyDictionary<string, Type> GetRegisteredProviderAliases()
-    {
-        return StorageProviderRegistry.GetSnapshot();
-    }
+    public static IReadOnlyDictionary<string, Type> GetRegisteredProviderAliases() => StorageProviderRegistry.GetSnapshot();
 
     /// <summary>
     ///     Attempts to resolve a provider for specified URI; throws a helpful exception if not found.

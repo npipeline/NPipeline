@@ -1,11 +1,13 @@
+using System.Collections;
 using System.Net;
 using System.Runtime.CompilerServices;
 using Google;
 using Google.Apis.Storage.v1.Data;
 using Google.Cloud.Storage.V1;
-using NPipeline.StorageProviders.Gcp.Reliability;
 using NPipeline.StorageProviders.Abstractions;
+using NPipeline.StorageProviders.Gcp.Reliability;
 using NPipeline.StorageProviders.Models;
+using NResilience;
 
 namespace NPipeline.StorageProviders.Gcp;
 
@@ -34,7 +36,7 @@ public sealed class GcsStorageProvider : IStorageProvider, IStorageProviderMetad
 
     private readonly GcsClientFactory _clientFactory;
     private readonly GcsStorageProviderOptions _options;
-    private readonly NResilience.Resilience _resilience;
+    private readonly Resilience _resilience;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="GcsStorageProvider" /> class.
@@ -247,9 +249,8 @@ public sealed class GcsStorageProvider : IStorageProvider, IStorageProviderMetad
     ///     Gets metadata describing this storage provider's capabilities.
     /// </summary>
     /// <returns>A <see cref="StorageProviderMetadata" /> object containing information about the provider's supported features.</returns>
-    public StorageProviderMetadata GetMetadata()
-    {
-        return new StorageProviderMetadata
+    public StorageProviderMetadata GetMetadata() =>
+        new()
         {
             Name = "Google Cloud Storage",
             SupportedSchemes = ["gs"],
@@ -267,7 +268,6 @@ public sealed class GcsStorageProvider : IStorageProvider, IStorageProviderMetad
                 ["supportsCredentialsPath"] = true,
             },
         };
-    }
 
     private static (string bucket, string objectName) GetBucketAndObjectName(StorageUri uri, bool requireObjectName)
     {
@@ -385,7 +385,7 @@ public sealed class GcsStorageProvider : IStorageProvider, IStorageProviderMetad
 
         // Keeps NResilience's record that this failure was already retried, so a pipeline-level retry does not
         // multiply the provider's attempts.
-        foreach (System.Collections.DictionaryEntry entry in ex.Data)
+        foreach (DictionaryEntry entry in ex.Data)
         {
             translated.Data[entry.Key] = entry.Value;
         }
@@ -426,10 +426,7 @@ public sealed class GcsStorageProvider : IStorageProvider, IStorageProviderMetad
         };
     }
 
-    private static DateTimeOffset NormalizeDateTimeOffset(DateTimeOffset? value)
-    {
-        return value ?? DateTimeOffset.MinValue;
-    }
+    private static DateTimeOffset NormalizeDateTimeOffset(DateTimeOffset? value) => value ?? DateTimeOffset.MinValue;
 
     /// <summary>
     ///     Wrapper stream for GCS downloads that ensures proper disposal.
@@ -460,35 +457,19 @@ public sealed class GcsStorageProvider : IStorageProvider, IStorageProviderMetad
             // No-op for read-only stream
         }
 
-        public override Task FlushAsync(CancellationToken cancellationToken)
-        {
-            return Task.CompletedTask;
-        }
+        public override Task FlushAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
-        public override int Read(byte[] buffer, int offset, int count)
-        {
-            return _inner.Read(buffer, offset, count);
-        }
+        public override int Read(byte[] buffer, int offset, int count) => _inner.Read(buffer, offset, count);
 
-        public override int Read(Span<byte> buffer)
-        {
-            return _inner.Read(buffer);
-        }
+        public override int Read(Span<byte> buffer) => _inner.Read(buffer);
 
-        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-        {
-            return _inner.ReadAsync(buffer, offset, count, cancellationToken);
-        }
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
+            _inner.ReadAsync(buffer, offset, count, cancellationToken);
 
-        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
-        {
-            return _inner.ReadAsync(buffer, cancellationToken);
-        }
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default) =>
+            _inner.ReadAsync(buffer, cancellationToken);
 
-        public override long Seek(long offset, SeekOrigin origin)
-        {
-            return _inner.Seek(offset, origin);
-        }
+        public override long Seek(long offset, SeekOrigin origin) => _inner.Seek(offset, origin);
 
         public override void SetLength(long value)
         {
@@ -505,15 +486,9 @@ public sealed class GcsStorageProvider : IStorageProvider, IStorageProviderMetad
             throw new NotSupportedException();
         }
 
-        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-        {
-            throw new NotSupportedException();
-        }
+        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) => throw new NotSupportedException();
 
-        public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
+        public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
         protected override void Dispose(bool disposing)
         {

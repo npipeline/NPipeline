@@ -102,22 +102,13 @@ public sealed class AdlsGen2WriteStream : Stream
     }
 
     /// <inheritdoc />
-    public override Task FlushAsync(CancellationToken cancellationToken)
-    {
-        return Task.CompletedTask;
-    }
+    public override Task FlushAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
     /// <inheritdoc />
-    public override int Read(byte[] buffer, int offset, int count)
-    {
-        throw new NotSupportedException();
-    }
+    public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
 
     /// <inheritdoc />
-    public override long Seek(long offset, SeekOrigin origin)
-    {
-        throw new NotSupportedException();
-    }
+    public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
 
     /// <inheritdoc />
     public override void SetLength(long value)

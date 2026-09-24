@@ -50,13 +50,8 @@ public sealed class StorageOperationException : ConnectorException
     /// </summary>
     public string UriText { get; }
 
-    private static string BuildMessage(string operation, StorageUri uri)
-    {
-        return BuildMessage(operation, uri.ToString());
-    }
+    private static string BuildMessage(string operation, StorageUri uri) => BuildMessage(operation, uri.ToString());
 
-    private static string BuildMessage(string operation, string uriText)
-    {
-        return $"Storage operation '{operation}' failed for '{uriText}'. See inner exception for details.";
-    }
+    private static string BuildMessage(string operation, string uriText) =>
+        $"Storage operation '{operation}' failed for '{uriText}'. See inner exception for details.";
 }

@@ -44,7 +44,7 @@ public static class GcsStorageResilience
     ///     seconds), which was the effective retry before this policy replaced it, and the delays of the removed
     ///     <c>GcsRetrySettings</c>.
     /// </summary>
-    public static NResilience.Resilience Default { get; } = new()
+    public static Resilience Default { get; } = new()
     {
         Name = "npipeline.gcs",
         Attempts = 3,
@@ -56,6 +56,7 @@ public static class GcsStorageResilience
             ThrottledBase = TimeSpan.FromSeconds(1),
             MaximumDelay = TimeSpan.FromSeconds(32),
         },
+
         // Declared above so it is initialized first; a static initializer reads fields in declaration order.
         Classifier = Classifier,
         Adaptive = false,
