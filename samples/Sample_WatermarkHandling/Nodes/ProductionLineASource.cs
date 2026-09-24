@@ -168,9 +168,8 @@ public class ProductionLineASource : SourceNode<SensorReading>
     ///     Generates high-quality data indicators for WiFi sensors with GPS-disciplined clocks.
     /// </summary>
     /// <returns>Data quality indicators with high scores.</returns>
-    private DataQualityIndicators GenerateHighQualityIndicators()
-    {
-        return new DataQualityIndicators
+    private DataQualityIndicators GenerateHighQualityIndicators() =>
+        new()
         {
             CompletenessScore = 0.98 + _random.NextDouble() * 0.02, // 98-100%
             TimelinessScore = 0.95 + _random.NextDouble() * 0.05, // 95-100%
@@ -186,5 +185,4 @@ public class ProductionLineASource : SourceNode<SensorReading>
             IsDelayed = false,
             HasErrors = false,
         };
-    }
 }

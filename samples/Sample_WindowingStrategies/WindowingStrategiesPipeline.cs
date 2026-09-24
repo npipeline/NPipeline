@@ -29,12 +29,10 @@ public class SessionToCollectionNode : TransformNode<UserSession, IReadOnlyColle
         return ValueTask.FromResult<IReadOnlyCollection<UserSession>>([session]);
     }
 
-    private static bool IsRealSession(UserSession session)
-    {
-        return !string.IsNullOrEmpty(session.SessionId)
-               && !session.SessionId.StartsWith("dummy", StringComparison.OrdinalIgnoreCase)
-               && session.EventCount > 0;
-    }
+    private static bool IsRealSession(UserSession session) =>
+        !string.IsNullOrEmpty(session.SessionId)
+        && !session.SessionId.StartsWith("dummy", StringComparison.OrdinalIgnoreCase)
+        && session.EventCount > 0;
 }
 
 /// <summary>
@@ -321,9 +319,8 @@ public class WindowingStrategiesPipeline : IPipelineDefinition
     ///     Gets a description of what this pipeline demonstrates.
     /// </summary>
     /// <returns>A detailed description of the pipeline's purpose and flow.</returns>
-    public static string GetDescription()
-    {
-        return @"Advanced Windowing Strategies Sample:
+    public static string GetDescription() =>
+        @"Advanced Windowing Strategies Sample:
 
 This sample demonstrates sophisticated windowing techniques beyond basic tumbling and sliding windows:
 
@@ -376,7 +373,6 @@ The advanced windowing strategies are essential when:
 - Business requirements demand complex windowing logic
 - Different analytical insights are needed from the same data
 - Adaptive processing is required for varying data patterns";
-    }
 
     private void ReadConfigurationFromContext(PipelineContext context)
     {

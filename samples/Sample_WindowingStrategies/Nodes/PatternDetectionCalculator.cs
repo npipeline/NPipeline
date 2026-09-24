@@ -84,7 +84,7 @@ public class PatternDetectionCalculator : TransformNode<IReadOnlyCollection<User
         if (bestPattern == null)
         {
             _logger.Log(LogLevel.Debug, "PatternDetectionCalculator: No patterns found with confidence >= {Threshold}", _patternConfidenceThreshold);
-            return ValueTask.FromResult<PatternMatch>(CreateEmptyPattern(stopwatch.Elapsed));
+            return ValueTask.FromResult(CreateEmptyPattern(stopwatch.Elapsed));
         }
 
         stopwatch.Stop();
@@ -92,7 +92,7 @@ public class PatternDetectionCalculator : TransformNode<IReadOnlyCollection<User
         _logger.Log(LogLevel.Information, "PatternDetectionCalculator: Detected {PatternType} pattern with confidence {Confidence:F2} in {ElapsedMs}ms",
             bestPattern.PatternType, bestPattern.ConfidenceScore, stopwatch.ElapsedMilliseconds);
 
-        return ValueTask.FromResult<PatternMatch>(bestPattern);
+        return ValueTask.FromResult(bestPattern);
     }
 
     private PatternMatch DetectHighValuePattern(IReadOnlyCollection<UserSession> sessions, TimeSpan processingTime)

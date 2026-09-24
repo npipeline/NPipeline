@@ -117,9 +117,8 @@ public class ExcelConnectorPipeline : IPipelineDefinition
     /// <summary>
     ///     Gets a description of what this pipeline demonstrates.
     /// </summary>
-    public static string GetDescription()
-    {
-        return @"Excel Connector Pipeline Sample:
+    public static string GetDescription() =>
+        @"Excel Connector Pipeline Sample:
 
 This sample demonstrates Excel data processing with NPipeline:
 
@@ -148,5 +147,4 @@ add them to the builder, and connect them. The ExcelSourceNode and
 ExcelSinkNode automatically handle the file system interactions.
 
 This is one of the simplest ways to process Excel files in NPipeline!";
-    }
 }

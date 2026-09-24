@@ -79,13 +79,13 @@ public class ComplexDataTransformationsPipeline : IPipelineDefinition
         builder.Connect<OrderCustomerJoin>(orderCustomerJoin, productLookup);
 
         // Product lookup to sales aggregation
-        builder.Connect<EnrichedOrder>(productLookup, salesAggregation);
+        builder.Connect(productLookup, salesAggregation);
 
         // Sales aggregation to console sink
         builder.Connect<SalesByCategory>(salesAggregation, consoleSink);
 
         // Customer behavior analysis branch
-        builder.Connect<OrderCustomerJoin>(orderCustomerJoin, customerBehaviorAggregation);
+        builder.Connect(orderCustomerJoin, customerBehaviorAggregation);
         builder.Connect<CustomerPurchaseBehavior>(customerBehaviorAggregation, consoleSink);
 
         // Connect ProductSource to console sink to prevent isolation
@@ -94,16 +94,15 @@ public class ComplexDataTransformationsPipeline : IPipelineDefinition
 
         // Lineage tracking (applied to main flow)
         builder.Connect<EnrichedOrder>(productLookup, lineageTracker);
-        builder.Connect<LineageTrackedItem<object>>(lineageTracker, lineageSink);
+        builder.Connect(lineageTracker, lineageSink);
     }
 
     /// <summary>
     ///     Gets a description of what this pipeline demonstrates.
     /// </summary>
     /// <returns>A detailed description of the pipeline's purpose and flow.</returns>
-    public static string GetDescription()
-    {
-        return @"Complex Data Transformations Sample:
+    public static string GetDescription() =>
+        @"Complex Data Transformations Sample:
 
 This sample demonstrates advanced NPipeline concepts for sophisticated data processing:
 - Multi-stream joins using KeyedJoinNode
@@ -132,5 +131,4 @@ This implementation showcases production-ready patterns for:
 - Data enrichment and transformation
 - Business intelligence generation
 - Data provenance and governance";
-    }
 }

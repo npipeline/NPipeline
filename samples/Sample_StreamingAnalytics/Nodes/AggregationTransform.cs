@@ -204,9 +204,7 @@ public record AggregationMetrics
         ? (double)TotalLateDataPoints / TotalDataPointsProcessed * 100
         : 0;
 
-    public override string ToString()
-    {
-        return $"AggregationMetrics(Windows={TotalWindowsProcessed}, DataPoints={TotalDataPointsProcessed}, " +
-               $"Late={LateDataPercentage:F1}%, Sources={UniqueSources})";
-    }
+    public override string ToString() =>
+        $"AggregationMetrics(Windows={TotalWindowsProcessed}, DataPoints={TotalDataPointsProcessed}, " +
+        $"Late={LateDataPercentage:F1}%, Sources={UniqueSources})";
 }

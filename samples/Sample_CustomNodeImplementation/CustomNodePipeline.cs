@@ -60,9 +60,8 @@ public class CustomNodePipeline : IPipelineDefinition
     ///     Gets a description of what this pipeline demonstrates.
     /// </summary>
     /// <returns>A detailed description of the pipeline's purpose and flow.</returns>
-    public static string GetDescription()
-    {
-        return @"Custom Node Implementation Sample:
+    public static string GetDescription() =>
+        @"Custom Node Implementation Sample:
 
 This sample demonstrates advanced custom node development patterns in NPipeline:
 - Custom source node implementation with lifecycle management
@@ -91,5 +90,4 @@ This implementation follows the IPipelineDefinition pattern, which provides:
 - Proper node isolation between executions
 - Type-safe node connections
 - Clear separation of pipeline structure from execution logic";
-    }
 }

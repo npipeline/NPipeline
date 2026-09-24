@@ -30,10 +30,7 @@ public static class DeviceRegistry
     ///     Gets all registered devices.
     /// </summary>
     /// <returns>All devices in the registry.</returns>
-    public static IEnumerable<DeviceMetadata> GetAllDevices()
-    {
-        return _devices.Values;
-    }
+    public static IEnumerable<DeviceMetadata> GetAllDevices() => _devices.Values;
 
     /// <summary>
     ///     Initializes the registry with sample IoT devices.

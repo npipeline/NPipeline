@@ -39,7 +39,7 @@ public static class PerformanceComparison
 
             for (var i = 0; i < calls; i++)
             {
-                total += backoff.DelayFor((i % 8) + 1);
+                total += backoff.DelayFor(i % 8 + 1);
             }
 
             stopwatch.Stop();

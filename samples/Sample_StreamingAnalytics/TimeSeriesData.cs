@@ -35,8 +35,5 @@ public record TimeSeriesData
     /// </summary>
     public DateTime? OriginalTimestamp { get; init; }
 
-    public override string ToString()
-    {
-        return $"TimeSeriesData(Id={Id}, Timestamp={Timestamp:O}, Value={Value:F2}, Source={Source}, IsLate={IsLate})";
-    }
+    public override string ToString() => $"TimeSeriesData(Id={Id}, Timestamp={Timestamp:O}, Value={Value:F2}, Source={Source}, IsLate={IsLate})";
 }

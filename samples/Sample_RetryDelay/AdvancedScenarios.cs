@@ -56,10 +56,9 @@ public static class AdvancedScenarios
 
         Console.WriteLine();
 
-        static string Verdict(RetryClassifier c, Exception e)
-        {
-            return c.IsTransient(e) ? "transient" : "permanent";
-        }
+        static string Verdict(RetryClassifier c, Exception e) => c.IsTransient(e)
+            ? "transient"
+            : "permanent";
     }
 
     /// <summary>
@@ -71,7 +70,9 @@ public static class AdvancedScenarios
 
         // Item 1 fails with a "busy" error our rule makes transient; item 2 with one that stays permanent.
         var transform = new FlakyTransform((item, attempt) => attempt <= 2
-            ? new InvalidOperationException(item == 1 ? "server busy" : "bad state")
+            ? new InvalidOperationException(item == 1
+                ? "server busy"
+                : "bad state")
             : null);
 
         await InlinePipeline.RunAsync(builder =>
@@ -145,7 +146,10 @@ public static class AdvancedScenarios
         foreach (var action in new[] { ItemFailureAction.Skip, ItemFailureAction.DeadLetter })
         {
             // Item 3 always times out, so it exhausts its retries; the others pass.
-            var transform = new FlakyTransform((item, attempt) => item == 3 ? new TimeoutException($"item 3 timed out (attempt {attempt})") : null);
+            var transform = new FlakyTransform((item, attempt) => item == 3
+                ? new TimeoutException($"item 3 timed out (attempt {attempt})")
+                : null);
+
             var deadLetters = new CollectingDeadLetterSink();
             var received = new List<int>();
 

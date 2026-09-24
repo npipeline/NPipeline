@@ -116,7 +116,7 @@ public class SlidingWindowTransform : TransformNode<TimeSeriesData, WindowedResu
         {
             _windowData.Add(item);
 
-            return await ValueTask.FromResult<WindowedResult>(new WindowedResult
+            return await ValueTask.FromResult(new WindowedResult
             {
                 WindowStart = _currentWindowStart,
                 WindowEnd = currentWindowEnd,
@@ -136,7 +136,7 @@ public class SlidingWindowTransform : TransformNode<TimeSeriesData, WindowedResu
         {
             Console.WriteLine($"Dropping late data point: {item.Id} (too late for sliding window {_currentWindowStart:O})");
 
-            return await ValueTask.FromResult<WindowedResult>(new WindowedResult
+            return await ValueTask.FromResult(new WindowedResult
             {
                 WindowStart = _currentWindowStart,
                 WindowEnd = currentWindowEnd,
@@ -151,7 +151,7 @@ public class SlidingWindowTransform : TransformNode<TimeSeriesData, WindowedResu
             });
         }
 
-        return await ValueTask.FromResult<WindowedResult>(new WindowedResult
+        return await ValueTask.FromResult(new WindowedResult
         {
             WindowStart = _currentWindowStart,
             WindowEnd = currentWindowEnd,

@@ -165,10 +165,7 @@ public class ResourceUtilization
     ///     Returns a string representation of the resource utilization.
     /// </summary>
     /// <returns>String representation of the resource utilization.</returns>
-    public override string ToString()
-    {
-        return $"Resources: CPU={CpuUsage:P0} | Memory={MemoryUsage:P0} | Network={NetworkUsage:P0} | Disk={DiskUsage:P0}";
-    }
+    public override string ToString() => $"Resources: CPU={CpuUsage:P0} | Memory={MemoryUsage:P0} | Network={NetworkUsage:P0} | Disk={DiskUsage:P0}";
 }
 
 /// <summary>
@@ -238,13 +235,11 @@ public class DeviceProcessingStats
     ///     Returns a string representation of the device processing statistics.
     /// </summary>
     /// <returns>String representation of the device processing statistics.</returns>
-    public override string ToString()
-    {
-        return $"Device {DeviceId}: Events={EventsProcessed} | " +
-               $"Latency={AverageLatency.TotalMilliseconds:F0}ms | " +
-               $"Late Data={LateDataRate:P2} | " +
-               $"Errors={ErrorRate:P2}";
-    }
+    public override string ToString() =>
+        $"Device {DeviceId}: Events={EventsProcessed} | " +
+        $"Latency={AverageLatency.TotalMilliseconds:F0}ms | " +
+        $"Late Data={LateDataRate:P2} | " +
+        $"Errors={ErrorRate:P2}";
 }
 
 /// <summary>
@@ -300,14 +295,12 @@ public class WindowProcessingStats
     ///     Returns a string representation of the window processing statistics.
     /// </summary>
     /// <returns>String representation of the window processing statistics.</returns>
-    public override string ToString()
-    {
-        return $"Windows: Total={TotalWindows} | " +
-               $"Completed={CompletedWindows} ({CompletionRate:P0}) | " +
-               $"Late={LateWindows} | " +
-               $"Dropped={DroppedWindows} | " +
-               $"Avg Size={AverageWindowSize.TotalSeconds:F1}s";
-    }
+    public override string ToString() =>
+        $"Windows: Total={TotalWindows} | " +
+        $"Completed={CompletedWindows} ({CompletionRate:P0}) | " +
+        $"Late={LateWindows} | " +
+        $"Dropped={DroppedWindows} | " +
+        $"Avg Size={AverageWindowSize.TotalSeconds:F1}s";
 }
 
 /// <summary>
@@ -356,11 +349,9 @@ public class AlertStatistics
     ///     Returns a string representation of the alert statistics.
     /// </summary>
     /// <returns>String representation of the alert statistics.</returns>
-    public override string ToString()
-    {
-        return $"Alerts: Total={TotalAlerts} | " +
-               $"Critical={CriticalAlerts} | " +
-               $"Warning={WarningAlerts} | " +
-               $"Info={InfoAlerts}";
-    }
+    public override string ToString() =>
+        $"Alerts: Total={TotalAlerts} | " +
+        $"Critical={CriticalAlerts} | " +
+        $"Warning={WarningAlerts} | " +
+        $"Info={InfoAlerts}";
 }

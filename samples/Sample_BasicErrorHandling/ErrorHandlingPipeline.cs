@@ -1,4 +1,3 @@
-using NPipeline.Configuration;
 using NPipeline.Pipeline;
 using NPipeline.Reliability;
 using Sample_BasicErrorHandling.Nodes;
@@ -139,9 +138,8 @@ public class ErrorHandlingPipeline : IPipelineDefinition
     ///     This description provides educational context about the error handling patterns demonstrated
     ///     in this pipeline, making it suitable for learning about resilience in data processing systems.
     /// </remarks>
-    public static string GetDescription()
-    {
-        return @"Basic Error Handling Sample:
+    public static string GetDescription() =>
+        @"Basic Error Handling Sample:
 
 This sample demonstrates fundamental error handling concepts and resilience patterns in NPipeline:
 
@@ -191,5 +189,4 @@ By studying this sample, developers will understand:
 - How to isolate errors to prevent system-wide failures
 - How to maintain observability through comprehensive error logging
 - How to build resilient data processing pipelines that handle real-world failures";
-    }
 }

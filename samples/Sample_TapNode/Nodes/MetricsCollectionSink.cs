@@ -38,7 +38,8 @@ public sealed class MetricsCollectionSink : SinkNode<Transaction>, ISinkNode<Val
     /// <param name="input">The input data pipe.</param>
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    async Task ISinkNode<ProcessedTransaction>.ConsumeAsync(IDataStream<ProcessedTransaction> input, PipelineContext context, CancellationToken cancellationToken)
+    async Task ISinkNode<ProcessedTransaction>.ConsumeAsync(IDataStream<ProcessedTransaction> input, PipelineContext context,
+        CancellationToken cancellationToken)
     {
         _logger.LogInformation("MetricsCollectionSink: Starting to collect metrics for processed transactions at stage {Stage}", _pipelineStage);
 
@@ -71,7 +72,8 @@ public sealed class MetricsCollectionSink : SinkNode<Transaction>, ISinkNode<Val
     /// <param name="input">The input data pipe.</param>
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    async Task ISinkNode<ValidatedTransaction>.ConsumeAsync(IDataStream<ValidatedTransaction> input, PipelineContext context, CancellationToken cancellationToken)
+    async Task ISinkNode<ValidatedTransaction>.ConsumeAsync(IDataStream<ValidatedTransaction> input, PipelineContext context,
+        CancellationToken cancellationToken)
     {
         _logger.LogInformation("MetricsCollectionSink: Starting to collect metrics for validated transactions at stage {Stage}", _pipelineStage);
 
@@ -230,9 +232,8 @@ public sealed class MetricsCollectionSink : SinkNode<Transaction>, ISinkNode<Val
         /// </summary>
         /// <param name="pipelineStage">The pipeline stage.</param>
         /// <returns>Transaction metrics.</returns>
-        public TransactionMetrics GetMetrics(string pipelineStage)
-        {
-            return new TransactionMetrics
+        public TransactionMetrics GetMetrics(string pipelineStage) =>
+            new()
             {
                 MetricsTimestamp = DateTimeOffset.UtcNow,
                 TotalTransactions = _totalTransactions,
@@ -248,6 +249,5 @@ public sealed class MetricsCollectionSink : SinkNode<Transaction>, ISinkNode<Val
                     : 0,
                 PipelineStage = pipelineStage,
             };
-        }
     }
 }

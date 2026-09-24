@@ -91,9 +91,8 @@ public class LookupNodePipeline : IPipelineDefinition
     ///     Gets a description of what this pipeline demonstrates.
     /// </summary>
     /// <returns>A detailed description of the pipeline's purpose and flow.</returns>
-    public static string GetDescription()
-    {
-        return @"IoT Sensor Data Enrichment with LookupNode Sample:
+    public static string GetDescription() =>
+        @"IoT Sensor Data Enrichment with LookupNode Sample:
 
 This sample demonstrates advanced NPipeline concepts for IoT scenarios:
 - Using LookupNode for external data enrichment
@@ -124,5 +123,4 @@ This implementation follows the IPipelineDefinition pattern, which provides:
 - Proper node isolation between executions
 - Type-safe node connections
 - Clear separation of pipeline structure from execution logic";
-    }
 }

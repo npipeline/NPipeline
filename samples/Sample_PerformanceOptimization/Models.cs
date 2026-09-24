@@ -20,12 +20,10 @@ public record PerformanceMetrics
     public bool IsSynchronousPath { get; init; }
     public bool UsesValueTask { get; init; }
 
-    public override string ToString()
-    {
-        return $"{OperationName}: {ElapsedMilliseconds}ms, {MemoryDeltaBytes} bytes, {ItemsProcessed} items, " +
-               $"{AverageMicrosecondsPerItem:F2}μs/item, {(IsSynchronousPath ? "Sync" : "Async")}, " +
-               $"{(UsesValueTask ? "ValueTask" : "Task")}";
-    }
+    public override string ToString() =>
+        $"{OperationName}: {ElapsedMilliseconds}ms, {MemoryDeltaBytes} bytes, {ItemsProcessed} items, " +
+        $"{AverageMicrosecondsPerItem:F2}μs/item, {(IsSynchronousPath ? "Sync" : "Async")}, " +
+        $"{(UsesValueTask ? "ValueTask" : "Task")}";
 }
 
 /// <summary>
@@ -98,19 +96,15 @@ public record BenchmarkComparison
         return (baseline.AverageMicrosecondsPerItem - optimized.AverageMicrosecondsPerItem) / baseline.AverageMicrosecondsPerItem * 100;
     }
 
-    private static long CalculateMemoryImprovement(PerformanceMetrics baseline, PerformanceMetrics optimized)
-    {
-        return baseline.MemoryDeltaBytes - optimized.MemoryDeltaBytes;
-    }
+    private static long CalculateMemoryImprovement(PerformanceMetrics baseline, PerformanceMetrics optimized) =>
+        baseline.MemoryDeltaBytes - optimized.MemoryDeltaBytes;
 
-    public override string ToString()
-    {
-        return $"""
-                Benchmark Results for {TestName}:
-                Task-based: {TaskBasedMetrics}
-                ValueTask-based: {ValueTaskBasedMetrics} ({TaskVsValueTaskSpeedImprovement:F1}% faster, {TaskVsValueTaskMemoryImprovement} bytes saved)
-                Synchronous Fast Path: {SynchronousFastPathMetrics} ({TaskVsSyncSpeedImprovement:F1}% faster, {TaskVsSyncMemoryImprovement} bytes saved)
-                Memory Optimized: {MemoryOptimizedMetrics} ({TaskVsMemoryOptimizedSpeedImprovement:F1}% faster, {TaskVsMemoryOptimizedMemoryImprovement} bytes saved)
-                """;
-    }
+    public override string ToString() =>
+        $"""
+         Benchmark Results for {TestName}:
+         Task-based: {TaskBasedMetrics}
+         ValueTask-based: {ValueTaskBasedMetrics} ({TaskVsValueTaskSpeedImprovement:F1}% faster, {TaskVsValueTaskMemoryImprovement} bytes saved)
+         Synchronous Fast Path: {SynchronousFastPathMetrics} ({TaskVsSyncSpeedImprovement:F1}% faster, {TaskVsSyncMemoryImprovement} bytes saved)
+         Memory Optimized: {MemoryOptimizedMetrics} ({TaskVsMemoryOptimizedSpeedImprovement:F1}% faster, {TaskVsMemoryOptimizedMemoryImprovement} bytes saved)
+         """;
 }

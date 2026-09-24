@@ -154,10 +154,7 @@ public static class RiskCalculator
     /// <summary>
     ///     Combines multiple risk levels by returning the highest risk.
     /// </summary>
-    private static RiskLevel CombineRisks(params RiskLevel[] risks)
-    {
-        return risks.Max();
-    }
+    private static RiskLevel CombineRisks(params RiskLevel[] risks) => risks.Max();
 
     /// <summary>
     ///     Gets a human-readable description of the risk level.

@@ -7,6 +7,7 @@ using NPipeline.Execution;
 using NPipeline.Graph;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
+using NPipeline.Reliability;
 
 namespace Sample_RetryDelay;
 
@@ -51,14 +52,15 @@ internal sealed class FlakyTransform(Func<int, int, Exception?> failure) : Trans
     ///     default classifier treats as transient.
     /// </summary>
     public FlakyTransform(int failuresPerItem)
-        : this((item, attempt) => attempt <= failuresPerItem ? new TimeoutException($"timeout on item {item}, attempt {attempt}") : null)
+        : this((item, attempt) => attempt <= failuresPerItem
+            ? new TimeoutException($"timeout on item {item}, attempt {attempt}")
+            : null)
     {
     }
 
-    public int AttemptsFor(int item)
-    {
-        return _attempts.TryGetValue(item, out var times) ? times.Count : 0;
-    }
+    public int AttemptsFor(int item) => _attempts.TryGetValue(item, out var times)
+        ? times.Count
+        : 0;
 
     /// <summary>
     ///     The waits between consecutive attempts of <paramref name="item" />, in milliseconds.
@@ -151,20 +153,14 @@ internal static class Output
         Console.WriteLine(new string('-', title.Length));
     }
 
-    public static string Ms(double milliseconds)
-    {
-        return $"{milliseconds,7:F1}ms";
-    }
+    public static string Ms(double milliseconds) => $"{milliseconds,7:F1}ms";
 
-    public static string Ms(TimeSpan delay)
-    {
-        return Ms(delay.TotalMilliseconds);
-    }
+    public static string Ms(TimeSpan delay) => Ms(delay.TotalMilliseconds);
 
     /// <summary>
     ///     Prints the first <paramref name="retries" /> delays of a backoff curve. Retry numbers are 1-based.
     /// </summary>
-    public static void Curve(string label, NPipeline.Reliability.RetryBackoff backoff, int retries = 6)
+    public static void Curve(string label, RetryBackoff backoff, int retries = 6)
     {
         var delays = Enumerable.Range(1, retries).Select(n => Ms(backoff.DelayFor(n)));
         Console.WriteLine($"  {label,-34} {string.Join(" ", delays)}");

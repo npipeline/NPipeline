@@ -15,10 +15,8 @@ public sealed class SalesDataSourceNode : SourceNode<SalesRecord>
         _count = count;
     }
 
-    public override IDataStream<SalesRecord> OpenStream(PipelineContext context, CancellationToken cancellationToken)
-    {
-        return new InMemoryDataStream<SalesRecord>(GenerateRecords().ToList(), "sales-data");
-    }
+    public override IDataStream<SalesRecord> OpenStream(PipelineContext context, CancellationToken cancellationToken) =>
+        new InMemoryDataStream<SalesRecord>(GenerateRecords().ToList(), "sales-data");
 
     private IEnumerable<SalesRecord> GenerateRecords()
     {

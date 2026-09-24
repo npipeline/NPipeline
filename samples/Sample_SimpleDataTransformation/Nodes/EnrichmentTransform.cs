@@ -23,7 +23,10 @@ public class EnrichmentTransform : TransformNode<Person, EnrichedPerson>
 
         // Skip placeholder items (those with ID 0) by returning an empty EnrichedPerson
         if (item.Id == 0)
-            return ValueTask.FromResult<EnrichedPerson>(new EnrichedPerson(0, string.Empty, string.Empty, 0, string.Empty, string.Empty, string.Empty, string.Empty, false));
+        {
+            return ValueTask.FromResult<EnrichedPerson>(new EnrichedPerson(0, string.Empty, string.Empty, 0, string.Empty, string.Empty, string.Empty,
+                string.Empty, false));
+        }
 
         // Simulate external data source for country lookup
         var country = GetCountryFromCity(item.City);
@@ -44,7 +47,7 @@ public class EnrichmentTransform : TransformNode<Person, EnrichedPerson>
             IsValidEmail(item.Email)
         );
 
-        return ValueTask.FromResult<EnrichedPerson>(enrichedPerson);
+        return ValueTask.FromResult(enrichedPerson);
     }
 
     /// <summary>

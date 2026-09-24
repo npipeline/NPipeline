@@ -26,19 +26,13 @@ public class CategoryAggregator : AggregateNode<YearOverYearComparison, string, 
     /// </summary>
     /// <param name="item">The year-over-year comparison item.</param>
     /// <returns>The category name for grouping.</returns>
-    public override string GetKey(YearOverYearComparison item)
-    {
-        return item.CurrentYearSales.Category;
-    }
+    public override string GetKey(YearOverYearComparison item) => item.CurrentYearSales.Category;
 
     /// <summary>
     ///     Creates an initial accumulator for a new category group.
     /// </summary>
     /// <returns>A new CategorySummary with default values.</returns>
-    public override CategorySummary CreateAccumulator()
-    {
-        return new CategorySummary(string.Empty, 0, 0, 0, 0, 0m);
-    }
+    public override CategorySummary CreateAccumulator() => new(string.Empty, 0, 0, 0, 0, 0m);
 
     /// <summary>
     ///     Accumulates a year-over-year comparison into the category summary.

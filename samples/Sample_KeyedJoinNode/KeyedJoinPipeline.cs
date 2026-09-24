@@ -96,27 +96,26 @@ public class KeyedJoinPipeline : IPipelineDefinition
         builder.Connect<OrderCustomerJoin>(orderCustomerJoin, productLookup);
 
         // Connect product lookup to aggregations
-        builder.Connect<EnrichedOrder>(productLookup, salesByTierAggregation);
-        builder.Connect<EnrichedOrder>(productLookup, salesByCategoryAggregation);
+        builder.Connect(productLookup, salesByTierAggregation);
+        builder.Connect(productLookup, salesByCategoryAggregation);
 
         // Connect aggregations to their respective sinks
-        builder.Connect<SalesByCustomerTier>(salesByTierAggregation, tierSalesSink);
+        builder.Connect(salesByTierAggregation, tierSalesSink);
         builder.Connect<SalesByCategory>(salesByCategoryAggregation, categorySalesSink);
 
         // Connect join output to join sink (for debugging/join visibility)
-        builder.Connect<OrderCustomerJoin>(orderCustomerJoin, joinSink);
+        builder.Connect(orderCustomerJoin, joinSink);
 
         // Connect enriched orders to enriched sink (for debugging/enrichment visibility)
-        builder.Connect<EnrichedOrder>(productLookup, enrichedSink);
+        builder.Connect(productLookup, enrichedSink);
     }
 
     /// <summary>
     ///     Gets a description of what this pipeline demonstrates.
     /// </summary>
     /// <returns>A detailed description of the pipeline's purpose and flow.</returns>
-    public static string GetDescription()
-    {
-        return @"Keyed Join Node Sample:
+    public static string GetDescription() =>
+        @"Keyed Join Node Sample:
 
 This sample demonstrates NPipeline's KeyedJoinNode functionality for joining data streams based on common keys:
 
@@ -159,7 +158,6 @@ This implementation showcases production-ready patterns for:
 - Business intelligence generation from joined streams
 - Handling of data quality issues in stream processing
 - Multi-dimensional analytics on joined data";
-    }
 
     /// <summary>
     ///     Gets a description of the specific join type being demonstrated.

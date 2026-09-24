@@ -31,19 +31,13 @@ public class SalesByCustomerTierAggregator : AggregateNode<EnrichedOrder, string
     /// </summary>
     /// <param name="item">The enriched order.</param>
     /// <returns>The customer tier as the grouping key.</returns>
-    public override string GetKey(EnrichedOrder item)
-    {
-        return item.CustomerTier;
-    }
+    public override string GetKey(EnrichedOrder item) => item.CustomerTier;
 
     /// <summary>
     ///     Creates the initial accumulator for a customer tier.
     /// </summary>
     /// <returns>The initial accumulator.</returns>
-    public override SalesByCustomerTier CreateAccumulator()
-    {
-        return new SalesByCustomerTier("", 0, 0m, 0m, 0);
-    }
+    public override SalesByCustomerTier CreateAccumulator() => new("", 0, 0m, 0m, 0);
 
     /// <summary>
     ///     Accumulates sales data for a customer tier.
@@ -107,19 +101,13 @@ public class SalesByCategoryAggregator : AggregateNode<EnrichedOrder, string, Sa
     /// </summary>
     /// <param name="item">The enriched order.</param>
     /// <returns>The product category as the grouping key.</returns>
-    public override string GetKey(EnrichedOrder item)
-    {
-        return item.ProductCategory;
-    }
+    public override string GetKey(EnrichedOrder item) => item.ProductCategory;
 
     /// <summary>
     ///     Creates the initial accumulator for a product category.
     /// </summary>
     /// <returns>The initial accumulator.</returns>
-    public override SalesByCategory CreateAccumulator()
-    {
-        return new SalesByCategory("", 0, 0, 0m, "");
-    }
+    public override SalesByCategory CreateAccumulator() => new("", 0, 0, 0m, "");
 
     /// <summary>
     ///     Accumulates sales data for a product category.

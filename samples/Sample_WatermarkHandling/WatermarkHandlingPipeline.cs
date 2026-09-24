@@ -94,9 +94,8 @@ public class WatermarkHandlingPipeline : IPipelineDefinition
     ///     Gets a description of what this pipeline demonstrates.
     /// </summary>
     /// <returns>A detailed description of the pipeline's purpose and flow.</returns>
-    public static string GetDescription()
-    {
-        return @"WatermarkHandling Pipeline Sample:
+    public static string GetDescription() =>
+        @"WatermarkHandling Pipeline Sample:
 
 This sample demonstrates advanced watermark handling capabilities in NPipeline for complex IoT manufacturing scenarios:
 
@@ -156,5 +155,4 @@ WatermarkHandling Concepts Demonstrated:
 This implementation provides a foundation for building sophisticated IoT manufacturing systems
 with NPipeline, demonstrating how WatermarkHandling enables advanced event-time processing
 while maintaining data quality and performance in demanding industrial scenarios.";
-    }
 }

@@ -18,10 +18,7 @@ public class DeviceMetadataLookup : LookupNode<SensorReading, string, DeviceMeta
     /// <param name="input">The sensor reading input item.</param>
     /// <param name="context">The pipeline context.</param>
     /// <returns>The DeviceId to use for the lookup.</returns>
-    protected override string ExtractKey(SensorReading input, PipelineContext context)
-    {
-        return input.DeviceId;
-    }
+    protected override string ExtractKey(SensorReading input, PipelineContext context) => input.DeviceId;
 
     /// <summary>
     ///     Performs the asynchronous lookup operation to retrieve device metadata.

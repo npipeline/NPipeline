@@ -34,12 +34,10 @@ public record FinancialTrade(
     /// <summary>
     ///     Calculates the P&L for this trade (simplified)
     /// </summary>
-    public decimal CalculatePnL(decimal currentPrice)
-    {
-        return Direction == "BUY"
+    public decimal CalculatePnL(decimal currentPrice) =>
+        Direction == "BUY"
             ? (currentPrice - Price) * Quantity
             : (Price - currentPrice) * Quantity;
-    }
 }
 
 /// <summary>

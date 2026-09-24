@@ -119,8 +119,5 @@ public class EventFilterTransform : TransformNode<AnalyticsEvent, FilteredAnalyt
     ///     Gets the current filtering statistics.
     /// </summary>
     /// <returns>A tuple containing total processed and filtered out counts.</returns>
-    public (int TotalProcessed, int FilteredOut) GetStatistics()
-    {
-        return (_totalEventsProcessed, _eventsFilteredOut);
-    }
+    public (int TotalProcessed, int FilteredOut) GetStatistics() => (_totalEventsProcessed, _eventsFilteredOut);
 }

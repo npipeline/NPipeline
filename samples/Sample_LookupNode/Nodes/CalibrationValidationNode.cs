@@ -46,19 +46,15 @@ public class CalibrationValidationNode : TransformNode<SensorReadingWithMetadata
     /// <summary>
     ///     Determines if the device calibration is valid for the given reading timestamp.
     /// </summary>
-    private static bool IsCalibrationValid(DateTime readingTimestamp, DateTime lastCalibration, DateTime nextCalibrationDue)
-    {
+    private static bool IsCalibrationValid(DateTime readingTimestamp, DateTime lastCalibration, DateTime nextCalibrationDue) =>
+
         // Reading must be after last calibration and before next calibration is due
-        return readingTimestamp >= lastCalibration && readingTimestamp <= nextCalibrationDue;
-    }
+        readingTimestamp >= lastCalibration && readingTimestamp <= nextCalibrationDue;
 
     /// <summary>
     ///     Calculates the number of days until the next calibration is due.
     /// </summary>
-    private static int CalculateDaysUntilCalibration(DateTime nextCalibrationDue)
-    {
-        return (int)(nextCalibrationDue - DateTime.UtcNow).TotalDays;
-    }
+    private static int CalculateDaysUntilCalibration(DateTime nextCalibrationDue) => (int)(nextCalibrationDue - DateTime.UtcNow).TotalDays;
 
     /// <summary>
     ///     Generates an appropriate calibration warning message.

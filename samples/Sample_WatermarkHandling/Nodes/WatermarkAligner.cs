@@ -234,10 +234,7 @@ public class WatermarkAligner : TransformNode<SensorReading, SensorReading>
     /// <param name="reading">The sensor reading.</param>
     /// <param name="alignedWatermark">The aligned watermark.</param>
     /// <returns>True if data is late, false otherwise.</returns>
-    private static bool IsLateData(SensorReading reading, DateTimeOffset alignedWatermark)
-    {
-        return reading.Timestamp < alignedWatermark;
-    }
+    private static bool IsLateData(SensorReading reading, DateTimeOffset alignedWatermark) => reading.Timestamp < alignedWatermark;
 
     /// <summary>
     ///     Handles late data by creating records and updating statistics.
@@ -387,15 +384,13 @@ public class WatermarkAligner : TransformNode<SensorReading, SensorReading>
     /// <param name="reading">The late sensor reading.</param>
     /// <param name="alignedWatermark">The current aligned watermark.</param>
     /// <returns>A late data record.</returns>
-    private static LateDataRecord CreateLateDataRecord(SensorReading reading, DateTimeOffset alignedWatermark)
-    {
-        return new LateDataRecord(
+    private static LateDataRecord CreateLateDataRecord(SensorReading reading, DateTimeOffset alignedWatermark) =>
+        new(
             reading.DeviceId,
             reading.Timestamp.UtcDateTime,
             DateTimeOffset.UtcNow.UtcDateTime,
             LateDataHandlingAction.SideOutput,
             "Event arrived after watermark advancement");
-    }
 }
 
 /// <summary>

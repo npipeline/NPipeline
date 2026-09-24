@@ -49,12 +49,11 @@ public class PriorityBasedMergeNode : CustomMergeNode<MarketDataTick>, ITransfor
     }
 
     // ITransformNode implementation (required for pipeline builder compatibility)
-    public async ValueTask<MarketDataTick> TransformAsync(MarketDataTick input, PipelineContext context, CancellationToken cancellationToken)
-    {
+    public async ValueTask<MarketDataTick> TransformAsync(MarketDataTick input, PipelineContext context, CancellationToken cancellationToken) =>
+
         // For transform node compatibility, just pass through the input
         // The actual merge logic is handled by MergeAsync
-        return await ValueTask.FromResult<MarketDataTick>(input);
-    }
+        await ValueTask.FromResult<MarketDataTick>(input);
 
     // CustomMergeNode implementation
     /// <summary>

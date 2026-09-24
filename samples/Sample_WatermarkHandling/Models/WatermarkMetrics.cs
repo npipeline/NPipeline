@@ -83,15 +83,13 @@ public class WatermarkMetrics
     ///     Returns a string representation of the watermark metrics.
     /// </summary>
     /// <returns>String representation of the watermark metrics.</returns>
-    public override string ToString()
-    {
-        return $"Watermark: {CurrentWatermark:HH:mm:ss.fff} | " +
-               $"Delay: {ProcessingDelay.TotalMilliseconds:F0}ms | " +
-               $"Late Data: {LateDataCount} | " +
-               $"Load: {SystemLoad:P0} | " +
-               $"Network: {NetworkCondition} | " +
-               $"Health: {(IsHealthy ? "✓" : "✗")}";
-    }
+    public override string ToString() =>
+        $"Watermark: {CurrentWatermark:HH:mm:ss.fff} | " +
+        $"Delay: {ProcessingDelay.TotalMilliseconds:F0}ms | " +
+        $"Late Data: {LateDataCount} | " +
+        $"Load: {SystemLoad:P0} | " +
+        $"Network: {NetworkCondition} | " +
+        $"Health: {(IsHealthy ? "✓" : "✗")}";
 }
 
 /// <summary>
@@ -170,9 +168,7 @@ public class WatermarkAccuracy
     ///     Returns a string representation of the watermark accuracy.
     /// </summary>
     /// <returns>String representation of the watermark accuracy.</returns>
-    public override string ToString()
-    {
-        return $"Accuracy: {OverallAccuracy:P0} " +
-               $"[P:{PrecisionScore:P0} T:{TimelinessScore:P0} C:{ConsistencyScore:P0} L:{CompletenessScore:P0}]";
-    }
+    public override string ToString() =>
+        $"Accuracy: {OverallAccuracy:P0} " +
+        $"[P:{PrecisionScore:P0} T:{TimelinessScore:P0} C:{ConsistencyScore:P0} L:{CompletenessScore:P0}]";
 }

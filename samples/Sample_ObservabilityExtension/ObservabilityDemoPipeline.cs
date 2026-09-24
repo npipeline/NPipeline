@@ -36,9 +36,8 @@ public class ObservabilityDemoPipeline : IPipelineDefinition
     /// <summary>
     ///     Gets a description of the pipeline.
     /// </summary>
-    public static string GetDescription()
-    {
-        return @"Observability Extension Demo Pipeline:
+    public static string GetDescription() =>
+        @"Observability Extension Demo Pipeline:
 
 This sample demonstrates the comprehensive observability features of NPipeline:
 
@@ -69,5 +68,4 @@ METRICS INTERPRETATION:
 - Throughput: Items per second processed
 - Duration: Total time spent in the node (includes processing and I/O)
 - Success: Whether the node completed without exceptions";
-    }
 }

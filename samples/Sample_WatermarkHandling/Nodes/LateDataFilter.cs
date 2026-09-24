@@ -177,10 +177,7 @@ public class LateDataFilter : TransformNode<SensorReading, SensorReading>
     /// <param name="eventTime">The event timestamp.</param>
     /// <param name="watermark">The current watermark.</param>
     /// <returns>The lateness duration.</returns>
-    private static TimeSpan CalculateLateness(DateTimeOffset eventTime, DateTimeOffset watermark)
-    {
-        return eventTime - watermark;
-    }
+    private static TimeSpan CalculateLateness(DateTimeOffset eventTime, DateTimeOffset watermark) => eventTime - watermark;
 
     /// <summary>
     ///     Handles late data based on the configured policy.
@@ -259,9 +256,8 @@ public class LateDataFilter : TransformNode<SensorReading, SensorReading>
     ///     Gets the default late data policy.
     /// </summary>
     /// <returns>The default late data policy.</returns>
-    private static LateDataPolicy GetDefaultPolicy()
-    {
-        return new LateDataPolicy
+    private static LateDataPolicy GetDefaultPolicy() =>
+        new()
         {
             DeviceType = "Unknown",
             ToleranceWindow = TimeSpan.FromMilliseconds(100),
@@ -269,7 +265,6 @@ public class LateDataFilter : TransformNode<SensorReading, SensorReading>
             MaxLatenessForAcceptance = TimeSpan.FromMilliseconds(500),
             AlertThreshold = TimeSpan.FromMilliseconds(250),
         };
-    }
 
     /// <summary>
     ///     Updates late data statistics.

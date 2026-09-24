@@ -50,10 +50,7 @@ public static class TestDataGenerator
     /// <param name="content">The content for the source data.</param>
     /// <param name="timestamp">The timestamp for the source data.</param>
     /// <returns>A new SourceData instance.</returns>
-    public static SourceData CreateSourceData(string id, string content, DateTime timestamp)
-    {
-        return new SourceData(id, content, timestamp);
-    }
+    public static SourceData CreateSourceData(string id, string content, DateTime timestamp) => new(id, content, timestamp);
 
     /// <summary>
     ///     Creates a new WorkItem instance for testing purposes.
@@ -62,8 +59,5 @@ public static class TestDataGenerator
     /// <param name="description">The description for the work item.</param>
     /// <param name="processingTimeMs">The processing time in milliseconds.</param>
     /// <returns>A new WorkItem instance.</returns>
-    public static WorkItem CreateWorkItem(int id, string description, int processingTimeMs)
-    {
-        return new WorkItem(id, description, processingTimeMs);
-    }
+    public static WorkItem CreateWorkItem(int id, string description, int processingTimeMs) => new(id, description, processingTimeMs);
 }

@@ -139,9 +139,8 @@ public class DynamicAdjustmentStrategy
     ///     Initializes dynamic adjustment configuration.
     /// </summary>
     /// <returns>The dynamic adjustment configuration.</returns>
-    private static DynamicAdjustmentConfiguration InitializeDynamicAdjustmentConfiguration()
-    {
-        return new DynamicAdjustmentConfiguration
+    private static DynamicAdjustmentConfiguration InitializeDynamicAdjustmentConfiguration() =>
+        new()
         {
             // Load thresholds
             HighLoadThreshold = 0.8,
@@ -179,7 +178,6 @@ public class DynamicAdjustmentStrategy
             MaxAdjustmentMs = 500, // Maximum adjustment in any direction
             MinAdjustmentMs = -200, // Maximum negative adjustment
         };
-    }
 }
 
 /// <summary>

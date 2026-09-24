@@ -35,6 +35,27 @@ public class LifecycleMonitorNode : TransformNode<SensorData, SensorData>, IAsyn
     }
 
     /// <summary>
+    ///     Asynchronously disposes of the node and releases all resources.
+    /// </summary>
+    /// <returns>A <see cref="ValueTask" /> that represents the asynchronous dispose operation.</returns>
+    public ValueTask DisposeAsync()
+    {
+        if (!_disposed)
+        {
+            RecordLifecycleEvent(LifecycleEventType.NodeDisposing, "Lifecycle monitor disposal started");
+
+            // Dispose managed resources here if needed
+            _disposed = true;
+
+            RecordLifecycleEvent(LifecycleEventType.NodeDisposed, "Lifecycle monitor disposal completed");
+            Console.WriteLine("LifecycleMonitorNode disposed successfully");
+        }
+
+        GC.SuppressFinalize(this);
+        return ValueTask.CompletedTask;
+    }
+
+    /// <summary>
     ///     Processes sensor data while tracking lifecycle events and performance metrics.
     /// </summary>
     /// <param name="item">The sensor data to process.</param>
@@ -99,29 +120,5 @@ public class LifecycleMonitorNode : TransformNode<SensorData, SensorData>, IAsyn
     ///     Gets the recorded lifecycle events.
     /// </summary>
     /// <returns>A read-only list of lifecycle events.</returns>
-    public IReadOnlyList<LifecycleEvent> GetLifecycleEvents()
-    {
-        return _lifecycleEvents.AsReadOnly();
-    }
-
-    /// <summary>
-    ///     Asynchronously disposes of the node and releases all resources.
-    /// </summary>
-    /// <returns>A <see cref="ValueTask" /> that represents the asynchronous dispose operation.</returns>
-    public ValueTask DisposeAsync()
-    {
-        if (!_disposed)
-        {
-            RecordLifecycleEvent(LifecycleEventType.NodeDisposing, "Lifecycle monitor disposal started");
-
-            // Dispose managed resources here if needed
-            _disposed = true;
-
-            RecordLifecycleEvent(LifecycleEventType.NodeDisposed, "Lifecycle monitor disposal completed");
-            Console.WriteLine("LifecycleMonitorNode disposed successfully");
-        }
-
-        GC.SuppressFinalize(this);
-        return ValueTask.CompletedTask;
-    }
+    public IReadOnlyList<LifecycleEvent> GetLifecycleEvents() => _lifecycleEvents.AsReadOnly();
 }

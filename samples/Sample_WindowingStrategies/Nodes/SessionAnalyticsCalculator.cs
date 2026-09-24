@@ -60,7 +60,7 @@ public class SessionAnalyticsCalculator : TransformNode<IReadOnlyCollection<User
         _logger.Log(LogLevel.Information, "SessionAnalyticsCalculator: Processed {Count} sessions in {ElapsedMs}ms",
             sessions.Count, stopwatch.ElapsedMilliseconds);
 
-        return ValueTask.FromResult<SessionMetrics>(metrics);
+        return ValueTask.FromResult(metrics);
     }
 
     private SessionMetrics CalculateBasicMetrics(IReadOnlyCollection<UserSession> sessions, TimeSpan processingTime)

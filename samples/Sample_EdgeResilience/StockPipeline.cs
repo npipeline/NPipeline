@@ -36,7 +36,9 @@ internal sealed class StockPipeline(HttpClient inventory, bool pipelineRetriesTo
             // The HTTP client already retried transient failures. A 503 that reaches the node is one NResilience
             // gave up on, and the pipeline's classifier would call it transient and retry it again. Turn item
             // retry off for this node, so each call is retried by exactly one layer.
-            ItemRetry = pipelineRetriesToo ? options.ItemRetry : ItemRetryOptions.None,
+            ItemRetry = pipelineRetriesToo
+                ? options.ItemRetry
+                : ItemRetryOptions.None,
             OnItemFailure = ItemFailureAction.DeadLetter,
         });
     }
@@ -51,14 +53,14 @@ internal sealed class DeadLetterCollector : IDeadLetterSink
 
     public IReadOnlyList<DeadLetterEnvelope> Envelopes => [.. _envelopes];
 
-    public void Clear()
-    {
-        _envelopes.Clear();
-    }
-
     public Task HandleAsync(DeadLetterEnvelope envelope, PipelineContext context, CancellationToken cancellationToken)
     {
         _envelopes.Enqueue(envelope);
         return Task.CompletedTask;
+    }
+
+    public void Clear()
+    {
+        _envelopes.Clear();
     }
 }

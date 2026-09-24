@@ -38,49 +38,47 @@ public sealed class CosmosDbConnectorPipeline
     // Description
     // -----------------------------------------------------------------------------------------
 
-    public static string GetDescription()
-    {
-        return """
-               NPipeline Cosmos DB Connector Sample
-               =====================================
+    public static string GetDescription() =>
+        """
+        NPipeline Cosmos DB Connector Sample
+        =====================================
 
-               This sample demonstrates core Cosmos DB connector features using the NoSQL (SQL) API:
+        This sample demonstrates core Cosmos DB connector features using the NoSQL (SQL) API:
 
-                 Step 1 – Bootstrap
-                          Creates the NPipelineSample database and Products / BulkProducts containers
-                          using the Cosmos SDK directly.  This is a one-time setup step performed
-                          outside NPipeline so that all later reads and writes have somewhere to land.
+          Step 1 – Bootstrap
+                   Creates the NPipelineSample database and Products / BulkProducts containers
+                   using the Cosmos SDK directly.  This is a one-time setup step performed
+                   outside NPipeline so that all later reads and writes have somewhere to land.
 
-                 Step 2 – Batch Write  (CosmosWriteStrategy.Batch)
-                          Seeds 10 Product documents concurrently.  Items are grouped into parallel
-                          batches for improved throughput compared to sequential per-row inserts.
+          Step 2 – Batch Write  (CosmosWriteStrategy.Batch)
+                   Seeds 10 Product documents concurrently.  Items are grouped into parallel
+                   batches for improved throughput compared to sequential per-row inserts.
 
-                 Step 3 – Source Read  (CosmosSourceNode<ProductSummary>)
-                          Executes a SQL query against the Products container and materialises the
-                          results as a strongly-typed stream of ProductSummary objects.
+          Step 3 – Source Read  (CosmosSourceNode<ProductSummary>)
+                   Executes a SQL query against the Products container and materialises the
+                   results as a strongly-typed stream of ProductSummary objects.
 
-                 Step 4 – Upsert Update  (CosmosWriteStrategy.Upsert)
-                          Applies a 10 % price increase to every product and writes the updated
-                          documents back using Upsert - creating or replacing as needed.
+          Step 4 – Upsert Update  (CosmosWriteStrategy.Upsert)
+                   Applies a 10 % price increase to every product and writes the updated
+                   documents back using Upsert - creating or replacing as needed.
 
-                 Step 5 – Bulk Write  (CosmosWriteStrategy.Bulk)
-                          Ingests 200 products into the BulkProducts container using the bulk-executor
-                          path - the highest-throughput option for large-scale data loads.
+          Step 5 – Bulk Write  (CosmosWriteStrategy.Bulk)
+                   Ingests 200 products into the BulkProducts container using the bulk-executor
+                   path - the highest-throughput option for large-scale data loads.
 
-                 Step 6 – Error Tolerance  (ContinueOnError = true)
-                          Attempts to Insert products that already exist (HTTP 409 Conflict) and then
-                          shows that the pipeline continued despite individual item failures.
+          Step 6 – Error Tolerance  (ContinueOnError = true)
+                   Attempts to Insert products that already exist (HTTP 409 Conflict) and then
+                   shows that the pipeline continued despite individual item failures.
 
-               Connection string:
-                 Uses the emulator default key.  Start the emulator with:
+        Connection string:
+          Uses the emulator default key.  Start the emulator with:
 
-                   docker-compose up -d
+            docker-compose up -d
 
-                 Then run:
+          Then run:
 
-                   dotnet run
-               """;
-    }
+            dotnet run
+        """;
 
     // -----------------------------------------------------------------------------------------
     // Main entry point
@@ -377,34 +375,31 @@ public sealed class CosmosDbConnectorPipeline
     // Helpers
     // -----------------------------------------------------------------------------------------
 
-    private static List<Product> CreateSeedProducts()
-    {
-        return
-        [
-            new Product
-            {
-                id = "electronics-001", Category = "Electronics", Name = "Wireless Headphones", Price = 79.99m, Stock = 150, LastUpdated = DateTime.UtcNow,
-            },
-            new Product
-            {
-                id = "electronics-002", Category = "Electronics", Name = "USB-C Hub 7-Port", Price = 39.99m, Stock = 300, LastUpdated = DateTime.UtcNow,
-            },
-            new Product
-            {
-                id = "electronics-003", Category = "Electronics", Name = "Mechanical Keyboard", Price = 129.99m, Stock = 80, LastUpdated = DateTime.UtcNow,
-            },
-            new Product { id = "books-001", Category = "Books", Name = "Clean Code", Price = 34.99m, Stock = 500, LastUpdated = DateTime.UtcNow },
-            new Product { id = "books-002", Category = "Books", Name = "The Pragmatic Programmer", Price = 39.99m, Stock = 420, LastUpdated = DateTime.UtcNow },
-            new Product
-            {
-                id = "clothing-001", Category = "Clothing", Name = "Merino Wool Sweater", Price = 89.99m, Stock = 200, LastUpdated = DateTime.UtcNow,
-            },
-            new Product { id = "clothing-002", Category = "Clothing", Name = "Waterproof Jacket", Price = 149.99m, Stock = 75, LastUpdated = DateTime.UtcNow },
-            new Product { id = "home-001", Category = "Home", Name = "Pour-Over Coffee Set", Price = 54.99m, Stock = 120, LastUpdated = DateTime.UtcNow },
-            new Product { id = "home-002", Category = "Home", Name = "Bamboo Cutting Board", Price = 24.99m, Stock = 350, LastUpdated = DateTime.UtcNow },
-            new Product { id = "home-003", Category = "Home", Name = "Cast Iron Skillet", Price = 44.99m, Stock = 180, LastUpdated = DateTime.UtcNow },
-        ];
-    }
+    private static List<Product> CreateSeedProducts() =>
+    [
+        new()
+        {
+            id = "electronics-001", Category = "Electronics", Name = "Wireless Headphones", Price = 79.99m, Stock = 150, LastUpdated = DateTime.UtcNow,
+        },
+        new()
+        {
+            id = "electronics-002", Category = "Electronics", Name = "USB-C Hub 7-Port", Price = 39.99m, Stock = 300, LastUpdated = DateTime.UtcNow,
+        },
+        new()
+        {
+            id = "electronics-003", Category = "Electronics", Name = "Mechanical Keyboard", Price = 129.99m, Stock = 80, LastUpdated = DateTime.UtcNow,
+        },
+        new() { id = "books-001", Category = "Books", Name = "Clean Code", Price = 34.99m, Stock = 500, LastUpdated = DateTime.UtcNow },
+        new() { id = "books-002", Category = "Books", Name = "The Pragmatic Programmer", Price = 39.99m, Stock = 420, LastUpdated = DateTime.UtcNow },
+        new()
+        {
+            id = "clothing-001", Category = "Clothing", Name = "Merino Wool Sweater", Price = 89.99m, Stock = 200, LastUpdated = DateTime.UtcNow,
+        },
+        new() { id = "clothing-002", Category = "Clothing", Name = "Waterproof Jacket", Price = 149.99m, Stock = 75, LastUpdated = DateTime.UtcNow },
+        new() { id = "home-001", Category = "Home", Name = "Pour-Over Coffee Set", Price = 54.99m, Stock = 120, LastUpdated = DateTime.UtcNow },
+        new() { id = "home-002", Category = "Home", Name = "Bamboo Cutting Board", Price = 24.99m, Stock = 350, LastUpdated = DateTime.UtcNow },
+        new() { id = "home-003", Category = "Home", Name = "Cast Iron Skillet", Price = 44.99m, Stock = 180, LastUpdated = DateTime.UtcNow },
+    ];
 
     private static List<Product> CreateBulkProducts(int count)
     {

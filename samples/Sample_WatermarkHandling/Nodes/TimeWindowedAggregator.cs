@@ -17,8 +17,8 @@ public class TimeWindowedAggregator : TransformNode<SensorReading, ProcessingSta
     private readonly ProcessingStats _processingStats = new();
     private readonly object _statsLock = new();
     private readonly WindowConfiguration _windowConfig = new();
-    private readonly ConcurrentDictionary<string, List<SensorReading>> _windowedData = new();
     private readonly object _windowLock = new();
+    private readonly ConcurrentDictionary<string, List<SensorReading>> _windowedData = new();
     private DateTimeOffset _currentWatermark = DateTimeOffset.MinValue;
 
     /// <summary>

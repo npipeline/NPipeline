@@ -374,19 +374,16 @@ public class NotificationProcessor : TransformNode<OrderEvent, NotificationEvent
     /// <param name="orderStatus">The order status.</param>
     /// <param name="notificationType">The notification type.</param>
     /// <returns>The template name.</returns>
-    private string GetTemplateName(string orderStatus, string notificationType)
-    {
-        return $"{notificationType.ToLowerInvariant()}_order_{orderStatus.ToLowerInvariant()}";
-    }
+    private string GetTemplateName(string orderStatus, string notificationType) =>
+        $"{notificationType.ToLowerInvariant()}_order_{orderStatus.ToLowerInvariant()}";
 
     /// <summary>
     ///     Generates template data for the notification.
     /// </summary>
     /// <param name="orderEvent">The order event.</param>
     /// <returns>A dictionary of template data.</returns>
-    private Dictionary<string, object> GenerateTemplateData(OrderEvent orderEvent)
-    {
-        return new Dictionary<string, object>
+    private Dictionary<string, object> GenerateTemplateData(OrderEvent orderEvent) =>
+        new()
         {
             ["order_id"] = orderEvent.OrderId,
             ["customer_id"] = orderEvent.CustomerId,
@@ -401,7 +398,6 @@ public class NotificationProcessor : TransformNode<OrderEvent, NotificationEvent
             ["order_timestamp"] = orderEvent.Timestamp,
             ["notification_timestamp"] = DateTime.UtcNow,
         };
-    }
 
     /// <summary>
     ///     Determines when the notification should be sent.

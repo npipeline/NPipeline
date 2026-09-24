@@ -71,9 +71,8 @@ public class AdvancedErrorHandlingPipeline : IPipelineDefinition
     ///     Gets a description of what this pipeline demonstrates.
     /// </summary>
     /// <returns>A detailed description of the pipeline's purpose and flow.</returns>
-    public static string GetDescription()
-    {
-        return @"Advanced Error Handling Pipeline Sample:
+    public static string GetDescription() =>
+        @"Advanced Error Handling Pipeline Sample:
 
 This sample demonstrates production-grade resilience patterns in NPipeline:
 - Circuit breaker patterns with Polly integration
@@ -95,5 +94,4 @@ This implementation demonstrates:
 - Dead letter queue for failed item handling
 - Error rate monitoring and alerting
 - Advanced retry strategies with backoff policies";
-    }
 }

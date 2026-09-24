@@ -142,36 +142,30 @@ public class AnalyticsProcessor : TransformNode<OrderEvent, AnalyticsEvent>
     /// </summary>
     /// <param name="productId">The product identifier.</param>
     /// <returns>The product category.</returns>
-    private string GetProductCategory(string productId)
-    {
-        return _productCategories.TryGetValue(productId, out var category)
+    private string GetProductCategory(string productId) =>
+        _productCategories.TryGetValue(productId, out var category)
             ? category
             : "Other";
-    }
 
     /// <summary>
     ///     Gets the customer segment for analytics.
     /// </summary>
     /// <param name="customerId">The customer identifier.</param>
     /// <returns>The customer segment.</returns>
-    private string GetCustomerSegment(string customerId)
-    {
-        return _customerSegments.TryGetValue(customerId, out var segment)
+    private string GetCustomerSegment(string customerId) =>
+        _customerSegments.TryGetValue(customerId, out var segment)
             ? segment
             : "Unknown";
-    }
 
     /// <summary>
     ///     Gets the customer region for analytics.
     /// </summary>
     /// <param name="customerId">The customer identifier.</param>
     /// <returns>The customer region.</returns>
-    private string GetCustomerRegion(string customerId)
-    {
-        return _customerRegions.TryGetValue(customerId, out var region)
+    private string GetCustomerRegion(string customerId) =>
+        _customerRegions.TryGetValue(customerId, out var region)
             ? region
             : "Unknown";
-    }
 
     /// <summary>
     ///     Determines the analytics event type based on order status.

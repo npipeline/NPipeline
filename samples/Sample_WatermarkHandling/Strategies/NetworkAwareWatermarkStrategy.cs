@@ -64,9 +64,8 @@ public class NetworkAwareWatermarkStrategy
     ///     Initializes network configuration with default values.
     /// </summary>
     /// <returns>The network configuration.</returns>
-    private static NetworkConfiguration InitializeNetworkConfiguration()
-    {
-        return new NetworkConfiguration
+    private static NetworkConfiguration InitializeNetworkConfiguration() =>
+        new()
         {
             // WiFi networks: Aggressive watermarks with low latency tolerance
             WiFiAdjustment = TimeSpan.FromMilliseconds(-50), // Advance watermark slightly
@@ -80,7 +79,6 @@ public class NetworkAwareWatermarkStrategy
             // Cellular networks: Moderate watermarks with variable latency tolerance
             CellularAdjustment = TimeSpan.FromMilliseconds(200), // Moderate hold back
         };
-    }
 }
 
 /// <summary>

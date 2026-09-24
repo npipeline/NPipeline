@@ -37,40 +37,38 @@ public sealed class MongoDbConnectorPipeline
     // Description
     // -----------------------------------------------------------------------------------------
 
-    public static string GetDescription()
-    {
-        return """
-               NPipeline MongoDB Connector Sample
-               ====================================
+    public static string GetDescription() =>
+        """
+        NPipeline MongoDB Connector Sample
+        ====================================
 
-               This sample demonstrates core MongoDB connector features:
+        This sample demonstrates core MongoDB connector features:
 
-                 Step 1 – Source Read (MongoSourceNode<Order>)
-                          Reads pending orders from the 'orders' collection using a filter
-                          and streams them as strongly-typed Order objects.
+          Step 1 – Source Read (MongoSourceNode<Order>)
+                   Reads pending orders from the 'orders' collection using a filter
+                   and streams them as strongly-typed Order objects.
 
-                 Step 2 – Transform & Write (MongoSinkNode<ProcessedOrder>)
-                          Transforms orders into processed orders with calculated tax and total,
-                          then writes them using the InsertMany strategy.
+          Step 2 – Transform & Write (MongoSinkNode<ProcessedOrder>)
+                   Transforms orders into processed orders with calculated tax and total,
+                   then writes them using the InsertMany strategy.
 
-                 Step 3 – BulkWrite Strategy
-                          Demonstrates high-throughput bulk writing for large datasets
-                          with ordered writes disabled for maximum performance.
+          Step 3 – BulkWrite Strategy
+                   Demonstrates high-throughput bulk writing for large datasets
+                   with ordered writes disabled for maximum performance.
 
-                 Step 4 – Upsert Strategy
-                          Demonstrates idempotent writes that update existing documents
-                          or insert new ones based on a key field.
+          Step 4 – Upsert Strategy
+                   Demonstrates idempotent writes that update existing documents
+                   or insert new ones based on a key field.
 
-               Connection string:
-                 Uses MongoDB running locally via Docker Compose. Start with:
+        Connection string:
+          Uses MongoDB running locally via Docker Compose. Start with:
 
-                   docker-compose up -d
+            docker-compose up -d
 
-                 Then run:
+          Then run:
 
-                   dotnet run
-               """;
-    }
+            dotnet run
+        """;
 
     // -----------------------------------------------------------------------------------------
     // Main entry point

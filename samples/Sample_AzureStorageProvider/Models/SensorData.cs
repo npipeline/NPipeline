@@ -35,10 +35,7 @@ public class SensorData
     ///     Converts the sensor data to a CSV string representation.
     /// </summary>
     /// <returns>A CSV string containing the sensor data.</returns>
-    public string ToCsv()
-    {
-        return $"{SensorId},{Timestamp:yyyy-MM-dd HH:mm:ss},{Temperature:F2},{Humidity:F2},{Location}";
-    }
+    public string ToCsv() => $"{SensorId},{Timestamp:yyyy-MM-dd HH:mm:ss},{Temperature:F2},{Humidity:F2},{Location}";
 
     /// <summary>
     ///     Parses a CSV string into a SensorData object.
@@ -67,8 +64,5 @@ public class SensorData
     ///     Returns a string representation of the sensor data.
     /// </summary>
     /// <returns>A formatted string describing the sensor reading.</returns>
-    public override string ToString()
-    {
-        return $"Sensor {SensorId} at {Location}: {Temperature:F1}°C, {Humidity:F1}% humidity at {Timestamp:yyyy-MM-dd HH:mm:ss}";
-    }
+    public override string ToString() => $"Sensor {SensorId} at {Location}: {Temperature:F1}°C, {Humidity:F1}% humidity at {Timestamp:yyyy-MM-dd HH:mm:ss}";
 }

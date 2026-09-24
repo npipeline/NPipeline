@@ -33,6 +33,17 @@ public class FileSink : SinkNode<string>, IAsyncDisposable
     }
 
     /// <summary>
+    ///     Asynchronously disposes of the sink node resources.
+    /// </summary>
+    /// <returns>A ValueTask that represents the asynchronous dispose operation.</returns>
+    public ValueTask DisposeAsync()
+    {
+        Console.WriteLine("FileSink: Disposing resources...");
+        GC.SuppressFinalize(this);
+        return ValueTask.CompletedTask;
+    }
+
+    /// <summary>
     ///     Executes the sink node asynchronously, writing processed lines to the output file.
     /// </summary>
     /// <param name="input">The input data pipe containing the lines to write.</param>
@@ -112,16 +123,5 @@ public class FileSink : SinkNode<string>, IAsyncDisposable
 
             throw;
         }
-    }
-
-    /// <summary>
-    ///     Asynchronously disposes of the sink node resources.
-    /// </summary>
-    /// <returns>A ValueTask that represents the asynchronous dispose operation.</returns>
-    public ValueTask DisposeAsync()
-    {
-        Console.WriteLine("FileSink: Disposing resources...");
-        GC.SuppressFinalize(this);
-        return ValueTask.CompletedTask;
     }
 }

@@ -77,9 +77,8 @@ public class AggregateNodePipeline : IPipelineDefinition
     ///     Gets a description of what this pipeline demonstrates.
     /// </summary>
     /// <returns>A detailed description of the pipeline's purpose and flow.</returns>
-    public static string GetDescription()
-    {
-        return @"AggregateNode Pipeline Sample:
+    public static string GetDescription() =>
+        @"AggregateNode Pipeline Sample:
 
 This sample demonstrates real-time analytics dashboard scenarios using NPipeline's AggregateNode:
 
@@ -131,5 +130,4 @@ AggregateNode Concepts Demonstrated:
 
 This implementation provides a foundation for building real-time analytics dashboards
 with NPipeline, demonstrating both basic and advanced aggregation patterns using AggregateNode.";
-    }
 }

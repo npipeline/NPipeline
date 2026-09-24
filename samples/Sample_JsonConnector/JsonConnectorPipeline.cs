@@ -176,9 +176,8 @@ public class JsonConnectorPipeline : IPipelineDefinition
     /// <summary>
     ///     Gets a description of what this pipeline demonstrates.
     /// </summary>
-    public static string GetDescription()
-    {
-        return @"JSON Connector Pipeline Sample:
+    public static string GetDescription() =>
+        @"JSON Connector Pipeline Sample:
 
 This sample demonstrates JSON data processing with NPipeline:
 
@@ -226,5 +225,4 @@ add them to the builder, and connect them. The JsonSourceNode and
 JsonSinkNode automatically handle the file system interactions.
 
 This is one of the simplest ways to process JSON files in NPipeline!";
-    }
 }

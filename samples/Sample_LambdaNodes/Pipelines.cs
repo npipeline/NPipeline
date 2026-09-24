@@ -59,15 +59,9 @@ public class HybridApproachPipeline : IPipelineDefinition
         builder.Connect<string>(formatPrice, displaySink);
     }
 
-    public static decimal CalculateDiscount(decimal originalPrice)
-    {
-        return originalPrice * 0.9m;
-    }
+    public static decimal CalculateDiscount(decimal originalPrice) => originalPrice * 0.9m;
 
-    public static string FormatPrice(decimal price)
-    {
-        return $"${price:F2}";
-    }
+    public static string FormatPrice(decimal price) => $"${price:F2}";
 }
 
 /// <summary>

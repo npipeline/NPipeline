@@ -35,9 +35,8 @@ public sealed class KafkaConnectorPipeline : IPipelineDefinition
     /// <summary>
     ///     Creates the default Kafka configuration for this sample.
     /// </summary>
-    public static KafkaConfiguration CreateConfiguration()
-    {
-        return new KafkaConfiguration
+    public static KafkaConfiguration CreateConfiguration() =>
+        new()
         {
             BootstrapServers = "localhost:9092",
             ClientId = "sample-kafka-connector",
@@ -61,30 +60,27 @@ public sealed class KafkaConnectorPipeline : IPipelineDefinition
                 Backoff = KafkaConnectorResilience.Default.Backoff with { MaximumDelay = TimeSpan.FromSeconds(5) },
             },
         };
-    }
 
     /// <summary>
     ///     Gets a description of what the Kafka pipeline demonstrates.
     /// </summary>
-    public static string GetDescription()
-    {
-        return """
-               Kafka Connector Sample:
+    public static string GetDescription() =>
+        """
+        Kafka Connector Sample:
 
-               This sample demonstrates an end-to-end Kafka pipeline using NPipeline:
+        This sample demonstrates an end-to-end Kafka pipeline using NPipeline:
 
-               Pipeline Flow:
-               KafkaSourceNode<SampleMessage>
-                 -> MessageEnricher (adds processing metadata)
-                   -> KafkaSinkNode<SampleMessage>
+        Pipeline Flow:
+        KafkaSourceNode<SampleMessage>
+          -> MessageEnricher (adds processing metadata)
+            -> KafkaSinkNode<SampleMessage>
 
-               Key Features:
-               - Kafka consumer group processing from input-events
-               - Simple enrichment transform with metadata
-               - Batched Kafka production to output-events
-               - Consume retries through NResilience, and configurable partitioning
-               """;
-    }
+        Key Features:
+        - Kafka consumer group processing from input-events
+        - Simple enrichment transform with metadata
+        - Batched Kafka production to output-events
+        - Consume retries through NResilience, and configurable partitioning
+        """;
 }
 
 /// <summary>

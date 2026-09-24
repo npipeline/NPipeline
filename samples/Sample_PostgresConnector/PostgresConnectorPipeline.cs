@@ -33,39 +33,37 @@ public sealed class PostgresConnectorPipeline
     ///     Gets a description of this pipeline.
     /// </summary>
     /// <returns>A string describing the pipeline.</returns>
-    public static string GetDescription()
-    {
-        return """
-               PostgreSQL Connector Sample Pipeline
-               ====================================
+    public static string GetDescription() =>
+        """
+        PostgreSQL Connector Sample Pipeline
+        ====================================
 
-               This pipeline demonstrates of following PostgreSQL connector features:
+        This pipeline demonstrates of following PostgreSQL connector features:
 
-               1. Reading data from PostgreSQL using PostgresSourceNode<T>
-               2. Writing data to PostgreSQL using PostgresSinkNode<T>
-               3. Attribute-based mapping with PostgresTable and PostgresColumn attributes
-               4. Different write strategies (PerRow, Batch)
-               5. Error handling and recovery patterns
-               6. Connection pooling and configuration
-               7. In-memory checkpointing for transient recovery
+        1. Reading data from PostgreSQL using PostgresSourceNode<T>
+        2. Writing data to PostgreSQL using PostgresSinkNode<T>
+        3. Attribute-based mapping with PostgresTable and PostgresColumn attributes
+        4. Different write strategies (PerRow, Batch)
+        5. Error handling and recovery patterns
+        6. Connection pooling and configuration
+        7. In-memory checkpointing for transient recovery
 
-               Pipeline Flow:
-               - Setup database tables and seed sample data
-               - Read customers from source table
-               - Read products from catalog
-               - Read orders with items
-               - Transform and aggregate order data
-               - Write order summaries to destination table
+        Pipeline Flow:
+        - Setup database tables and seed sample data
+        - Read customers from source table
+        - Read products from catalog
+        - Read orders with items
+        - Transform and aggregate order data
+        - Write order summaries to destination table
 
-               Models Used:
-               - Customer: Customer information with convention-based mapping
-               - Product: Product catalog with attribute-based mapping
-               - Order: Order header with foreign key relationships
-               - OrderItem: Order line items
-               - OrderSummary: Aggregated order data for reporting
-               - TestRecord: Test record for write strategy demonstration
-               """;
-    }
+        Models Used:
+        - Customer: Customer information with convention-based mapping
+        - Product: Product catalog with attribute-based mapping
+        - Order: Order header with foreign key relationships
+        - OrderItem: Order line items
+        - OrderSummary: Aggregated order data for reporting
+        - TestRecord: Test record for write strategy demonstration
+        """;
 
     /// <summary>
     ///     Executes the pipeline.

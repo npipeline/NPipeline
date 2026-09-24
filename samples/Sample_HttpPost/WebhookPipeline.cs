@@ -53,9 +53,8 @@ public class WebhookPipeline : IPipelineDefinition
     ///     Gets a description of what this pipeline demonstrates.
     /// </summary>
     /// <returns>A detailed description of the pipeline's purpose and flow.</returns>
-    public static string GetDescription()
-    {
-        return @"HTTP POST Webhook Processing Sample:
+    public static string GetDescription() =>
+        @"HTTP POST Webhook Processing Sample:
 
 This sample demonstrates the push-to-pull bridge pattern for processing HTTP POST requests:
 - Channel-based source that receives data from HTTP endpoints
@@ -81,5 +80,4 @@ This implementation follows the IPipelineDefinition pattern, which provides:
 - Proper node isolation between executions
 - Type-safe node connections
 - Clear separation of pipeline structure from execution logic";
-    }
 }

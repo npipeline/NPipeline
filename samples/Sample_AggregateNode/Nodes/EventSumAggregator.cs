@@ -46,9 +46,8 @@ public class EventSumAggregator : AggregateNode<FilteredAnalyticsEvent, string, 
     ///     This creates a default EventSumMetrics that will be updated as events are accumulated.
     /// </summary>
     /// <returns>The initial accumulator with default values.</returns>
-    public override EventSumMetrics CreateAccumulator()
-    {
-        return new EventSumMetrics(
+    public override EventSumMetrics CreateAccumulator() =>
+        new(
             string.Empty, // Will be set when first event is processed
             0m,
             0,
@@ -57,7 +56,6 @@ public class EventSumAggregator : AggregateNode<FilteredAnalyticsEvent, string, 
             DateTime.MinValue, // Will be set when first event is processed
             TimeSpan.FromSeconds(30) // Fixed window duration
         );
-    }
 
     /// <summary>
     ///     Accumulates a filtered analytics event into the event sum metrics.

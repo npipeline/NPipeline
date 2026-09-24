@@ -15,7 +15,9 @@ internal static class Program
         Console.WriteLine("================================");
         Console.WriteLine();
 
-        var command = args.Length > 0 ? args[0].ToLowerInvariant() : "all";
+        var command = args.Length > 0
+            ? args[0].ToLowerInvariant()
+            : "all";
 
         switch (command)
         {

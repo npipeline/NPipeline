@@ -69,14 +69,12 @@ public sealed class Program
     ///     Builds the configuration from multiple sources in priority order.
     /// </summary>
     /// <returns>The configured <see cref="IConfiguration" /> instance.</returns>
-    private static IConfiguration BuildConfiguration()
-    {
-        return new ConfigurationBuilder()
+    private static IConfiguration BuildConfiguration() =>
+        new ConfigurationBuilder()
             .SetBasePath(Directory.GetCurrentDirectory())
             .AddJsonFile("appsettings.json", true, true)
             .AddEnvironmentVariables()
             .Build();
-    }
 
     /// <summary>
     ///     Builds the service provider with dependency injection configured.

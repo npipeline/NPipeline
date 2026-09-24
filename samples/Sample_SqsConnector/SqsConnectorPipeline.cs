@@ -49,9 +49,8 @@ public sealed class SqsConnectorPipeline : IPipelineDefinition
     /// <summary>
     ///     Creates a default SqsConfiguration for this sample.
     /// </summary>
-    public static SqsConfiguration CreateConfiguration()
-    {
-        return new SqsConfiguration
+    public static SqsConfiguration CreateConfiguration() =>
+        new()
         {
             Region = Region,
             SourceQueueUrl = InputQueueUrl,
@@ -61,38 +60,35 @@ public sealed class SqsConnectorPipeline : IPipelineDefinition
             VisibilityTimeout = 30,
             AcknowledgmentStrategy = AcknowledgmentStrategy.AutoOnSinkSuccess,
         };
-    }
 
     /// <summary>
     ///     Gets a description of the pipeline structure and purpose.
     /// </summary>
     /// <returns>A human-readable description of the pipeline.</returns>
-    public static string GetDescription()
-    {
-        return """
-               Pipeline Structure:
-               ┌─────────────────────────────────────────────────────────────────────────────┐
-               │ SQS Order Processing Pipeline                                               │
-               └─────────────────────────────────────────────────────────────────────────────┘
+    public static string GetDescription() =>
+        """
+        Pipeline Structure:
+        ┌─────────────────────────────────────────────────────────────────────────────┐
+        │ SQS Order Processing Pipeline                                               │
+        └─────────────────────────────────────────────────────────────────────────────┘
 
-               Flow:
-               ┌──────────────────┐      ┌──────────────────┐      ┌──────────────────┐
-               │  SqsSourceNode   │─────▶│  OrderProcessor  │─────▶│   SqsSinkNode    │
-               │   (Order)        │      │  (Transform)     │      │ (ProcessedOrder) │
-               └──────────────────┘      └──────────────────┘      └──────────────────┘
-                       │                           │                         │
-                       ▼                           ▼                         ▼
-               Input SQS Queue              Order Processing          Output SQS Queue
-               (input-orders-queue)         & Validation              (processed-orders-queue)
+        Flow:
+        ┌──────────────────┐      ┌──────────────────┐      ┌──────────────────┐
+        │  SqsSourceNode   │─────▶│  OrderProcessor  │─────▶│   SqsSinkNode    │
+        │   (Order)        │      │  (Transform)     │      │ (ProcessedOrder) │
+        └──────────────────┘      └──────────────────┘      └──────────────────┘
+                │                           │                         │
+                ▼                           ▼                         ▼
+        Input SQS Queue              Order Processing          Output SQS Queue
+        (input-orders-queue)         & Validation              (processed-orders-queue)
 
-               Features Demonstrated:
-               • Continuous message polling from SQS
-               • Automatic message acknowledgment on successful processing
-               • Order validation and status updates
-               • Publishing processed orders to output queue
-               • JSON serialization/deserialization
-               """;
-    }
+        Features Demonstrated:
+        • Continuous message polling from SQS
+        • Automatic message acknowledgment on successful processing
+        • Order validation and status updates
+        • Publishing processed orders to output queue
+        • JSON serialization/deserialization
+        """;
 }
 
 /// <summary>

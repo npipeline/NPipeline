@@ -54,7 +54,10 @@ public class ResultAggregator : SinkNode<int>
         if (collector != null)
         {
             // For sink, items processed equals items received, nothing is emitted
-            var nodeId = context.NodeEnvironment.TryGetNodeId(this, out var resolved) ? resolved : nameof(ResultAggregator);
+            var nodeId = context.NodeEnvironment.TryGetNodeId(this, out var resolved)
+                ? resolved
+                : nameof(ResultAggregator);
+
             collector.RecordItemMetrics(nodeId, _itemsReceived, 0, context.RunIdentity.PipelineId, context.RunIdentity.PipelineName);
 
             // Record performance metrics

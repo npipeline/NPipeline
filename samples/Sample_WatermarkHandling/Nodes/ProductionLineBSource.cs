@@ -170,9 +170,8 @@ public class ProductionLineBSource : SourceNode<SensorReading>
     ///     Generates data quality indicators for LoRaWAN sensors with NTP synchronization.
     /// </summary>
     /// <returns>Data quality indicators with moderate scores reflecting LoRaWAN characteristics.</returns>
-    private DataQualityIndicators GenerateLoRaWANQualityIndicators()
-    {
-        return new DataQualityIndicators
+    private DataQualityIndicators GenerateLoRaWANQualityIndicators() =>
+        new()
         {
             CompletenessScore = 0.85 + _random.NextDouble() * 0.10, // 85-95%
             TimelinessScore = 0.70 + _random.NextDouble() * 0.20, // 70-90%
@@ -188,5 +187,4 @@ public class ProductionLineBSource : SourceNode<SensorReading>
             IsDelayed = _random.NextDouble() < 0.20, // 20% chance
             HasErrors = _random.NextDouble() < 0.05, // 5% chance
         };
-    }
 }

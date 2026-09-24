@@ -77,10 +77,7 @@ public class DeviceMetadata
     ///     Returns a string representation of the device metadata.
     /// </summary>
     /// <returns>String representation of the device metadata.</returns>
-    public override string ToString()
-    {
-        return $"{DeviceId} ({DeviceType}) - {NetworkType} [{ClockAccuracy}] at {Location}";
-    }
+    public override string ToString() => $"{DeviceId} ({DeviceType}) - {NetworkType} [{ClockAccuracy}] at {Location}";
 
     /// <summary>
     ///     Gets default latency characteristics based on network type.
@@ -199,8 +196,6 @@ public class LatencyCharacteristics
     ///     Returns a string representation of the latency characteristics.
     /// </summary>
     /// <returns>String representation of the latency characteristics.</returns>
-    public override string ToString()
-    {
-        return $"Latency: {MinimumLatency.TotalMilliseconds:F0}-{MaximumLatency.TotalMilliseconds:F0}ms (Reliability: {Reliability:P0})";
-    }
+    public override string ToString() =>
+        $"Latency: {MinimumLatency.TotalMilliseconds:F0}-{MaximumLatency.TotalMilliseconds:F0}ms (Reliability: {Reliability:P0})";
 }

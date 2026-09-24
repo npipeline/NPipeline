@@ -54,6 +54,33 @@ public class WebhookSource : ISourceNode<WebhookData>, IAsyncDisposable
     public int TotalEnqueued => _enqueuedCount;
 
     /// <summary>
+    ///     Asynchronously disposes of the webhook source and releases all resources.
+    ///     Completes the channel writer and waits for all pending items to be consumed.
+    /// </summary>
+    /// <returns>A ValueTask that represents the asynchronous dispose operation.</returns>
+    public async ValueTask DisposeAsync()
+    {
+        if (_disposed)
+            return;
+
+        // Signal completion to all readers
+        _ = _channel.Writer.TryComplete();
+
+        // Wait for all items to be consumed
+        try
+        {
+            await _channel.Reader.Completion;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error during WebhookSource disposal while waiting for channel completion");
+        }
+
+        _disposed = true;
+        GC.SuppressFinalize(this);
+    }
+
+    /// <summary>
     ///     Initializes the source node and returns a data pipe that reads from the channel.
     ///     This method is called by the pipeline when starting execution.
     /// </summary>
@@ -100,33 +127,6 @@ public class WebhookSource : ISourceNode<WebhookData>, IAsyncDisposable
         }
 
         return new DataStream<WebhookData>(ReadFromChannel(cancellationToken), "WebhookSource");
-    }
-
-    /// <summary>
-    ///     Asynchronously disposes of the webhook source and releases all resources.
-    ///     Completes the channel writer and waits for all pending items to be consumed.
-    /// </summary>
-    /// <returns>A ValueTask that represents the asynchronous dispose operation.</returns>
-    public async ValueTask DisposeAsync()
-    {
-        if (_disposed)
-            return;
-
-        // Signal completion to all readers
-        _ = _channel.Writer.TryComplete();
-
-        // Wait for all items to be consumed
-        try
-        {
-            await _channel.Reader.Completion;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Error during WebhookSource disposal while waiting for channel completion");
-        }
-
-        _disposed = true;
-        GC.SuppressFinalize(this);
     }
 
     /// <summary>

@@ -90,8 +90,5 @@ public class DataTransform : TransformNode<Customer, Customer>
     /// </summary>
     /// <param name="discount">The discount percentage to normalize.</param>
     /// <returns>The normalized discount percentage.</returns>
-    private static double NormalizeDiscount(double discount)
-    {
-        return Math.Max(0, Math.Min(100, discount));
-    }
+    private static double NormalizeDiscount(double discount) => Math.Max(0, Math.Min(100, discount));
 }

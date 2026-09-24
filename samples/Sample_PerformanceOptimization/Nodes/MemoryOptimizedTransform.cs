@@ -31,7 +31,8 @@ public class MemoryOptimizedTransform : TransformNode<PerformanceDataItem, Proce
     /// <summary>
     ///     Processes the performance data item with memory optimization techniques.
     /// </summary>
-    public override async ValueTask<ProcessedPerformanceItem> TransformAsync(PerformanceDataItem item, PipelineContext context, CancellationToken cancellationToken)
+    public override async ValueTask<ProcessedPerformanceItem> TransformAsync(PerformanceDataItem item, PipelineContext context,
+        CancellationToken cancellationToken)
     {
         var memoryBefore = GC.GetTotalMemory(false);
         var stopwatch = Stopwatch.StartNew();
@@ -254,9 +255,6 @@ public class MemoryOptimizedTransform : TransformNode<PerformanceDataItem, Proce
     /// <summary>
     ///     Gets memory optimization statistics.
     /// </summary>
-    public string GetOptimizationStats()
-    {
-        return
-            $"Memory Optimization Stats: {_totalAllocationsAvoided:N0} allocations avoided, {_poolRentals:N0} pool rentals, {_processingCache.Count:N0} cached items";
-    }
+    public string GetOptimizationStats() =>
+        $"Memory Optimization Stats: {_totalAllocationsAvoided:N0} allocations avoided, {_poolRentals:N0} pool rentals, {_processingCache.Count:N0} cached items";
 }

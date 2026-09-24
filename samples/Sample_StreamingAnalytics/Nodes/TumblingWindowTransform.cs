@@ -92,7 +92,7 @@ public class TumblingWindowTransform : TransformNode<TimeSeriesData, WindowedRes
         {
             _currentWindow.Add(item);
 
-            return await ValueTask.FromResult<WindowedResult>(new WindowedResult
+            return await ValueTask.FromResult(new WindowedResult
             {
                 WindowStart = _windowStart,
                 WindowEnd = _lastWindowEnd,
@@ -112,7 +112,7 @@ public class TumblingWindowTransform : TransformNode<TimeSeriesData, WindowedRes
         {
             Console.WriteLine($"Dropping late data point: {item.Id} (too late for window {_windowStart:O})");
 
-            return await ValueTask.FromResult<WindowedResult>(new WindowedResult
+            return await ValueTask.FromResult(new WindowedResult
             {
                 WindowStart = _windowStart,
                 WindowEnd = _lastWindowEnd,
@@ -127,7 +127,7 @@ public class TumblingWindowTransform : TransformNode<TimeSeriesData, WindowedRes
             });
         }
 
-        return await ValueTask.FromResult<WindowedResult>(new WindowedResult
+        return await ValueTask.FromResult(new WindowedResult
         {
             WindowStart = _windowStart,
             WindowEnd = _lastWindowEnd,

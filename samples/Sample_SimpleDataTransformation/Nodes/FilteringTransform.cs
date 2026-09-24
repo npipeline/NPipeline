@@ -42,7 +42,7 @@ public class FilteringTransform : TransformNode<Person, Person>
 
             // Return a placeholder Person with ID 0 to indicate filtered out
             var filteredPerson = new Person(0, "Filtered", "Out", 0, "filtered@none.com", "Filtered");
-            return await ValueTask.FromResult<Person>(filteredPerson);
+            return await ValueTask.FromResult(filteredPerson);
         }
 
         // Filter condition 3: Maximum age limit for this specific pipeline
@@ -53,11 +53,11 @@ public class FilteringTransform : TransformNode<Person, Person>
 
             // Return a placeholder Person with ID 0 to indicate filtered out
             var filteredPerson = new Person(0, "Filtered", "Out", 0, "filtered@none.com", "Filtered");
-            return await ValueTask.FromResult<Person>(filteredPerson);
+            return await ValueTask.FromResult(filteredPerson);
         }
 
         Console.WriteLine($"Person passed filtering: {item.FirstName} {item.LastName} (Age: {item.Age}, City: {item.City})");
 
-        return await ValueTask.FromResult<Person>(item);
+        return await ValueTask.FromResult(item);
     }
 }

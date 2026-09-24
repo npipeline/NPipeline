@@ -64,19 +64,18 @@ public class TimeWindowedJoinPipeline : IPipelineDefinition
         builder.Connect<SensorMaintenanceJoin>(sensorMaintenanceJoin, enrichmentTransform);
 
         // Connect enrichment transform to aggregation
-        builder.Connect<EnrichedSensorData>(enrichmentTransform, effectivenessAggregation);
+        builder.Connect(enrichmentTransform, effectivenessAggregation);
 
         // Connect aggregation to sink
-        builder.Connect<MaintenanceEffectivenessReport>(effectivenessAggregation, consoleSink);
+        builder.Connect(effectivenessAggregation, consoleSink);
     }
 
     /// <summary>
     ///     Gets a description of what this pipeline demonstrates.
     /// </summary>
     /// <returns>A detailed description of pipeline's purpose and flow.</returns>
-    public static string GetDescription()
-    {
-        return @"Time-Windowed Join Node Sample:
+    public static string GetDescription() =>
+        @"Time-Windowed Join Node Sample:
 
 This sample demonstrates NPipeline's time-windowed join functionality for correlating data streams based on time windows:
 
@@ -121,5 +120,4 @@ This implementation showcases production-ready patterns for:
 - Time-based business intelligence generation
 - Handling of out-of-order data in stream processing
 - Multi-dimensional temporal analytics on joined data";
-    }
 }

@@ -72,108 +72,84 @@ public sealed class TapNodePipeline : IPipelineDefinition
     ///     Gets a description of tap node pipeline.
     /// </summary>
     /// <returns>A description of what this pipeline demonstrates.</returns>
-    public static string GetDescription()
-    {
-        return """
-               TapNode Pipeline Demonstration
-               ============================
+    public static string GetDescription() =>
+        """
+        TapNode Pipeline Demonstration
+        ============================
 
-               This pipeline demonstrates the power of TapNode for non-intrusive monitoring and side-channel processing:
+        This pipeline demonstrates the power of TapNode for non-intrusive monitoring and side-channel processing:
 
-               1. **Main Processing Flow**:
-                  - TransactionSource generates realistic financial transactions
-                  - TransactionValidationTransform validates business rules
-                  - RiskAssessmentTransform performs comprehensive risk analysis
-                  - ConsoleSink displays final processing results
+        1. **Main Processing Flow**:
+           - TransactionSource generates realistic financial transactions
+           - TransactionValidationTransform validates business rules
+           - RiskAssessmentTransform performs comprehensive risk analysis
+           - ConsoleSink displays final processing results
 
-               2. **TapNode Monitoring Points**:
-                  - **Source Tap**: Captures all incoming transactions for audit logging
-                  - **Validation Tap**: Monitors validation results and failed transactions
-                  - **Processing Tap**: Tracks final processing outcomes and performance metrics
-                  - **Alert Tap**: Generates alerts for suspicious activities and performance issues
+        2. **TapNode Monitoring Points**:
+           - **Source Tap**: Captures all incoming transactions for audit logging
+           - **Validation Tap**: Monitors validation results and failed transactions
+           - **Processing Tap**: Tracks final processing outcomes and performance metrics
+           - **Alert Tap**: Generates alerts for suspicious activities and performance issues
 
-               3. **Key TapNode Benefits Demonstrated**:
-                  - **Non-Intrusive**: Main processing continues uninterrupted
-                  - **Multiple Tap Points**: Monitor at different pipeline stages
-                  - **Side Effects**: Audit logging, metrics collection, alert generation
-                  - **Error Isolation**: Tap failures don't affect main pipeline
-                  - **Performance Monitoring**: Track processing times and bottlenecks
+        3. **Key TapNode Benefits Demonstrated**:
+           - **Non-Intrusive**: Main processing continues uninterrupted
+           - **Multiple Tap Points**: Monitor at different pipeline stages
+           - **Side Effects**: Audit logging, metrics collection, alert generation
+           - **Error Isolation**: Tap failures don't affect main pipeline
+           - **Performance Monitoring**: Track processing times and bottlenecks
 
-               The pipeline shows how TapNode enables comprehensive observability without modifying core business logic.
-               """;
-    }
+        The pipeline shows how TapNode enables comprehensive observability without modifying core business logic.
+        """;
 
     /// <summary>
     ///     Creates audit sink for source stage.
     /// </summary>
-    private static AuditLogSink CreateSourceAuditSink(IServiceProvider sp)
-    {
-        return new AuditLogSink(sp.GetRequiredService<ILogger<AuditLogSink>>(), "SourceStage");
-    }
+    private static AuditLogSink CreateSourceAuditSink(IServiceProvider sp) => new(sp.GetRequiredService<ILogger<AuditLogSink>>(), "SourceStage");
 
     /// <summary>
     ///     Creates metrics sink for source stage.
     /// </summary>
-    private static MetricsCollectionSink CreateSourceMetricsSink(IServiceProvider sp)
-    {
-        return new MetricsCollectionSink(sp.GetRequiredService<ILogger<MetricsCollectionSink>>(), "SourceStage");
-    }
+    private static MetricsCollectionSink CreateSourceMetricsSink(IServiceProvider sp) =>
+        new(sp.GetRequiredService<ILogger<MetricsCollectionSink>>(), "SourceStage");
 
     /// <summary>
     ///     Creates alert sink for source stage.
     /// </summary>
-    private static AlertGenerationSink CreateSourceAlertSink(IServiceProvider sp)
-    {
-        return new AlertGenerationSink(sp.GetRequiredService<ILogger<AlertGenerationSink>>(), "SourceStage");
-    }
+    private static AlertGenerationSink CreateSourceAlertSink(IServiceProvider sp) => new(sp.GetRequiredService<ILogger<AlertGenerationSink>>(), "SourceStage");
 
     /// <summary>
     ///     Creates audit sink for validation stage.
     /// </summary>
-    private static AuditLogSink CreateValidationAuditSink(IServiceProvider sp)
-    {
-        return new AuditLogSink(sp.GetRequiredService<ILogger<AuditLogSink>>(), "ValidationStage");
-    }
+    private static AuditLogSink CreateValidationAuditSink(IServiceProvider sp) => new(sp.GetRequiredService<ILogger<AuditLogSink>>(), "ValidationStage");
 
     /// <summary>
     ///     Creates metrics sink for validation stage.
     /// </summary>
-    private static MetricsCollectionSink CreateValidationMetricsSink(IServiceProvider sp)
-    {
-        return new MetricsCollectionSink(sp.GetRequiredService<ILogger<MetricsCollectionSink>>(), "ValidationStage");
-    }
+    private static MetricsCollectionSink CreateValidationMetricsSink(IServiceProvider sp) =>
+        new(sp.GetRequiredService<ILogger<MetricsCollectionSink>>(), "ValidationStage");
 
     /// <summary>
     ///     Creates alert sink for validation stage.
     /// </summary>
-    private static AlertGenerationSink CreateValidationAlertSink(IServiceProvider sp)
-    {
-        return new AlertGenerationSink(sp.GetRequiredService<ILogger<AlertGenerationSink>>(), "ValidationStage");
-    }
+    private static AlertGenerationSink CreateValidationAlertSink(IServiceProvider sp) =>
+        new(sp.GetRequiredService<ILogger<AlertGenerationSink>>(), "ValidationStage");
 
     /// <summary>
     ///     Creates audit sink for processing stage.
     /// </summary>
-    private static AuditLogSink CreateProcessingAuditSink(IServiceProvider sp)
-    {
-        return new AuditLogSink(sp.GetRequiredService<ILogger<AuditLogSink>>(), "ProcessingStage");
-    }
+    private static AuditLogSink CreateProcessingAuditSink(IServiceProvider sp) => new(sp.GetRequiredService<ILogger<AuditLogSink>>(), "ProcessingStage");
 
     /// <summary>
     ///     Creates metrics sink for processing stage.
     /// </summary>
-    private static MetricsCollectionSink CreateProcessingMetricsSink(IServiceProvider sp)
-    {
-        return new MetricsCollectionSink(sp.GetRequiredService<ILogger<MetricsCollectionSink>>(), "ProcessingStage");
-    }
+    private static MetricsCollectionSink CreateProcessingMetricsSink(IServiceProvider sp) =>
+        new(sp.GetRequiredService<ILogger<MetricsCollectionSink>>(), "ProcessingStage");
 
     /// <summary>
     ///     Creates alert sink for processing stage.
     /// </summary>
-    private static AlertGenerationSink CreateProcessingAlertSink(IServiceProvider sp)
-    {
-        return new AlertGenerationSink(sp.GetRequiredService<ILogger<AlertGenerationSink>>(), "ProcessingStage");
-    }
+    private static AlertGenerationSink CreateProcessingAlertSink(IServiceProvider sp) =>
+        new(sp.GetRequiredService<ILogger<AlertGenerationSink>>(), "ProcessingStage");
 
     /// <summary>
     ///     Configures services for tap node pipeline.

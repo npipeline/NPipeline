@@ -17,10 +17,7 @@ public sealed class Program
         try
         {
             var host = Host.CreateDefaultBuilder(args)
-                .ConfigureServices((context, services) =>
-                {
-                    _ = services.AddNPipeline(Assembly.GetExecutingAssembly());
-                })
+                .ConfigureServices((context, services) => { _ = services.AddNPipeline(Assembly.GetExecutingAssembly()); })
                 .Build();
 
             Console.WriteLine("Registered NPipeline services and scanned assemblies for nodes.");

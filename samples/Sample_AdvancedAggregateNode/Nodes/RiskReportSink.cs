@@ -382,14 +382,12 @@ public class RiskReportSink : SinkNode<object>
     ///     Gets current statistics for monitoring purposes.
     /// </summary>
     /// <returns>A tuple with processing statistics.</returns>
-    public (int TotalTrades, int InvalidTrades, int VolatilityResults, int VaRResults, int PortfolioResults) GetStatistics()
-    {
-        return (
-            _totalTradesProcessed,
-            _invalidTradesFiltered,
-            _volatilityResults.Count,
-            _varResults.Count,
-            _portfolioResults.Count
-        );
-    }
+    public (int TotalTrades, int InvalidTrades, int VolatilityResults, int VaRResults, int PortfolioResults) GetStatistics() =>
+    (
+        _totalTradesProcessed,
+        _invalidTradesFiltered,
+        _volatilityResults.Count,
+        _varResults.Count,
+        _portfolioResults.Count
+    );
 }

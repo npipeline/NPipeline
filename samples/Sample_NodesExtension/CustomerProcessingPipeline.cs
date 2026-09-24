@@ -17,12 +17,10 @@ public class CustomerRecord
     public DateTime CreatedDate { get; set; }
     public List<string> Tags { get; set; } = [];
 
-    public override string ToString()
-    {
-        return $"ID: {Id}, Name: {Name}, Email: {Email}, Phone: {Phone}, Age: {Age}, " +
-               $"Balance: {AccountBalance:C}, Created: {CreatedDate:yyyy-MM-dd}, " +
-               $"Tags: [{string.Join(", ", Tags)}]";
-    }
+    public override string ToString() =>
+        $"ID: {Id}, Name: {Name}, Email: {Email}, Phone: {Phone}, Age: {Age}, " +
+        $"Balance: {AccountBalance:C}, Created: {CreatedDate:yyyy-MM-dd}, " +
+        $"Tags: [{string.Join(", ", Tags)}]";
 }
 
 /// <summary>
@@ -88,9 +86,8 @@ public class CustomerProcessingPipeline : IPipelineDefinition
         builder.Connect(filter, sink);
     }
 
-    public static string GetDescription()
-    {
-        return @"Customer Data Processing Pipeline with Nodes Extension:
+    public static string GetDescription() =>
+        @"Customer Data Processing Pipeline with Nodes Extension:
 
 This sample demonstrates key features of NPipeline.Extensions.Nodes:
 
@@ -119,5 +116,4 @@ This sample demonstrates key features of NPipeline.Extensions.Nodes:
 The pipeline processes sample customer data through these stages,
 demonstrating how to clean, validate, and enrich data in a single flow.
 ";
-    }
 }

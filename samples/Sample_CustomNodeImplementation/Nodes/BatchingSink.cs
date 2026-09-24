@@ -42,6 +42,30 @@ public class BatchingSink : SinkNode<ProcessedSensorData>, IAsyncDisposable
     }
 
     /// <summary>
+    ///     Asynchronously disposes of resources used by the batching sink node.
+    /// </summary>
+    /// <returns>A ValueTask representing the asynchronous dispose operation.</returns>
+    public ValueTask DisposeAsync()
+    {
+        if (!_disposed)
+        {
+            Console.WriteLine("Disposing BatchingSink...");
+            Console.WriteLine($"Final batch statistics: {string.Join(", ", GetBatchStatistics().Select(kvp => $"{kvp.Key}={kvp.Value}"))}");
+
+            // Dispose the timer
+            _batchTimer?.Dispose();
+
+            // Clear the current batch
+            _currentBatch.Clear();
+
+            _disposed = true;
+            GC.SuppressFinalize(this);
+        }
+
+        return ValueTask.CompletedTask;
+    }
+
+    /// <summary>
     ///     Processes processed sensor data by batching it for improved performance.
     /// </summary>
     /// <param name="input">The data pipe containing processed sensor data to process.</param>
@@ -162,9 +186,8 @@ public class BatchingSink : SinkNode<ProcessedSensorData>, IAsyncDisposable
     ///     Gets batch statistics for monitoring.
     /// </summary>
     /// <returns>A dictionary containing batch statistics.</returns>
-    public Dictionary<string, object> GetBatchStatistics()
-    {
-        return new Dictionary<string, object>
+    public Dictionary<string, object> GetBatchStatistics() =>
+        new()
         {
             ["TotalItemsProcessed"] = _totalItemsProcessed,
             ["BatchCount"] = _batchCount,
@@ -176,29 +199,4 @@ public class BatchingSink : SinkNode<ProcessedSensorData>, IAsyncDisposable
             ["CurrentBatchSize"] = _currentBatch.Count,
             ["LastBatchFlush"] = _lastBatchFlush,
         };
-    }
-
-    /// <summary>
-    ///     Asynchronously disposes of resources used by the batching sink node.
-    /// </summary>
-    /// <returns>A ValueTask representing the asynchronous dispose operation.</returns>
-    public ValueTask DisposeAsync()
-    {
-        if (!_disposed)
-        {
-            Console.WriteLine("Disposing BatchingSink...");
-            Console.WriteLine($"Final batch statistics: {string.Join(", ", GetBatchStatistics().Select(kvp => $"{kvp.Key}={kvp.Value}"))}");
-
-            // Dispose the timer
-            _batchTimer?.Dispose();
-
-            // Clear the current batch
-            _currentBatch.Clear();
-
-            _disposed = true;
-            GC.SuppressFinalize(this);
-        }
-
-        return ValueTask.CompletedTask;
-    }
 }

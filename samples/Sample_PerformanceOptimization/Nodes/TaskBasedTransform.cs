@@ -24,7 +24,8 @@ public class TaskBasedTransform : TransformNode<PerformanceDataItem, ProcessedPe
     ///     Processes the performance data item using standard Task-based approach.
     ///     This represents the baseline implementation without optimizations.
     /// </summary>
-    public override async ValueTask<ProcessedPerformanceItem> TransformAsync(PerformanceDataItem item, PipelineContext context, CancellationToken cancellationToken)
+    public override async ValueTask<ProcessedPerformanceItem> TransformAsync(PerformanceDataItem item, PipelineContext context,
+        CancellationToken cancellationToken)
     {
         var memoryBefore = GC.GetTotalMemory(false);
         var stopwatch = Stopwatch.StartNew();
@@ -124,8 +125,5 @@ public class TaskBasedTransform : TransformNode<PerformanceDataItem, ProcessedPe
     /// <summary>
     ///     Gets baseline performance statistics.
     /// </summary>
-    public string GetBaselineStats()
-    {
-        return $"Task-based Baseline: {_totalOperations:N0} operations processed, {_cache.Count:N0} items cached";
-    }
+    public string GetBaselineStats() => $"Task-based Baseline: {_totalOperations:N0} operations processed, {_cache.Count:N0} items cached";
 }

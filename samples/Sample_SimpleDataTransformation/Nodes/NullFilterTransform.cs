@@ -31,6 +31,6 @@ public class NullFilterTransform : TransformNode<Person, Person>
         }
 
         // Return the original item if it's valid
-        return ValueTask.FromResult<Person>(item);
+        return ValueTask.FromResult(item);
     }
 }

@@ -74,9 +74,8 @@ public class PerformanceOptimizationPipeline : IPipelineDefinition
     ///     Gets a description of what this performance optimization pipeline demonstrates.
     /// </summary>
     /// <returns>A detailed description of the pipeline's purpose and optimization techniques.</returns>
-    public static string GetDescription()
-    {
-        return @"Performance Optimization Pipeline Sample:
+    public static string GetDescription() =>
+        @"Performance Optimization Pipeline Sample:
 
 This sample demonstrates advanced performance optimization techniques in NPipeline:
 
@@ -117,5 +116,4 @@ Expected Insights:
 
 This sample provides practical guidance for optimizing NPipeline applications
 in production environments where performance and memory efficiency are critical.";
-    }
 }

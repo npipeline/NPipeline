@@ -14,10 +14,7 @@ public sealed class RouteNodePipeline : IPipelineDefinition
     {
         var source = builder.AddSource<OrderSource, OrderEvent>("orders");
 
-        var route = builder.AddRoute<OrderEvent>(options =>
-        {
-            options.WithMatchMode(RouteMatchMode.AllMatches);
-        }, "route-orders");
+        var route = builder.AddRoute<OrderEvent>(options => { options.WithMatchMode(RouteMatchMode.AllMatches); }, "route-orders");
 
         var highValueSink = builder.AddSink<HighValueOrderSink, OrderEvent>("high-value-sink");
         var internationalSink = builder.AddSink<InternationalOrderSink, OrderEvent>("international-sink");
@@ -30,9 +27,8 @@ public sealed class RouteNodePipeline : IPipelineDefinition
         builder.ConnectOtherwise(route, standardSink, "standard");
     }
 
-    public static string GetDescription()
-    {
-        return @"RouteNode Sample:
+    public static string GetDescription() =>
+        @"RouteNode Sample:
 
 This sample demonstrates conditional routing with named outputs:
 - Source emits six order events
@@ -49,5 +45,4 @@ Expected behavior:
 - ORD-1003 and ORD-1004 go to HIGH-VALUE
 - ORD-1002, ORD-1004, and ORD-1006 go to INTERNATIONAL
 - ORD-1001 and ORD-1005 go to STANDARD";
-    }
 }

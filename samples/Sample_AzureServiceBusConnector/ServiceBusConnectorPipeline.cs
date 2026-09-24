@@ -103,34 +103,32 @@ public sealed class ServiceBusConnectorPipeline : IPipelineDefinition
     }
 
     /// <summary>Returns a human-readable description of the pipeline structure.</summary>
-    public static string GetDescription()
-    {
-        return """
-               Pipeline Structure:
-               ┌──────────────────────────────────────────────────────────────────────────────┐
-               │  Azure Service Bus Order Processing Pipeline                                  │
-               └──────────────────────────────────────────────────────────────────────────────┘
+    public static string GetDescription() =>
+        """
+        Pipeline Structure:
+        ┌──────────────────────────────────────────────────────────────────────────────┐
+        │  Azure Service Bus Order Processing Pipeline                                  │
+        └──────────────────────────────────────────────────────────────────────────────┘
 
-               Flow:
-               ┌─────────────────────────┐    ┌─────────────────────────┐    ┌──────────────────────────┐
-               │  ServiceBusQueueSource  │───▶│    OrderProcessor       │───▶│ ServiceBusQueueSinkNode  │
-               │  <Order>               │    │  (Transform)            │    │ <IAcknowledgableMessage  │
-               └─────────────────────────┘    └─────────────────────────┘    │  <ProcessedOrder>>      │
-                         │                             │                      └──────────────────────────┘
-                         ▼                             ▼                                 │
-               Azure Service Bus             Order Validation                  Azure Service Bus
-               (input-orders queue)          & Processing                      (processed-orders queue)
+        Flow:
+        ┌─────────────────────────┐    ┌─────────────────────────┐    ┌──────────────────────────┐
+        │  ServiceBusQueueSource  │───▶│    OrderProcessor       │───▶│ ServiceBusQueueSinkNode  │
+        │  <Order>               │    │  (Transform)            │    │ <IAcknowledgableMessage  │
+        └─────────────────────────┘    └─────────────────────────┘    │  <ProcessedOrder>>      │
+                  │                             │                      └──────────────────────────┘
+                  ▼                             ▼                                 │
+        Azure Service Bus             Order Validation                  Azure Service Bus
+        (input-orders queue)          & Processing                      (processed-orders queue)
 
-               Features Demonstrated:
-               • Consuming messages from Azure Service Bus with explicit settlement
-               • Automatic message lock renewal during processing
-               • Order processing with status tracking
-               • Reconnect behavior using channel-based push-to-pull bridging
-               • AutoOnSinkSuccess acknowledgment - source message Completed only after successful publish
-               • Dead-lettering messages that fail deserialization
-               • Batch sending to output queue for throughput optimisation
-               """;
-    }
+        Features Demonstrated:
+        • Consuming messages from Azure Service Bus with explicit settlement
+        • Automatic message lock renewal during processing
+        • Order processing with status tracking
+        • Reconnect behavior using channel-based push-to-pull bridging
+        • AutoOnSinkSuccess acknowledgment - source message Completed only after successful publish
+        • Dead-lettering messages that fail deserialization
+        • Batch sending to output queue for throughput optimisation
+        """;
 }
 
 /// <summary>

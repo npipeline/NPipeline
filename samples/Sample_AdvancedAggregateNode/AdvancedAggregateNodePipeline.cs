@@ -93,9 +93,8 @@ public class AdvancedAggregateNodePipeline : IPipelineDefinition
     ///     Gets a description of what this pipeline demonstrates.
     /// </summary>
     /// <returns>A detailed description of the pipeline's purpose and flow.</returns>
-    public static string GetDescription()
-    {
-        return @"AdvancedAggregateNode Pipeline Sample:
+    public static string GetDescription() =>
+        @"AdvancedAggregateNode Pipeline Sample:
 
 This sample demonstrates advanced financial risk analysis scenarios using NPipeline's AdvancedAggregateNode:
 
@@ -161,5 +160,4 @@ AdvancedAggregateNode Concepts Demonstrated:
 This implementation provides a comprehensive foundation for building real-time financial risk
 analysis systems with NPipeline, demonstrating the power and flexibility of AdvancedAggregateNode
 for complex quantitative finance applications.";
-    }
 }

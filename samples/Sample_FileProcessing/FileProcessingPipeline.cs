@@ -56,9 +56,8 @@ public class FileProcessingPipeline : IPipelineDefinition
     ///     Gets a description of what this pipeline demonstrates.
     /// </summary>
     /// <returns>A detailed description of the pipeline's purpose and flow.</returns>
-    public static string GetDescription()
-    {
-        return @"File Processing Pipeline Sample:
+    public static string GetDescription() =>
+        @"File Processing Pipeline Sample:
 
 This sample demonstrates file-based data processing with NPipeline:
 - Reading text files using streaming source nodes
@@ -85,5 +84,4 @@ This implementation follows the IPipelineDefinition pattern, which provides:
 - Proper node isolation between executions
 - Type-safe node connections
 - Clear separation of pipeline structure from execution logic";
-    }
 }
