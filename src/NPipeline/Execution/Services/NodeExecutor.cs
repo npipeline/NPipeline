@@ -140,13 +140,13 @@ public sealed class NodeExecutor(
         INode instance)
     {
         // Gather inputs and merge using existing merge service (still reflection-free path)
-        var joinInputPipes = inputLookup[plan.NodeId]
-            .Select(edge => TrackInputFlow(context, plan.NodeId, nodeOutputs[edge.SourceNodeId] ??
-                                                                 throw new InvalidOperationException(
-                                                                     ErrorMessages.OutputNotFoundForSourceNode(edge.SourceNodeId))))
-            .ToList();
+        var joinInputPipes = new List<IDataStream>();
+        foreach (var edge in inputLookup[plan.NodeId])
+            joinInputPipes.Add(TrackInputFlow(context, plan.NodeId, ResolveEdgeInput(edge, nodeOutputs, plan.NodeId)));
 
-        var merged = await pipeMergeService.MergeAsync(nodeDef, instance, joinInputPipes, context.CancellationToken).ConfigureAwait(false);
+        var merged = await pipeMergeService
+            .MergeAsync(nodeDef, instance, joinInputPipes, ExecutionAnnotationsService.GetMergeCapacity(graph, plan.NodeId), context.CancellationToken)
+            .ConfigureAwait(false);
         IDataStream output;
 
         if (graph.Lineage.ItemLevelLineageEnabled)
@@ -334,18 +334,9 @@ public sealed class NodeExecutor(
         if (inputEdges.Count == 0)
             throw new InvalidOperationException(ErrorMessages.NodeMissingInputConnection(nodeId, "unknown", "unknown"));
 
-        var inputPipes = inputEdges.Select(edge =>
-        {
-            if (nodeOutputs.TryGetValue(edge.SourceNodeId, out var inputData) && inputData is not null)
-            {
-                if (inputData is IEdgeRoutedDataStream edgeRouted)
-                    return edgeRouted.GetEdgeView(edge);
-
-                return inputData;
-            }
-
-            throw new InvalidOperationException(ErrorMessages.OutputNotFoundForSourceNode(edge.SourceNodeId) + $" when processing node '{nodeId}'.");
-        }).ToList();
+        var inputPipes = new List<IDataStream>(inputEdges.Count);
+        foreach (var edge in inputEdges)
+            inputPipes.Add(ResolveEdgeInput(edge, nodeOutputs, nodeId));
 
         var nodeDef = nodeDefinitions[nodeId];
 
@@ -356,7 +347,21 @@ public sealed class NodeExecutor(
             return inputPipes[0];
 
         var targetNode = nodeInstances[nodeId];
-        return await pipeMergeService.MergeAsync(nodeDef, targetNode, inputPipes, cancellationToken).ConfigureAwait(false);
+        return await pipeMergeService
+            .MergeAsync(nodeDef, targetNode, inputPipes, ExecutionAnnotationsService.GetMergeCapacity(graph, nodeId), cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>
+    ///     Resolves the input a specific incoming edge delivers, handing a Route node's output the branch this edge
+    ///     represents instead of the next unclaimed subscriber channel.
+    /// </summary>
+    private static IDataStream ResolveEdgeInput(Edge edge, IDictionary<string, IDataStream?> nodeOutputs, string nodeId)
+    {
+        if (!nodeOutputs.TryGetValue(edge.SourceNodeId, out var upstream) || upstream is null)
+            throw new InvalidOperationException(ErrorMessages.OutputNotFoundForSourceNode(edge.SourceNodeId) + $" when processing node '{nodeId}'.");
+
+        return upstream is IEdgeRoutedDataStream routed ? routed.GetEdgeView(edge) : upstream;
     }
 
     private static void ValidateRuntimeInputContract(PipelineGraph graph, string nodeId, IReadOnlyList<IDataStream> inputPipes)

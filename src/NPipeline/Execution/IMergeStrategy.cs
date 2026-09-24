@@ -15,4 +15,12 @@ public interface IMergeStrategy<T>
     /// <param name="cancellationToken">Cancellation token for the operation.</param>
     /// <returns>A merged data pipe containing all items from the input pipes.</returns>
     IDataStream<T> Merge(IEnumerable<IDataStream<T>> pipes, CancellationToken cancellationToken);
+
+    /// <summary>Merges the pipes, buffering at most <paramref name="capacity" /> items when the strategy buffers.</summary>
+    /// <param name="pipes">The data pipes to merge.</param>
+    /// <param name="capacity">The maximum number of items to buffer, when the strategy buffers.</param>
+    /// <param name="cancellationToken">Cancellation token for the operation.</param>
+    /// <returns>A merged data pipe containing all items from the input pipes.</returns>
+    IDataStream<T> Merge(IEnumerable<IDataStream<T>> pipes, int? capacity, CancellationToken cancellationToken) =>
+        Merge(pipes, cancellationToken);
 }

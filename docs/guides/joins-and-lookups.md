@@ -137,6 +137,8 @@ public class CustomerLookup : LookupNode<Order, int, Customer, EnrichedOrder>
 | In-Memory Lookup | One live stream + one static reference dataset |
 | Custom Lookup | One live stream + dynamic lookups (DB, API) per item |
 
+A join reads both of its inputs concurrently, so an unbounded live input on one side does not starve the other. A consequence is that the order in which items from the two sides reach the join is not deterministic: pairing and output content are deterministic, but the order of join output across the two inputs is not.
+
 ## Self-Joins
 
 To join a stream with itself (e.g., matching related events), use `AddSelfJoin`:
