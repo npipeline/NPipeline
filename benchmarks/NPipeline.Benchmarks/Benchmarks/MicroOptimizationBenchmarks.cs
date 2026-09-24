@@ -54,18 +54,16 @@ public class MicroOptimizationBenchmarks
     // ------------------------------------------------------------------------
 
     [Benchmark(Description = "Direct: Task.FromResult")]
-    public Task Direct_Task_FromResult()
-    {
+    public Task Direct_Task_FromResult() =>
+
         // Direct comparison of the micro-optimization
-        return Task.FromResult(ItemCount);
-    }
+        Task.FromResult(ItemCount);
 
     [Benchmark(Description = "Direct: ValueTask.AsTask")]
-    public Task Direct_ValueTask_AsTask()
-    {
+    public Task Direct_ValueTask_AsTask() =>
+
         // Direct comparison of the previous implementation
-        return new ValueTask<int>(ItemCount).AsTask();
-    }
+        new ValueTask<int>(ItemCount).AsTask();
 
     // ------------------------------------------------------------------------
     // 3) Memory allocation patterns

@@ -145,18 +145,14 @@ public class StrategyBenchmarks
 
     private sealed class PassThrough : TransformNode<int, int>
     {
-        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult<int>(item);
-        }
+        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken) => ValueTask.FromResult(item);
     }
 
     private sealed class CollectionToEnumerableCast : TransformNode<IReadOnlyCollection<int>, IEnumerable<int>>
     {
-        public override ValueTask<IEnumerable<int>> TransformAsync(IReadOnlyCollection<int> item, PipelineContext context, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult<IEnumerable<int>>(item);
-        }
+        public override ValueTask<IEnumerable<int>>
+            TransformAsync(IReadOnlyCollection<int> item, PipelineContext context, CancellationToken cancellationToken) =>
+            ValueTask.FromResult<IEnumerable<int>>(item);
     }
 
     private sealed class BlackHoleSink : SinkNode<int>

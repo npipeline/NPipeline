@@ -394,7 +394,7 @@ public class ParallelismScalingBenchmarks
                 result += (long)Math.Sqrt((item + 1) * (i + 1));
             }
 
-            return ValueTask.FromResult<ProcessedResult>(new ProcessedResult
+            return ValueTask.FromResult(new ProcessedResult
             {
                 InputValue = item,
                 OutputValue = (int)result,
@@ -416,7 +416,7 @@ public class ParallelismScalingBenchmarks
                 result += (int)Math.Sqrt(item * i);
             }
 
-            return ValueTask.FromResult<ProcessedResult>(new ProcessedResult
+            return ValueTask.FromResult(new ProcessedResult
             {
                 InputValue = item,
                 OutputValue = result,
@@ -484,7 +484,8 @@ public class ParallelismScalingBenchmarks
 
     private sealed class BatchProcessingTransform : TransformNode<IReadOnlyCollection<int>, ProcessedResult>
     {
-        public override async ValueTask<ProcessedResult> TransformAsync(IReadOnlyCollection<int> batch, PipelineContext context, CancellationToken cancellationToken)
+        public override async ValueTask<ProcessedResult> TransformAsync(IReadOnlyCollection<int> batch, PipelineContext context,
+            CancellationToken cancellationToken)
         {
             // Process entire batch
             var sum = 0;
