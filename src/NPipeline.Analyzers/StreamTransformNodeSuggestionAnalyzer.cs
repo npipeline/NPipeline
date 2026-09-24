@@ -126,22 +126,15 @@ public sealed class StreamTransformNodeSuggestionAnalyzer : DiagnosticAnalyzer
         return false;
     }
 
-    private static ITypeSymbol? GetInputTypeFromITransformNode(INamedTypeSymbol transformNodeInterface)
-    {
-        return transformNodeInterface.TypeArguments.Length == 2
+    private static ITypeSymbol? GetInputTypeFromITransformNode(INamedTypeSymbol transformNodeInterface) =>
+        transformNodeInterface.TypeArguments.Length == 2
             ? transformNodeInterface.TypeArguments[0]
             : null;
-    }
 
-    private static ITypeSymbol? GetOutputTypeFromITransformNode(INamedTypeSymbol transformNodeInterface)
-    {
-        return transformNodeInterface.TypeArguments.Length == 2
+    private static ITypeSymbol? GetOutputTypeFromITransformNode(INamedTypeSymbol transformNodeInterface) =>
+        transformNodeInterface.TypeArguments.Length == 2
             ? transformNodeInterface.TypeArguments[1]
             : null;
-    }
 
-    private static bool IsTaskLike(INamedTypeSymbol namedType, string metadataName)
-    {
-        return namedType.ConstructedFrom.ToDisplayString() == metadataName;
-    }
+    private static bool IsTaskLike(INamedTypeSymbol namedType, string metadataName) => namedType.ConstructedFrom.ToDisplayString() == metadataName;
 }

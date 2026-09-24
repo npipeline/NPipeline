@@ -259,25 +259,18 @@ public sealed class InefficientStringOperationsAnalyzer : ProfileGatedDiagnostic
     /// <summary>
     ///     Checks if an invocation has multiple parameters (indicating potential inefficiency).
     /// </summary>
-    private static bool HasMultipleParameters(InvocationExpressionSyntax invocation)
-    {
-        return invocation.ArgumentList?.Arguments.Count > 2;
-    }
+    private static bool HasMultipleParameters(InvocationExpressionSyntax invocation) => invocation.ArgumentList?.Arguments.Count > 2;
 
     /// <summary>
     ///     Determines if a string operation could benefit from span-based alternatives.
     /// </summary>
-    private static bool CouldUseSpan(string methodName)
-    {
-        return methodName is "Substring" or "Replace" or "Split" or "Trim";
-    }
+    private static bool CouldUseSpan(string methodName) => methodName is "Substring" or "Replace" or "Split" or "Trim";
 
     /// <summary>
     ///     Checks if an invocation is in a hot path (simple heuristic).
     /// </summary>
-    private static bool InHotPath(InvocationExpressionSyntax invocation)
-    {
+    private static bool InHotPath(InvocationExpressionSyntax invocation) =>
+
         // Check if in a loop
-        return IsInLoop(invocation);
-    }
+        IsInLoop(invocation);
 }

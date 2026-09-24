@@ -21,10 +21,7 @@ public sealed class InefficientExceptionHandlingCodeFixProvider : CodeFixProvide
         [InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId];
 
     /// <inheritdoc />
-    public override FixAllProvider GetFixAllProvider()
-    {
-        return WellKnownFixAllProviders.BatchFixer;
-    }
+    public override FixAllProvider GetFixAllProvider() => WellKnownFixAllProviders.BatchFixer;
 
     /// <inheritdoc />
     public override async Task RegisterCodeFixesAsync(CodeFixContext context)

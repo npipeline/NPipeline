@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Globalization;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -176,7 +177,7 @@ public sealed class TimeoutConfigurationAnalyzer : DiagnosticAnalyzer
 
                 try
                 {
-                    amount = Convert.ToDouble(constant.Value, System.Globalization.CultureInfo.InvariantCulture);
+                    amount = Convert.ToDouble(constant.Value, CultureInfo.InvariantCulture);
                 }
                 catch (Exception ex) when (ex is FormatException or InvalidCastException)
                 {

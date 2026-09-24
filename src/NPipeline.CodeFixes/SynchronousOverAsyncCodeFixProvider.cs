@@ -21,10 +21,7 @@ public sealed class SynchronousOverAsyncCodeFixProvider : CodeFixProvider
         [SynchronousOverAsyncAnalyzer.SynchronousOverAsyncId];
 
     /// <inheritdoc />
-    public override FixAllProvider GetFixAllProvider()
-    {
-        return WellKnownFixAllProviders.BatchFixer;
-    }
+    public override FixAllProvider GetFixAllProvider() => WellKnownFixAllProviders.BatchFixer;
 
     /// <inheritdoc />
     public override async Task RegisterCodeFixesAsync(CodeFixContext context)
@@ -135,31 +132,25 @@ public sealed class SynchronousOverAsyncCodeFixProvider : CodeFixProvider
     /// <summary>
     ///     Determines if the invocation is a Task.Wait() call.
     /// </summary>
-    private static bool IsTaskWaitInvocation(InvocationExpressionSyntax invocation)
-    {
-        return invocation.Expression is MemberAccessExpressionSyntax memberAccess &&
-               memberAccess.Name.Identifier.Text == "Wait" &&
-               memberAccess.Expression is IdentifierNameSyntax { Identifier.Text: "Task" };
-    }
+    private static bool IsTaskWaitInvocation(InvocationExpressionSyntax invocation) =>
+        invocation.Expression is MemberAccessExpressionSyntax memberAccess &&
+        memberAccess.Name.Identifier.Text == "Wait" &&
+        memberAccess.Expression is IdentifierNameSyntax { Identifier.Text: "Task" };
 
     /// <summary>
     ///     Determines if the invocation is a GetResult() call.
     /// </summary>
-    private static bool IsGetResultInvocation(InvocationExpressionSyntax invocation)
-    {
-        return invocation.Expression is MemberAccessExpressionSyntax memberAccess &&
-               memberAccess.Name.Identifier.Text == "GetResult";
-    }
+    private static bool IsGetResultInvocation(InvocationExpressionSyntax invocation) =>
+        invocation.Expression is MemberAccessExpressionSyntax memberAccess &&
+        memberAccess.Name.Identifier.Text == "GetResult";
 
     /// <summary>
     ///     Determines if the invocation is a Task.Run() call.
     /// </summary>
-    private static bool IsTaskRunInvocation(InvocationExpressionSyntax invocation)
-    {
-        return invocation.Expression is MemberAccessExpressionSyntax memberAccess &&
-               memberAccess.Name.Identifier.Text == "Run" &&
-               memberAccess.Expression is IdentifierNameSyntax { Identifier.Text: "Task" };
-    }
+    private static bool IsTaskRunInvocation(InvocationExpressionSyntax invocation) =>
+        invocation.Expression is MemberAccessExpressionSyntax memberAccess &&
+        memberAccess.Name.Identifier.Text == "Run" &&
+        memberAccess.Expression is IdentifierNameSyntax { Identifier.Text: "Task" };
 
     /// <summary>
     ///     Replaces .Result with await.

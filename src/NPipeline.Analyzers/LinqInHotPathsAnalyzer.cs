@@ -319,5 +319,4 @@ public sealed class LinqInHotPathsAnalyzer : ProfileGatedDiagnosticAnalyzer
 
         return "Unknown";
     }
-
 }

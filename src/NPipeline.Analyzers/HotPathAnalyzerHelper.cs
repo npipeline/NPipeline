@@ -58,10 +58,7 @@ internal static class HotPathAnalyzerHelper
     /// <summary>
     ///     Determines if a method name matches common high-frequency execution patterns.
     /// </summary>
-    public static bool IsHotPathMethodByName(MethodDeclarationSyntax method)
-    {
-        return HotPathMethodNames.Contains(method.Identifier.Text);
-    }
+    public static bool IsHotPathMethodByName(MethodDeclarationSyntax method) => HotPathMethodNames.Contains(method.Identifier.Text);
 
     /// <summary>
     ///     Determines if a method is async by modifier or return type.

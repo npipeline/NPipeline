@@ -14,13 +14,11 @@ internal static class ResiliencePolicySyntax
     ///     Whether <paramref name="method" /> is one of the three decisions of a type that implements
     ///     <c>IResiliencePolicy</c>, directly or through <c>ResiliencePolicyBase</c>.
     /// </summary>
-    public static bool IsPolicyDecision(IMethodSymbol method, INamedTypeSymbol policyInterface)
-    {
-        return Array.IndexOf(DecisionMethodNames, method.Name) >= 0
-               && method.Parameters.Length == 2
-               && method.ContainingType is { } type
-               && type.AllInterfaces.Contains(policyInterface, SymbolEqualityComparer.Default);
-    }
+    public static bool IsPolicyDecision(IMethodSymbol method, INamedTypeSymbol policyInterface) =>
+        Array.IndexOf(DecisionMethodNames, method.Name) >= 0
+        && method.Parameters.Length == 2
+        && method.ContainingType is { } type
+        && type.AllInterfaces.Contains(policyInterface, SymbolEqualityComparer.Default);
 
     /// <summary>
     ///     Whether the body of <paramref name="method" /> mentions <c>ResilienceDecision.{member}</c>, qualified or
@@ -33,7 +31,7 @@ internal static class ResiliencePolicySyntax
         string member,
         CancellationToken cancellationToken)
     {
-        SyntaxNode? body = (SyntaxNode?)method.Body ?? method.ExpressionBody;
+        var body = (SyntaxNode?)method.Body ?? method.ExpressionBody;
 
         if (body is null)
             return false;

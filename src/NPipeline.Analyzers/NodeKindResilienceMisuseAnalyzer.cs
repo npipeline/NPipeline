@@ -122,11 +122,9 @@ public sealed class NodeKindResilienceMisuseAnalyzer : DiagnosticAnalyzer
         }
     }
 
-    private static bool IsPipelineValue(ExpressionSyntax value, string? lambdaParameter, string setting)
-    {
-        return lambdaParameter is not null
-               && value is MemberAccessExpressionSyntax { Expression: IdentifierNameSyntax receiver } member
-               && receiver.Identifier.Text == lambdaParameter
-               && member.Name.Identifier.Text == setting;
-    }
+    private static bool IsPipelineValue(ExpressionSyntax value, string? lambdaParameter, string setting) =>
+        lambdaParameter is not null
+        && value is MemberAccessExpressionSyntax { Expression: IdentifierNameSyntax receiver } member
+        && receiver.Identifier.Text == lambdaParameter
+        && member.Name.Identifier.Text == setting;
 }

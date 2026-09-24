@@ -26,10 +26,7 @@ public sealed class CancellationTokenRespectCodeFixProvider : CodeFixProvider
     /// <summary>
     ///     Gets the fix all provider.
     /// </summary>
-    public override FixAllProvider GetFixAllProvider()
-    {
-        return WellKnownFixAllProviders.BatchFixer;
-    }
+    public override FixAllProvider GetFixAllProvider() => WellKnownFixAllProviders.BatchFixer;
 
     /// <summary>
     ///     Registers code fixes for the specified context.
