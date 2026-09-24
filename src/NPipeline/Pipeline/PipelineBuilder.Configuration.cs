@@ -1,20 +1,16 @@
 using System.Collections.Immutable;
 using System.ComponentModel;
-using System.Reflection;
 using NPipeline.Configuration;
-using NPipeline.Execution;
-using NPipeline.Execution.Strategies;
-using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataStreams;
 using NPipeline.ErrorHandling;
-using NPipeline.Graph;
-using NPipeline.Graph.PipelineDelegates;
-using NPipeline.Graph.Validation;
+using NPipeline.Execution;
 using NPipeline.Execution.Annotations;
+using NPipeline.Execution.Strategies;
+using NPipeline.Graph;
+using NPipeline.Graph.Validation;
 using NPipeline.Lineage;
 using NPipeline.Nodes;
+using NPipeline.Reliability;
 using NPipeline.Visualization;
-using NPipeline.Resilience;
 
 namespace NPipeline.Pipeline;
 
@@ -48,28 +44,32 @@ public sealed partial class PipelineBuilder
     }
 
     /// <summary>
-    ///     Method for applying resilience wrapping to nodes. Use fluent extension methods on node handles instead.
+    ///     Wraps each transform whose resilience options allow restarts in the node restart strategy.
     /// </summary>
     /// <remarks>
-    ///     This method is public to support fluent extensions in separate assemblies,
-    ///     but is hidden from IntelliSense to discourage direct use. Always use the fluent extension methods on node handles.
+    ///     A transform whose configured strategy cannot resume is left as it is; <c>ResilienceOptionsRule</c> reports it
+    ///     as a build error. The builder's own node definitions are not changed, so a build that fails validation can be
+    ///     corrected and built again.
     /// </remarks>
-    [EditorBrowsable(EditorBrowsableState.Never)]
-    public PipelineBuilder WithResilience(NodeHandle handle)
+    private static ImmutableArray<NodeDefinition> WithNodeRestart(IEnumerable<NodeDefinition> nodes, ErrorHandlingConfiguration errorHandling)
     {
-        if (!NodeState.Nodes.TryGetValue(handle.Id, out var nodeDef))
-            throw new InvalidOperationException(ErrorMessages.NodeNotFoundInBuilder(handle.Id, "WithResilience"));
+        var pipelineOptions = errorHandling.Resilience ?? PipelineResilienceOptions.None;
+        var result = ImmutableArray.CreateBuilder<NodeDefinition>();
 
-        if (!typeof(ITransformNode).IsAssignableFrom(nodeDef.NodeType))
-            throw new InvalidOperationException(ErrorMessages.ResilienceCannotBeAppliedToNonTransformNode(nodeDef.Name, nodeDef.Kind.ToString()));
+        foreach (var node in nodes)
+        {
+            var options = errorHandling.NodeResilience?.GetValueOrDefault(node.Id) ?? pipelineOptions;
 
-        var currentStrategy = nodeDef.ExecutionStrategy ?? new SequentialExecutionStrategy();
+            var restartable = options.NodeRestart.MaxRestarts > 0
+                              && typeof(ITransformNode).IsAssignableFrom(node.NodeType)
+                              && node.ExecutionStrategy is null or IResumableExecutionStrategy;
 
-        if (currentStrategy is not ResilientExecutionStrategy)
-            currentStrategy = new ResilientExecutionStrategy(currentStrategy);
+            result.Add(restartable
+                ? node.WithExecutionStrategy(new ResilientExecutionStrategy(node.ExecutionStrategy))
+                : node);
+        }
 
-        NodeState.Nodes[handle.Id] = nodeDef.WithExecutionStrategy(currentStrategy);
-        return this;
+        return result.ToImmutable();
     }
 
     /// <summary>
@@ -94,6 +94,24 @@ public sealed partial class PipelineBuilder
     {
         ConfigurationState.ResiliencePolicyType = typeof(T);
         ConfigurationState.ResiliencePolicy = null;
+        return this;
+    }
+
+    /// <summary>
+    ///     Adds a resilience policy that decides for one node in place of the pipeline's policy.
+    /// </summary>
+    /// <param name="handle">The node.</param>
+    /// <param name="resiliencePolicy">The policy that decides the node's item, restart, and node failures.</param>
+    /// <returns>The current PipelineBuilder instance for method chaining.</returns>
+    public PipelineBuilder AddResiliencePolicy(NodeHandle handle, IResiliencePolicy resiliencePolicy)
+    {
+        ArgumentNullException.ThrowIfNull(handle);
+        ArgumentNullException.ThrowIfNull(resiliencePolicy);
+
+        if (!NodeState.Nodes.ContainsKey(handle.Id))
+            throw new InvalidOperationException(ErrorMessages.NodeNotFoundInBuilder(handle.Id, "AddResiliencePolicy"));
+
+        NodeState.ExecutionAnnotations[ExecutionAnnotationKeys.NodeResiliencePolicyForNode(handle.Id)] = resiliencePolicy;
         return this;
     }
 
@@ -130,15 +148,14 @@ public sealed partial class PipelineBuilder
     /// <returns>The current PipelineBuilder instance for method chaining.</returns>
     /// <remarks>
     ///     <para>
-    ///         When set to <see cref="PipelineOptimizationProfile.Default" /> (the default), the builder applies
-    ///         sensible retry defaults: 3 item retries, exponential backoff with full jitter, and a 10,000-item
-    ///         materialization cap - unless the user has explicitly configured retry options via
-    ///         <see cref="PipelineBuilder.WithRetryOptions(Func{PipelineRetryOptions, PipelineRetryOptions})" />.
+    ///         The profile sets the resilience options that
+    ///         <see cref="WithResilience(Func{PipelineResilienceOptions, PipelineResilienceOptions})" /> starts from.
+    ///         Under <see cref="PipelineOptimizationProfile.Default" /> (the default), transient item failures are
+    ///         retried three times with exponential backoff; permanent failures fail at once.
     ///     </para>
     ///     <para>
-    ///         When set to <see cref="PipelineOptimizationProfile.HighThroughput" />, the builder reverts to
-    ///         strict defaults (no retries, no materialization cap, no delay strategy) and all performance
-    ///         analyzers are active at build time.
+    ///         Under <see cref="PipelineOptimizationProfile.HighThroughput" />, nothing is retried
+    ///         (<see cref="PipelineResilienceOptions.None" />) and all performance analyzers are active at build time.
     ///     </para>
     /// </remarks>
     public PipelineBuilder WithOptimizationProfile(PipelineOptimizationProfile profile)
@@ -148,90 +165,72 @@ public sealed partial class PipelineBuilder
     }
 
     /// <summary>
-    ///     Applies retry defaults for the currently active optimization profile.
-    ///     In <see cref="PipelineOptimizationProfile.Default" /> this enables retries with sensible defaults
-    ///     (3 retries, exponential backoff with full jitter, 10,000-item materialization cap).
-    ///     In <see cref="PipelineOptimizationProfile.HighThroughput" /> this applies strict baseline defaults
-    ///     (no retries, no delay strategy, no materialization cap).
+    ///     Configures the pipeline's resilience options: item retry, node restart, node retry, the circuit breaker, and
+    ///     what happens to an item that is not retried.
     /// </summary>
-    /// <remarks>
-    ///     Use <see cref="WithRetry(PipelineOptimizationProfile)" /> when you want retry defaults from a specific profile,
-    ///     regardless of the currently selected runtime profile.
-    /// </remarks>
-    /// <returns>The current PipelineBuilder instance for method chaining.</returns>
-    public PipelineBuilder WithRetry()
-    {
-        return WithRetry(_config.OptimizationProfile);
-    }
-
-    /// <summary>
-    ///     Applies retry defaults from the specified optimization profile.
-    /// </summary>
-    /// <param name="profile">
-    ///     The profile whose retry defaults should be applied.
-    ///     This does not change the builder's runtime optimization profile.
+    /// <param name="configure">
+    ///     Derives the options from the ones passed in, normally with <c>with</c>. The options passed in are the
+    ///     optimization profile's defaults (see <see cref="PipelineResilienceOptions.ForProfile" />), with any earlier
+    ///     <see cref="WithResilience(Func{PipelineResilienceOptions, PipelineResilienceOptions})" /> call applied.
     /// </param>
     /// <returns>The current PipelineBuilder instance for method chaining.</returns>
-    public PipelineBuilder WithRetry(PipelineOptimizationProfile profile)
-    {
-        var retryOptions = OptimizationProfileBehaviorRegistry.For(profile).RetryDefaults;
-
-        _config = _config with
-        {
-            RetryOptions = retryOptions,
-            RetryExplicitlyConfigured = true
-        };
-
-        return this;
-    }
-
-    /// <summary>
-    ///     Configures retry options for the pipeline using a configuration function.
-    /// </summary>
-    /// <param name="configure">A function that takes the current retry options and returns modified options.</param>
-    /// <returns>The current PipelineBuilder instance for method chaining.</returns>
-    public PipelineBuilder WithRetryOptions(Func<PipelineRetryOptions, PipelineRetryOptions> configure)
+    /// <remarks>
+    ///     The function runs when the pipeline is built, so the call can come before or after
+    ///     <see cref="WithOptimizationProfile" />.
+    ///     <code>
+    ///     builder.WithResilience(o => o with
+    ///     {
+    ///         ItemRetry = ItemRetryOptions.Default with { MaxRetries = 5 },
+    ///         OnItemFailure = ItemFailureAction.DeadLetter,
+    ///     });
+    ///     </code>
+    /// </remarks>
+    public PipelineBuilder WithResilience(Func<PipelineResilienceOptions, PipelineResilienceOptions> configure)
     {
         ArgumentNullException.ThrowIfNull(configure);
 
-        var configuredOptions = configure(_config.RetryOptions);
-        ArgumentNullException.ThrowIfNull(configuredOptions);
-
-        _config = _config with { RetryOptions = configuredOptions, RetryExplicitlyConfigured = true };
+        _config = _config with { ConfigureResilience = Compose(_config.ConfigureResilience, configure) };
         return this;
     }
 
     /// <summary>
-    ///     Configures circuit breaker settings for the pipeline to handle failures gracefully.
+    ///     Configures one node's resilience options, derived from the pipeline's.
     /// </summary>
-    /// <param name="failureThreshold">The number of failures before opening the circuit breaker. Default is 5.</param>
-    /// <param name="openDuration">The duration to keep the circuit breaker open. Default is 1 minute.</param>
-    /// <param name="samplingWindow">The time window to sample for failure rate calculation. Default is 5 minutes.</param>
+    /// <param name="handle">The node.</param>
+    /// <param name="configure">
+    ///     Derives the node's options from the ones passed in, normally with <c>with</c>. The options passed in are the
+    ///     pipeline's (after <see cref="WithResilience(Func{PipelineResilienceOptions, PipelineResilienceOptions})" />),
+    ///     with any earlier call for the same node applied.
+    /// </param>
     /// <returns>The current PipelineBuilder instance for method chaining.</returns>
-    public PipelineBuilder WithCircuitBreaker(int failureThreshold = 5, TimeSpan? openDuration = null, TimeSpan? samplingWindow = null)
+    /// <remarks>
+    ///     <para>
+    ///         Item retry and node restart apply only to transform nodes. Changing them from the pipeline's values
+    ///         for a source, sink, or aggregate is a build error rather than a setting that silently does nothing.
+    ///     </para>
+    ///     <code>
+    ///     builder.WithResilience(enrich, o => o with { ItemRetry = o.ItemRetry with { MaxRetries = 10 } });
+    ///     </code>
+    /// </remarks>
+    public PipelineBuilder WithResilience(NodeHandle handle, Func<PipelineResilienceOptions, PipelineResilienceOptions> configure)
     {
-        _config = _config with
-        {
-            CircuitBreakerOptions =
-            new PipelineCircuitBreakerOptions(failureThreshold, openDuration ?? TimeSpan.FromMinutes(1), samplingWindow ?? TimeSpan.FromMinutes(5))
-                .Validate(),
-        };
-
-        return this;
-    }
-
-    /// <summary>
-    ///     Configures memory management options for the circuit breaker.
-    /// </summary>
-    /// <param name="configure">A function that takes the current memory management options and returns modified options.</param>
-    /// <returns>The current PipelineBuilder instance for method chaining.</returns>
-    public PipelineBuilder ConfigureCircuitBreakerMemoryManagement(Func<CircuitBreakerMemoryManagementOptions, CircuitBreakerMemoryManagementOptions> configure)
-    {
+        ArgumentNullException.ThrowIfNull(handle);
         ArgumentNullException.ThrowIfNull(configure);
 
-        var current = _config.CircuitBreakerMemoryOptions ?? CircuitBreakerMemoryManagementOptions.Default;
-        _config = _config with { CircuitBreakerMemoryOptions = configure(current).Validate() };
+        if (!NodeState.Nodes.ContainsKey(handle.Id))
+            throw new InvalidOperationException(ErrorMessages.NodeNotFoundInBuilder(handle.Id, "WithResilience"));
+
+        NodeState.ResilienceOverrides[handle.Id] = Compose(NodeState.ResilienceOverrides.GetValueOrDefault(handle.Id), configure);
         return this;
+    }
+
+    private static Func<PipelineResilienceOptions, PipelineResilienceOptions> Compose(
+        Func<PipelineResilienceOptions, PipelineResilienceOptions>? first,
+        Func<PipelineResilienceOptions, PipelineResilienceOptions> second)
+    {
+        return first is null
+            ? second
+            : options => second(first(options));
     }
 
     /// <summary>
@@ -310,40 +309,6 @@ public sealed partial class PipelineBuilder
     {
         ConfigurationState.PipelineLineageSinkType = typeof(T);
         ConfigurationState.PipelineLineageSink = null;
-        return this;
-    }
-
-    /// <summary>
-    ///     Sets retry options for a specific node identified by its handle.
-    /// </summary>
-    /// <param name="handle">The handle of the node to configure retry options for.</param>
-    /// <param name="options">The retry options to apply to the node.</param>
-    /// <returns>The current PipelineBuilder instance for method chaining.</returns>
-    public PipelineBuilder WithRetryOptions(NodeHandle handle, PipelineRetryOptions options)
-    {
-        if (!NodeState.Nodes.ContainsKey(handle.Id))
-            throw new InvalidOperationException(ErrorMessages.NodeNotFoundInBuilder(handle.Id, "WithRetryOptions"));
-
-        NodeState.RetryOverrides[handle.Id] = options;
-        return this;
-    }
-
-    /// <summary>
-    ///     Sets a node-scoped resilience policy override for item-level failures.
-    /// </summary>
-    /// <remarks>
-    ///     This API exists to support fluent extension packages in separate assemblies.
-    /// </remarks>
-    [EditorBrowsable(EditorBrowsableState.Never)]
-    public PipelineBuilder SetNodeResiliencePolicy(NodeHandle handle, IResiliencePolicy policy)
-    {
-        ArgumentNullException.ThrowIfNull(handle);
-        ArgumentNullException.ThrowIfNull(policy);
-
-        if (!NodeState.Nodes.ContainsKey(handle.Id))
-            throw new InvalidOperationException(ErrorMessages.NodeNotFoundInBuilder(handle.Id, "SetNodeResiliencePolicy"));
-
-        NodeState.ExecutionAnnotations[ExecutionAnnotationKeys.NodeResiliencePolicyForNode(handle.Id)] = policy;
         return this;
     }
 

@@ -192,13 +192,11 @@ public sealed class CosmosDatabaseStorageProvider : IDatabaseStorageProvider, IS
     /// <param name="cancellationToken">Token to observe while waiting for the task to complete.</param>
     /// <returns>A task producing a readable <see cref="Stream" />.</returns>
     /// <exception cref="NotSupportedException">Always thrown for database providers.</exception>
-    public Task<Stream> OpenReadAsync(StorageUri uri, CancellationToken cancellationToken = default)
-    {
+    public Task<Stream> OpenReadAsync(StorageUri uri, CancellationToken cancellationToken = default) =>
         throw new NotSupportedException(
             $"OpenReadAsync is not supported by {nameof(CosmosDatabaseStorageProvider)}. " +
             $"Database providers are intended for connection management only. " +
             $"Use {nameof(IDatabaseConnection)} and {nameof(IDatabaseCommand)} for database operations.");
-    }
 
     /// <summary>
     ///     Opens a writable stream for the specified <see cref="StorageUri" />.
@@ -208,13 +206,11 @@ public sealed class CosmosDatabaseStorageProvider : IDatabaseStorageProvider, IS
     /// <param name="cancellationToken">Token to observe while waiting for the task to complete.</param>
     /// <returns>A task producing a writable <see cref="Stream" />.</returns>
     /// <exception cref="NotSupportedException">Always thrown for database providers.</exception>
-    public Task<Stream> OpenWriteAsync(StorageUri uri, CancellationToken cancellationToken = default)
-    {
+    public Task<Stream> OpenWriteAsync(StorageUri uri, CancellationToken cancellationToken = default) =>
         throw new NotSupportedException(
             $"OpenWriteAsync is not supported by {nameof(CosmosDatabaseStorageProvider)}. " +
             $"Database providers are intended for connection management only. " +
             $"Use {nameof(IDatabaseConnection)} and {nameof(IDatabaseCommand)} for database operations.");
-    }
 
     /// <summary>
     ///     Checks whether a resource exists at the specified <see cref="StorageUri" />.
@@ -224,22 +220,17 @@ public sealed class CosmosDatabaseStorageProvider : IDatabaseStorageProvider, IS
     /// <param name="cancellationToken">Token to observe while waiting for the task to complete.</param>
     /// <returns>True if the resource exists; otherwise false.</returns>
     /// <exception cref="NotSupportedException">Always thrown for database providers.</exception>
-    public Task<bool> ExistsAsync(StorageUri uri, CancellationToken cancellationToken = default)
-    {
+    public Task<bool> ExistsAsync(StorageUri uri, CancellationToken cancellationToken = default) =>
         throw new NotSupportedException(
             $"ExistsAsync is not supported by {nameof(CosmosDatabaseStorageProvider)}. " +
             $"Database providers are intended for connection management only. " +
             $"Use {nameof(IDatabaseConnection)} and {nameof(IDatabaseCommand)} for database operations.");
-    }
 
     /// <summary>
     ///     Returns metadata describing the provider's capabilities and supported schemes.
     /// </summary>
     /// <returns>A <see cref="StorageProviderMetadata" /> instance describing the provider.</returns>
-    public StorageProviderMetadata GetMetadata()
-    {
-        return Metadata;
-    }
+    public StorageProviderMetadata GetMetadata() => Metadata;
 
     private static CosmosUriInfo ParseCosmosUri(StorageUri uri)
     {
@@ -301,10 +292,7 @@ public sealed class CosmosDatabaseStorageProvider : IDatabaseStorageProvider, IS
         return info;
     }
 
-    private static string BuildConnectionString(CosmosUriInfo info)
-    {
-        return $"AccountEndpoint={info.Endpoint};AccountKey={info.AccountKey};";
-    }
+    private static string BuildConnectionString(CosmosUriInfo info) => $"AccountEndpoint={info.Endpoint};AccountKey={info.AccountKey};";
 
     private sealed class CosmosUriInfo
     {

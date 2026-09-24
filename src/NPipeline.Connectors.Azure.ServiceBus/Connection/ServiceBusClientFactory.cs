@@ -134,14 +134,12 @@ public static class ServiceBusClientFactory
     /// <summary>
     ///     Produces a string key that uniquely identifies a Service Bus connection (for pooling).
     /// </summary>
-    public static string GetConnectionKey(ServiceBusConfiguration configuration)
-    {
-        return !string.IsNullOrWhiteSpace(configuration.NamedConnection)
+    public static string GetConnectionKey(ServiceBusConfiguration configuration) =>
+        !string.IsNullOrWhiteSpace(configuration.NamedConnection)
             ? $"named:{configuration.NamedConnection}"
             : !string.IsNullOrWhiteSpace(configuration.ConnectionString)
                 ? $"cs:{configuration.ConnectionString}"
                 : configuration.AuthenticationMode == AzureAuthenticationMode.EndpointWithKey
                     ? $"nsk:{configuration.FullyQualifiedNamespace}:{configuration.SharedAccessKeyName}"
                     : $"ns:{configuration.FullyQualifiedNamespace}:{configuration.AuthenticationMode}";
-    }
 }

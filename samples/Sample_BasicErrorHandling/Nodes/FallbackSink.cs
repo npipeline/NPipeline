@@ -120,10 +120,7 @@ public class FallbackSink : SinkNode<string>
     ///     Determines whether to simulate a primary output failure based on the failure rate.
     /// </summary>
     /// <returns>True if a failure should be simulated, false otherwise.</returns>
-    private bool ShouldSimulatePrimaryFailure()
-    {
-        return _random.NextDouble() < _primaryFailureRate;
-    }
+    private bool ShouldSimulatePrimaryFailure() => _random.NextDouble() < _primaryFailureRate;
 
     /// <summary>
     ///     Sets the primary output failure rate for testing purposes.
@@ -154,10 +151,7 @@ public class FallbackSink : SinkNode<string>
     ///     Gets the processing statistics for this sink.
     /// </summary>
     /// <returns>A tuple containing primary success count and fallback activation count.</returns>
-    public (int PrimarySuccessCount, int FallbackActivationCount) GetStatistics()
-    {
-        return (_primarySuccessCount, _fallbackActivationCount);
-    }
+    public (int PrimarySuccessCount, int FallbackActivationCount) GetStatistics() => (_primarySuccessCount, _fallbackActivationCount);
 
     /// <summary>
     ///     Resets the processing statistics.

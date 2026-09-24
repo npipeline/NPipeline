@@ -15,20 +15,11 @@ public sealed class AutoObservabilityScopeTests
 
     private sealed class TestObservabilityFactory : IObservabilityFactory
     {
-        public IObservabilityCollector ResolveObservabilityCollector()
-        {
-            throw new NotImplementedException();
-        }
+        public IObservabilityCollector ResolveObservabilityCollector() => throw new NotImplementedException();
 
-        public IMetricsSink ResolveMetricsSink()
-        {
-            throw new NotImplementedException();
-        }
+        public IMetricsSink ResolveMetricsSink() => throw new NotImplementedException();
 
-        public IPipelineMetricsSink ResolvePipelineMetricsSink()
-        {
-            throw new NotImplementedException();
-        }
+        public IPipelineMetricsSink ResolvePipelineMetricsSink() => throw new NotImplementedException();
     }
 
     #endregion

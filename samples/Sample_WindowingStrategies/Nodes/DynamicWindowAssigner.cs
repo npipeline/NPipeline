@@ -122,11 +122,9 @@ public class DynamicWindowAssigner : TransformNode<UserSession, IReadOnlyList<Us
         return end - start;
     }
 
-    private static bool IsRealSession(UserSession? session)
-    {
-        return session is not null
-               && session.EventCount > 0
-               && !string.IsNullOrEmpty(session.SessionId)
-               && !session.SessionId.StartsWith("dummy", StringComparison.OrdinalIgnoreCase);
-    }
+    private static bool IsRealSession(UserSession? session) =>
+        session is not null
+        && session.EventCount > 0
+        && !string.IsNullOrEmpty(session.SessionId)
+        && !session.SessionId.StartsWith("dummy", StringComparison.OrdinalIgnoreCase);
 }

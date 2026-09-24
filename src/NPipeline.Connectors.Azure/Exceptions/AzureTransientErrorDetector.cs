@@ -67,32 +67,27 @@ public class AzureTransientErrorDetector : ITransientErrorDetector
     /// </summary>
     /// <param name="exception">The exception to check.</param>
     /// <returns>The suggested retry delay, or null if not available.</returns>
-    public virtual TimeSpan? GetRetryDelay(Exception? exception)
-    {
+    public virtual TimeSpan? GetRetryDelay(Exception? exception) =>
+
         // Base implementation doesn't extract retry delay - service-specific implementations should override
-        return null;
-    }
+        null;
 
     /// <summary>
     ///     Gets the correlation/activity ID from an exception for tracing.
     /// </summary>
     /// <param name="exception">The exception to check.</param>
     /// <returns>The correlation ID, or null if not available.</returns>
-    public virtual string? GetCorrelationId(Exception? exception)
-    {
+    public virtual string? GetCorrelationId(Exception? exception) =>
+
         // Base implementation doesn't extract correlation ID - service-specific implementations should override
-        return null;
-    }
+        null;
 
     /// <summary>
     ///     Determines if an HTTP status code represents a transient error.
     /// </summary>
     /// <param name="statusCode">The HTTP status code.</param>
     /// <returns>True if the status code indicates a transient error.</returns>
-    protected static bool IsTransientStatus(int statusCode)
-    {
-        return TransientStatusCodes.Contains(statusCode);
-    }
+    protected static bool IsTransientStatus(int statusCode) => TransientStatusCodes.Contains(statusCode);
 
     /// <summary>
     ///     Determines if an HTTP request exception represents a transient error.

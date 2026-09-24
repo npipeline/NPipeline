@@ -1,6 +1,7 @@
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.Execution.Caching;
+using NPipeline.Execution.CircuitBreaking;
 using NPipeline.Graph;
 using NPipeline.Lineage;
 using NPipeline.Nodes;
@@ -16,8 +17,8 @@ internal sealed class PipelineExecutionOrchestrator : IPipelineExecutionOrchestr
     private readonly ILineage _lineage;
     private readonly PipelineLineageRecordingStage _lineageRecordingStage;
     private readonly PipelineNodeExecutionStage _nodeExecutionStage;
-    private readonly IPipelineFactory _pipelineFactory;
     private readonly IObservabilitySurface _observabilitySurface;
+    private readonly IPipelineFactory _pipelineFactory;
     private readonly PipelineExecutionSetupStage _setupStage;
 
     public PipelineExecutionOrchestrator(
@@ -77,6 +78,9 @@ internal sealed class PipelineExecutionOrchestrator : IPipelineExecutionOrchestr
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(createPipeline);
 
+        // Link the runner's token into the context's token for the whole run, cleanup included: node execution
+        // observes the context's token, so this is what lets the caller's token stop a running pipeline.
+        using var runCancellation = context.LinkRunCancellation(cancellationToken);
         using var pipelineActivity = _observabilitySurface.BeginPipeline(definitionType, context);
         PipelineGraph? graph = null;
         InitializeExecutionContext(context);
@@ -94,7 +98,10 @@ internal sealed class PipelineExecutionOrchestrator : IPipelineExecutionOrchestr
             var pipeline = createPipeline(_pipelineFactory, context);
             graph = pipeline.Graph;
 
-            var setupResult = await _setupStage.PrepareAsync(definitionType, graph, context, cancellationToken).ConfigureAwait(false);
+            // A factory-built pipeline carries its definition's breakers, which outlive this run. Any other gets fresh ones.
+            context.ExecutionConfiguration.CircuitBreakers = pipeline.CircuitBreakers ?? new CircuitBreakerRegistry();
+
+            var setupResult = await _setupStage.PrepareAsync(definitionType, graph, context, context.CancellationToken).ConfigureAwait(false);
             graph = setupResult.Graph;
             nodeInstances = setupResult.NodeInstances;
 
@@ -139,10 +146,8 @@ internal sealed class PipelineExecutionOrchestrator : IPipelineExecutionOrchestr
             runIdentity.RunId = Guid.NewGuid();
 
         observability.ProcessedItemsCounter = new StatsCounter();
-        execution.GlobalRetryOptions = execution.RetryOptions;
-        execution.NodeRetryOverrides.Clear();
+        execution.ResetResilienceOptions();
         nodeEnvironment.NodeExecutionScopeRegistry.Clear();
         execution.IsParallelExecution = false;
-        execution.LastRetryExhaustedException = null;
     }
 }

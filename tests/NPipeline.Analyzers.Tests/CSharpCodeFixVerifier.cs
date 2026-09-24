@@ -64,10 +64,7 @@ public static class CSharpCodeFixVerifier
     /// <summary>
     ///     Creates a diagnostic result for testing.
     /// </summary>
-    public static DiagnosticResult Diagnostic(string diagnosticId)
-    {
-        return new DiagnosticResult(diagnosticId);
-    }
+    public static DiagnosticResult Diagnostic(string diagnosticId) => new(diagnosticId);
 }
 
 /// <summary>
@@ -84,13 +81,7 @@ public class DiagnosticResult
 
     public static DiagnosticResult[] EmptyDiagnosticResults => Array.Empty<DiagnosticResult>();
 
-    public DiagnosticResult WithLocation(int line, int column)
-    {
-        return this;
-    }
+    public DiagnosticResult WithLocation(int line, int column) => this;
 
-    public DiagnosticResult WithArguments(params object[] arguments)
-    {
-        return this;
-    }
+    public DiagnosticResult WithArguments(params object[] arguments) => this;
 }

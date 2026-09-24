@@ -1,7 +1,7 @@
 using AwesomeAssertions;
-using NPipeline.Configuration;
 using NPipeline.Execution;
 using NPipeline.Pipeline;
+using NPipeline.Reliability;
 
 namespace NPipeline.Tests.Pipeline;
 
@@ -20,8 +20,7 @@ public sealed class PipelineContextCompositionTests
         _ = context.NodeEnvironment.Should().NotBeNull();
         _ = context.Lineage.Should().NotBeNull();
 
-        _ = context.ExecutionConfiguration.GlobalRetryOptions.Should().BeSameAs(context.ExecutionConfiguration.GlobalRetryOptions);
-        _ = context.ExecutionConfiguration.RetryOptions.Should().BeSameAs(context.ExecutionConfiguration.RetryOptions);
+        _ = context.ExecutionConfiguration.Resilience.Should().BeSameAs(PipelineResilienceOptions.None);
         _ = context.Observability.LoggerFactory.Should().BeSameAs(context.Observability.LoggerFactory);
         _ = context.Lineage.LineageFactory.Should().BeSameAs(context.Lineage.LineageFactory);
         _ = context.NodeEnvironment.NodeExecutionScopeRegistry.Should().BeSameAs(context.NodeEnvironment.NodeExecutionScopeRegistry);
@@ -31,10 +30,10 @@ public sealed class PipelineContextCompositionTests
     public void LegacyAndFocusedProperties_StayInSync()
     {
         // Arrange
-        var context = new PipelineContext(PipelineContextConfiguration.WithRetry(new PipelineRetryOptions(2)));
+        var context = new PipelineContext();
         var pipelineId = Guid.NewGuid();
         var runId = Guid.NewGuid();
-        var effectiveRetryOptions = new PipelineRetryOptions(5);
+        var resilience = PipelineResilienceOptions.None with { ItemRetry = new ItemRetryOptions { MaxRetries = 5 } };
 
         // Act
         context.RunIdentity.PipelineId = pipelineId;
@@ -42,7 +41,8 @@ public sealed class PipelineContextCompositionTests
         context.RunIdentity.PipelineName = "Orders";
         context.NodeEnvironment.DiOwnedNodes = true;
         context.Observability.ExecutionObserver = null!;
-        context.ExecutionConfiguration.GlobalRetryOptions = effectiveRetryOptions;
+        context.ExecutionConfiguration.Resilience = resilience;
+        context.ExecutionConfiguration.SetNodeResilienceOptions("node", PipelineResilienceOptions.None);
 
         context.RunIdentity.PipelineName = "Invoices";
 
@@ -52,7 +52,8 @@ public sealed class PipelineContextCompositionTests
         _ = context.RunIdentity.PipelineName.Should().Be("Invoices");
         _ = context.NodeEnvironment.DiOwnedNodes.Should().BeTrue();
         _ = context.Observability.ExecutionObserver.Should().BeSameAs(NullExecutionObserver.Instance);
-        _ = context.ExecutionConfiguration.GlobalRetryOptions.Should().BeSameAs(context.ExecutionConfiguration.GlobalRetryOptions);
-        _ = context.ExecutionConfiguration.GlobalRetryOptions.Should().Be(effectiveRetryOptions);
+        _ = context.ExecutionConfiguration.Resilience.Should().BeSameAs(resilience);
+        _ = context.ExecutionConfiguration.GetResilienceOptions("other").Should().BeSameAs(resilience);
+        _ = context.ExecutionConfiguration.GetResilienceOptions("node").Should().BeSameAs(PipelineResilienceOptions.None);
     }
 }

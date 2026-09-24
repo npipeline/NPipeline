@@ -110,19 +110,13 @@ public class SqlServerConnectionPool : ISqlServerConnectionPool
     /// </summary>
     /// <param name="name">The name of the connection.</param>
     /// <returns>True if the named connection exists; otherwise, false.</returns>
-    public bool HasNamedConnection(string name)
-    {
-        return _namedConnectionStrings.ContainsKey(name);
-    }
+    public bool HasNamedConnection(string name) => _namedConnectionStrings.ContainsKey(name);
 
     /// <summary>
     ///     Gets all named connection names.
     /// </summary>
     /// <returns>A collection of named connection names.</returns>
-    public IEnumerable<string> GetNamedConnectionNames()
-    {
-        return _namedConnectionStrings.Keys;
-    }
+    public IEnumerable<string> GetNamedConnectionNames() => _namedConnectionStrings.Keys;
 
     /// <summary>
     ///     Disposes the connection pool.

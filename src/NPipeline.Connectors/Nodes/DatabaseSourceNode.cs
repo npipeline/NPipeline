@@ -136,20 +136,14 @@ public abstract class DatabaseSourceNode<TReader, T> : SourceNode<T>, IAsyncDisp
     /// </summary>
     /// <param name="reader">The database reader.</param>
     /// <returns>The offset value, or null if not applicable.</returns>
-    protected virtual long? GetCurrentOffset(TReader reader)
-    {
-        return null;
-    }
+    protected virtual long? GetCurrentOffset(TReader reader) => null;
 
     /// <summary>
     ///     Gets the current key values from the row for key-based checkpointing.
     /// </summary>
     /// <param name="reader">The database reader.</param>
     /// <returns>The key values dictionary, or null if not applicable.</returns>
-    protected virtual Dictionary<string, object?>? GetCurrentKeyValues(TReader reader)
-    {
-        return null;
-    }
+    protected virtual Dictionary<string, object?>? GetCurrentKeyValues(TReader reader) => null;
 
     /// <summary>
     ///     Initializes the source node and returns a data pipe.
@@ -189,8 +183,11 @@ public abstract class DatabaseSourceNode<TReader, T> : SourceNode<T>, IAsyncDisp
             return;
 
         var storage = ResolveCheckpointStorage();
+
         // Checkpoints are per graph position, so the node's own id is the right key when it has one.
-        var pipelineId = context.NodeEnvironment.TryGetNodeId(this, out var nodeId) ? nodeId : PipelineId;
+        var pipelineId = context.NodeEnvironment.TryGetNodeId(this, out var nodeId)
+            ? nodeId
+            : PipelineId;
 
         _checkpointManager = new CheckpointManager(
             storage,

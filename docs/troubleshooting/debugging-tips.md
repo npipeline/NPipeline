@@ -144,13 +144,11 @@ builder.AddResiliencePolicy(policy);
 var deadLetterSink = new BoundedInMemoryDeadLetterSink();
 builder.AddDeadLetterSink(deadLetterSink);
 
-transform.WithResilience(builder);
-
 // After pipeline execution, inspect dead-lettered items
 foreach (var entry in deadLetterSink.Items)
 {
     Console.WriteLine($"Dead letter: {entry.Item}");
-    Console.WriteLine($"Reason: {entry.Exception.Message}");
+    Console.WriteLine($"Reason: {entry.Error.Message}");
 }
 ```
 

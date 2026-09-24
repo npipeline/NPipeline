@@ -5,9 +5,11 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NPipeline.Connectors.Http.Configuration;
 using NPipeline.Connectors.Http.Metrics;
+using NPipeline.Connectors.Http.Reliability;
 using NPipeline.DataFlow;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
+using NResilience;
 
 namespace NPipeline.Connectors.Http.Nodes;
 
@@ -18,14 +20,16 @@ namespace NPipeline.Connectors.Http.Nodes;
 /// <typeparam name="T">The item type to serialise and send.</typeparam>
 public sealed partial class HttpSinkNode<T> : SinkNode<T>, IAsyncDisposable
 {
-    private static readonly ActivitySource ActivitySource = new("NPipeline.Connectors.Http");
-
     private readonly HttpSinkConfiguration _configuration;
     private readonly HttpClient _httpClient;
     private readonly HttpMethod _httpMethod;
     private readonly ILogger<HttpSinkNode<T>> _logger;
     private readonly IHttpConnectorMetrics _metrics;
     private readonly bool _ownsClient;
+    private readonly ResilientHttpSender _sender;
+
+    // The node sends one request at a time, so the retry listener reads the request in flight from here.
+    private Uri? _currentUri;
 
     /// <summary>Creates a new instance sourcing an <see cref="HttpClient" /> from the provided factory.</summary>
     public HttpSinkNode(HttpSinkConfiguration configuration, IHttpClientFactory httpClientFactory)
@@ -102,6 +106,19 @@ public sealed partial class HttpSinkNode<T> : SinkNode<T>, IAsyncDisposable
             SinkHttpMethod.Patch => HttpMethod.Patch,
             _ => HttpMethod.Post,
         };
+
+        _sender = new ResilientHttpSender(_httpClient, _configuration.Resilience, false, _metrics, OnResilienceEvent);
+    }
+
+    /// <inheritdoc />
+    public ValueTask DisposeAsync()
+    {
+        _sender.Dispose();
+
+        if (_ownsClient)
+            _httpClient.Dispose();
+
+        return ValueTask.CompletedTask;
     }
 
     /// <inheritdoc />
@@ -141,7 +158,7 @@ public sealed partial class HttpSinkNode<T> : SinkNode<T>, IAsyncDisposable
 
         try
         {
-            await SendWithRetryAsync(uri, items, cancellationToken).ConfigureAwait(false);
+            await SendAsync(uri, items, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -150,119 +167,64 @@ public sealed partial class HttpSinkNode<T> : SinkNode<T>, IAsyncDisposable
         }
     }
 
-    private async Task SendWithRetryAsync(Uri uri, List<T> items, CancellationToken cancellationToken)
+    private async Task SendAsync(Uri uri, List<T> items, CancellationToken cancellationToken)
     {
-        var attempt = 0;
-
         var jsonOptions = _configuration.JsonOptions
                           ?? new JsonSerializerOptions(JsonSerializerDefaults.Web);
 
-        string? idempotencyKey = null;
+        using var content = BuildContent(items, jsonOptions);
+        using var request = new HttpRequestMessage(_httpMethod, uri) { Content = content };
 
-        if (_configuration.IdempotencyKeyFactory != null)
-            idempotencyKey = _configuration.IdempotencyKeyFactory(items[0]!);
-
-        while (true)
+        foreach (var (key, value) in _configuration.Headers)
         {
-            attempt++;
-            HttpResponseMessage? response = null;
-            Exception? lastException = null;
-
-            using var activity = ActivitySource.StartActivity(
-                $"HTTP {_httpMethod.Method} {uri.GetLeftPart(UriPartial.Path)}");
-
-            activity?.SetTag("http.method", _httpMethod.Method);
-            activity?.SetTag("http.url", uri.ToString());
-            activity?.SetTag("http.attempt", attempt);
-
-            var sw = Stopwatch.StartNew();
-
-            try
-            {
-                using var content = BuildContent(items, jsonOptions);
-                using var request = new HttpRequestMessage(_httpMethod, uri) { Content = content };
-
-                foreach (var (key, value) in _configuration.Headers)
-                {
-                    request.Headers.TryAddWithoutValidation(key, value);
-                }
-
-                if (idempotencyKey != null)
-                    request.Headers.TryAddWithoutValidation(_configuration.IdempotencyHeaderName, idempotencyKey);
-
-                await _configuration.Auth.ApplyAsync(request, cancellationToken).ConfigureAwait(false);
-
-                if (_configuration.RequestCustomizer != null)
-                    await _configuration.RequestCustomizer(request, cancellationToken).ConfigureAwait(false);
-
-                _metrics.RecordRequest(uri.ToString(), _httpMethod.Method);
-                LogSendingRequest(_logger, typeof(T).Name, _httpMethod.Method, uri, items.Count, attempt);
-
-                using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                timeoutCts.CancelAfter(_configuration.Timeout);
-
-                response = await _httpClient.SendAsync(request, timeoutCts.Token).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                lastException = ex;
-            }
-
-            sw.Stop();
-
-            if (response != null)
-            {
-                _metrics.RecordResponse(
-                    uri.ToString(),
-                    _httpMethod.Method,
-                    (int)response.StatusCode,
-                    sw.Elapsed);
-
-                activity?.SetTag("http.status_code", (int)response.StatusCode);
-
-                if (response.IsSuccessStatusCode)
-                {
-                    _metrics.RecordSinkWritten(uri.ToString(), _httpMethod.Method, (int)response.StatusCode);
-                    response.Dispose();
-                    return;
-                }
-
-                if (_configuration.CaptureErrorResponses)
-                {
-                    LogCapturedError(_logger, typeof(T).Name, (int)response.StatusCode, uri);
-                    response.Dispose();
-                    return;
-                }
-
-                if (!_configuration.RetryStrategy.ShouldRetry(response, null, attempt))
-                {
-                    var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-                    response.Dispose();
-
-                    throw new HttpRequestException(
-                        $"HttpSinkNode<{typeof(T).Name}>: request to {uri} failed with " +
-                        $"{(int)response.StatusCode} {response.ReasonPhrase}. Body: {Truncate(body, 512)}");
-                }
-            }
-            else
-            {
-                _metrics.RecordError(uri.ToString(), _httpMethod.Method, lastException!);
-
-                if (!_configuration.RetryStrategy.ShouldRetry(null, lastException, attempt))
-                    throw lastException!;
-            }
-
-            _metrics.RecordRetry(uri.ToString(), _httpMethod.Method, attempt);
-            LogRetrying(_logger, typeof(T).Name, attempt, uri);
-
-            var delay = _configuration.RetryStrategy.GetDelay(response, attempt);
-            response?.Dispose();
-            await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+            request.Headers.TryAddWithoutValidation(key, value);
         }
+
+        // An idempotency key makes a POST or PATCH safe to retry. Without one, the resilience handler sends those
+        // methods once, because a retried write the server already applied is a duplicate.
+        if (_configuration.IdempotencyKeyFactory != null)
+            _ = request.MarkRepeatable(_configuration.IdempotencyKeyFactory(items[0]!), _configuration.IdempotencyHeaderName);
+
+        await _configuration.Auth.ApplyAsync(request, cancellationToken).ConfigureAwait(false);
+
+        if (_configuration.RequestCustomizer != null)
+            await _configuration.RequestCustomizer(request, cancellationToken).ConfigureAwait(false);
+
+        LogSendingRequest(_logger, typeof(T).Name, _httpMethod.Method, uri, items.Count);
+        _currentUri = uri;
+
+        using var response = await _sender.SendAsync(request, cancellationToken).ConfigureAwait(false);
+
+        if (response.IsSuccessStatusCode)
+        {
+            _metrics.RecordSinkWritten(uri.ToString(), _httpMethod.Method, (int)response.StatusCode);
+            return;
+        }
+
+        // Judged only after the resilience handler has spent its retries, so a transient 503 is retried rather than
+        // captured on its first appearance.
+        if (_configuration.CaptureErrorResponses)
+        {
+            LogCapturedError(_logger, typeof(T).Name, (int)response.StatusCode, uri);
+            return;
+        }
+
+        var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+
+        throw new HttpRequestException(
+            $"HttpSinkNode<{typeof(T).Name}>: request to {uri} failed with " +
+            $"{(int)response.StatusCode} {response.ReasonPhrase}. Body: {Truncate(body, 512)}",
+            null,
+            response.StatusCode);
+    }
+
+    private void OnResilienceEvent(CallEvent callEvent)
+    {
+        if (callEvent.Kind != CallEventKind.Retrying || _currentUri is not { } uri)
+            return;
+
+        _metrics.RecordRetry(uri.ToString(), _httpMethod.Method, callEvent.AttemptNumber);
+        LogRetrying(_logger, typeof(T).Name, callEvent.AttemptNumber, uri);
     }
 
     private Uri ResolveUri(T item)
@@ -301,12 +263,10 @@ public sealed partial class HttpSinkNode<T> : SinkNode<T>, IAsyncDisposable
         return content;
     }
 
-    private static string Truncate(string value, int maxLength)
-    {
-        return value.Length <= maxLength
+    private static string Truncate(string value, int maxLength) =>
+        value.Length <= maxLength
             ? value
             : string.Concat(value.AsSpan(0, maxLength), "…");
-    }
 
     private static HttpClient CreateClient(HttpSinkConfiguration configuration, IHttpClientFactory httpClientFactory)
     {
@@ -332,29 +292,21 @@ public sealed partial class HttpSinkNode<T> : SinkNode<T>, IAsyncDisposable
             Method = configuration.Method,
             Headers = new Dictionary<string, string>(configuration.Headers, StringComparer.Ordinal),
             HttpClientName = configuration.HttpClientName,
-            Timeout = configuration.Timeout,
             BatchSize = configuration.BatchSize,
             BatchWrapperKey = configuration.BatchWrapperKey,
             JsonOptions = configuration.JsonOptions,
             CaptureErrorResponses = configuration.CaptureErrorResponses,
             Auth = configuration.Auth,
             RateLimiter = configuration.RateLimiter,
-            RetryStrategy = configuration.RetryStrategy,
+            Resilience = configuration.Resilience,
             RequestCustomizer = configuration.RequestCustomizer,
             IdempotencyKeyFactory = configuration.IdempotencyKeyFactory,
             IdempotencyHeaderName = configuration.IdempotencyHeaderName,
         };
     }
 
-    /// <inheritdoc />
-    public async ValueTask DisposeAsync()
-    {
-        if (_ownsClient)
-            _httpClient.Dispose();
-    }
-
-    [LoggerMessage(Level = LogLevel.Debug, Message = "HttpSinkNode<{TypeName}>: sending {Method} {Uri} with {Count} item(s) (attempt {Attempt}).")]
-    private static partial void LogSendingRequest(ILogger logger, string typeName, string method, Uri uri, int count, int attempt);
+    [LoggerMessage(Level = LogLevel.Debug, Message = "HttpSinkNode<{TypeName}>: sending {Method} {Uri} with {Count} item(s).")]
+    private static partial void LogSendingRequest(ILogger logger, string typeName, string method, Uri uri, int count);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "HttpSinkNode<{TypeName}>: received {Status} from {Uri}; CaptureErrorResponses is enabled.")]
     private static partial void LogCapturedError(ILogger logger, string typeName, int status, Uri uri);

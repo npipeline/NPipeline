@@ -35,9 +35,8 @@ public class ServiceBusRetryConfiguration
     /// <summary>
     ///     Converts this configuration to <see cref="ServiceBusRetryOptions" />.
     /// </summary>
-    public ServiceBusRetryOptions ToRetryOptions()
-    {
-        return new ServiceBusRetryOptions
+    public ServiceBusRetryOptions ToRetryOptions() =>
+        new()
         {
             Mode = Mode,
             MaxRetries = MaxRetries,
@@ -45,5 +44,4 @@ public class ServiceBusRetryConfiguration
             MaxDelay = MaxDelay,
             TryTimeout = TryTimeout,
         };
-    }
 }

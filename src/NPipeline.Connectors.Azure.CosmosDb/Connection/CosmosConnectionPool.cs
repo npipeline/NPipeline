@@ -175,10 +175,8 @@ public class CosmosConnectionPool : ICosmosConnectionPool
 
     /// <inheritdoc />
     public async Task<TClient> GetClientAsync<TClient>(CosmosApiType apiType, CancellationToken cancellationToken = default)
-        where TClient : class
-    {
-        return await GetClientAsync<TClient>(DefaultConnectionName, apiType, cancellationToken).ConfigureAwait(false);
-    }
+        where TClient : class =>
+        await GetClientAsync<TClient>(DefaultConnectionName, apiType, cancellationToken).ConfigureAwait(false);
 
     /// <inheritdoc />
     public async Task<TClient> GetClientAsync<TClient>(string name, CosmosApiType apiType, CancellationToken cancellationToken = default)
@@ -266,22 +264,18 @@ public class CosmosConnectionPool : ICosmosConnectionPool
     /// </summary>
     /// <param name="name">The name of the connection.</param>
     /// <returns>True if the named connection exists; otherwise, false.</returns>
-    public bool HasNamedConnection(string name)
-    {
-        return _namedClients.ContainsKey(name) || _namedMongoClients.ContainsKey(name) || _namedCassandraConnections.ContainsKey(name);
-    }
+    public bool HasNamedConnection(string name) =>
+        _namedClients.ContainsKey(name) || _namedMongoClients.ContainsKey(name) || _namedCassandraConnections.ContainsKey(name);
 
     /// <summary>
     ///     Gets all named connection names.
     /// </summary>
     /// <returns>A collection of named connection names.</returns>
-    public IEnumerable<string> GetNamedConnectionNames()
-    {
-        return _namedClients.Keys
+    public IEnumerable<string> GetNamedConnectionNames() =>
+        _namedClients.Keys
             .Concat(_namedMongoClients.Keys)
             .Concat(_namedCassandraConnections.Keys)
             .Distinct(StringComparer.OrdinalIgnoreCase);
-    }
 
     /// <summary>
     ///     Disposes the connection pool and all associated clients.

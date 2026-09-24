@@ -45,16 +45,14 @@ public class EventCountAggregator : AggregateNode<FilteredAnalyticsEvent, string
     ///     This creates a default EventCountMetrics that will be updated as events are accumulated.
     /// </summary>
     /// <returns>The initial accumulator with default values.</returns>
-    public override EventCountMetrics CreateAccumulator()
-    {
-        return new EventCountMetrics(
+    public override EventCountMetrics CreateAccumulator() =>
+        new(
             string.Empty, // Will be set when first event is processed
             0,
             DateTime.MinValue, // Will be set when first event is processed
             DateTime.MinValue, // Will be set when first event is processed
             TimeSpan.FromMinutes(1) // Fixed window duration
         );
-    }
 
     /// <summary>
     ///     Accumulates a filtered analytics event into the event count metrics.

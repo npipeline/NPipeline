@@ -66,10 +66,7 @@ public class UnreliableSource : SourceNode<string>
     ///     Determines whether to simulate a failure based on the failure rate.
     /// </summary>
     /// <returns>True if a failure should be simulated, false otherwise.</returns>
-    private bool ShouldSimulateFailure()
-    {
-        return _random.NextDouble() < _failureRate;
-    }
+    private bool ShouldSimulateFailure() => _random.NextDouble() < _failureRate;
 
     /// <summary>
     ///     Sets the failure rate for testing purposes.

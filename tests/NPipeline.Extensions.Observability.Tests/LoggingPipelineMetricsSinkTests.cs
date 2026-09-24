@@ -23,11 +23,9 @@ public sealed class LoggingPipelineMetricsSinkTests
     }
 
     private static IPipelineMetrics CreatePipelineMetrics(bool success, Exception? exception = null, IReadOnlyList<INodeMetrics>? nodeMetrics = null,
-        long totalItemsProcessed = 285, double? durationMs = 5000)
-    {
-        return new PipelineMetrics("TestPipeline", s_pipelineId, Guid.NewGuid(), DateTimeOffset.UtcNow.AddSeconds(-5), DateTimeOffset.UtcNow, durationMs,
+        long totalItemsProcessed = 285, double? durationMs = 5000) =>
+        new PipelineMetrics("TestPipeline", s_pipelineId, Guid.NewGuid(), DateTimeOffset.UtcNow.AddSeconds(-5), DateTimeOffset.UtcNow, durationMs,
             success, totalItemsProcessed, nodeMetrics ?? [], exception);
-    }
 
     private static INodeMetrics CreateNodeMetrics(
         string nodeId,
@@ -36,11 +34,9 @@ public sealed class LoggingPipelineMetricsSinkTests
         int retryCount = 0,
         long itemsProcessed = 100,
         double? throughputItemsPerSec = null,
-        double? averageItemProcessingMs = null)
-    {
-        return new NodeMetrics(nodeId, DateTimeOffset.UtcNow.AddSeconds(-1), DateTimeOffset.UtcNow, 1000, success, itemsProcessed, itemsProcessed - 5,
+        double? averageItemProcessingMs = null) =>
+        new NodeMetrics(nodeId, DateTimeOffset.UtcNow.AddSeconds(-1), DateTimeOffset.UtcNow, 1000, success, itemsProcessed, itemsProcessed - 5,
             exception, retryCount, null, null, throughputItemsPerSec, averageItemProcessingMs, 1, s_pipelineId);
-    }
 
     #endregion
 

@@ -135,10 +135,7 @@ public sealed class DefaultNodeFactoryTests(ITestOutputHelper output)
 
     private sealed class SimpleTransformNode : TransformNode<int, int>
     {
-        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult<int>(item);
-        }
+        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken) => ValueTask.FromResult(item);
     }
 
     private sealed class NodeWithDependencyConstructor(IErrorHandlerFactory errorHandlerFactory) : TransformNode<int, int>
@@ -148,8 +145,7 @@ public sealed class DefaultNodeFactoryTests(ITestOutputHelper output)
         public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             _ = _errorHandlerFactory;
-            return ValueTask.FromResult<int>(item);
+            return ValueTask.FromResult(item);
         }
     }
-
 }

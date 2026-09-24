@@ -2,10 +2,10 @@ using System.Diagnostics;
 using System.Reflection;
 using AwesomeAssertions;
 using NPipeline.Configuration;
-using NPipeline.Configuration.RetryDelay;
 using NPipeline.DataFlow;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
+using NPipeline.Reliability;
 
 [assembly: AssemblyMetadata("NPipelineOptimizationProfile", "Default")]
 
@@ -14,7 +14,7 @@ namespace NPipeline.Tests.Core.Builder;
 public sealed class PipelineBuilderOptimizationProfileTests
 {
     [Fact]
-    public void WithOptimizationProfile_Default_ShouldApplySensibleRetryDefaultsWhenNotExplicitlyConfigured()
+    public void WithOptimizationProfile_Default_ShouldRetryTransientItemFailuresWhenNotExplicitlyConfigured()
     {
         var builder = new PipelineBuilder()
             .WithoutExtendedValidation()
@@ -23,18 +23,17 @@ public sealed class PipelineBuilderOptimizationProfileTests
         builder.AddSource<TestSourceNode, int>("source");
         var pipeline = builder.Build();
 
-        var retryOptions = pipeline.Graph.ErrorHandling.RetryOptions;
-        retryOptions.Should().NotBeNull();
+        var resilience = pipeline.Graph.ErrorHandling.Resilience;
+        resilience.Should().NotBeNull();
 
-        retryOptions!.MaxItemRetries.Should().Be(3);
-        retryOptions.MaxMaterializedItems.Should().Be(10_000);
-        retryOptions.DelayStrategyConfiguration.Should().NotBeNull();
-        retryOptions.MaxNodeRestartAttempts.Should().Be(PipelineRetryOptions.Default.MaxNodeRestartAttempts);
-        retryOptions.MaxSequentialNodeAttempts.Should().Be(PipelineRetryOptions.Default.MaxSequentialNodeAttempts);
+        resilience!.ItemRetry.Should().BeSameAs(ItemRetryOptions.Default);
+        resilience.ItemRetry.Classifier.Should().BeSameAs(RetryClassifier.Default);
+        resilience.NodeRestart.Should().BeSameAs(NodeRestartOptions.None);
+        resilience.NodeRetry.Should().BeSameAs(NodeRetryOptions.None);
     }
 
     [Fact]
-    public void WithOptimizationProfile_HighThroughput_ShouldKeepStrictRetryDefaultsWhenNotExplicitlyConfigured()
+    public void WithOptimizationProfile_HighThroughput_ShouldRetryNothingWhenNotExplicitlyConfigured()
     {
         var builder = new PipelineBuilder()
             .WithoutExtendedValidation()
@@ -43,66 +42,7 @@ public sealed class PipelineBuilderOptimizationProfileTests
         builder.AddSource<TestSourceNode, int>("source");
         var pipeline = builder.Build();
 
-        var retryOptions = pipeline.Graph.ErrorHandling.RetryOptions;
-        retryOptions.Should().NotBeNull();
-
-        retryOptions.Should().Be(PipelineRetryOptions.Default);
-    }
-
-    [Fact]
-    public void WithRetry_ShouldApplyDefaultProfileRetryDefaults()
-    {
-        var builder = new PipelineBuilder()
-            .WithoutExtendedValidation();
-        builder.WithRetry();
-
-        builder.AddSource<TestSourceNode, int>("source");
-        var pipeline = builder.Build();
-
-        var retryOptions = pipeline.Graph.ErrorHandling.RetryOptions;
-        retryOptions.Should().NotBeNull();
-
-        retryOptions!.MaxItemRetries.Should().Be(3);
-        retryOptions.MaxMaterializedItems.Should().Be(10_000);
-        retryOptions.DelayStrategyConfiguration.Should().Be(RetryDelayConfigurationExtensions.DefaultExponentialBackoffWithJitter);
-    }
-
-    [Fact]
-    public void WithRetry_WithHighThroughputProfile_ShouldApplyHighThroughputDefaults()
-    {
-        var builder = new PipelineBuilder()
-            .WithoutExtendedValidation()
-            .WithOptimizationProfile(PipelineOptimizationProfile.HighThroughput);
-
-        builder.WithRetry();
-
-        builder.AddSource<TestSourceNode, int>("source");
-        var pipeline = builder.Build();
-
-        var retryOptions = pipeline.Graph.ErrorHandling.RetryOptions;
-        retryOptions.Should().NotBeNull();
-
-        retryOptions.Should().Be(PipelineRetryOptions.Default);
-    }
-
-    [Fact]
-    public void WithRetry_WithExplicitDefaultProfile_ShouldEnableDefaultRetryDefaultsInHighThroughputMode()
-    {
-        var builder = new PipelineBuilder()
-            .WithoutExtendedValidation()
-            .WithOptimizationProfile(PipelineOptimizationProfile.HighThroughput);
-
-        builder.WithRetry(PipelineOptimizationProfile.Default);
-
-        builder.AddSource<TestSourceNode, int>("source");
-        var pipeline = builder.Build();
-
-        var retryOptions = pipeline.Graph.ErrorHandling.RetryOptions;
-        retryOptions.Should().NotBeNull();
-
-        retryOptions!.MaxItemRetries.Should().Be(3);
-        retryOptions.MaxMaterializedItems.Should().Be(10_000);
-        retryOptions.DelayStrategyConfiguration.Should().Be(RetryDelayConfigurationExtensions.DefaultExponentialBackoffWithJitter);
+        pipeline.Graph.ErrorHandling.Resilience.Should().BeSameAs(PipelineResilienceOptions.None);
     }
 
     [Fact]
@@ -131,50 +71,61 @@ public sealed class PipelineBuilderOptimizationProfileTests
     }
 
     [Fact]
-    public void WithRetryOptions_ShouldNotBeOverwrittenByProfileDefaults()
+    public void WithResilience_StartsFromTheProfileDefaults()
     {
         var builder = new PipelineBuilder()
             .WithoutExtendedValidation()
             .WithOptimizationProfile(PipelineOptimizationProfile.Default)
-            .WithRetryOptions(opt => opt with { MaxItemRetries = 5, MaxMaterializedItems = 256 });
+            .WithResilience(o => o with { ItemRetry = o.ItemRetry with { MaxRetries = 5 } });
 
         builder.AddSource<TestSourceNode, int>("source");
         var pipeline = builder.Build();
 
-        var retryOptions = pipeline.Graph.ErrorHandling.RetryOptions;
-        retryOptions.Should().NotBeNull();
-
-        retryOptions!.MaxItemRetries.Should().Be(5);
-        retryOptions.MaxMaterializedItems.Should().Be(256);
-        retryOptions.DelayStrategyConfiguration.Should().BeNull();
+        var resilience = pipeline.Graph.ErrorHandling.Resilience;
+        resilience!.ItemRetry.MaxRetries.Should().Be(5);
+        resilience.ItemRetry.Backoff.Should().Be(ItemRetryOptions.Default.Backoff);
     }
 
     [Fact]
-    public void WithRetryOptions_NullConfigure_ShouldThrow()
+    public void WithResilience_CallsCompose()
+    {
+        var builder = new PipelineBuilder()
+            .WithoutExtendedValidation()
+            .WithResilience(o => o with { OnItemFailure = ItemFailureAction.Skip })
+            .WithResilience(o => o with { NodeRetry = new NodeRetryOptions { MaxRetries = 2 } });
+
+        builder.AddSource<TestSourceNode, int>("source");
+        var resilience = builder.Build().Graph.ErrorHandling.Resilience!;
+
+        resilience.OnItemFailure.Should().Be(ItemFailureAction.Skip);
+        resilience.NodeRetry.MaxRetries.Should().Be(2);
+    }
+
+    [Fact]
+    public void WithResilience_NullConfigure_ShouldThrow()
     {
         var builder = new PipelineBuilder();
 
-        var act = () => builder.WithRetryOptions(null!);
+        var act = () => builder.WithResilience(null!);
 
         act.Should().Throw<ArgumentNullException>();
     }
 
     [Fact]
-    public void WithRetryOptions_NullResult_ShouldThrow()
+    public void WithResilience_NullResult_ShouldFailTheBuild()
     {
-        var builder = new PipelineBuilder();
+        var builder = new PipelineBuilder().WithoutExtendedValidation();
+        builder.AddSource<TestSourceNode, int>("source");
+        builder.WithResilience(_ => null!);
 
-        var act = () => builder.WithRetryOptions(_ => null!);
+        var act = () => builder.Build();
 
-        act.Should().Throw<ArgumentNullException>();
+        act.Should().Throw<InvalidOperationException>().WithMessage("*returned null*");
     }
 
     private sealed class TestSourceNode : SourceNode<int>
     {
-        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
-        {
-            throw new NotImplementedException();
-        }
+        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken) => throw new NotImplementedException();
     }
 
     private sealed class RecordingTraceListener : TraceListener

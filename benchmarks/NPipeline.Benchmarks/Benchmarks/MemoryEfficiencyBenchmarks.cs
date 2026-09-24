@@ -415,25 +415,18 @@ public class MemoryEfficiencyBenchmarks
         {
         }
 
-        public override ProcessedItem GetKey(ComplexDataItem item)
-        {
-            return new ProcessedItem { Id = item.Id % 10, ProcessedValue = 0, MemoryEfficient = true }; // Create 10 different windows
-        }
+        public override ProcessedItem GetKey(ComplexDataItem item) =>
+            new() { Id = item.Id % 10, ProcessedValue = 0, MemoryEfficient = true }; // Create 10 different windows
 
-        public override ProcessedItem CreateAccumulator()
-        {
-            return new ProcessedItem { Id = 0, ProcessedValue = 0, MemoryEfficient = true };
-        }
+        public override ProcessedItem CreateAccumulator() => new() { Id = 0, ProcessedValue = 0, MemoryEfficient = true };
 
-        public override ProcessedItem Accumulate(ProcessedItem accumulator, ComplexDataItem item)
-        {
-            return new ProcessedItem
+        public override ProcessedItem Accumulate(ProcessedItem accumulator, ComplexDataItem item) =>
+            new()
             {
                 Id = accumulator.Id,
                 ProcessedValue = accumulator.ProcessedValue + item.Data.Length,
                 MemoryEfficient = accumulator.MemoryEfficient,
             };
-        }
     }
 
     private sealed class SlidingWindowAggregate : AggregateNode<ComplexDataItem, ProcessedItem, ProcessedItem>
@@ -443,25 +436,18 @@ public class MemoryEfficiencyBenchmarks
         {
         }
 
-        public override ProcessedItem GetKey(ComplexDataItem item)
-        {
-            return new ProcessedItem { Id = item.Id % 10, ProcessedValue = 0, MemoryEfficient = true }; // Create 10 different windows
-        }
+        public override ProcessedItem GetKey(ComplexDataItem item) =>
+            new() { Id = item.Id % 10, ProcessedValue = 0, MemoryEfficient = true }; // Create 10 different windows
 
-        public override ProcessedItem CreateAccumulator()
-        {
-            return new ProcessedItem { Id = 0, ProcessedValue = 0, MemoryEfficient = true };
-        }
+        public override ProcessedItem CreateAccumulator() => new() { Id = 0, ProcessedValue = 0, MemoryEfficient = true };
 
-        public override ProcessedItem Accumulate(ProcessedItem accumulator, ComplexDataItem item)
-        {
-            return new ProcessedItem
+        public override ProcessedItem Accumulate(ProcessedItem accumulator, ComplexDataItem item) =>
+            new()
             {
                 Id = accumulator.Id,
                 ProcessedValue = accumulator.ProcessedValue + item.Data.Length,
                 MemoryEfficient = accumulator.MemoryEfficient,
             };
-        }
     }
 
     private sealed class BlackHoleSink<T> : SinkNode<T>

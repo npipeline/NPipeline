@@ -28,10 +28,7 @@ public sealed class DuckDBTestFixture : IAsyncLifetime
         return Task.CompletedTask;
     }
 
-    public static DuckDBConnection CreateInMemoryConnection()
-    {
-        return DuckDBTestHelper.CreateInMemoryConnection();
-    }
+    public static DuckDBConnection CreateInMemoryConnection() => DuckDBTestHelper.CreateInMemoryConnection();
 
     public static async Task SeedTableAsync<T>(DuckDBConnection connection, string tableName, IEnumerable<T> records)
     {

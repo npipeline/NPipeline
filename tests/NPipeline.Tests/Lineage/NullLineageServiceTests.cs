@@ -1,5 +1,3 @@
-using NPipeline.Configuration;
-using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.Lineage;
 
@@ -28,8 +26,12 @@ public sealed class NullLineageTests
         var service = NullLineage.Instance;
         var items = new object[] { 1, "hello", null! }.ToAsyncEnumerable();
         var results = new List<object?>();
+
         await foreach (var item in service.UnwrapLineageStream(items))
+        {
             results.Add(item);
+        }
+
         Assert.Equal(3, results.Count);
         Assert.Equal(1, results[0]);
         Assert.Equal("hello", results[1]);

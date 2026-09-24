@@ -4,6 +4,7 @@ using System.Reflection;
 using NPipeline.Connectors.Attributes;
 using NPipeline.Connectors.Postgres.Configuration;
 using NPipeline.Connectors.Postgres.Mapping;
+using NPipeline.Connectors.Postgres.Reliability;
 using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Models;
 using NPipeline.StorageProviders.Utilities;
@@ -22,6 +23,7 @@ internal sealed class PostgresPerRowWriter<T> : IDatabaseWriter<T>
     private readonly PropertyMapping[] _mappings;
     private readonly Func<T, IEnumerable<DatabaseParameter>>? _parameterMapper;
     private readonly string[] _parameterNames;
+    private readonly ConnectionResilience _resilience;
     private readonly string _schema;
     private readonly string _tableName;
     private readonly Func<T, object?[]> _valueFactory;
@@ -51,6 +53,7 @@ internal sealed class PostgresPerRowWriter<T> : IDatabaseWriter<T>
         _parameterNames = BuildParameterNames(_mappings.Length);
         _valueFactory = BuildValueFactory(_mappings);
         _insertSql = BuildInsertSql();
+        _resilience = new ConnectionResilience(_configuration.Resilience, _connection);
     }
 
     /// <summary>
@@ -61,20 +64,10 @@ internal sealed class PostgresPerRowWriter<T> : IDatabaseWriter<T>
     /// <returns>A task representing the asynchronous operation.</returns>
     public async Task WriteAsync(T item, CancellationToken cancellationToken = default)
     {
-        var command = await _connection.CreateCommandAsync(cancellationToken).ConfigureAwait(false);
-        await using var commandScope = command.ConfigureAwait(false);
-        command.CommandText = _insertSql;
-        command.CommandType = CommandType.Text;
-        command.CommandTimeout = _configuration.CommandTimeout;
-
         var values = GetValues(item);
 
-        for (var i = 0; i < values.Length; i++)
-        {
-            command.AddParameter(_parameterNames[i], values[i] ?? DBNull.Value);
-        }
-
-        _ = await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+        // One INSERT commits one row or none, so it is safe to retry on its own.
+        await _resilience.RunAsync(ct => InsertAsync(values, ct), cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -96,10 +89,7 @@ internal sealed class PostgresPerRowWriter<T> : IDatabaseWriter<T>
     /// </summary>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
-    public Task FlushAsync(CancellationToken cancellationToken = default)
-    {
-        return Task.CompletedTask;
-    }
+    public Task FlushAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
     /// <summary>
     ///     Disposes the writer.
@@ -108,6 +98,22 @@ internal sealed class PostgresPerRowWriter<T> : IDatabaseWriter<T>
     {
         // Connection is owned by the sink node, not the writer
         await ValueTask.CompletedTask.ConfigureAwait(false);
+    }
+
+    private async Task InsertAsync(object?[] values, CancellationToken cancellationToken)
+    {
+        var command = await _connection.CreateCommandAsync(cancellationToken).ConfigureAwait(false);
+        await using var commandScope = command.ConfigureAwait(false);
+        command.CommandText = _insertSql;
+        command.CommandType = CommandType.Text;
+        command.CommandTimeout = _configuration.CommandTimeout;
+
+        for (var i = 0; i < values.Length; i++)
+        {
+            command.AddParameter(_parameterNames[i], values[i] ?? DBNull.Value);
+        }
+
+        _ = await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -119,7 +125,8 @@ internal sealed class PostgresPerRowWriter<T> : IDatabaseWriter<T>
         if (_mappings.Length == 0)
             throw new InvalidOperationException($"Type '{typeof(T).Name}' does not expose any writable properties to persist.");
 
-        var quotedTableName = DatabaseIdentifierValidator.QuoteIdentifier($"{_schema}.{_tableName}");
+        // Schema and table are quoted separately; one quoted "schema.table" would name a table with a dot in it.
+        var quotedTableName = $"{DatabaseIdentifierValidator.QuoteIdentifier(_schema)}.{DatabaseIdentifierValidator.QuoteIdentifier(_tableName)}";
 
         var quotedColumns = _mappings
             .Select(m => ValidateAndQuoteIdentifier(m.ColumnName, nameof(m.ColumnName)))

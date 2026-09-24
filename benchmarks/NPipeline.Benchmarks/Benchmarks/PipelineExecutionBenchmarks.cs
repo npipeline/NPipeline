@@ -9,10 +9,9 @@ using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.DataFlow.Windowing;
 using NPipeline.Execution;
-using NPipeline.Graph;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
-using NPipeline.Resilience;
+using NPipeline.Reliability;
 
 namespace NPipeline.Benchmarks.Benchmarks;
 
@@ -341,7 +340,7 @@ public class PipelineExecutionBenchmarks : IDisposable
             var sink = b.AddSink<BlackHoleSink, int>("sink");
 
             // Add error handling
-            b.SetNodeResiliencePolicy(t, new TestErrorHandler());
+            b.AddResiliencePolicy(t, new TestErrorHandler());
 
             b.Connect(src, t).Connect(t, sink);
         }
@@ -424,10 +423,7 @@ public class PipelineExecutionBenchmarks : IDisposable
 
     private sealed class PassThroughTransform : TransformNode<int, int>
     {
-        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult<int>(item);
-        }
+        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken) => ValueTask.FromResult(item);
     }
 
     private sealed class ComplexTransform : TransformNode<int, string>
@@ -436,7 +432,7 @@ public class PipelineExecutionBenchmarks : IDisposable
         {
             // Simulate some processing
             var result = $"Processed_{item:D6}";
-            return ValueTask.FromResult<string>(result);
+            return ValueTask.FromResult(result);
         }
     }
 
@@ -453,7 +449,7 @@ public class PipelineExecutionBenchmarks : IDisposable
             if (_random.NextDouble() < errorRate)
                 throw new InvalidOperationException($"Simulated error processing item {item}");
 
-            return ValueTask.FromResult<int>(item);
+            return ValueTask.FromResult(item);
         }
     }
 
@@ -468,7 +464,7 @@ public class PipelineExecutionBenchmarks : IDisposable
             // Simulate complex validation
             var isValid = item % 2 == 0 || item % 3 == 0 || item % 5 == 0;
 
-            return ValueTask.FromResult<int>(isValid
+            return ValueTask.FromResult(isValid
                 ? item
                 : -1);
         }
@@ -597,11 +593,10 @@ public class PipelineExecutionBenchmarks : IDisposable
     [KeySelector(typeof(LongItem), nameof(LongItem.Key))]
     private sealed class SimpleJoinNode : KeyedJoinNode<int, IntItem, LongItem, int>
     {
-        public override int CreateOutput(IntItem item1, LongItem item2)
-        {
+        public override int CreateOutput(IntItem item1, LongItem item2) =>
+
             // Simple join: just pass through the left value
-            return item1.Value;
-        }
+            item1.Value;
     }
 
     private sealed class SimpleAggregateNode : AggregateNode<int, int, int>
@@ -611,65 +606,23 @@ public class PipelineExecutionBenchmarks : IDisposable
         {
         }
 
-        public override int GetKey(int item)
-        {
-            return item;
+        public override int GetKey(int item) => item;
 
-            // Use item as its own key
-        }
+        // Use item as its own key
+        public override int CreateAccumulator() => 0;
 
-        public override int CreateAccumulator()
-        {
-            return 0;
-        }
-
-        public override int Accumulate(int accumulator, int item)
-        {
-            return accumulator + item;
-        }
+        public override int Accumulate(int accumulator, int item) => accumulator + item;
     }
 
-    private sealed class TestErrorHandler : IResiliencePolicy
+    private sealed class TestErrorHandler : ResiliencePolicyBase
     {
-        public Task<ResilienceDecision> DecideNodeFailureAsync(
-            NodeDefinition nodeDefinition,
-            INode node,
-            Exception exception,
-            PipelineContext context,
-            CancellationToken cancellationToken)
-        {
-            return Task.FromResult(ResilienceDecision.Fail);
-        }
+        public override ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(ResilienceDecision.Skip); // Skip the error item and continue
 
-        public Task<ResilienceDecision> DecidePipelineFailureAsync(
-            string nodeId,
-            Exception exception,
-            PipelineContext context,
-            CancellationToken cancellationToken)
-        {
-            return Task.FromResult(ResilienceDecision.Fail);
-        }
+        public override ValueTask<ResilienceDecision> DecideRestartAsync(StreamFailure failure, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(ResilienceDecision.Fail);
 
-        public Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
-            ITransformNode<TIn, TOut> node,
-            TIn failedItem,
-            Exception exception,
-            PipelineContext context,
-            string nodeId,
-            int retryAttempt,
-            CancellationToken cancellationToken)
-        {
-            return Task.FromResult(ResilienceDecision.Skip); // Skip the error item and continue
-        }
-
-        public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, RetryKind retryKind, int attemptNumber, CancellationToken cancellationToken)
-        {
-            return context.GetRetryDelayStrategy().GetDelayAsync(attemptNumber, cancellationToken);
-        }
-
-        public IResilienceCircuitBreaker? GetCircuitBreaker(PipelineContext context, string nodeId)
-        {
-            return DefaultResiliencePolicy.Instance.GetCircuitBreaker(context, nodeId);
-        }
+        public override ValueTask<ResilienceDecision> DecideNodeFailureAsync(NodeFailure failure, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(ResilienceDecision.Fail);
     }
 }

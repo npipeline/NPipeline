@@ -12,6 +12,7 @@ using NPipeline.Observability;
 using NPipeline.Observability.DependencyInjection;
 using NPipeline.Observability.Metrics;
 using NPipeline.Pipeline;
+using NPipeline.Reliability;
 
 namespace NPipeline.Extensions.Observability.Tests;
 
@@ -22,10 +23,7 @@ public sealed class CompatibilityTests
 {
     private static readonly Guid s_pipelineId = Guid.Parse("11111111-1111-1111-1111-111111111111");
 
-    private static INodeMetrics? GetNodeMetricsById(IObservabilityCollector collector, string nodeId)
-    {
-        return TestHelpers.GetNodeMetricsById(collector, nodeId);
-    }
+    private static INodeMetrics? GetNodeMetricsById(IObservabilityCollector collector, string nodeId) => TestHelpers.GetNodeMetricsById(collector, nodeId);
 
     #region Parallel Execution Strategy Compatibility Tests
 
@@ -644,8 +642,9 @@ public sealed class CompatibilityTests
 
             var transform = builder.AddTransform<TestRetryTransformNode, int, int>("parallelTransform")
                 .WithObservability(builder)
-                .WithBlockingParallelism(builder, 4)
-                .WithRetries(builder, 2);
+                .WithBlockingParallelism(builder, 4);
+
+            _ = builder.WithResilience(transform, o => o with { ItemRetry = new ItemRetryOptions { MaxRetries = 2 } });
 
             var sink = builder.AddSink<TestSinkNode, int>("sink")
                 .WithObservability(builder);
@@ -772,10 +771,8 @@ public sealed class CompatibilityTests
 
     private sealed class TestDelayedSourceNode : SourceNode<int>
     {
-        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
-        {
-            return new DataStream<int>(Generate(cancellationToken), "source-output");
-        }
+        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken) =>
+            new DataStream<int>(Generate(cancellationToken), "source-output");
 
         private static async IAsyncEnumerable<int> Generate([EnumeratorCancellation] CancellationToken cancellationToken)
         {
@@ -789,10 +786,7 @@ public sealed class CompatibilityTests
 
     private sealed class TestTransformNode : TransformNode<int, int>
     {
-        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult<int>(item * 2);
-        }
+        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken) => ValueTask.FromResult(item * 2);
     }
 
     private sealed class TestRetryTransformNode : TransformNode<int, int>
@@ -807,7 +801,7 @@ public sealed class CompatibilityTests
             if (_count % 3 == 0)
                 throw new InvalidOperationException($"Temporary failure for item {item}");
 
-            return ValueTask.FromResult<int>(item * 2);
+            return ValueTask.FromResult(item * 2);
         }
     }
 
@@ -822,7 +816,7 @@ public sealed class CompatibilityTests
             if (_count == 5)
                 throw new InvalidOperationException("Intentional failure");
 
-            return ValueTask.FromResult<int>(item * 2);
+            return ValueTask.FromResult(item * 2);
         }
     }
 
@@ -878,10 +872,7 @@ public sealed class CompatibilityTests
 
     private sealed class TestMetricsSink : IMetricsSink
     {
-        public Task RecordAsync(INodeMetrics nodeMetrics, CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
-        }
+        public Task RecordAsync(INodeMetrics nodeMetrics, CancellationToken cancellationToken = default) => Task.CompletedTask;
     }
 
     private sealed class TestPipelineMetricsSink : IPipelineMetricsSink

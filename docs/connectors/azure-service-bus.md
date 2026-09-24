@@ -172,6 +172,13 @@ var config = new ServiceBusConfiguration
 | `ContinueOnDeserializationError` | `bool` | `false` | Skip deserialization failures |
 | `DeadLetterOnDeserializationError` | `bool` | `true` | Dead-letter bad messages |
 
+## Resilience
+
+The Azure Service Bus SDK retries each operation natively, and NPipeline adds no retry layer on top. `Retry`
+(`ServiceBusRetryConfiguration`) maps directly to the SDK's `ServiceBusRetryOptions`: `Mode` (default `Exponential`),
+`MaxRetries` (default 3), `Delay` (default 1 s), `MaxDelay` (default 30 s), and `TryTimeout` (default 1 minute).
+Failures the SDK gives up on surface to the pipeline, where node-level resilience and message settlement apply.
+
 ## Dependency Injection
 
 ```csharp

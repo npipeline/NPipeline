@@ -63,7 +63,7 @@ public class ProductLookupNode : TransformNode<OrderCustomerJoin, EnrichedOrder>
             0m
         );
 
-        return ValueTask.FromResult<EnrichedOrder>(new EnrichedOrder(item, unknownProduct));
+        return ValueTask.FromResult(new EnrichedOrder(item, unknownProduct));
     }
 
     /// <summary>

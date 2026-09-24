@@ -109,7 +109,7 @@ public sealed class PipelineContextDisposalTests
 
             for (var i = 0; i < perThread; i++)
             {
-                context.RegisterForDisposal(trackers[(thread * perThread) + i]);
+                context.RegisterForDisposal(trackers[thread * perThread + i]);
             }
         })));
 
@@ -192,9 +192,6 @@ public sealed class PipelineContextDisposalTests
 
     private sealed class ThrowingDisposable : IAsyncDisposable
     {
-        public ValueTask DisposeAsync()
-        {
-            throw new InvalidOperationException("disposal failed");
-        }
+        public ValueTask DisposeAsync() => throw new InvalidOperationException("disposal failed");
     }
 }

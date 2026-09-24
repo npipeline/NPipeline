@@ -1,6 +1,6 @@
+using System.Runtime.CompilerServices;
 using AwesomeAssertions;
 using NPipeline.Attributes.Lineage;
-using NPipeline.DataFlow;
 using NPipeline.Execution;
 using NPipeline.Execution.Strategies;
 using NPipeline.Graph;
@@ -21,7 +21,7 @@ public sealed class FilterAndSelectManyTests
     {
         var collected = await RunAsync(builder => builder.AddFilter((int n) => n % 2 == 0, "evens"));
 
-        collected.Should().Equal([2, 4, 6]);
+        collected.Should().Equal(2, 4, 6);
     }
 
     [Fact]
@@ -35,7 +35,7 @@ public sealed class FilterAndSelectManyTests
             },
             "big"));
 
-        collected.Should().Equal([4, 5, 6]);
+        collected.Should().Equal(4, 5, 6);
     }
 
     [Fact]
@@ -63,7 +63,7 @@ public sealed class FilterAndSelectManyTests
             context,
             CancellationToken.None);
 
-        consumed.Should().Equal([2, 4, 6]);
+        consumed.Should().Equal(2, 4, 6);
 
         // A buffering filter would emit every "produced" before the first "consumed". Interleaving proves it streams.
         var firstConsumed = trace.IndexOf("consumed 2");
@@ -75,9 +75,11 @@ public sealed class FilterAndSelectManyTests
     [Fact]
     public async Task AddSelectMany_ExpandsEachItem()
     {
-        var collected = await RunAsync(builder => builder.AddSelectMany((int n) => Enumerable.Repeat(n, n <= 2 ? n : 0), "repeat"));
+        var collected = await RunAsync(builder => builder.AddSelectMany((int n) => Enumerable.Repeat(n, n <= 2
+            ? n
+            : 0), "repeat"));
 
-        collected.Should().Equal([1, 2, 2]);
+        collected.Should().Equal(1, 2, 2);
     }
 
     [Fact]
@@ -87,9 +89,9 @@ public sealed class FilterAndSelectManyTests
             (int n, CancellationToken ct) => Expand(n, ct),
             "expand"));
 
-        collected.Should().Equal([1, 10, 2, 20, 3, 30, 4, 40, 5, 50, 6, 60]);
+        collected.Should().Equal(1, 10, 2, 20, 3, 30, 4, 40, 5, 50, 6, 60);
 
-        static async IAsyncEnumerable<int> Expand(int n, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
+        static async IAsyncEnumerable<int> Expand(int n, [EnumeratorCancellation] CancellationToken ct)
         {
             await Task.Yield();
             yield return n;

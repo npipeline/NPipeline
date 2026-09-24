@@ -79,9 +79,8 @@ public class StreamingAnalyticsPipeline : IPipelineDefinition
     ///     Gets a description of what this pipeline demonstrates.
     /// </summary>
     /// <returns>A detailed description of the pipeline's purpose and flow.</returns>
-    public static string GetDescription()
-    {
-        return @"Streaming Analytics Pipeline Sample:
+    public static string GetDescription() =>
+        @"Streaming Analytics Pipeline Sample:
 
 This sample demonstrates advanced stream processing concepts with NPipeline:
 
@@ -124,5 +123,4 @@ This implementation demonstrates production-ready streaming analytics with:
 - Efficient memory usage for high-throughput scenarios
 - Configurable window parameters for different use cases
 - Comprehensive logging and monitoring capabilities";
-    }
 }

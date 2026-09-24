@@ -111,38 +111,26 @@ public static class CosmosTransientErrorDetectorExtensions
     /// </summary>
     /// <param name="exception">The exception to check.</param>
     /// <returns>True if the exception is transient; otherwise false.</returns>
-    public static bool IsTransient(Exception? exception)
-    {
-        return CosmosTransientErrorDetector.Instance.IsTransient(exception);
-    }
+    public static bool IsTransient(Exception? exception) => CosmosTransientErrorDetector.Instance.IsTransient(exception);
 
     /// <summary>
     ///     Determines whether a Cosmos DB exception represents a rate-limiting error (429).
     /// </summary>
     /// <param name="exception">The exception to check.</param>
     /// <returns>True if the exception is a rate-limiting error; otherwise false.</returns>
-    public static bool IsRateLimited(Exception? exception)
-    {
-        return CosmosTransientErrorDetector.Instance.IsRateLimited(exception);
-    }
+    public static bool IsRateLimited(Exception? exception) => CosmosTransientErrorDetector.Instance.IsRateLimited(exception);
 
     /// <summary>
     ///     Gets the suggested retry delay from a Cosmos DB exception, if available.
     /// </summary>
     /// <param name="exception">The exception to check.</param>
     /// <returns>The suggested retry delay, or null if not available.</returns>
-    public static TimeSpan? GetRetryDelay(Exception? exception)
-    {
-        return CosmosTransientErrorDetector.Instance.GetRetryDelay(exception);
-    }
+    public static TimeSpan? GetRetryDelay(Exception? exception) => CosmosTransientErrorDetector.Instance.GetRetryDelay(exception);
 
     /// <summary>
     ///     Gets the activity ID from a Cosmos DB exception for correlation.
     /// </summary>
     /// <param name="exception">The exception to check.</param>
     /// <returns>The activity ID, or null if not available.</returns>
-    public static string? GetActivityId(Exception? exception)
-    {
-        return CosmosTransientErrorDetector.Instance.GetCorrelationId(exception);
-    }
+    public static string? GetActivityId(Exception? exception) => CosmosTransientErrorDetector.Instance.GetCorrelationId(exception);
 }

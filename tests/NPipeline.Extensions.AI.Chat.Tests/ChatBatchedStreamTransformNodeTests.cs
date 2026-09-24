@@ -151,8 +151,5 @@ public class ChatBatchedStreamTransformNodeTests
         });
     }
 
-    private static PipelineContext Context()
-    {
-        return new PipelineContext();
-    }
+    private static PipelineContext Context() => new();
 }

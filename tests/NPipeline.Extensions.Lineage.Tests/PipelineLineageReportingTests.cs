@@ -5,7 +5,6 @@ using NPipeline.Configuration;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.ErrorHandling;
-using NPipeline.Execution;
 using NPipeline.Extensions.DependencyInjection;
 using NPipeline.Lineage;
 using NPipeline.Lineage.DependencyInjection;
@@ -22,6 +21,9 @@ namespace NPipeline.Extensions.Lineage.Tests;
 /// </summary>
 public sealed class PipelineLineageReportingTests
 {
+    private const string ItemSinkKey = "testing.item.lineage.sink";
+    private const string PipelineSinkKey = "testing.pipeline.lineage.sink";
+
     [Fact]
     public async Task PipelineLineageSink_WithoutItemLevelLineage_ShouldStillReceiveReport()
     {
@@ -37,7 +39,7 @@ public sealed class PipelineLineageReportingTests
         sink.Reports.Should().HaveCount(1);
         var report = sink.Reports[0];
         report.Pipeline.Should().Be(nameof(ReportOnlyPipeline));
-        report.Nodes.Select(n => n.Id).Should().BeEquivalentTo(["source", "sink"]);
+        report.Nodes.Select(n => n.Id).Should().BeEquivalentTo("source", "sink");
         report.Edges.Should().ContainSingle(e => e.From == "source" && e.To == "sink");
     }
 
@@ -126,9 +128,6 @@ public sealed class PipelineLineageReportingTests
         logger.Warnings.Should().NotContain(w => w.Contains("EnableItemLevelLineage", StringComparison.Ordinal));
     }
 
-    private const string ItemSinkKey = "testing.item.lineage.sink";
-    private const string PipelineSinkKey = "testing.pipeline.lineage.sink";
-
     private static async Task<PipelineContext> RunPipelineAsync<TPipeline>(ContextSeed seed, Action<IServiceCollection> configure)
         where TPipeline : IPipelineDefinition, new()
     {
@@ -183,7 +182,9 @@ public sealed class PipelineLineageReportingTests
         public void Apply(PipelineContext context)
         {
             foreach (var (key, value) in _items)
+            {
                 context.Items[key] = value;
+            }
 
             Context = context;
         }
@@ -316,8 +317,8 @@ public sealed class PipelineLineageReportingTests
 
     private sealed class CapturingLoggerProvider : ILoggerProvider
     {
-        private readonly List<string> _warnings = [];
         private readonly object _sync = new();
+        private readonly List<string> _warnings = [];
 
         public IReadOnlyList<string> Warnings
         {

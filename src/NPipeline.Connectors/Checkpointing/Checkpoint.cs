@@ -48,10 +48,7 @@ public record Checkpoint
     /// <param name="value">The checkpoint value.</param>
     /// <param name="metadata">Optional metadata.</param>
     /// <returns>A new checkpoint instance.</returns>
-    public static Checkpoint Create(string value, Dictionary<string, string>? metadata = null)
-    {
-        return new Checkpoint(value, DateTimeOffset.UtcNow, metadata);
-    }
+    public static Checkpoint Create(string value, Dictionary<string, string>? metadata = null) => new(value, DateTimeOffset.UtcNow, metadata);
 
     /// <summary>
     ///     Creates a new offset-based checkpoint.
@@ -59,21 +56,16 @@ public record Checkpoint
     /// <param name="offset">The numeric offset.</param>
     /// <param name="metadata">Optional metadata.</param>
     /// <returns>A new checkpoint instance.</returns>
-    public static Checkpoint FromOffset(long offset, Dictionary<string, string>? metadata = null)
-    {
-        return new Checkpoint(offset.ToString(), DateTimeOffset.UtcNow, metadata);
-    }
+    public static Checkpoint FromOffset(long offset, Dictionary<string, string>? metadata = null) => new(offset.ToString(), DateTimeOffset.UtcNow, metadata);
 
     /// <summary>
     ///     Parses the checkpoint value as a numeric offset.
     /// </summary>
     /// <returns>The numeric offset if parsing succeeds; otherwise, null.</returns>
-    public long? GetAsOffset()
-    {
-        return long.TryParse(Value, out var offset)
+    public long? GetAsOffset() =>
+        long.TryParse(Value, out var offset)
             ? offset
             : null;
-    }
 }
 
 /// <summary>

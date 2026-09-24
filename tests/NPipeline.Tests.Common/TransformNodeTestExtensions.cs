@@ -54,8 +54,6 @@ public static class TransformNodeTestExtensions
         this ITransformNode<TIn, TOut> node,
         TIn item,
         PipelineContext context,
-        CancellationToken cancellationToken = default)
-    {
-        return node.TransformAsync(item, context, cancellationToken);
-    }
+        CancellationToken cancellationToken = default) =>
+        node.TransformAsync(item, context, cancellationToken);
 }

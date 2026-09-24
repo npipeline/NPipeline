@@ -62,15 +62,13 @@ public class ValueAtRiskCalculator : AdvancedAggregateNode<ValidatedTrade, strin
     ///     This creates a default ValueAtRiskAccumulator that will collect returns.
     /// </summary>
     /// <returns>The initial accumulator with default values.</returns>
-    public override ValueAtRiskAccumulator CreateAccumulator()
-    {
-        return new ValueAtRiskAccumulator(
+    public override ValueAtRiskAccumulator CreateAccumulator() =>
+        new(
             string.Empty, // Will be set when first trade is processed
             new List<decimal>(),
             0m,
             DateTime.MinValue // Will be set when first trade is processed
         );
-    }
 
     /// <summary>
     ///     Accumulates a validated trade into the VaR accumulator.

@@ -1,7 +1,9 @@
 using System.Runtime.CompilerServices;
 using NPipeline.Attributes.Lineage;
 using NPipeline.Execution;
+using NPipeline.Execution.Lineage;
 using NPipeline.Execution.Strategies;
+using NPipeline.Lineage;
 using NPipeline.Pipeline;
 
 namespace NPipeline.Nodes;
@@ -15,7 +17,7 @@ namespace NPipeline.Nodes;
 ///     input and so cannot drop anything. Items are dropped as they are read; nothing is buffered.
 /// </remarks>
 [TransformCardinality(TransformCardinality.OneToZeroOrOne)]
-public sealed class FilterNode<T> : IStreamTransformNode<T, T>, IExecutionStrategyProvider
+public sealed class FilterNode<T> : IStreamTransformNode<T, T>, IExecutionStrategyProvider, ILineageProvenanceNode
 {
     private readonly Func<T, CancellationToken, ValueTask<bool>> _predicate;
 
@@ -47,10 +49,18 @@ public sealed class FilterNode<T> : IStreamTransformNode<T, T>, IExecutionStrate
         PipelineContext context,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
+        var lineage = LineageProvenanceSupport.WriterFor(this, context);
+        long index = 0;
+
         await foreach (var item in items.WithCancellation(cancellationToken).ConfigureAwait(false))
         {
             if (await _predicate(item, cancellationToken).ConfigureAwait(false))
+            {
+                lineage.ReportOutput(index++);
                 yield return item;
+            }
+            else
+                lineage.ReportDone(index++, LineageOutcomeReason.FilteredOut);
         }
     }
 }
@@ -65,7 +75,7 @@ public sealed class FilterNode<T> : IStreamTransformNode<T, T>, IExecutionStrate
 ///     they are produced, so a selector returning a lazy sequence stays lazy.
 /// </remarks>
 [TransformCardinality(TransformCardinality.OneToMany)]
-public sealed class SelectManyNode<TIn, TOut> : IStreamTransformNode<TIn, TOut>, IExecutionStrategyProvider
+public sealed class SelectManyNode<TIn, TOut> : IStreamTransformNode<TIn, TOut>, IExecutionStrategyProvider, ILineageProvenanceNode
 {
     private readonly Func<TIn, CancellationToken, IAsyncEnumerable<TOut>> _selector;
 
@@ -97,12 +107,23 @@ public sealed class SelectManyNode<TIn, TOut> : IStreamTransformNode<TIn, TOut>,
         PipelineContext context,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
+        var lineage = LineageProvenanceSupport.WriterFor(this, context);
+        long index = 0;
+
         await foreach (var item in items.WithCancellation(cancellationToken).ConfigureAwait(false))
         {
+            var emitted = false;
+
             await foreach (var produced in _selector(item, cancellationToken).WithCancellation(cancellationToken).ConfigureAwait(false))
             {
+                emitted = true;
+                lineage.ReportPartialOutput(index);
                 yield return produced;
             }
+
+            lineage.ReportDone(index++, emitted
+                ? LineageOutcomeReason.Emitted
+                : LineageOutcomeReason.ConsumedWithoutEmission);
         }
     }
 }

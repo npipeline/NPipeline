@@ -1,4 +1,3 @@
-using NPipeline.Execution;
 using System.Reflection;
 using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
@@ -6,10 +5,9 @@ using NPipeline.Configuration;
 using NPipeline.ErrorHandling;
 using NPipeline.Extensions.DependencyInjection;
 using NPipeline.Extensions.Testing;
-using NPipeline.Graph;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
-using NPipeline.Resilience;
+using NPipeline.Reliability;
 
 namespace NPipeline.Tests.Resilience.Restart;
 
@@ -66,7 +64,7 @@ public sealed class ResilientRestartLimitTests
             if (_attempt <= 3)
                 throw new InvalidOperationException("boom");
 
-            return ValueTask.FromResult<int>(item);
+            return ValueTask.FromResult(item);
         }
     }
 
@@ -74,51 +72,21 @@ public sealed class ResilientRestartLimitTests
     {
         private int _fails;
 
-        public Task<ResilienceDecision> DecideNodeFailureAsync(
-            NodeDefinition nodeDefinition,
-            INode node,
-            Exception exception,
-            PipelineContext context,
-            CancellationToken cancellationToken)
-        {
-            return Task.FromResult(ResilienceDecision.Fail);
-        }
+        public ValueTask<ResilienceDecision> DecideNodeFailureAsync(NodeFailure failure, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(ResilienceDecision.Fail);
 
-        public Task<ResilienceDecision> DecidePipelineFailureAsync(
-            string nodeId,
-            Exception exception,
-            PipelineContext context,
-            CancellationToken cancellationToken)
+        public ValueTask<ResilienceDecision> DecideRestartAsync(StreamFailure failure, CancellationToken cancellationToken)
         {
             _fails++;
 
             // Request restart for first 3 failures; retry options should stop earlier (limit=2) causing failure before success.
-            return Task.FromResult(_fails < 4
+            return ValueTask.FromResult(_fails < 4
                 ? ResilienceDecision.RestartNode
                 : ResilienceDecision.Fail);
         }
 
-        public Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
-            ITransformNode<TIn, TOut> node,
-            TIn failedItem,
-            Exception exception,
-            PipelineContext context,
-            string nodeId,
-            int retryAttempt,
-            CancellationToken cancellationToken)
-        {
-            return Task.FromResult(ResilienceDecision.Fail);
-        }
-
-        public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, RetryKind retryKind, int attemptNumber, CancellationToken cancellationToken)
-        {
-            return context.GetRetryDelayStrategy().GetDelayAsync(attemptNumber, cancellationToken);
-        }
-
-        public IResilienceCircuitBreaker? GetCircuitBreaker(PipelineContext context, string nodeId)
-        {
-            return DefaultResiliencePolicy.Instance.GetCircuitBreaker(context, nodeId);
-        }
+        public ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(ResilienceDecision.Fail);
     }
 
     private sealed class TestPipeline : IPipelineDefinition
@@ -130,8 +98,9 @@ public sealed class ResilientRestartLimitTests
             var k = builder.AddInMemorySink<int>("snkRL");
             _ = builder.Connect(s, t).Connect(t, k);
             builder.AddResiliencePolicy<RestartingPolicy>();
-            builder.WithResilience(t);
-            builder.WithRetryOptions(o => o with { MaxNodeRestartAttempts = 2, MaxMaterializedItems = 128 }); // gate at 2 failures
+
+            builder.WithResilience(o =>
+                o with { NodeRestart = new NodeRestartOptions { MaxRestarts = 2, MaxReplayWindow = 128, Backoff = RetryBackoff.None } }); // gate at 2 failures
         }
     }
 }

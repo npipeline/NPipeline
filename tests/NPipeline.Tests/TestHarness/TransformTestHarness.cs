@@ -28,9 +28,11 @@ public static class TransformTestHarness
         // Use a lightweight in-memory pipe that does not enforce notnull constraint
         var list = items.ToList();
         var inputPipe = new HarnessListPipe<TIn>(list, "HarnessInput");
+
         var strategy = executionStrategy
                        ?? (node as IExecutionStrategyProvider)?.DefaultExecutionStrategy
                        ?? new SequentialExecutionStrategy();
+
         var outputPipe = await strategy.ExecuteAsync<TIn, TOut>(inputPipe, node, context, node.GetType().Name, cancellationToken).ConfigureAwait(false);
         var results = new List<TOut>();
 
@@ -61,25 +63,14 @@ file sealed class HarnessListPipe<T>(IReadOnlyList<T> items, string name) : IDat
 {
     public string StreamName { get; } = name;
 
-    public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
-    {
-        return Iterate(cancellationToken).GetAsyncEnumerator(cancellationToken);
-    }
+    public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default) =>
+        Iterate(cancellationToken).GetAsyncEnumerator(cancellationToken);
 
-    public IAsyncEnumerable<object?> ToAsyncEnumerable(CancellationToken cancellationToken = default)
-    {
-        return Internal(cancellationToken);
-    }
+    public IAsyncEnumerable<object?> ToAsyncEnumerable(CancellationToken cancellationToken = default) => Internal(cancellationToken);
 
-    public Type GetDataType()
-    {
-        return typeof(T);
-    }
+    public Type GetDataType() => typeof(T);
 
-    public ValueTask DisposeAsync()
-    {
-        return ValueTask.CompletedTask;
-    }
+    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
     private async IAsyncEnumerable<T> Iterate([EnumeratorCancellation] CancellationToken ct)
     {

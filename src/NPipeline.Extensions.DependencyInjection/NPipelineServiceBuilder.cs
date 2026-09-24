@@ -5,7 +5,7 @@ using NPipeline.ErrorHandling;
 using NPipeline.Lineage;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
-using NPipeline.Resilience;
+using NPipeline.Reliability;
 
 namespace NPipeline.Extensions.DependencyInjection;
 
@@ -14,8 +14,8 @@ namespace NPipeline.Extensions.DependencyInjection;
 /// </summary>
 public sealed class NPipelineServiceBuilder
 {
-    private readonly IServiceCollection _services;
     private readonly PipelineDefinitionRegistry _registry;
+    private readonly IServiceCollection _services;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="NPipelineServiceBuilder" /> class.
@@ -26,6 +26,7 @@ public sealed class NPipelineServiceBuilder
         ArgumentNullException.ThrowIfNull(services);
         _services = services;
         _registry = new PipelineDefinitionRegistry();
+
         // Ensure the registry is available in DI so NPipeline.Studio can resolve it
         services.TryAddSingleton(_registry);
     }

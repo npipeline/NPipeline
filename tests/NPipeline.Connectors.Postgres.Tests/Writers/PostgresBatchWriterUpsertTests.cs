@@ -356,8 +356,8 @@ public sealed class PostgresBatchWriterUpsertTests
         var writer = CreateWriter<TestEntity>(connection, configuration, "custom_schema");
         var sql = InvokeBuildInsertSql(writer);
 
-        // Assert - Schema and table are quoted together
-        _ = sql.Should().Contain("\"custom_schema.test_table\"");
+        // Assert - Schema and table are quoted separately
+        _ = sql.Should().Contain("\"custom_schema\".\"test_table\"");
     }
 
     [Fact]
@@ -406,8 +406,8 @@ public sealed class PostgresBatchWriterUpsertTests
         var writer = CreateWriter<TestEntity>(connection, configuration);
         var sql = InvokeBuildInsertSql(writer);
 
-        // Assert - Schema and table are quoted together
-        _ = sql.Should().Contain("\"public.test_table\"");
+        // Assert - Schema and table are quoted separately
+        _ = sql.Should().Contain("\"public\".\"test_table\"");
         _ = sql.Should().Contain("\"id\"");
     }
 

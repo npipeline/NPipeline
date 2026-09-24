@@ -1,344 +1,209 @@
-using NPipeline.Configuration.RetryDelay;
-using NPipeline.Execution.RetryDelay;
+using System.Diagnostics;
+using System.Net;
+using NPipeline.Pipeline;
+using NPipeline.Reliability;
 
 namespace Sample_RetryDelay;
 
 /// <summary>
-///     Demonstrates advanced scenarios for retry delay strategies.
+///     What decides whether a retry happens at all, what happens when it does not, and how jitter spreads delays.
 /// </summary>
 public static class AdvancedScenarios
 {
-    /// <summary>
-    ///     Runs all advanced scenario examples.
-    /// </summary>
     public static async Task RunAllExamples()
     {
-        await NodeSpecificRetryConfiguration();
-        await DynamicStrategySelection();
-        await CustomStrategyImplementation();
-        await CircuitBreakerIntegration();
-        await MonitoringAndObservability();
-        await MultiRegionAndCostAwareStrategies();
+        ClassifierRules();
+        await ClassifierInAPipeline();
+        await NodeRetryBackoff();
+        await SkipAndDeadLetter();
+        JitterSpread();
     }
 
     /// <summary>
-    ///     Demonstrates node-specific retry configurations.
+    ///     A backoff only says how long to wait. The classifier says whether to retry at all: only transient failures
+    ///     are retried, and a permanent one goes straight to <see cref="ItemFailureAction" />.
     /// </summary>
-    public static async Task NodeSpecificRetryConfiguration()
+    public static void ClassifierRules()
     {
-        Console.WriteLine("Node-Specific Retry Configuration:");
-        Console.WriteLine("=================================");
+        Output.Heading("Classifier rules");
 
-        var factory = new DefaultRetryDelayStrategyFactory();
+        // Rules are checked in the order added, before the built-in ones.
+        var classifier = RetryClassifier.Default
+            .Transient<InvalidOperationException>(e => e.Message.Contains("busy", StringComparison.Ordinal))
+            .Permanent<HttpRequestException>(e => e.StatusCode == HttpStatusCode.ServiceUnavailable);
 
-        // Different strategies for different node types
-        var sourceConfig = new RetryDelayStrategyConfiguration(
-            BackoffStrategies.ExponentialBackoff(
-                TimeSpan.FromMilliseconds(50),
-                2.0,
-                TimeSpan.FromSeconds(10)),
-            JitterStrategies.FullJitter());
+        Exception[] failures =
+        [
+            new TimeoutException("timed out"),
+            new HttpRequestException("503", null, HttpStatusCode.ServiceUnavailable),
+            new HttpRequestException("502", null, HttpStatusCode.BadGateway),
+            new InvalidOperationException("server busy"),
+            new InvalidOperationException("bad state"),
+            new FormatException("bad format"),
+        ];
 
-        var sourceStrategy = factory.CreateStrategy(sourceConfig);
+        Console.WriteLine($"  {"exception",-44} {"Default",-10} {"custom",-10} All");
 
-        var transformConfig = new RetryDelayStrategyConfiguration(
-            BackoffStrategies.LinearBackoff(
-                TimeSpan.FromMilliseconds(100),
-                TimeSpan.FromMilliseconds(25),
-                TimeSpan.FromSeconds(30)),
-            JitterStrategies.EqualJitter());
-
-        var transformStrategy = factory.CreateStrategy(transformConfig);
-
-        var sinkConfig = new RetryDelayStrategyConfiguration(
-            BackoffStrategies.FixedDelay(TimeSpan.FromMilliseconds(500)),
-            JitterStrategies.NoJitter());
-
-        var sinkStrategy = factory.CreateStrategy(sinkConfig);
-
-        Console.WriteLine("Source Node Strategy:");
-
-        for (var i = 0; i < 3; i++)
+        foreach (var failure in failures)
         {
-            var delay = await sourceStrategy.GetDelayAsync(i);
-            Console.WriteLine($"  Attempt {i + 1}: {delay.TotalMilliseconds:F2}ms");
-        }
+            var label = failure is HttpRequestException http
+                ? $"HttpRequestException ({(int)http.StatusCode!})"
+                : $"{failure.GetType().Name} (\"{failure.Message}\")";
 
-        Console.WriteLine("\nTransform Node Strategy:");
-
-        for (var i = 0; i < 3; i++)
-        {
-            var delay = await transformStrategy.GetDelayAsync(i);
-            Console.WriteLine($"  Attempt {i + 1}: {delay.TotalMilliseconds:F2}ms");
-        }
-
-        Console.WriteLine("\nSink Node Strategy:");
-
-        for (var i = 0; i < 3; i++)
-        {
-            var delay = await sinkStrategy.GetDelayAsync(i);
-            Console.WriteLine($"  Attempt {i + 1}: {delay.TotalMilliseconds:F2}ms");
+            Console.WriteLine(
+                $"  {label,-44} {Verdict(RetryClassifier.Default, failure),-10} {Verdict(classifier, failure),-10} {Verdict(RetryClassifier.All, failure)}");
         }
 
         Console.WriteLine();
+
+        static string Verdict(RetryClassifier c, Exception e) => c.IsTransient(e)
+            ? "transient"
+            : "permanent";
     }
 
     /// <summary>
-    ///     Demonstrates dynamic strategy selection.
+    ///     The same classifier attached to item retry: the transient item is retried, the permanent one is not.
     /// </summary>
-    public static async Task DynamicStrategySelection()
+    public static async Task ClassifierInAPipeline()
     {
-        Console.WriteLine("Dynamic Strategy Selection:");
-        Console.WriteLine("=========================");
+        Output.Heading("Classifier in a pipeline");
 
-        var factory = new DefaultRetryDelayStrategyFactory();
+        // Item 1 fails with a "busy" error our rule makes transient; item 2 with one that stays permanent.
+        var transform = new FlakyTransform((item, attempt) => attempt <= 2
+            ? new InvalidOperationException(item == 1
+                ? "server busy"
+                : "bad state")
+            : null);
 
-        // Select strategy based on attempt count
-        BackoffStrategy dynamicBackoff = attempt =>
+        await InlinePipeline.RunAsync(builder =>
         {
-            var exponentialStrategy = BackoffStrategies.ExponentialBackoff(
-                TimeSpan.FromMilliseconds(100),
-                2.0,
-                TimeSpan.FromSeconds(5));
+            var source = builder.AddSource(() => new[] { 1, 2 }, "numbers");
+            var work = builder.AddFlaky(transform, "work");
+            var sink = builder.AddSink<int>(_ => { }, "discard");
+            builder.Connect(source, work).Connect(work, sink);
 
-            var linearStrategy = BackoffStrategies.LinearBackoff(
-                TimeSpan.FromMilliseconds(200),
-                TimeSpan.FromMilliseconds(100),
-                TimeSpan.FromSeconds(10));
-
-            var fixedStrategy = BackoffStrategies.FixedDelay(TimeSpan.FromMilliseconds(1000));
-
-            return attempt switch
+            builder.WithResilience(o => o with
             {
-                < 2 => exponentialStrategy(attempt),
-                < 5 => linearStrategy(attempt),
-                _ => fixedStrategy(attempt),
-            };
-        };
-
-        var baseConfig = new RetryDelayStrategyConfiguration(dynamicBackoff, JitterStrategies.NoJitter());
-        var baseStrategy = factory.CreateStrategy(baseConfig);
-
-        // Add jitter dynamically
-        var jitteredConfig = new RetryDelayStrategyConfiguration(
-            attempt => baseStrategy.GetDelayAsync(attempt).AsTask().GetAwaiter().GetResult(),
-            JitterStrategies.FullJitter());
-
-        var jitteredStrategy = factory.CreateStrategy(jitteredConfig);
-
-        for (var i = 0; i < 8; i++)
-        {
-            var delay = await jitteredStrategy.GetDelayAsync(i);
-            Console.WriteLine($"  Attempt {i + 1}: {delay.TotalMilliseconds:F2}ms");
-        }
-
-        Console.WriteLine();
-    }
-
-    /// <summary>
-    ///     Demonstrates custom strategy implementation.
-    /// </summary>
-    public static async Task CustomStrategyImplementation()
-    {
-        Console.WriteLine("Custom Strategy Implementation:");
-        Console.WriteLine("=============================");
-
-        // Custom backoff: Fibonacci sequence
-        static TimeSpan FibonacciBackoff(int attempt)
-        {
-            if (attempt < 0)
-                return TimeSpan.Zero;
-
-            var a = 1;
-            var b = 1;
-
-            for (var i = 0; i < attempt; i++)
-            {
-                var temp = a + b;
-                a = b;
-                b = temp;
-            }
-
-            return TimeSpan.FromMilliseconds(a * 100);
-        }
-
-        var factory = new DefaultRetryDelayStrategyFactory();
-        var config = new RetryDelayStrategyConfiguration(FibonacciBackoff, JitterStrategies.EqualJitter());
-        var strategy = factory.CreateStrategy(config);
-
-        for (var i = 0; i < 6; i++)
-        {
-            var delay = await strategy.GetDelayAsync(i);
-            Console.WriteLine($"  Attempt {i + 1}: {delay.TotalMilliseconds:F2}ms (Fibonacci: {GetFibonacci(i)})");
-        }
-
-        Console.WriteLine();
-    }
-
-    /// <summary>
-    ///     Demonstrates circuit breaker integration.
-    /// </summary>
-    public static async Task CircuitBreakerIntegration()
-    {
-        Console.WriteLine("Circuit Breaker Integration:");
-        Console.WriteLine("===========================");
-
-        var factory = new DefaultRetryDelayStrategyFactory();
-
-        // This would integrate with a circuit breaker
-        // For demonstration, We'll simulate it
-        var circuitOpen = false;
-        var failureCount = 0;
-        const int failureThreshold = 5;
-
-        var config = new RetryDelayStrategyConfiguration(
-            BackoffStrategies.ExponentialBackoff(
-                TimeSpan.FromMilliseconds(100),
-                2.0,
-                TimeSpan.FromSeconds(30)),
-            JitterStrategies.DecorrelatedJitter(TimeSpan.FromMinutes(1)));
-
-        var strategy = factory.CreateStrategy(config);
-
-        for (var i = 0; i < 10; i++)
-        {
-            if (circuitOpen)
-            {
-                Console.WriteLine($"  Attempt {i + 1}: Circuit OPEN - skipping retry");
-                continue;
-            }
-
-            var delay = await strategy.GetDelayAsync(i);
-            Console.WriteLine($"  Attempt {i + 1}: {delay.TotalMilliseconds:F2}ms");
-
-            // Simulate failure
-            if (i % 3 == 0)
-            {
-                failureCount++;
-                Console.WriteLine($"    Failure {failureCount}/{failureThreshold}");
-
-                if (failureCount >= failureThreshold)
+                ItemRetry = o.ItemRetry with
                 {
-                    circuitOpen = true;
-                    Console.WriteLine("    Circuit OPENED due to failure threshold");
-                }
-            }
-        }
+                    MaxRetries = 3,
+                    Backoff = RetryBackoff.Constant(TimeSpan.FromMilliseconds(10)),
+                    Classifier = RetryClassifier.Default.Transient<InvalidOperationException>(e =>
+                        e.Message.Contains("busy", StringComparison.Ordinal)),
+                },
 
+                // A permanent failure is not retried; Skip drops the item instead of failing the pipeline.
+                OnItemFailure = ItemFailureAction.Skip,
+            });
+        });
+
+        Console.WriteLine($"  item 1 (\"server busy\", transient): {transform.AttemptsFor(1)} attempts, then succeeded");
+        Console.WriteLine($"  item 2 (\"bad state\", permanent):   {transform.AttemptsFor(2)} attempt, then skipped");
         Console.WriteLine();
     }
 
     /// <summary>
-    ///     Demonstrates monitoring and observability.
+    ///     Node retry (L3) runs a whole failed node again, with its own backoff. It is the only layer that covers
+    ///     sources and sinks.
     /// </summary>
-    public static async Task MonitoringAndObservability()
+    public static async Task NodeRetryBackoff()
     {
-        Console.WriteLine("Monitoring and Observability:");
-        Console.WriteLine("=============================");
+        Output.Heading("Node retry backoff");
 
-        var factory = new DefaultRetryDelayStrategyFactory();
+        var source = new FailsToOpenOnceSource([1, 2, 3]);
+        var received = 0;
 
-        var config = new RetryDelayStrategyConfiguration(
-            BackoffStrategies.ExponentialBackoff(
-                TimeSpan.FromMilliseconds(100),
-                2.0,
-                TimeSpan.FromSeconds(30)),
-            JitterStrategies.FullJitter());
-
-        var strategy = factory.CreateStrategy(config);
-
-        var delays = new List<TimeSpan>();
-        var timestamps = new List<DateTimeOffset>();
-
-        for (var i = 0; i < 5; i++)
+        await InlinePipeline.RunAsync(builder =>
         {
-            var start = DateTimeOffset.UtcNow;
-            var delay = await strategy.GetDelayAsync(i);
-            var end = DateTimeOffset.UtcNow;
+            var s = builder.AddSource(source, "flaky-source");
+            var sink = builder.AddSink<int>(_ => received++, "count");
+            builder.Connect(s, sink);
 
-            delays.Add(delay);
-            timestamps.Add(end);
-
-            Console.WriteLine($"  Attempt {i + 1}: {delay.TotalMilliseconds:F2}ms");
-            Console.WriteLine($"    Start: {start:HH:mm:ss.fff}");
-            Console.WriteLine($"    End: {end:HH:mm:ss.fff}");
-            Console.WriteLine($"    Duration: {(end - start).TotalMilliseconds:F2}ms");
-        }
-
-        // Calculate metrics
-        var avgDelay = TimeSpan.FromMilliseconds(delays.Average(d => d.TotalMilliseconds));
-        var maxDelay = delays.Max();
-        var totalDuration = timestamps.Last() - timestamps.First();
-
-        Console.WriteLine("\nMetrics:");
-        Console.WriteLine($"  Average Delay: {avgDelay.TotalMilliseconds:F2}ms");
-        Console.WriteLine($"  Max Delay: {maxDelay.TotalMilliseconds:F2}ms");
-        Console.WriteLine($"  Total Duration: {totalDuration.TotalMilliseconds:F2}ms");
-        Console.WriteLine($"  Throughput: {delays.Count / totalDuration.TotalSeconds:F2} attempts/sec");
-
-        Console.WriteLine();
-    }
-
-    /// <summary>
-    ///     Demonstrates multi-region and cost-aware strategies.
-    /// </summary>
-    public static async Task MultiRegionAndCostAwareStrategies()
-    {
-        Console.WriteLine("Multi-Region and Cost-Aware Strategies:");
-        Console.WriteLine("=====================================");
-
-        var factory = new DefaultRetryDelayStrategyFactory();
-
-        // Simulate different regions with different costs
-        var regions = new[]
-        {
-            ("US-East", TimeSpan.FromMilliseconds(50)),
-            ("US-West", TimeSpan.FromMilliseconds(75)),
-            ("EU-West", TimeSpan.FromMilliseconds(100)),
-            ("AP-Southeast", TimeSpan.FromMilliseconds(125)),
-        };
-
-        foreach (var (region, baseDelay) in regions)
-        {
-            Console.WriteLine($"\n{region} Region:");
-
-            var config = new RetryDelayStrategyConfiguration(
-                BackoffStrategies.ExponentialBackoff(
-                    baseDelay,
-                    2.0,
-                    TimeSpan.FromSeconds(30)),
-                JitterStrategies.FullJitter());
-
-            var strategy = factory.CreateStrategy(config);
-
-            for (var i = 0; i < 3; i++)
+            // The default node-retry backoff starts at 1s. A sample does not need to wait that long.
+            builder.WithResilience(o => o with
             {
-                var delay = await strategy.GetDelayAsync(i);
-                Console.WriteLine($"  Attempt {i + 1}: {delay.TotalMilliseconds:F2}ms");
+                NodeRetry = new NodeRetryOptions
+                {
+                    MaxRetries = 2,
+                    Backoff = RetryBackoff.Constant(TimeSpan.FromMilliseconds(50)),
+                },
+            });
+        });
+
+        var wait = Stopwatch.GetElapsedTime(source.OpenTimestamps[0], source.OpenTimestamps[1]);
+        Console.WriteLine($"  source opened {source.Opens} times, waited {Output.Ms(wait)} between them, sink received {received} items");
+        Console.WriteLine();
+    }
+
+    /// <summary>
+    ///     What happens to an item whose failure is not retried, either because it is permanent or because its
+    ///     retries ran out.
+    /// </summary>
+    public static async Task SkipAndDeadLetter()
+    {
+        Output.Heading("OnItemFailure: Skip and DeadLetter");
+
+        foreach (var action in new[] { ItemFailureAction.Skip, ItemFailureAction.DeadLetter })
+        {
+            // Item 3 always times out, so it exhausts its retries; the others pass.
+            var transform = new FlakyTransform((item, attempt) => item == 3
+                ? new TimeoutException($"item 3 timed out (attempt {attempt})")
+                : null);
+
+            var deadLetters = new CollectingDeadLetterSink();
+            var received = new List<int>();
+
+            await InlinePipeline.RunAsync(builder =>
+            {
+                var source = builder.AddSource(() => new[] { 1, 2, 3, 4 }, "numbers");
+                var work = builder.AddFlaky(transform, "work");
+                var sink = builder.AddSink<int>(received.Add, "collect");
+                builder.Connect(source, work).Connect(work, sink);
+
+                builder.WithResilience(o => o with
+                {
+                    ItemRetry = o.ItemRetry with { MaxRetries = 2, Backoff = RetryBackoff.Constant(TimeSpan.FromMilliseconds(5)) },
+                    OnItemFailure = action,
+                });
+
+                // DeadLetter needs somewhere to send items; without a sink the run fails before any node starts.
+                if (action == ItemFailureAction.DeadLetter)
+                    builder.AddDeadLetterSink(deadLetters);
+            });
+
+            Console.WriteLine(
+                $"  {action}: item 3 tried {transform.AttemptsFor(3)} times; sink received [{string.Join(", ", received)}], dead letters: {deadLetters.Envelopes.Count}");
+
+            foreach (var envelope in deadLetters.Envelopes)
+            {
+                Console.WriteLine(
+                    $"    item {envelope.Item} from '{envelope.Attribution.OriginNodeId}': {envelope.Error.GetBaseException().Message}");
             }
         }
 
         Console.WriteLine();
     }
 
-    private static int GetFibonacci(int n)
+    /// <summary>
+    ///     Jitter keeps many failing callers from retrying in lockstep. Sampling <see cref="RetryBackoff.DelayFor" />
+    ///     shows the range each kind draws from.
+    /// </summary>
+    public static void JitterSpread()
     {
-        if (n <= 0)
-            return 0;
+        Output.Heading("Jitter spread: min / mean / max of 10,000 draws per retry (exponential 100ms, x2)");
 
-        if (n == 1)
-            return 1;
-
-        var a = 1;
-        var b = 1;
-
-        for (var i = 2; i <= n; i++)
+        foreach (var jitter in new[] { RetryJitter.None, RetryJitter.Full, RetryJitter.Equal })
         {
-            var temp = a + b;
-            a = b;
-            b = temp;
+            var backoff = RetryBackoff.Exponential(TimeSpan.FromMilliseconds(100), jitter: jitter);
+            Console.WriteLine($"  {jitter}:");
+
+            for (var retry = 1; retry <= 3; retry++)
+            {
+                var draws = Enumerable.Range(0, 10_000).Select(_ => backoff.DelayFor(retry).TotalMilliseconds).ToArray();
+                Console.WriteLine($"    retry {retry}: {Output.Ms(draws.Min())} / {Output.Ms(draws.Average())} / {Output.Ms(draws.Max())}");
+            }
         }
 
-        return a;
+        Console.WriteLine();
     }
 }

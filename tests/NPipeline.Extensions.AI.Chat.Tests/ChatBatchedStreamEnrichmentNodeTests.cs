@@ -79,8 +79,5 @@ public class ChatBatchedStreamEnrichmentNodeTests
         });
     }
 
-    private static PipelineContext Context()
-    {
-        return new PipelineContext();
-    }
+    private static PipelineContext Context() => new();
 }

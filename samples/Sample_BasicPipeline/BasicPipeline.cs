@@ -50,9 +50,8 @@ public class BasicPipeline : IPipelineDefinition
     ///     Gets a description of what this pipeline demonstrates.
     /// </summary>
     /// <returns>A detailed description of the pipeline's purpose and flow.</returns>
-    public static string GetDescription()
-    {
-        return @"Basic Pipeline Sample:
+    public static string GetDescription() =>
+        @"Basic Pipeline Sample:
 
 This sample demonstrates the fundamental concepts of NPipeline:
 - Creating a simple source-transform-sink pipeline
@@ -71,5 +70,4 @@ This implementation follows the IPipelineDefinition pattern, which provides:
 - Proper node isolation between executions
 - Type-safe node connections
 - Clear separation of pipeline structure from execution logic";
-    }
 }

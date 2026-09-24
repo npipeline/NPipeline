@@ -159,19 +159,13 @@ public class MongoConnectionPool : IMongoConnectionPool
     /// </summary>
     /// <param name="name">The name of the connection.</param>
     /// <returns>True if the named connection exists; otherwise, false.</returns>
-    public bool HasNamedConnection(string name)
-    {
-        return _namedClients.ContainsKey(name);
-    }
+    public bool HasNamedConnection(string name) => _namedClients.ContainsKey(name);
 
     /// <summary>
     ///     Gets all named connection names.
     /// </summary>
     /// <returns>A collection of named connection names.</returns>
-    public IEnumerable<string> GetNamedConnectionNames()
-    {
-        return _namedClients.Keys;
-    }
+    public IEnumerable<string> GetNamedConnectionNames() => _namedClients.Keys;
 
     /// <summary>
     ///     Disposes the connection pool and all cached clients.

@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Runtime.CompilerServices;
 using AwesomeAssertions;
 using NPipeline.Configuration;
 using NPipeline.DataFlow;
@@ -86,6 +87,7 @@ public sealed class NodeIdFlowTests
         await PipelineRunner.Create().RunAsync(new FanOutPipeline(), context, CancellationToken.None);
 
         IdRecorder.Observed.Should().NotBeEmpty();
+
         IdRecorder.Observed.Should().OnlyContain(pair => pair.Expected == pair.Actual,
             "a sink asking for its own id must never be answered with a sibling's");
     }
@@ -114,21 +116,16 @@ public sealed class NodeIdFlowTests
 
     private sealed class PassthroughNode : TransformNode<int, int>
     {
-        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult(item);
-        }
+        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken) => ValueTask.FromResult(item);
     }
 
     private sealed class CountingSource : SourceNode<int>
     {
-        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
-        {
-            return new DataStream<int>(Produce(cancellationToken), "source");
-        }
+        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken) =>
+            new DataStream<int>(Produce(cancellationToken), "source");
 
         private static async IAsyncEnumerable<int> Produce(
-            [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
+            [EnumeratorCancellation] CancellationToken cancellationToken)
         {
             for (var i = 0; i < 200; i++)
             {

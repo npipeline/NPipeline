@@ -31,26 +31,22 @@ public class MySqlOptions
     /// </param>
     /// <returns>The connection string.</returns>
     /// <exception cref="InvalidOperationException">Thrown when the named connection is not found.</exception>
-    public string GetConnectionString(string? name = null)
-    {
-        return string.IsNullOrWhiteSpace(name)
+    public string GetConnectionString(string? name = null) =>
+        string.IsNullOrWhiteSpace(name)
             ? DefaultConnectionString
             : NamedConnections.TryGetValue(name, out var connectionString)
                 ? connectionString
                 : throw new InvalidOperationException($"Named MySQL connection '{name}' not found.");
-    }
 
     /// <summary>
     ///     Checks if a named connection exists.
     /// </summary>
     /// <param name="name">The connection name to check.</param>
     /// <returns><c>true</c> if the connection exists; otherwise, <c>false</c>.</returns>
-    public bool HasConnection(string name)
-    {
-        return string.IsNullOrWhiteSpace(name)
+    public bool HasConnection(string name) =>
+        string.IsNullOrWhiteSpace(name)
             ? !string.IsNullOrWhiteSpace(DefaultConnectionString)
             : NamedConnections.ContainsKey(name);
-    }
 
     /// <summary>
     ///     Adds or updates a named connection string.
@@ -74,10 +70,7 @@ public class MySqlOptions
     /// </summary>
     /// <param name="name">The connection name to remove.</param>
     /// <returns><c>true</c> if the connection was removed; otherwise, <c>false</c>.</returns>
-    public bool RemoveConnection(string name)
-    {
-        return NamedConnections.Remove(name);
-    }
+    public bool RemoveConnection(string name) => NamedConnections.Remove(name);
 
     /// <summary>
     ///     Gets all configured connection names ("default" plus any named connections).

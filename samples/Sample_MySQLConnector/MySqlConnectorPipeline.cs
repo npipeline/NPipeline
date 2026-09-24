@@ -31,47 +31,45 @@ public sealed class MySqlConnectorPipeline
     /// <summary>
     ///     Gets a description of the pipeline and its features.
     /// </summary>
-    public static string GetDescription()
-    {
-        return """
-               MySQL Connector Sample Pipeline
-               ================================
+    public static string GetDescription() =>
+        """
+        MySQL Connector Sample Pipeline
+        ================================
 
-               This pipeline demonstrates the following features:
+        This pipeline demonstrates the following features:
 
-               1. Reading from MySQL
-                  - MySqlSourceNode for data retrieval
-                  - Parameterized queries
-                  - Streaming results (CommandBehavior.SequentialAccess)
+        1. Reading from MySQL
+           - MySqlSourceNode for data retrieval
+           - Parameterized queries
+           - Streaming results (CommandBehavior.SequentialAccess)
 
-               2. Writing to MySQL
-                  - MySqlSinkNode for data insertion
-                  - PerRow write strategy (row-by-row)
-                  - Batch write strategy (batched multi-row INSERT)
-                  - BulkLoad write strategy (LOAD DATA LOCAL INFILE)
+        2. Writing to MySQL
+           - MySqlSinkNode for data insertion
+           - PerRow write strategy (row-by-row)
+           - Batch write strategy (batched multi-row INSERT)
+           - BulkLoad write strategy (LOAD DATA LOCAL INFILE)
 
-               3. Upsert Semantics
-                  - INSERT ... ON DUPLICATE KEY UPDATE
-                  - INSERT IGNORE (skip duplicates)
-                  - REPLACE INTO (delete+insert)
+        3. Upsert Semantics
+           - INSERT ... ON DUPLICATE KEY UPDATE
+           - INSERT IGNORE (skip duplicates)
+           - REPLACE INTO (delete+insert)
 
-               4. Mapping Strategies
-                  - Attribute-based mapping (MySqlTable, MySqlColumn, Column, IgnoreColumn)
-                  - Convention-based mapping (property names → column names)
-                  - Custom mappers (Func<T, IEnumerable<DatabaseParameter>>)
+        4. Mapping Strategies
+           - Attribute-based mapping (MySqlTable, MySqlColumn, Column, IgnoreColumn)
+           - Convention-based mapping (property names → column names)
+           - Custom mappers (Func<T, IEnumerable<DatabaseParameter>>)
 
-               5. Connection Management
-                  - Connection pooling
-                  - Named connections
-                  - StorageUri (mysql://user:pass@host:port/db)
-                  - MariaDB support (mariadb:// scheme)
+        5. Connection Management
+           - Connection pooling
+           - Named connections
+           - StorageUri (mysql://user:pass@host:port/db)
+           - MariaDB support (mariadb:// scheme)
 
-               6. Error Handling
-                  - Retry logic for transient errors
-                  - Row-level error handling
-                  - Transaction support
-               """;
-    }
+        6. Error Handling
+           - Retry logic for transient errors
+           - Row-level error handling
+           - Transaction support
+        """;
 
     /// <summary>
     ///     Executes all pipeline demonstrations.

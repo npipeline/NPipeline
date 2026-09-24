@@ -138,8 +138,48 @@ var sink = new SqlServerSinkNode<Order>("connection-string", "dbo.Orders", confi
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
 | `ContinueOnError` | `bool` | `false` | Continue on row-level errors |
-| `MaxRetryAttempts` | `int` | `3` | Retry attempts for transient errors |
-| `RetryDelay` | `TimeSpan` | - | Delay between retries |
+| `Resilience` | `Resilience` | `SqlServerConnectorResilience.Default` | How transient failures are retried; see [Resilience](#resilience) |
+
+## Resilience
+
+The sink retries transient failures with [NResilience](https://github.com/nresilience/NResilience). The `Resilience`
+property on `SqlServerConfiguration` configures it. The default, `SqlServerConnectorResilience.Default`, does the following:
+
+- Makes up to four attempts (three retries).
+- Retries timeouts (-2), network errors (53, 64, 121), deadlocks (1205), and Azure SQL unavailability (40613).
+- Treats Azure SQL throttling (40501, 10928, 10929, and 49918-49920) as throttling, which waits longer: backoff starts at 10 seconds.
+- Doesn't retry other errors, such as a constraint violation or a missing table.
+- Waits with exponential backoff and full jitter, from 1 second up to 30 seconds.
+- Has no attempt timeout and no deadline. The driver's own timeout bounds each attempt: `CommandTimeout` for rows and batches, and `BulkCopyTimeout` for bulk copy.
+  A long bulk write isn't cut off by a retry policy's timeout.
+
+Each write strategy retries one unit of work that commits all or nothing, so a retry never inserts rows that an
+earlier attempt committed:
+
+- `PerRow`: one `INSERT` per row.
+- `Batch`: one multi-row `INSERT` or `MERGE` statement per flush.
+- `BulkCopy`: one `SqlBulkCopy` per flush, inside a transaction the writer opens and commits. Without one,
+  `SqlBulkCopy` commits every `BulkCopyBatchSize` rows on its own, and a retry after a failure part-way through would
+  insert the committed rows again.
+
+With `DeliverySemantic.ExactlyOnce`, the sink wraps all writes in one transaction. A failure can abort that whole
+transaction, so the writers make one attempt and the sink rolls the transaction back. A batch that fails isn't
+written again when the writer is disposed.
+
+To change a setting, derive a policy with a `with` expression:
+
+```csharp
+var config = new SqlServerConfiguration
+{
+    Resilience = SqlServerConnectorResilience.Default with { Attempts = 6 },
+};
+```
+
+To turn retries off, use `Resilience.None`.
+
+The connector is the only layer that retries statements. SqlClient's configurable retry logic
+(`SqlConfigurableRetryFactory`) is off by default; leave it off, because two retrying layers multiply attempts. Retries
+aren't logged by the connector. To observe them, attach a listener: `SqlServerConnectorResilience.Default.WithListener(e => ...)`.
 
 ## Dependency Injection
 

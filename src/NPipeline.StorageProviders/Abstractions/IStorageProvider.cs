@@ -113,12 +113,10 @@ public interface IStorageProvider
     IAsyncEnumerable<StorageItem> ListAsync(
         StorageUri prefix,
         bool recursive = false,
-        CancellationToken cancellationToken = default)
-    {
+        CancellationToken cancellationToken = default) =>
         throw new NotSupportedException(
             $"List operation is not supported by {GetType().Name}. " +
             $"Check {nameof(IStorageProviderMetadataProvider)} or provider documentation.");
-    }
 
     /// <summary>
     ///     Retrieves detailed metadata for the resource at the specified <see cref="StorageUri" />.
@@ -138,8 +136,6 @@ public interface IStorageProvider
     /// </remarks>
     Task<StorageMetadata?> GetMetadataAsync(
         StorageUri uri,
-        CancellationToken cancellationToken = default)
-    {
-        return Task.FromResult<StorageMetadata?>(null);
-    }
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult<StorageMetadata?>(null);
 }

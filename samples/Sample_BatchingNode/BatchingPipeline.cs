@@ -119,9 +119,8 @@ public class BatchingPipeline : IPipelineDefinition
     ///     Gets a description of what this pipeline demonstrates.
     /// </summary>
     /// <returns>A detailed description of the pipeline's purpose and flow.</returns>
-    public static string GetDescription()
-    {
-        return @"BatchingNode Sample:
+    public static string GetDescription() =>
+        @"BatchingNode Sample:
 
 This sample demonstrates BatchingNode functionality for efficient batch processing:
 - Individual item collection into batches
@@ -148,5 +147,4 @@ This implementation follows the IPipelineDefinition pattern, which provides:
 - Proper node isolation between executions
 - Type-safe node connections
 - Clear separation of pipeline structure from execution logic";
-    }
 }

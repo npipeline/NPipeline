@@ -29,17 +29,13 @@ public sealed class CosmosMongoApiAdapter : ICosmosApiAdapter
     }
 
     /// <inheritdoc />
-    public ICosmosSourceExecutor CreateSourceExecutor(object client, CosmosConfiguration configuration)
-    {
-        return new CosmosMongoSourceExecutor((MongoClient)client, configuration);
-    }
+    public ICosmosSourceExecutor CreateSourceExecutor(object client, CosmosConfiguration configuration) =>
+        new CosmosMongoSourceExecutor((MongoClient)client, configuration);
 
     /// <inheritdoc />
     public ICosmosSinkExecutor<T> CreateSinkExecutor<T>(
         object client,
         CosmosConfiguration configuration,
-        Func<T, string>? idSelector = null)
-    {
-        return new CosmosMongoSinkExecutor<T>((MongoClient)client, configuration, idSelector);
-    }
+        Func<T, string>? idSelector = null) =>
+        new CosmosMongoSinkExecutor<T>((MongoClient)client, configuration, idSelector);
 }

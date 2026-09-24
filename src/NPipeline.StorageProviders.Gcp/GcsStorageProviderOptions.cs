@@ -1,4 +1,6 @@
 using Google.Apis.Auth.OAuth2;
+using NPipeline.StorageProviders.Gcp.Reliability;
+using NResilience;
 
 namespace NPipeline.StorageProviders.Gcp;
 
@@ -55,15 +57,23 @@ public sealed class GcsStorageProviderOptions
     public int ClientCacheSizeLimit { get; set; } = 100;
 
     /// <summary>
-    ///     Gets or sets optional retry settings for GCS operations.
-    ///     When set, retry behavior is applied to provider operations.
+    ///     Gets or sets how each GCS request is retried. Defaults to <see cref="GcsStorageResilience.Default" />: three
+    ///     attempts with jittered exponential backoff from one second up to 32 seconds, retrying 408, 429 (honoring
+    ///     <c>Retry-After</c>), 5xx, and network failures. Use <see cref="NResilience.Resilience.None" /> to turn retries
+    ///     off.
     /// </summary>
-    public GcsRetrySettings? RetrySettings { get; set; }
+    /// <remarks>
+    ///     This is the only retry layer: clients built by <see cref="GcsClientFactory" /> have the Google SDK's own retry
+    ///     turned off. A custom factory that builds its own clients should set
+    ///     <c>client.Service.HttpClient.MessageHandler.NumTries = 1</c> to keep it that way.
+    /// </remarks>
+    public Resilience Resilience { get; set; } = GcsStorageResilience.Default;
 
     /// <summary>
     ///     Validates the options and throws if invalid.
     /// </summary>
     /// <exception cref="InvalidOperationException">Thrown when validation fails.</exception>
+    /// <exception cref="NResilience.ResilienceConfigurationException">Thrown when <see cref="Resilience" /> is impossible.</exception>
     public void Validate()
     {
         const int kiB256 = 256 * 1024;
@@ -86,86 +96,7 @@ public sealed class GcsStorageProviderOptions
                 $"ClientCacheSizeLimit must be positive. Current value: {ClientCacheSizeLimit}");
         }
 
-        RetrySettings?.Validate();
-    }
-}
-
-/// <summary>
-///     Retry settings for Google Cloud Storage operations.
-///     Applied to provider operations for transient HTTP failures.
-/// </summary>
-public sealed class GcsRetrySettings
-{
-    /// <summary>
-    ///     Gets or sets the initial delay before the first retry.
-    ///     Default is 1 second.
-    /// </summary>
-    public TimeSpan InitialDelay { get; set; } = TimeSpan.FromSeconds(1);
-
-    /// <summary>
-    ///     Gets or sets the maximum delay between retries.
-    ///     Default is 32 seconds.
-    /// </summary>
-    public TimeSpan MaxDelay { get; set; } = TimeSpan.FromSeconds(32);
-
-    /// <summary>
-    ///     Gets or sets the delay multiplier for exponential backoff.
-    ///     Default is 2.0.
-    /// </summary>
-    public double DelayMultiplier { get; set; } = 2.0;
-
-    /// <summary>
-    ///     Gets or sets the maximum number of retry attempts.
-    ///     Default is 3. A value of 0 disables retries.
-    /// </summary>
-    public int MaxAttempts { get; set; } = 3;
-
-    /// <summary>
-    ///     Gets or sets whether to retry on rate limit errors (HTTP 429).
-    ///     Default is true.
-    /// </summary>
-    public bool RetryOnRateLimit { get; set; } = true;
-
-    /// <summary>
-    ///     Gets or sets whether to retry on server errors (HTTP 5xx).
-    ///     Default is true.
-    /// </summary>
-    public bool RetryOnServerErrors { get; set; } = true;
-
-    /// <summary>
-    ///     Validates retry settings.
-    /// </summary>
-    /// <exception cref="InvalidOperationException">Thrown when validation fails.</exception>
-    public void Validate()
-    {
-        if (InitialDelay < TimeSpan.Zero)
-        {
-            throw new InvalidOperationException(
-                $"RetrySettings.InitialDelay must be non-negative. Current value: {InitialDelay}");
-        }
-
-        if (MaxDelay < TimeSpan.Zero)
-        {
-            throw new InvalidOperationException(
-                $"RetrySettings.MaxDelay must be non-negative. Current value: {MaxDelay}");
-        }
-
-        if (MaxDelay < InitialDelay)
-        {
-            throw new InvalidOperationException(
-                $"RetrySettings.MaxDelay must be greater than or equal to InitialDelay. Current values: MaxDelay={MaxDelay}, InitialDelay={InitialDelay}");
-        }
-
-        if (DelayMultiplier < 1.0)
-        {
-            throw new InvalidOperationException(
-                $"RetrySettings.DelayMultiplier must be greater than or equal to 1.0. Current value: {DelayMultiplier}");
-        }
-
-        if (MaxAttempts < 0)
-        {
-            throw new InvalidOperationException(
-                $"RetrySettings.MaxAttempts must be non-negative. Current value: {MaxAttempts}");
-        }
+        ArgumentNullException.ThrowIfNull(Resilience);
+        Resilience.Validate();
     }
 }

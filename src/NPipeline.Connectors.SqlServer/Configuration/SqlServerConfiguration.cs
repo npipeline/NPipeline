@@ -1,6 +1,8 @@
 using NPipeline.Connectors.Checkpointing;
 using NPipeline.Connectors.Configuration;
 using NPipeline.Connectors.SqlServer.Mapping;
+using NPipeline.Connectors.SqlServer.Reliability;
+using NResilience;
 
 namespace NPipeline.Connectors.SqlServer.Configuration;
 
@@ -142,14 +144,12 @@ public class SqlServerConfiguration
     // Error Handling
 
     /// <summary>
-    ///     Gets or sets the maximum number of retry attempts for transient errors.
+    ///     Gets or sets how writes are retried. Defaults to <see cref="SqlServerConnectorResilience.Default" />: four
+    ///     attempts with exponential backoff, retrying only the errors <see cref="SqlServerConnectorResilience.Classifier" />
+    ///     judges transient. Each attempt is bounded by <see cref="CommandTimeout" /> or <see cref="BulkCopyTimeout" />.
+    ///     Use <see cref="NResilience.Resilience.None" /> to turn retries off.
     /// </summary>
-    public int MaxRetryAttempts { get; set; } = 3;
-
-    /// <summary>
-    ///     Gets or sets the delay between retry attempts.
-    /// </summary>
-    public TimeSpan RetryDelay { get; set; } = TimeSpan.FromSeconds(1);
+    public Resilience Resilience { get; set; } = SqlServerConnectorResilience.Default;
 
     /// <summary>
     ///     Gets or sets whether to continue when a row-level error occurs.
@@ -271,11 +271,10 @@ public class SqlServerConfiguration
         if (BatchSize > MaxBatchSize)
             throw new ArgumentException("BatchSize cannot exceed MaxBatchSize.", nameof(BatchSize));
 
-        if (MaxRetryAttempts < 0)
-            throw new ArgumentException("MaxRetryAttempts cannot be negative.", nameof(MaxRetryAttempts));
+        if (Resilience is null)
+            throw new ArgumentException("Resilience cannot be null.", nameof(Resilience));
 
-        if (RetryDelay < TimeSpan.Zero)
-            throw new ArgumentException("RetryDelay cannot be negative.", nameof(RetryDelay));
+        Resilience.Validate();
 
         if (FetchSize <= 0)
             throw new ArgumentException("FetchSize must be greater than zero.", nameof(FetchSize));

@@ -47,40 +47,22 @@ public class PipelineBuildBenchmarks
     // ---------------------------------------------------------------------
 
     [Benchmark(Baseline = true, Description = "Build single-node graph")]
-    public NPipeline.Pipeline.Pipeline Build_SingleNode()
-    {
-        return _factory.Create<SingleNode>(NewContext(0));
-    }
+    public Pipeline.Pipeline Build_SingleNode() => _factory.Create<SingleNode>(NewContext(0));
 
     [Benchmark(Description = "Build single-node graph, cached")]
-    public NPipeline.Pipeline.Pipeline Build_SingleNode_Cached()
-    {
-        return _factory.Create<CacheableSingleNode>(NewContext(0));
-    }
+    public Pipeline.Pipeline Build_SingleNode_Cached() => _factory.Create<CacheableSingleNode>(NewContext(0));
 
     [Benchmark(Description = "Build fan-out graph")]
-    public NPipeline.Pipeline.Pipeline Build_FanOut()
-    {
-        return _factory.Create<FanOut>(NewContext(0));
-    }
+    public Pipeline.Pipeline Build_FanOut() => _factory.Create<FanOut>(NewContext(0));
 
     [Benchmark(Description = "Build fan-out graph, cached")]
-    public NPipeline.Pipeline.Pipeline Build_FanOut_Cached()
-    {
-        return _factory.Create<CacheableFanOut>(NewContext(0));
-    }
+    public Pipeline.Pipeline Build_FanOut_Cached() => _factory.Create<CacheableFanOut>(NewContext(0));
 
     [Benchmark(Description = "Build 12-node linear graph")]
-    public NPipeline.Pipeline.Pipeline Build_Linear12()
-    {
-        return _factory.Create<Linear>(NewContext(0));
-    }
+    public Pipeline.Pipeline Build_Linear12() => _factory.Create<Linear>(NewContext(0));
 
     [Benchmark(Description = "Build 12-node linear graph, cached")]
-    public NPipeline.Pipeline.Pipeline Build_Linear12_Cached()
-    {
-        return _factory.Create<CacheableLinear>(NewContext(0));
-    }
+    public Pipeline.Pipeline Build_Linear12_Cached() => _factory.Create<CacheableLinear>(NewContext(0));
 
     // ---------------------------------------------------------------------
     // Whole run over an empty source: the fixed cost with no item work in it
@@ -110,10 +92,7 @@ public class PipelineBuildBenchmarks
         await _runner.RunAsync<CacheableFanOut>(NewContext(100));
     }
 
-    private static PipelineContext NewContext(int count)
-    {
-        return new PipelineContext(new PipelineContextConfiguration(new Dictionary<string, object> { ["count"] = count }));
-    }
+    private static PipelineContext NewContext(int count) => new(new PipelineContextConfiguration(new Dictionary<string, object> { ["count"] = count }));
 
     private static void DefineSingleNode(PipelineBuilder builder)
     {
@@ -188,7 +167,10 @@ public class PipelineBuildBenchmarks
     {
         public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
-            var count = context.Parameters.TryGetValue("count", out var value) ? Convert.ToInt32(value) : 0;
+            var count = context.Parameters.TryGetValue("count", out var value)
+                ? Convert.ToInt32(value)
+                : 0;
+
             return new DataStream<int>(Generate(count, cancellationToken), "source");
         }
 
@@ -206,10 +188,7 @@ public class PipelineBuildBenchmarks
 
     private sealed class PassThrough : TransformNode<int, int>
     {
-        public override ValueTask<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
-        {
-            return new ValueTask<int>(input);
-        }
+        public override ValueTask<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken) => new(input);
     }
 
     private sealed class BlackHoleSink : SinkNode<int>

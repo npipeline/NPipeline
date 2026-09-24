@@ -55,8 +55,9 @@ public class SftpStorageProviderOptions
     public TimeSpan KeepAliveInterval { get; set; } = TimeSpan.FromSeconds(30);
 
     /// <summary>
-    ///     Gets or sets the connection timeout.
-    ///     Default is 30 seconds.
+    ///     Gets or sets the timeout for establishing a connection (TCP connect and SSH handshake).
+    ///     Default is 30 seconds. A connect that exceeds it fails with <c>SshOperationTimeoutException</c>;
+    ///     the caller's cancellation token also stops a connect in progress.
     /// </summary>
     public TimeSpan ConnectionTimeout { get; set; } = TimeSpan.FromSeconds(30);
 

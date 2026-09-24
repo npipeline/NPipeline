@@ -434,10 +434,7 @@ public class AlertEvent
     ///     Returns a string representation of the alert event.
     /// </summary>
     /// <returns>String representation of the alert event.</returns>
-    public override string ToString()
-    {
-        return $"[{Level}] {Title}: {Message} at {Timestamp:HH:mm:ss}";
-    }
+    public override string ToString() => $"[{Level}] {Title}: {Message} at {Timestamp:HH:mm:ss}";
 }
 
 /// <summary>

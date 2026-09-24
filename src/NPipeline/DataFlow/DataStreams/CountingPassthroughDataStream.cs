@@ -1,7 +1,4 @@
 using System.Runtime.CompilerServices;
-using System.Runtime.ExceptionServices;
-using NPipeline.ErrorHandling;
-using NPipeline.Pipeline;
 
 namespace NPipeline.DataFlow.DataStreams;
 
@@ -11,26 +8,21 @@ namespace NPipeline.DataFlow.DataStreams;
 /// </summary>
 internal sealed class CountingPassthroughDataStream<T> : IForwardOnlyDataStream<T>
 {
-    private readonly PipelineContext? _context;
     private readonly StatsCounter _counter;
     private readonly IDataStream<T> _inner;
     private bool _disposed;
 
-    public CountingPassthroughDataStream(IDataStream<T> inner, StatsCounter counter, PipelineContext? context = null)
+    public CountingPassthroughDataStream(IDataStream<T> inner, StatsCounter counter)
     {
         ArgumentNullException.ThrowIfNull(inner);
         ArgumentNullException.ThrowIfNull(counter);
         _inner = inner;
         _counter = counter;
-        _context = context;
     }
 
     public string StreamName => $"Counted_{_inner.StreamName}";
 
-    public Type GetDataType()
-    {
-        return typeof(T);
-    }
+    public Type GetDataType() => typeof(T);
 
     public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
     {
@@ -59,12 +51,13 @@ internal sealed class CountingPassthroughDataStream<T> : IForwardOnlyDataStream<
 
     private async IAsyncEnumerable<T> EnumerateWithCounting([EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        #pragma warning disable CA2007
+#pragma warning disable CA2007
+
         // CA2007 false positive: the enumerator comes from a ConfigureAwait(false) sequence, so its
         // MoveNextAsync and DisposeAsync already return configured awaitables - the analyzer only
         // recognises ConfigureAwait applied directly to the await using expression.
         await using var enumerator = _inner.WithCancellation(cancellationToken).ConfigureAwait(false).GetAsyncEnumerator();
-        #pragma warning restore CA2007
+#pragma warning restore CA2007
 
         // Counted locally and folded into the shared counter once, so the per-item path carries no
         // atomic and parallel nodes do not contend for the counter's cache line.
@@ -74,33 +67,11 @@ internal sealed class CountingPassthroughDataStream<T> : IForwardOnlyDataStream<
         {
             while (true)
             {
-                T item;
-
-                try
-                {
-                    if (!await enumerator.MoveNextAsync())
-                        break;
-
-                    item = enumerator.Current;
-                }
-                catch (Exception ex)
-                {
-                    if (ex is RetryExhaustedException retryEx)
-                    {
-                        // Store the RetryExhaustedException in the context for downstream nodes to access
-                        if (_context is not null)
-                            _context.ExecutionConfiguration.LastRetryExhaustedException = retryEx;
-
-                        ExceptionDispatchInfo.Capture(retryEx).Throw();
-                        yield break; // Never reached but required for compiler
-                    }
-
-                    ExceptionDispatchInfo.Capture(ex).Throw();
-                    yield break; // Never reached but required for compiler
-                }
+                if (!await enumerator.MoveNextAsync())
+                    break;
 
                 counted++;
-                yield return item;
+                yield return enumerator.Current;
             }
         }
         finally

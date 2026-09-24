@@ -108,11 +108,9 @@ public class MongoDatabaseStorageProvider : IDatabaseStorageProvider
     /// <param name="cancellationToken">Token to observe while waiting for the task to complete.</param>
     /// <returns>A task producing a readable stream.</returns>
     /// <exception cref="NotSupportedException">Always thrown as MongoDB doesn't support stream-based reads.</exception>
-    public Task<Stream> OpenReadAsync(StorageUri uri, CancellationToken cancellationToken = default)
-    {
+    public Task<Stream> OpenReadAsync(StorageUri uri, CancellationToken cancellationToken = default) =>
         throw new NotSupportedException(
             "MongoDB does not support stream-based reads. Use GetConnectionAsync() to obtain a database connection.");
-    }
 
     /// <summary>
     ///     Opens a writable stream for the specified storage URI.
@@ -122,11 +120,9 @@ public class MongoDatabaseStorageProvider : IDatabaseStorageProvider
     /// <param name="cancellationToken">Token to observe while waiting for the task to complete.</param>
     /// <returns>A task producing a writable stream.</returns>
     /// <exception cref="NotSupportedException">Always thrown as MongoDB doesn't support stream-based writes.</exception>
-    public Task<Stream> OpenWriteAsync(StorageUri uri, CancellationToken cancellationToken = default)
-    {
+    public Task<Stream> OpenWriteAsync(StorageUri uri, CancellationToken cancellationToken = default) =>
         throw new NotSupportedException(
             "MongoDB does not support stream-based writes. Use GetConnectionAsync() to obtain a database connection.");
-    }
 
     /// <summary>
     ///     Checks whether a resource exists at the specified storage URI.
@@ -221,23 +217,18 @@ public class MongoDatabaseStorageProvider : IDatabaseStorageProvider
             }
         }
 
-        public Task CloseAsync(CancellationToken cancellationToken = default)
-        {
-            // MongoDB client doesn't require explicit close
-            return Task.CompletedTask;
-        }
+        public Task CloseAsync(CancellationToken cancellationToken = default) =>
 
-        public Task<IDatabaseTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default)
-        {
+            // MongoDB client doesn't require explicit close
+            Task.CompletedTask;
+
+        public Task<IDatabaseTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default) =>
             throw new NotSupportedException(
                 "MongoDB transactions require a session. Use the IMongoClient directly for transaction support.");
-        }
 
-        public Task<IDatabaseCommand> CreateCommandAsync(CancellationToken cancellationToken = default)
-        {
+        public Task<IDatabaseCommand> CreateCommandAsync(CancellationToken cancellationToken = default) =>
             throw new NotSupportedException(
                 "MongoDB commands are database-specific. Use the IMongoDatabase/IMongoCollection APIs directly.");
-        }
 
         public ValueTask DisposeAsync()
         {

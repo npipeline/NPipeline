@@ -1,10 +1,10 @@
-using NPipeline.Attributes.Lineage;
 using System.Diagnostics;
+using NPipeline.Attributes.Lineage;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.DataFlow.Routing;
-using NPipeline.Execution;
 using NPipeline.Execution.Annotations;
+using NPipeline.Execution.Lineage;
 using NPipeline.Execution.Plans;
 using NPipeline.Graph;
 using NPipeline.Lineage;
@@ -68,7 +68,8 @@ public sealed class NodeExecutor(
         var output = await plan.ExecuteSource!(instance, context, context.CancellationToken).ConfigureAwait(false);
 
         if (graph.Lineage.ItemLevelLineageEnabled)
-            output = lineage.WrapSourceStream(output, plan.NodeId, context.RunIdentity.PipelineId, context.RunIdentity.PipelineName, graph.Lineage.LineageOptions);
+            output = lineage.WrapSourceStream(output, plan.NodeId, context.RunIdentity.PipelineId, context.RunIdentity.PipelineName,
+                graph.Lineage.LineageOptions);
 
         var counter = GetOrCreateCounter(context);
         output = dataStreamWrapperService.WrapWithCountingAndBranching(output, counter, context, graph, plan.NodeId);
@@ -86,13 +87,19 @@ public sealed class NodeExecutor(
         NodeDefinition nodeDef,
         INode instance)
     {
-        var input = await GetNodeInputAsync(plan.NodeId, graph, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, context.CancellationToken).ConfigureAwait(false);
+        var input = await GetNodeInputAsync(plan.NodeId, graph, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, context.CancellationToken)
+            .ConfigureAwait(false);
+
         var strategy = NodeExecutionStrategyResolver.Resolve(nodeDef, instance);
         IDataStream transformed;
 
         if (graph.Lineage.ItemLevelLineageEnabled)
         {
             var adapter = nodeDef.LineageAdapter ?? throw new InvalidOperationException(ErrorMessages.LineageAdapterMissing(plan.NodeId));
+
+            // Started here, not by the adapter, because only the executor knows the strategy the node runs under.
+            LineageNodeOutcomeRegistry.BeginNode(context.RunIdentity.PipelineId, plan.NodeId,
+                LineageProvenanceSupport.Reports(strategy, instance), context.Lineage.LineageSink);
 
             var (unwrapped, rewrap) = adapter(input, plan.NodeId, context.RunIdentity.PipelineId, context.RunIdentity.PipelineName,
                 nodeDef.DeclaredCardinality ?? TransformCardinality.OneToOne, graph.Lineage.LineageOptions, context.CancellationToken);
@@ -134,8 +141,9 @@ public sealed class NodeExecutor(
     {
         // Gather inputs and merge using existing merge service (still reflection-free path)
         var joinInputPipes = inputLookup[plan.NodeId]
-            .Select(edge => nodeOutputs[edge.SourceNodeId] ??
-                            throw new InvalidOperationException(ErrorMessages.OutputNotFoundForSourceNode(edge.SourceNodeId)))
+            .Select(edge => TrackInputFlow(context, plan.NodeId, nodeOutputs[edge.SourceNodeId] ??
+                                                                 throw new InvalidOperationException(
+                                                                     ErrorMessages.OutputNotFoundForSourceNode(edge.SourceNodeId))))
             .ToList();
 
         var merged = await pipeMergeService.MergeAsync(nodeDef, instance, joinInputPipes, context.CancellationToken).ConfigureAwait(false);
@@ -198,8 +206,9 @@ public sealed class NodeExecutor(
         NodeDefinition nodeDef,
         INode instance)
     {
-        var input = await GetNodeInputAsync(plan.NodeId, graph, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, context.CancellationToken)
-            .ConfigureAwait(false);
+        var input = TrackInputFlow(context, plan.NodeId,
+            await GetNodeInputAsync(plan.NodeId, graph, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, context.CancellationToken)
+                .ConfigureAwait(false));
 
         IDataStream output;
 
@@ -258,8 +267,9 @@ public sealed class NodeExecutor(
         NodeDefinition nodeDef,
         INode instance)
     {
-        var input = await GetNodeInputAsync(plan.NodeId, graph, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, context.CancellationToken)
-            .ConfigureAwait(false);
+        var input = TrackInputFlow(context, plan.NodeId,
+            await GetNodeInputAsync(plan.NodeId, graph, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, context.CancellationToken)
+                .ConfigureAwait(false));
 
         var effectiveInput = input;
 
@@ -277,6 +287,7 @@ public sealed class NodeExecutor(
 
         var before = observabilityScope.GetTimingBreakdown();
         var sinkStart = Stopwatch.GetTimestamp();
+
         try
         {
             await plan.ExecuteSink!(instance, effectiveInput, context, context.CancellationToken).ConfigureAwait(false);
@@ -301,6 +312,18 @@ public sealed class NodeExecutor(
 
         nodeOutputs[plan.NodeId] = null; // sinks produce no downstream pipe
     }
+
+    /// <summary>
+    ///     Wraps a node's input so that node retry can tell whether the node consumed any, when node retry asked.
+    /// </summary>
+    /// <remarks>
+    ///     Only nodes that drain their input while executing need this: sinks, aggregates, and joins. A transform
+    ///     returns its output stream without reading its input, so its execution never consumes input.
+    /// </remarks>
+    private static IDataStream TrackInputFlow(PipelineContext context, string nodeId, IDataStream input) =>
+        context.ExecutionConfiguration.GetInputFlow(nodeId) is { } flow
+            ? InputFlowTracking.Wrap(input, flow)
+            : input;
 
     private async Task<IDataStream> GetNodeInputAsync(string nodeId, PipelineGraph graph, ILookup<string, Edge> inputLookup,
         IDictionary<string, IDataStream?> nodeOutputs,
@@ -342,9 +365,7 @@ public sealed class NodeExecutor(
                 ExecutionAnnotationKeys.RuntimeStreamContractForNode(nodeId),
                 out var contractObj) != true ||
             contractObj is not RuntimeNodeStreamContract { EffectiveInputItemType: { } expectedType })
-        {
             return;
-        }
 
         foreach (var pipe in inputPipes)
         {
@@ -352,9 +373,7 @@ public sealed class NodeExecutor(
 
             // Allow interface/base-type compatibility (e.g., IReadOnlyCollection<T> for IEnumerable<T> inputs).
             if (!expectedType.IsAssignableFrom(actualType))
-            {
                 throw new InvalidOperationException(ErrorMessages.InputStreamContractMismatch(nodeId, expectedType, actualType));
-            }
         }
     }
 

@@ -99,7 +99,7 @@ sub-context that owns it:
 | ------------- | ------- | ---------- |
 | `RunIdentity` | Who this run is | `PipelineId`, `RunId`, `PipelineName`, `PipelineStartTimeUtc` |
 | `Observability` | Logging, tracing, metrics | `LoggerFactory`, `Tracer`, `ExecutionObserver`, `ObservabilityFactory` |
-| `ExecutionConfiguration` | Retry and resilience | `RetryOptions`, `EffectiveRetryOptions`, `GlobalRetryOptions`, `NodeRetryOverrides`, `ResiliencePolicy`, `CircuitBreakerOptions` |
+| `ExecutionConfiguration` | Resilience and run settings | `Resilience`, `GetResilienceOptions(nodeId)`, `ResiliencePolicy`, `OptimizationProfile`, `IsParallelExecution` |
 | `NodeEnvironment` | Per-node execution state | `GetNodeId(node)`, `TryGetNodeId(node, out id)`, `GetNodeStatus(nodeId)`, `EnumerateNodeStatuses()`, `NodeExecutionScopeRegistry`, `DiOwnedNodes` |
 | `Lineage` | Lineage sinks and collectors | `LineageSink`, `PipelineLineageSink`, `LineageCollector`, `LineageFactory` |
 
@@ -207,7 +207,6 @@ Available factory methods:
 | `WithParameters(dict)` | Set runtime parameters |
 | `WithCancellation(token)` | Set cancellation token |
 | `WithLogging(loggerFactory)` | Configure logging |
-| `WithRetry(retryOptions)` | Set retry configuration |
 | `WithResilience(policy)` | Set resilience policy |
 | `WithErrorHandling(deadLetterSink?)` | Configure error handling |
 | `WithObservability(loggerFactory?, tracer?)` | Configure observability |

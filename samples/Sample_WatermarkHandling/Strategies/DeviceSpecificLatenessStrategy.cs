@@ -179,9 +179,8 @@ public class DeviceSpecificLatenessStrategy
     /// </summary>
     /// <param name="deviceType">The device type.</param>
     /// <returns>The default device configuration.</returns>
-    private static DeviceLatenessConfig GetDefaultDeviceConfig(string deviceType)
-    {
-        return new DeviceLatenessConfig
+    private static DeviceLatenessConfig GetDefaultDeviceConfig(string deviceType) =>
+        new()
         {
             DeviceType = deviceType,
             ClockAccuracy = ClockAccuracy.Unknown,
@@ -190,7 +189,6 @@ public class DeviceSpecificLatenessStrategy
             Priority = 3,
             ExpectedLatency = TimeSpan.FromMilliseconds(100),
         };
-    }
 }
 
 /// <summary>
@@ -232,9 +230,6 @@ public class DeviceLatenessConfig
     ///     Returns a string representation of the device configuration.
     /// </summary>
     /// <returns>String representation of the device configuration.</returns>
-    public override string ToString()
-    {
-        return
-            $"{DeviceType}: Clock={ClockAccuracy}, Tolerance={LatenessTolerance.TotalMilliseconds:F0}ms, Reliability={ReliabilityScore:P0}, Priority={Priority}";
-    }
+    public override string ToString() =>
+        $"{DeviceType}: Clock={ClockAccuracy}, Tolerance={LatenessTolerance.TotalMilliseconds:F0}ms, Reliability={ReliabilityScore:P0}, Priority={Priority}";
 }

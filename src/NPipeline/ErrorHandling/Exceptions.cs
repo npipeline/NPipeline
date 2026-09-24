@@ -1,3 +1,5 @@
+using NPipeline.Execution;
+
 namespace NPipeline.ErrorHandling;
 
 /// <summary>
@@ -108,80 +110,6 @@ public sealed class PipelineExecutionException : PipelineException
 }
 
 /// <summary>
-///     Exception thrown when the circuit breaker trips due to too many consecutive failures.
-///     See <see href="~/docs/reference/api/exceptions.md#circuitbreakertrippedexception" /> for detailed documentation.
-/// </summary>
-public sealed class CircuitBreakerTrippedException : PipelineException
-{
-    /// <summary>
-    ///     Initializes a new instance of the <see cref="CircuitBreakerTrippedException" /> class.
-    /// </summary>
-    public CircuitBreakerTrippedException() : base("Circuit breaker tripped.")
-    {
-        ErrorCode = "CIRCUIT_BREAKER_TRIPPED";
-    }
-
-    /// <summary>
-    ///     Initializes a new instance of the <see cref="CircuitBreakerTrippedException" /> class with a specified error message.
-    /// </summary>
-    /// <param name="message">The message that describes the error.</param>
-    public CircuitBreakerTrippedException(string message) : base(message)
-    {
-        ErrorCode = "CIRCUIT_BREAKER_TRIPPED";
-    }
-
-    /// <summary>
-    ///     Initializes a new instance of the <see cref="CircuitBreakerTrippedException" /> class with a specified error message
-    ///     and a reference to the inner exception that is the cause of this exception.
-    /// </summary>
-    /// <param name="message">The message that describes the error.</param>
-    /// <param name="innerException">The exception that is the cause of the current exception.</param>
-    public CircuitBreakerTrippedException(string message, Exception innerException) : base(message, innerException)
-    {
-        ErrorCode = "CIRCUIT_BREAKER_TRIPPED";
-    }
-
-    /// <summary>
-    ///     Initializes a new instance of the <see cref="CircuitBreakerTrippedException" /> class with the failure threshold.
-    /// </summary>
-    /// <param name="failureThreshold">The number of consecutive failures that triggered the circuit breaker.</param>
-    public CircuitBreakerTrippedException(int failureThreshold)
-        : base($"Circuit breaker tripped after reaching failure threshold of {failureThreshold} consecutive attempts.")
-    {
-        FailureThreshold = failureThreshold;
-        ErrorCode = "CIRCUIT_BREAKER_TRIPPED";
-    }
-
-    /// <summary>
-    ///     Initializes a new instance of the <see cref="CircuitBreakerTrippedException" /> class with the failure threshold and node ID.
-    /// </summary>
-    /// <param name="failureThreshold">The number of consecutive failures that triggered the circuit breaker.</param>
-    /// <param name="nodeId">The ID of the node that triggered the circuit breaker.</param>
-    public CircuitBreakerTrippedException(int failureThreshold, string nodeId)
-        : base($"Circuit breaker tripped for node '{nodeId}' after reaching failure threshold of {failureThreshold} consecutive attempts.")
-    {
-        FailureThreshold = failureThreshold;
-        NodeId = nodeId;
-        ErrorCode = "CIRCUIT_BREAKER_TRIPPED";
-    }
-
-    /// <summary>
-    ///     Gets the failure threshold that triggered the circuit breaker.
-    /// </summary>
-    public int FailureThreshold { get; }
-
-    /// <summary>
-    ///     Gets the ID of the node that triggered the circuit breaker, if applicable.
-    /// </summary>
-    public string? NodeId { get; }
-
-    /// <summary>
-    ///     Gets the error code associated with this exception.
-    /// </summary>
-    public string ErrorCode { get; }
-}
-
-/// <summary>
 ///     Exception thrown when all retry attempts have been exhausted.
 ///     See <see href="~/docs/reference/api/exceptions.md#retryexhaustedexception" /> for detailed documentation.
 /// </summary>
@@ -192,7 +120,7 @@ public sealed class RetryExhaustedException : PipelineException
     /// </summary>
     public RetryExhaustedException() : base("Retry attempts exhausted.")
     {
-        ErrorCode = "RETRY_EXHAUSTED";
+        ErrorCode = ErrorCodes.RetryLimitExhausted;
         NodeId = string.Empty;
     }
 
@@ -202,7 +130,7 @@ public sealed class RetryExhaustedException : PipelineException
     /// <param name="message">The message that describes the error.</param>
     public RetryExhaustedException(string message) : base(message)
     {
-        ErrorCode = "RETRY_EXHAUSTED";
+        ErrorCode = ErrorCodes.RetryLimitExhausted;
         NodeId = string.Empty;
     }
 
@@ -214,7 +142,7 @@ public sealed class RetryExhaustedException : PipelineException
     /// <param name="innerException">The exception that is the cause of the current exception.</param>
     public RetryExhaustedException(string message, Exception innerException) : base(message, innerException)
     {
-        ErrorCode = "RETRY_EXHAUSTED";
+        ErrorCode = ErrorCodes.RetryLimitExhausted;
         NodeId = string.Empty;
     }
 
@@ -225,11 +153,11 @@ public sealed class RetryExhaustedException : PipelineException
     /// <param name="attemptCount">The total number of attempts made.</param>
     /// <param name="lastException">The last exception that occurred during the final retry attempt.</param>
     public RetryExhaustedException(string nodeId, int attemptCount, Exception lastException)
-        : base($"Retry attempts exhausted for node '{nodeId}' after {attemptCount} attempts.", lastException)
+        : base(ErrorMessages.RetryLimitExhausted(nodeId, attemptCount), lastException)
     {
         NodeId = nodeId;
         AttemptCount = attemptCount;
-        ErrorCode = "RETRY_EXHAUSTED";
+        ErrorCode = ErrorCodes.RetryLimitExhausted;
     }
 
     /// <summary>
@@ -243,7 +171,7 @@ public sealed class RetryExhaustedException : PipelineException
     public int AttemptCount { get; }
 
     /// <summary>
-    ///     Gets the error code associated with this exception.
+    ///     Gets the error code associated with this exception: <see cref="ErrorCodes.RetryLimitExhausted" /> (NP0311).
     /// </summary>
     public string ErrorCode { get; }
 }
@@ -283,9 +211,76 @@ public sealed class CircuitBreakerOpenException : PipelineException
     }
 
     /// <summary>
+    ///     Initializes a new instance of the <see cref="CircuitBreakerOpenException" /> class for an attempt the node's
+    ///     breaker refused.
+    /// </summary>
+    /// <param name="nodeId">The node whose breaker refused the attempt.</param>
+    /// <param name="state">The breaker's state when it refused.</param>
+    /// <param name="message">The message that describes the error.</param>
+    public CircuitBreakerOpenException(string nodeId, CircuitState state, string message) : base(message)
+    {
+        NodeId = nodeId;
+        State = state;
+        ErrorCode = "CIRCUIT_BREAKER_OPEN";
+    }
+
+    /// <summary>
+    ///     The node whose breaker refused the attempt, when known.
+    /// </summary>
+    public string? NodeId { get; }
+
+    /// <summary>
+    ///     The breaker's state when it refused the attempt: <see cref="CircuitState.Open" />, or
+    ///     <see cref="CircuitState.HalfOpen" /> with every probe slot in use.
+    /// </summary>
+    public CircuitState State { get; } = CircuitState.Open;
+
+    /// <summary>
     ///     Gets the error code associated with this exception.
     /// </summary>
     public string ErrorCode { get; }
+}
+
+/// <summary>
+///     Exception thrown when a resilience policy dead-letters an item but the pipeline has no dead-letter sink.
+/// </summary>
+/// <remarks>
+///     Dropping the item instead would lose data silently, so the node fails. The exception that caused the item to
+///     be dead-lettered is the <see cref="Exception.InnerException" />.
+/// </remarks>
+public sealed class DeadLetterSinkNotConfiguredException : PipelineException
+{
+    /// <summary>
+    ///     Initializes a new instance of the <see cref="DeadLetterSinkNotConfiguredException" /> class.
+    /// </summary>
+    /// <param name="nodeId">The ID of the node whose item was dead-lettered.</param>
+    /// <param name="itemException">The exception that caused the item to be dead-lettered.</param>
+    public DeadLetterSinkNotConfiguredException(string nodeId, Exception itemException)
+        : base(ErrorMessages.DeadLetterSinkNotConfigured(nodeId), itemException)
+    {
+        NodeId = nodeId;
+    }
+
+    /// <summary>
+    ///     Initializes a new instance of the <see cref="DeadLetterSinkNotConfiguredException" /> class for a node
+    ///     whose resilience options dead-letter failed items, found before the pipeline ran.
+    /// </summary>
+    /// <param name="nodeId">The ID of the node configured to dead-letter.</param>
+    public DeadLetterSinkNotConfiguredException(string nodeId)
+        : base(ErrorMessages.DeadLetterSinkNotConfiguredForOptions(nodeId))
+    {
+        NodeId = nodeId;
+    }
+
+    /// <summary>
+    ///     Gets the ID of the node whose item was dead-lettered.
+    /// </summary>
+    public string NodeId { get; }
+
+    /// <summary>
+    ///     Gets the error code associated with this exception.
+    /// </summary>
+    public string ErrorCode => ErrorCodes.DeadLetterSinkNotConfigured;
 }
 
 /// <summary>

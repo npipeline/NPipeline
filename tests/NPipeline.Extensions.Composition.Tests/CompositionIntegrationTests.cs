@@ -42,21 +42,25 @@ public class CompositionIntegrationTests
 
     private sealed class TestSource : ISourceNode<int>, IAsyncDisposable
     {
-        public IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
+        public ValueTask DisposeAsync()
         {
-            return new InMemoryDataStream<int>([1, 2, 3], "TestSource");
+            GC.SuppressFinalize(this);
+            return ValueTask.CompletedTask;
         }
+
+        public IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken) =>
+            new InMemoryDataStream<int>([1, 2, 3], "TestSource");
+    }
+
+    private sealed class TestSink : ISinkNode<int>, IAsyncDisposable
+    {
+        public static readonly List<int> ReceivedItems = [];
 
         public ValueTask DisposeAsync()
         {
             GC.SuppressFinalize(this);
             return ValueTask.CompletedTask;
         }
-    }
-
-    private sealed class TestSink : ISinkNode<int>, IAsyncDisposable
-    {
-        public static readonly List<int> ReceivedItems = [];
 
         public async Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken cancellationToken)
         {
@@ -67,20 +71,12 @@ public class CompositionIntegrationTests
                 ReceivedItems.Add(item);
             }
         }
-
-        public ValueTask DisposeAsync()
-        {
-            GC.SuppressFinalize(this);
-            return ValueTask.CompletedTask;
-        }
     }
 
     private sealed class SimpleTransform : TransformNode<int, int>
     {
-        public override ValueTask<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult<int>(input * 2);
-        }
+        public override ValueTask<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(input * 2);
     }
 
     private sealed class SimpleTransformPipeline : IPipelineDefinition
@@ -123,7 +119,7 @@ public class CompositionIntegrationTests
                 ? value?.ToString()
                 : null;
 
-            return ValueTask.FromResult<int>(input);
+            return ValueTask.FromResult(input);
         }
     }
 

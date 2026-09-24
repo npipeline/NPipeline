@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Threading.Channels;
 using Microsoft.Extensions.Logging;
 using NPipeline.Connectors.RabbitMQ.Configuration;
@@ -15,6 +16,8 @@ public sealed class RabbitMqConnectionManager : IRabbitMqConnectionManager
     private readonly SemaphoreSlim _connectionLock = new(1, 1);
     private readonly ILogger<RabbitMqConnectionManager> _logger;
     private readonly RabbitMqConnectionOptions _options;
+    private readonly Channel<IChannel> _unconfirmedChannelPool;
+    private readonly ConcurrentDictionary<IChannel, byte> _unconfirmedChannels = new(ReferenceEqualityComparer.Instance);
     private IConnection? _connection;
     private bool _disposed;
 
@@ -29,12 +32,8 @@ public sealed class RabbitMqConnectionManager : IRabbitMqConnectionManager
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _options.Validate();
 
-        _channelPool = Channel.CreateBounded<IChannel>(new BoundedChannelOptions(_options.MaxChannelPoolSize)
-        {
-            FullMode = BoundedChannelFullMode.Wait,
-            SingleReader = false,
-            SingleWriter = false,
-        });
+        _channelPool = CreatePool(_options.MaxChannelPoolSize);
+        _unconfirmedChannelPool = CreatePool(_options.MaxChannelPoolSize);
     }
 
     /// <inheritdoc />
@@ -82,17 +81,24 @@ public sealed class RabbitMqConnectionManager : IRabbitMqConnectionManager
     }
 
     /// <inheritdoc />
-    public async Task<IChannel> GetPooledChannelAsync(CancellationToken cancellationToken = default)
+    public Task<IChannel> GetPooledChannelAsync(CancellationToken cancellationToken = default) => GetPooledChannelAsync(true, cancellationToken);
+
+    /// <inheritdoc />
+    public async Task<IChannel> GetPooledChannelAsync(bool publisherConfirms, CancellationToken cancellationToken = default)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
+        var pool = PoolFor(publisherConfirms);
+
         // Try to get a channel from the pool
-        while (_channelPool.Reader.TryRead(out var pooledChannel))
+        while (pool.Reader.TryRead(out var pooledChannel))
         {
             if (pooledChannel.IsOpen)
                 return pooledChannel;
 
             // Channel is closed/faulted - discard it
+            _ = _unconfirmedChannels.TryRemove(pooledChannel, out _);
+
             try
             {
                 await pooledChannel.CloseAsync(cancellationToken).ConfigureAwait(false);
@@ -105,12 +111,15 @@ public sealed class RabbitMqConnectionManager : IRabbitMqConnectionManager
             LogMessages.ChannelClosed(_logger);
         }
 
-        // Pool exhausted - create a new channel with publisher confirms enabled
+        // Pool exhausted - create a new channel in the requested confirm mode
         var connection = await GetConnectionAsync(cancellationToken).ConfigureAwait(false);
 
         var channel = await connection.CreateChannelAsync(
-            new CreateChannelOptions(true, true),
+            new CreateChannelOptions(publisherConfirms, publisherConfirms),
             cancellationToken).ConfigureAwait(false);
+
+        if (!publisherConfirms)
+            _ = _unconfirmedChannels.TryAdd(channel, 0);
 
         LogMessages.ChannelCreated(_logger);
 
@@ -120,24 +129,13 @@ public sealed class RabbitMqConnectionManager : IRabbitMqConnectionManager
     /// <inheritdoc />
     public void ReturnChannel(IChannel channel)
     {
-        if (_disposed || !channel.IsOpen)
-        {
-            // Don't return closed channels to the pool
-            try
-            {
-                channel.Dispose();
-            }
-            catch
-            {
-                // Ignore dispose errors
-            }
+        var unconfirmed = _unconfirmedChannels.ContainsKey(channel);
 
-            return;
-        }
-
-        if (!_channelPool.Writer.TryWrite(channel))
+        if (_disposed || !channel.IsOpen || !PoolFor(!unconfirmed).Writer.TryWrite(channel))
         {
-            // Pool is full - dispose the excess channel
+            // Don't pool closed channels, or more channels than the pool holds
+            _ = _unconfirmedChannels.TryRemove(channel, out _);
+
             try
             {
                 channel.Dispose();
@@ -158,20 +156,25 @@ public sealed class RabbitMqConnectionManager : IRabbitMqConnectionManager
         _disposed = true;
 
         // Drain and close all pooled channels
-        _channelPool.Writer.TryComplete();
-
-        await foreach (var channel in _channelPool.Reader.ReadAllAsync().ConfigureAwait(false))
+        foreach (var pool in new[] { _channelPool, _unconfirmedChannelPool })
         {
-            try
+            _ = pool.Writer.TryComplete();
+
+            await foreach (var channel in pool.Reader.ReadAllAsync().ConfigureAwait(false))
             {
-                await channel.CloseAsync().ConfigureAwait(false);
-                channel.Dispose();
-            }
-            catch
-            {
-                // Best-effort cleanup
+                try
+                {
+                    await channel.CloseAsync().ConfigureAwait(false);
+                    channel.Dispose();
+                }
+                catch
+                {
+                    // Best-effort cleanup
+                }
             }
         }
+
+        _unconfirmedChannels.Clear();
 
         // Close and dispose the connection
         if (_connection is not null)
@@ -189,6 +192,19 @@ public sealed class RabbitMqConnectionManager : IRabbitMqConnectionManager
 
         _connectionLock.Dispose();
     }
+
+    private Channel<IChannel> PoolFor(bool publisherConfirms) =>
+        publisherConfirms
+            ? _channelPool
+            : _unconfirmedChannelPool;
+
+    private static Channel<IChannel> CreatePool(int capacity) =>
+        Channel.CreateBounded<IChannel>(new BoundedChannelOptions(capacity)
+        {
+            FullMode = BoundedChannelFullMode.Wait,
+            SingleReader = false,
+            SingleWriter = false,
+        });
 
     private ConnectionFactory BuildConnectionFactory()
     {

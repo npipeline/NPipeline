@@ -7,10 +7,7 @@ namespace NPipeline.Extensions.Parallelism;
 /// </summary>
 public static class ParallelMetricsExtensions
 {
-    private static string Key(string nodeId)
-    {
-        return $"parallel.metrics::{nodeId}";
-    }
+    private static string Key(string nodeId) => $"parallel.metrics::{nodeId}";
 
     /// <summary>
     ///     Tries to get metrics for a node.

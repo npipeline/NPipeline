@@ -55,10 +55,7 @@ public class InMemoryChangeFeedCheckpointStore : IChangeFeedCheckpointStore
     ///     Gets all stored checkpoint keys for debugging purposes.
     /// </summary>
     /// <returns>A collection of stored checkpoint keys.</returns>
-    public IReadOnlyCollection<string> GetStoredKeys()
-    {
-        return [.. _tokens.Keys];
-    }
+    public IReadOnlyCollection<string> GetStoredKeys() => [.. _tokens.Keys];
 
     /// <summary>
     ///     Clears all stored checkpoints.
@@ -68,8 +65,5 @@ public class InMemoryChangeFeedCheckpointStore : IChangeFeedCheckpointStore
         _tokens.Clear();
     }
 
-    private static string GetKey(string databaseId, string containerId)
-    {
-        return $"{databaseId}|{containerId}";
-    }
+    private static string GetKey(string databaseId, string containerId) => $"{databaseId}|{containerId}";
 }

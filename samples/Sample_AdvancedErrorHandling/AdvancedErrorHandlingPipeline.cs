@@ -1,4 +1,5 @@
 using NPipeline.Pipeline;
+using NPipeline.Reliability;
 using Sample_AdvancedErrorHandling.Nodes;
 
 namespace Sample_AdvancedErrorHandling;
@@ -54,6 +55,11 @@ public class AdvancedErrorHandlingPipeline : IPipelineDefinition
         // Add the dead letter queue sink that captures failed items for later processing
         var deadLetterSink = builder.AddSink<DeadLetterQueueSink, SourceData>("dead-letter-queue-sink");
 
+        // Polly retries and breaks inside these two nodes. Turn the pipeline's item retry (L1) off for them, so that
+        // a failure that escapes Polly isn't retried a second time by the pipeline. One layer retries each call.
+        builder.WithResilience(retry, options => options with { ItemRetry = ItemRetryOptions.None });
+        builder.WithResilience(circuitBreaker, options => options with { ItemRetry = ItemRetryOptions.None });
+
         // Connect the nodes in a linear flow with error handling
         builder.Connect(source, retry);
         builder.Connect(retry, circuitBreaker);
@@ -65,9 +71,8 @@ public class AdvancedErrorHandlingPipeline : IPipelineDefinition
     ///     Gets a description of what this pipeline demonstrates.
     /// </summary>
     /// <returns>A detailed description of the pipeline's purpose and flow.</returns>
-    public static string GetDescription()
-    {
-        return @"Advanced Error Handling Pipeline Sample:
+    public static string GetDescription() =>
+        @"Advanced Error Handling Pipeline Sample:
 
 This sample demonstrates production-grade resilience patterns in NPipeline:
 - Circuit breaker patterns with Polly integration
@@ -89,5 +94,4 @@ This implementation demonstrates:
 - Dead letter queue for failed item handling
 - Error rate monitoring and alerting
 - Advanced retry strategies with backoff policies";
-    }
 }

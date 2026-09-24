@@ -9,10 +9,7 @@ namespace NPipeline.Connectors.Http.Pagination;
 public sealed partial class LinkHeaderPaginationStrategy : IPaginationStrategy
 {
     /// <inheritdoc />
-    public Uri BuildFirstPageUri(Uri baseUri)
-    {
-        return baseUri;
-    }
+    public Uri BuildFirstPageUri(Uri baseUri) => baseUri;
 
     /// <inheritdoc />
     public ValueTask<Uri?> GetNextPageUriAsync(

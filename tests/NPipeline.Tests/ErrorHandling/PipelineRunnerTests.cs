@@ -1,12 +1,12 @@
 using AwesomeAssertions;
 using FakeItEasy;
-using NPipeline.Configuration;
 using NPipeline.ErrorHandling;
 using NPipeline.Execution;
 using NPipeline.Graph;
 using NPipeline.Nodes;
 using NPipeline.Observability;
 using NPipeline.Pipeline;
+using NPipeline.Reliability;
 
 namespace NPipeline.Tests.ErrorHandling;
 
@@ -17,8 +17,8 @@ namespace NPipeline.Tests.ErrorHandling;
 public sealed class PipelineRunnerTests
 {
     private readonly IErrorHandlingService _errorHandlingService = PipelineRunnerTestHelpers.PipelineRunnerMockFactory.CreateErrorHandlingService();
-    private readonly INodeFactory _nodeFactory = PipelineRunnerTestHelpers.PipelineRunnerMockFactory.CreateNodeFactory();
     private readonly INodeExecutor _nodeExecutor = PipelineRunnerTestHelpers.PipelineRunnerMockFactory.CreateNodeExecutor();
+    private readonly INodeFactory _nodeFactory = PipelineRunnerTestHelpers.PipelineRunnerMockFactory.CreateNodeFactory();
     private readonly INodeInstantiationService _nodeInstantiationService = PipelineRunnerTestHelpers.PipelineRunnerMockFactory.CreateNodeInstantiationService();
     private readonly IObservabilitySurface _observabilitySurface = PipelineRunnerTestHelpers.PipelineRunnerMockFactory.CreateObservabilitySurface();
     private readonly IPersistenceService _persistenceService = PipelineRunnerTestHelpers.PipelineRunnerMockFactory.CreatePersistenceService();
@@ -35,9 +35,9 @@ public sealed class PipelineRunnerTests
         var failingNode = new PipelineRunnerTestHelpers.FailingNode(3); // Fails 3 times
         var nodeDef = PipelineRunnerTestHelpers.NodeDefinitionFactory.CreateSourceNodeDefinition(nodeId);
 
-        var graph = PipelineRunnerTestHelpers.PipelineGraphFactory.CreateGraphWithRetryOptions(
+        var graph = PipelineRunnerTestHelpers.PipelineGraphFactory.CreateGraphWithResilienceOptions(
             nodeDef,
-            new PipelineRetryOptions(MaxNodeRestartAttempts: 3, MaxSequentialNodeAttempts: 3));
+            PipelineResilienceOptions.None with { NodeRetry = new NodeRetryOptions { MaxRetries = 3, Backoff = RetryBackoff.None } });
 
         A.CallTo(() => _pipelineFactory.Create<PipelineRunnerTestHelpers.TestPipelineDefinition>(A<PipelineContext>._))
             .Returns(new NPipeline.Pipeline.Pipeline(graph));

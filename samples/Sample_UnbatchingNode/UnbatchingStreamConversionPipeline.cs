@@ -171,9 +171,8 @@ public class UnbatchingStreamConversionPipeline : IPipelineDefinition
     ///     Gets a description of what this pipeline demonstrates.
     /// </summary>
     /// <returns>A detailed description of the pipeline's purpose and flow.</returns>
-    public static string GetDescription()
-    {
-        return @"UnbatchingNode Sample:
+    public static string GetDescription() =>
+        @"UnbatchingNode Sample:
 
 This sample demonstrates the conversion of batched analytics results back to individual item streams:
 - Individual market data events are batched for efficient analytics processing
@@ -208,5 +207,4 @@ The unbatching pattern is essential when:
 - But downstream systems require individual events
 - Real-time processing is needed after batch analytics
 - You want to combine the benefits of both batched and individual processing";
-    }
 }

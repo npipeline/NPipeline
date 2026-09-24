@@ -35,15 +35,10 @@ public sealed class SystemTextJsonMessageSerializer : IMessageSerializer
     public string ContentType => "application/json";
 
     /// <inheritdoc />
-    public ReadOnlyMemory<byte> Serialize<T>(T value)
-    {
-        return JsonSerializer.SerializeToUtf8Bytes(value, _options);
-    }
+    public ReadOnlyMemory<byte> Serialize<T>(T value) => JsonSerializer.SerializeToUtf8Bytes(value, _options);
 
     /// <inheritdoc />
-    public T Deserialize<T>(ReadOnlyMemory<byte> data)
-    {
-        return JsonSerializer.Deserialize<T>(data.Span, _options)
-               ?? throw new JsonException($"Deserialization of {typeof(T).Name} returned null.");
-    }
+    public T Deserialize<T>(ReadOnlyMemory<byte> data) =>
+        JsonSerializer.Deserialize<T>(data.Span, _options)
+        ?? throw new JsonException($"Deserialization of {typeof(T).Name} returned null.");
 }

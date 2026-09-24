@@ -21,10 +21,7 @@ public sealed class BlockingAsyncOperationCodeFixProvider : CodeFixProvider
         [BlockingAsyncOperationAnalyzer.BlockingAsyncOperationId];
 
     /// <inheritdoc />
-    public override FixAllProvider GetFixAllProvider()
-    {
-        return WellKnownFixAllProviders.BatchFixer;
-    }
+    public override FixAllProvider GetFixAllProvider() => WellKnownFixAllProviders.BatchFixer;
 
     /// <inheritdoc />
     public override async Task RegisterCodeFixesAsync(CodeFixContext context)
@@ -165,31 +162,25 @@ public sealed class BlockingAsyncOperationCodeFixProvider : CodeFixProvider
     /// <summary>
     ///     Determines if the invocation is a Task.Wait() call.
     /// </summary>
-    private static bool IsTaskWaitInvocation(InvocationExpressionSyntax invocation)
-    {
-        return invocation.Expression is MemberAccessExpressionSyntax memberAccess &&
-               memberAccess.Name.Identifier.Text == "Wait" &&
-               memberAccess.Expression is IdentifierNameSyntax { Identifier.Text: "Task" };
-    }
+    private static bool IsTaskWaitInvocation(InvocationExpressionSyntax invocation) =>
+        invocation.Expression is MemberAccessExpressionSyntax memberAccess &&
+        memberAccess.Name.Identifier.Text == "Wait" &&
+        memberAccess.Expression is IdentifierNameSyntax { Identifier.Text: "Task" };
 
     /// <summary>
     ///     Determines if the invocation is a GetResult() call.
     /// </summary>
-    private static bool IsGetResultInvocation(InvocationExpressionSyntax invocation)
-    {
-        return invocation.Expression is MemberAccessExpressionSyntax memberAccess &&
-               memberAccess.Name.Identifier.Text == "GetResult";
-    }
+    private static bool IsGetResultInvocation(InvocationExpressionSyntax invocation) =>
+        invocation.Expression is MemberAccessExpressionSyntax memberAccess &&
+        memberAccess.Name.Identifier.Text == "GetResult";
 
     /// <summary>
     ///     Determines if the invocation is a Thread.Sleep() call.
     /// </summary>
-    private static bool IsThreadSleepInvocation(InvocationExpressionSyntax invocation)
-    {
-        return invocation.Expression is MemberAccessExpressionSyntax memberAccess &&
-               memberAccess.Name.Identifier.Text == "Sleep" &&
-               memberAccess.Expression is IdentifierNameSyntax { Identifier.Text: "Thread" };
-    }
+    private static bool IsThreadSleepInvocation(InvocationExpressionSyntax invocation) =>
+        invocation.Expression is MemberAccessExpressionSyntax memberAccess &&
+        memberAccess.Name.Identifier.Text == "Sleep" &&
+        memberAccess.Expression is IdentifierNameSyntax { Identifier.Text: "Thread" };
 
     /// <summary>
     ///     Determines if the invocation is a blocking File I/O call.
@@ -253,12 +244,10 @@ public sealed class BlockingAsyncOperationCodeFixProvider : CodeFixProvider
     /// <summary>
     ///     Gets the method name from an invocation.
     /// </summary>
-    private static string GetMethodName(InvocationExpressionSyntax invocation)
-    {
-        return invocation.Expression is MemberAccessExpressionSyntax memberAccess
+    private static string GetMethodName(InvocationExpressionSyntax invocation) =>
+        invocation.Expression is MemberAccessExpressionSyntax memberAccess
             ? memberAccess.Name.Identifier.Text
             : "Unknown";
-    }
 
     /// <summary>
     ///     Replaces .Result with await.

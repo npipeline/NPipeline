@@ -170,7 +170,6 @@ public class ValueTaskFastPathBenchmarks
             _cache[item] = result;
             return new ValueTask<string>(result);
         }
-
     }
 
     private sealed class AsyncCompletionTransform : TransformNode<int, string>
@@ -192,7 +191,6 @@ public class ValueTaskFastPathBenchmarks
             _cache[item] = result;
             return result;
         }
-
     }
 
     private sealed class ZeroAllocationCacheTransform : TransformNode<int, string>
@@ -214,7 +212,6 @@ public class ValueTaskFastPathBenchmarks
             _cache[item] = result;
             return new ValueTask<string>(result);
         }
-
     }
 
     private sealed class TraditionalCacheTransform : TransformNode<int, string>

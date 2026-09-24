@@ -14,6 +14,7 @@ An item reaches the dead-letter sink when:
 
 1. A resilience policy explicitly returns `ResilienceDecision.DeadLetter`.
 2. A retry policy exhausts its maximum retries and its `exhaustedDecision` is `DeadLetter` (the default for the fluent builder's `.Retry()` method).
+3. The default policy decides the failure, it doesn't retry the item, and the node's options set `OnItemFailure = ItemFailureAction.DeadLetter`.
 
 ```csharp
 // After 3 failed retries, the item goes to dead-letter
@@ -22,6 +23,10 @@ ResiliencePolicyBuilder
     .On<TimeoutException>().Retry(maxRetries: 3)  // exhausted → DeadLetter
     .Build();
 ```
+
+If no dead-letter sink is configured when an item is dead-lettered, the node fails with `DeadLetterSinkNotConfiguredException` ([NP0424](../reference/error-codes.md)), and the original failure is its inner exception. NPipeline never drops the item silently. Add a sink with `builder.AddDeadLetterSink(...)`, or have the policy return `Skip` to discard the item.
+
+If a transform's options set `OnItemFailure = ItemFailureAction.DeadLetter` and no dead-letter sink is configured, the run fails with `DeadLetterSinkNotConfiguredException` before any node starts.
 
 ## The DeadLetterEnvelope
 
@@ -164,9 +169,9 @@ public class ResilientOrderPipeline : IPipelineDefinition
 {
     public void Define(PipelineBuilder builder, PipelineContext context)
     {
-        // Configure retries with delay
-        builder.WithRetryOptions(options => options with { MaxItemRetries = 3 }
-            .WithExponentialBackoffAndFullJitter());
+        // Wait between retries: exponential backoff from 200 ms up to 30 s, with full jitter.
+        // The Default optimization profile already starts from these options; setting them keeps the example explicit.
+        builder.WithResilience(options => options with { ItemRetry = ItemRetryOptions.Default });
 
         // Dead-letter sink captures failures for inspection
         builder.AddDeadLetterSink(new BoundedInMemoryDeadLetterSink(capacity: 500));
@@ -185,8 +190,6 @@ public class ResilientOrderPipeline : IPipelineDefinition
         var validate = builder.AddTransform<ValidateOrder, Order, Order>("validate");
         var save = builder.AddSink<OrderSink, Order>("save");
 
-        validate.WithResilience(builder);
-
         builder.Connect(source, validate);
         builder.Connect(validate, save);
     }
@@ -195,13 +198,14 @@ public class ResilientOrderPipeline : IPipelineDefinition
 
 In this pipeline:
 
-- Transient HTTP errors are retried up to 3 times with exponential backoff.
-- If retries are exhausted, the item is dead-lettered (default exhausted decision).
+- The policy decides every failure in `ValidateOrder`. `ItemRetry` supplies the wait between retries.
+- The policy retries HTTP errors up to 3 times, waiting with exponential backoff between attempts.
+- When the retries run out, the policy dead-letters the item, because `Retry(n)` dead-letters after its last retry.
 - Validation errors are dead-lettered immediately (no retry).
 - Any other exception fails the pipeline.
 
 ## Next Steps
 
-- [Materialization](materialization.md) - buffer items to enable node-level restart
+- [Node restart and the replay window](materialization.md) - restart a failed transform from its checkpoint
 - [Retry Strategies](retry-strategies.md) - configure delays between retry attempts
 - [Resilience Policies](resilience-policies.md) - customize which items get dead-lettered

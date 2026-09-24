@@ -1045,24 +1045,17 @@ public sealed class ObservabilityCollectorTests
         public TestMetricsSink NodeMetricsSink { get; } = new();
         public TestPipelineMetricsSink PipelineMetricsSink { get; } = new();
 
-        public IObservabilityCollector ResolveObservabilityCollector()
-        {
-            throw new NotImplementedException();
-        }
+        public IObservabilityCollector ResolveObservabilityCollector() => throw new NotImplementedException();
 
-        public IMetricsSink? ResolveMetricsSink()
-        {
-            return NodeMetricsSink.IsEnabled
+        public IMetricsSink? ResolveMetricsSink() =>
+            NodeMetricsSink.IsEnabled
                 ? NodeMetricsSink
                 : null;
-        }
 
-        public IPipelineMetricsSink? ResolvePipelineMetricsSink()
-        {
-            return PipelineMetricsSink.IsEnabled
+        public IPipelineMetricsSink? ResolvePipelineMetricsSink() =>
+            PipelineMetricsSink.IsEnabled
                 ? PipelineMetricsSink
                 : null;
-        }
     }
 
     private sealed class TestMetricsSink : IMetricsSink

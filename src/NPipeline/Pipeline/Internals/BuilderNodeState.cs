@@ -1,6 +1,6 @@
-using NPipeline.Configuration;
 using NPipeline.Graph;
 using NPipeline.Nodes;
+using NPipeline.Reliability;
 
 namespace NPipeline.Pipeline.Internals;
 
@@ -26,9 +26,10 @@ internal sealed class BuilderNodeState
     public Dictionary<string, object> ExecutionAnnotations { get; } = new();
 
     /// <summary>
-    ///     Dictionary of retry option overrides for specific nodes keyed by node ID.
+    ///     Per-node resilience configuration keyed by node ID. Each function derives the node's options from the
+    ///     pipeline's, and is applied when the pipeline is built.
     /// </summary>
-    public Dictionary<string, PipelineRetryOptions> RetryOverrides { get; } = new();
+    public Dictionary<string, Func<PipelineResilienceOptions, PipelineResilienceOptions>> ResilienceOverrides { get; } = new();
 
     /// <summary>
     ///     Clears all node state.
@@ -38,6 +39,6 @@ internal sealed class BuilderNodeState
         Nodes.Clear();
         PreconfiguredNodeInstances.Clear();
         ExecutionAnnotations.Clear();
-        RetryOverrides.Clear();
+        ResilienceOverrides.Clear();
     }
 }

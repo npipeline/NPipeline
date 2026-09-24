@@ -497,14 +497,10 @@ public sealed class SqlServerBulkCopyWriterTests
 
     #region Helper Methods
 
-    private static IDatabaseConnection CreateMockConnection()
-    {
-        return A.Fake<IDatabaseConnection>();
-    }
+    private static IDatabaseConnection CreateMockConnection() => A.Fake<IDatabaseConnection>();
 
-    private static SqlServerConfiguration CreateValidConfiguration()
-    {
-        return new SqlServerConfiguration
+    private static SqlServerConfiguration CreateValidConfiguration() =>
+        new()
         {
             BulkCopyBatchSize = 1000,
             BulkCopyTimeout = 300,
@@ -512,7 +508,6 @@ public sealed class SqlServerBulkCopyWriterTests
             EnableStreaming = true,
             BulkCopyNotifyAfter = 100,
         };
-    }
 
     private static object CreateWriter<T>(
         IDatabaseConnection connection,

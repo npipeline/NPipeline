@@ -60,9 +60,7 @@ public record WindowedResult
     /// </summary>
     public long WindowDurationMs => (long)(WindowEnd - WindowStart).TotalMilliseconds;
 
-    public override string ToString()
-    {
-        return $"WindowedResult({WindowType}: {WindowStart:O} - {WindowEnd:O}, Count={Count}, " +
-               $"Avg={Average:F2}, Min={Min:F2}, Max={Max:F2}, Late={LateCount})";
-    }
+    public override string ToString() =>
+        $"WindowedResult({WindowType}: {WindowStart:O} - {WindowEnd:O}, Count={Count}, " +
+        $"Avg={Average:F2}, Min={Min:F2}, Max={Max:F2}, Late={LateCount})";
 }

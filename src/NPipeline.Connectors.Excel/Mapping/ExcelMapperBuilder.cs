@@ -121,10 +121,7 @@ public static class ExcelMapperBuilder
     ///     Converts a PascalCase property name to an Excel column name convention.
     ///     Converts to lowercase by default (e.g., "FirstName" -> "firstname").
     /// </summary>
-    private static string ToColumnNameConvention(string str)
-    {
-        return str.ToLowerInvariant();
-    }
+    private static string ToColumnNameConvention(string str) => str.ToLowerInvariant();
 }
 
 /// <summary>

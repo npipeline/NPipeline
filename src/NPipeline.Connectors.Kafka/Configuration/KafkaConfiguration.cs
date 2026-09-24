@@ -1,5 +1,7 @@
 using Confluent.Kafka;
 using NPipeline.Connectors.Configuration;
+using NPipeline.Connectors.Kafka.Reliability;
+using NResilience;
 
 namespace NPipeline.Connectors.Kafka.Configuration;
 
@@ -136,6 +138,36 @@ public sealed class KafkaConfiguration
     /// </summary>
     public Acks Acks { get; set; } = Acks.All;
 
+    /// <summary>
+    ///     Gets or sets how long librdkafka keeps retrying a produce before it fails the message, in milliseconds
+    ///     (<c>delivery.timeout.ms</c>, also called <c>message.timeout.ms</c>). Default is 300000 (five minutes), the
+    ///     librdkafka default; 0 retries without limit. Must not be less than <see cref="LingerMs" />.
+    /// </summary>
+    /// <remarks>
+    ///     librdkafka is the only layer that retries a produce, so this bounds how long a produce can take to fail.
+    /// </remarks>
+    public int DeliveryTimeoutMs { get; set; } = 300000;
+
+    /// <summary>
+    ///     Gets or sets the delay before librdkafka's first retry of a failed produce request, in milliseconds
+    ///     (<c>retry.backoff.ms</c>). librdkafka doubles it on each retry, with jitter, up to
+    ///     <see cref="RetryBackoffMaxMs" />. Default is 100, the librdkafka default.
+    /// </summary>
+    public int RetryBackoffMs { get; set; } = 100;
+
+    /// <summary>
+    ///     Gets or sets the longest delay between librdkafka's produce retries, in milliseconds
+    ///     (<c>retry.backoff.max.ms</c>). Default is 1000, the librdkafka default.
+    /// </summary>
+    public int RetryBackoffMaxMs { get; set; } = 1000;
+
+    /// <summary>
+    ///     Gets or sets how long the sink waits for the sink topic's metadata when it starts, in milliseconds.
+    ///     Default is 10000. If the brokers cannot be reached in that time, the sink fails with an
+    ///     <see cref="InvalidOperationException" /> instead of blocking.
+    /// </summary>
+    public int MetadataTimeoutMs { get; set; } = 10000;
+
     // Serialization
     /// <summary>
     ///     Gets or sets the serialization format to use.
@@ -202,14 +234,17 @@ public sealed class KafkaConfiguration
 
     // Error Handling
     /// <summary>
-    ///     Gets or sets the maximum number of retries for failed operations.
+    ///     Gets or sets how the source retries a failed consume. Defaults to <see cref="KafkaConnectorResilience.Default" />:
+    ///     four attempts with exponential backoff from 100 milliseconds, retrying only errors Kafka reports as retriable.
+    ///     A fatal error, a deserialization error, and any other non-retriable error surface on the first attempt.
     /// </summary>
-    public int MaxRetries { get; set; } = 3;
-
-    /// <summary>
-    ///     Gets or sets the base delay in milliseconds for retry backoff.
-    /// </summary>
-    public int RetryBaseDelayMs { get; set; } = 100;
+    /// <remarks>
+    ///     The sink does not use this policy. librdkafka already retries every produce until
+    ///     <c>delivery.timeout.ms</c>, and the idempotent producer removes the duplicates those retries would cause; a
+    ///     second retry layer above it cannot be deduplicated. A produce error therefore surfaces as soon as librdkafka
+    ///     gives up.
+    /// </remarks>
+    public Resilience Resilience { get; init; } = KafkaConnectorResilience.Default;
 
     /// <summary>
     ///     Gets or sets whether to continue processing on errors.
@@ -246,6 +281,9 @@ public sealed class KafkaConfiguration
         if (MaxPartitionFetchBytes <= 0)
             throw new InvalidOperationException("MaxPartitionFetchBytes must be greater than zero.");
 
+        ArgumentNullException.ThrowIfNull(Resilience);
+        Resilience.Validate();
+
         ValidateSecurityCredentials();
     }
 
@@ -269,6 +307,21 @@ public sealed class KafkaConfiguration
 
         if (MessageMaxBytes <= 0)
             throw new InvalidOperationException("MessageMaxBytes must be greater than zero.");
+
+        if (DeliveryTimeoutMs < 0)
+            throw new InvalidOperationException("DeliveryTimeoutMs cannot be negative.");
+
+        if (DeliveryTimeoutMs > 0 && DeliveryTimeoutMs < LingerMs)
+            throw new InvalidOperationException("DeliveryTimeoutMs must not be less than LingerMs.");
+
+        if (RetryBackoffMs <= 0)
+            throw new InvalidOperationException("RetryBackoffMs must be greater than zero.");
+
+        if (RetryBackoffMaxMs < RetryBackoffMs)
+            throw new InvalidOperationException("RetryBackoffMaxMs must not be less than RetryBackoffMs.");
+
+        if (MetadataTimeoutMs <= 0)
+            throw new InvalidOperationException("MetadataTimeoutMs must be greater than zero.");
 
         ValidateSecurityCredentials();
     }
@@ -360,11 +413,5 @@ public sealed class KafkaConfiguration
 
         if (MaxConnectionPoolSize <= 0)
             throw new InvalidOperationException("MaxConnectionPoolSize must be greater than zero.");
-
-        if (MaxRetries < 0)
-            throw new InvalidOperationException("MaxRetries cannot be negative.");
-
-        if (RetryBaseDelayMs <= 0)
-            throw new InvalidOperationException("RetryBaseDelayMs must be greater than zero.");
     }
 }

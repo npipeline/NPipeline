@@ -1,7 +1,5 @@
-using NPipeline.Graph;
 using NPipeline.Nodes;
-using NPipeline.Pipeline;
-using NPipeline.Resilience;
+using NPipeline.Reliability;
 
 namespace NPipeline.ErrorHandling;
 
@@ -17,21 +15,17 @@ public static class ResiliencePolicyBuilder
     /// <typeparam name="TData">The item type to target.</typeparam>
     /// <returns>A builder for policy rules for the specified node/item pair.</returns>
     public static NodeResiliencePolicyBuilder<TNode, TData> ForNode<TNode, TData>()
-        where TNode : INode
-    {
-        return new NodeResiliencePolicyBuilder<TNode, TData>();
-    }
+        where TNode : INode =>
+        new();
 
     /// <summary>
     ///     Creates a pre-configured policy that retries item failures up to the specified maximum.
     /// </summary>
     public static IResiliencePolicy RetryAlways<TNode, TData>(int maxRetries = 3)
-        where TNode : INode
-    {
-        return ForNode<TNode, TData>()
+        where TNode : INode =>
+        ForNode<TNode, TData>()
             .OnAny().Retry(maxRetries)
             .Build();
-    }
 
     /// <summary>
     ///     Creates a pre-configured policy that retries a specific exception type up to the specified maximum.
@@ -40,34 +34,28 @@ public static class ResiliencePolicyBuilder
         int maxRetries = 3,
         ResilienceDecision exhaustedDecision = ResilienceDecision.DeadLetter)
         where TNode : INode
-        where TException : Exception
-    {
-        return ForNode<TNode, TData>()
+        where TException : Exception =>
+        ForNode<TNode, TData>()
             .RetryOn<TException>(maxRetries, exhaustedDecision)
             .Build();
-    }
 
     /// <summary>
     ///     Creates a pre-configured policy that always skips matching item failures.
     /// </summary>
     public static IResiliencePolicy SkipAlways<TNode, TData>()
-        where TNode : INode
-    {
-        return ForNode<TNode, TData>()
+        where TNode : INode =>
+        ForNode<TNode, TData>()
             .OnAny().Skip()
             .Build();
-    }
 
     /// <summary>
     ///     Creates a pre-configured policy that always dead-letters matching item failures.
     /// </summary>
     public static IResiliencePolicy DeadLetterAlways<TNode, TData>()
-        where TNode : INode
-    {
-        return ForNode<TNode, TData>()
+        where TNode : INode =>
+        ForNode<TNode, TData>()
             .OnAny().DeadLetter()
             .Build();
-    }
 }
 
 /// <summary>
@@ -100,10 +88,7 @@ public sealed class NodeResiliencePolicyBuilder<TNode, TData>
     /// <summary>
     ///     Adds a rule with a custom predicate.
     /// </summary>
-    public ResilienceRuleBuilder<TNode, TData> When(Predicate<Exception> predicate)
-    {
-        return new ResilienceRuleBuilder<TNode, TData>(this, predicate);
-    }
+    public ResilienceRuleBuilder<TNode, TData> When(Predicate<Exception> predicate) => new(this, predicate);
 
     /// <summary>
     ///     Adds a rule that retries a specific exception type for a bounded number of attempts.
@@ -272,31 +257,24 @@ internal sealed class NodeScopedResiliencePolicy<TNode, TData> : ResiliencePolic
         _default = defaultDecision;
     }
 
-    public override Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
-        ITransformNode<TIn, TOut> node,
-        TIn failedItem,
-        Exception exception,
-        PipelineContext context,
-        string nodeId,
-        int retryAttempt,
-        CancellationToken cancellationToken)
+    public override ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(node);
-        ArgumentNullException.ThrowIfNull(exception);
-        ArgumentNullException.ThrowIfNull(context);
-        ArgumentNullException.ThrowIfNull(nodeId);
+        ArgumentNullException.ThrowIfNull(failure.Node);
+        ArgumentNullException.ThrowIfNull(failure.Exception);
 
-        if (node is not TNode || failedItem is not TData)
-            return Task.FromResult(ResilienceDecision.Fail);
+        // A null item matches when TData admits null. Anything else outside the policy's scope follows the node's
+        // options, as it would with no policy registered.
+        var itemMatches = failure.Item is TData || (failure.Item is null && default(TData) is null);
 
-        var attempt = retryAttempt + 1;
+        if (failure.Node is not TNode || !itemMatches)
+            return base.DecideItemFailureAsync(failure, cancellationToken);
 
         foreach (var (predicate, factory) in _rules)
         {
-            if (predicate(exception))
-                return Task.FromResult(factory(attempt));
+            if (predicate(failure.Exception))
+                return ValueTask.FromResult(factory(failure.Attempt));
         }
 
-        return Task.FromResult(_default(attempt));
+        return ValueTask.FromResult(_default(failure.Attempt));
     }
 }

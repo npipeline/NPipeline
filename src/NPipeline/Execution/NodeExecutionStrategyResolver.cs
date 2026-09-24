@@ -14,12 +14,10 @@ namespace NPipeline.Execution;
 /// </remarks>
 internal static class NodeExecutionStrategyResolver
 {
-    public static IExecutionStrategy Resolve(NodeDefinition definition, INode instance)
-    {
-        return definition.ExecutionStrategy
-               ?? (instance as IExecutionStrategyProvider)?.DefaultExecutionStrategy
-               ?? SequentialExecutionStrategy.Instance;
-    }
+    public static IExecutionStrategy Resolve(NodeDefinition definition, INode instance) =>
+        definition.ExecutionStrategy
+        ?? (instance as IExecutionStrategyProvider)?.DefaultExecutionStrategy
+        ?? SequentialExecutionStrategy.Instance;
 
     /// <summary>
     ///     Resolves the strategy for a stream transform node, which must be stream-capable.

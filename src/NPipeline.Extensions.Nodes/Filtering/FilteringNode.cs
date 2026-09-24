@@ -96,7 +96,7 @@ public sealed class FilteringNode<T> : TransformNode<T, T>
             }
         }
 
-        return ValueTask.FromResult<T>(item);
+        return ValueTask.FromResult(item);
     }
 
     private readonly record struct Rule(Func<T, bool> Predicate, Func<T, string>? Reason);

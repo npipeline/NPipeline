@@ -16,9 +16,8 @@ public class LineageIntegrationTests
     private static string QualifiedPathNode(string nodeId) => $"{s_pipelineId:N}::{nodeId}";
 
     private static LineageRecord BuildRecord(Guid correlationId, string nodeId, IReadOnlyList<string> traversalPath, object? data = null,
-        LineageOutcomeReason outcomeReason = LineageOutcomeReason.Emitted, bool isTerminal = false)
-    {
-        return new LineageRecord(
+        LineageOutcomeReason outcomeReason = LineageOutcomeReason.Emitted, bool isTerminal = false) =>
+        new(
             correlationId,
             nodeId,
             s_pipelineId,
@@ -27,7 +26,6 @@ public class LineageIntegrationTests
             traversalPath,
             Data: data,
             Cardinality: ObservedCardinality.One);
-    }
 
     [Fact]
     public void AddNPipelineLineage_ShouldRegisterAllRequiredServices()
@@ -193,16 +191,20 @@ public class LineageIntegrationTests
         // Act
         collector.Record(BuildRecord(packet.CorrelationId, "node1", ["source", QualifiedPathNode("node1")], "test"));
         collector.Record(BuildRecord(packet.CorrelationId, "node2", ["source", QualifiedPathNode("node1"), QualifiedPathNode("node2")], "test"));
-        collector.Record(BuildRecord(packet.CorrelationId, "node3", ["source", QualifiedPathNode("node1"), QualifiedPathNode("node2"), QualifiedPathNode("node3")], "test"));
+
+        collector.Record(BuildRecord(packet.CorrelationId, "node3",
+            ["source", QualifiedPathNode("node1"), QualifiedPathNode("node2"), QualifiedPathNode("node3")], "test"));
 
         // Assert
         var lineage = collector.GetCorrelationHistory(packet.CorrelationId);
         lineage.Should().HaveCount(3);
+
         lineage[^1].TraversalPath.Should().ContainInOrder(
             "source",
             QualifiedPathNode("node1"),
             QualifiedPathNode("node2"),
             QualifiedPathNode("node3"));
+
         lineage.Select(r => r.NodeId).Should().ContainInOrder("node1", "node2", "node3");
     }
 
@@ -292,9 +294,6 @@ public class LineageIntegrationTests
     // Test sink for custom registration testing
     private sealed class TestPipelineLineageSink : IPipelineLineageSink
     {
-        public Task RecordAsync(PipelineLineageReport report, CancellationToken cancellationToken)
-        {
-            return Task.CompletedTask;
-        }
+        public Task RecordAsync(PipelineLineageReport report, CancellationToken cancellationToken) => Task.CompletedTask;
     }
 }

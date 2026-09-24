@@ -754,39 +754,28 @@ public sealed class ExcelSourceNodeTests
         }
     }
 
-    private static int MapIntRow(ExcelRow row)
-    {
-        return row.GetByIndex(0, 0);
-    }
+    private static int MapIntRow(ExcelRow row) => row.GetByIndex(0, 0);
 
-    private static string MapStringRow(ExcelRow row)
-    {
-        return row.GetByIndex(0, string.Empty) ?? string.Empty;
-    }
+    private static string MapStringRow(ExcelRow row) => row.GetByIndex(0, string.Empty) ?? string.Empty;
 
-    private static TestRecord MapTestRecordFromHeaders(ExcelRow row)
-    {
-        return new TestRecord
+    private static TestRecord MapTestRecordFromHeaders(ExcelRow row) =>
+        new()
         {
             Id = row.Get("Id", 0),
             Name = row.Get("Name", string.Empty) ?? string.Empty,
             Age = row.Get("Age", 0),
         };
-    }
 
-    private static TestRecord MapTestRecordFromIndexes(ExcelRow row)
-    {
-        return new TestRecord
+    private static TestRecord MapTestRecordFromIndexes(ExcelRow row) =>
+        new()
         {
             Id = row.GetByIndex(0, 0),
             Name = row.GetByIndex(1, string.Empty) ?? string.Empty,
             Age = row.GetByIndex(2, 0),
         };
-    }
 
-    private static ComplexRecord MapComplexRecordFromHeaders(ExcelRow row)
-    {
-        return new ComplexRecord
+    private static ComplexRecord MapComplexRecordFromHeaders(ExcelRow row) =>
+        new()
         {
             Id = row.Get("Id", 0),
             Name = row.Get("Name", string.Empty) ?? string.Empty,
@@ -797,44 +786,35 @@ public sealed class ExcelSourceNodeTests
             Score = row.Get("Score", 0d),
             NullableValue = row.Get<int?>("NullableValue"),
         };
-    }
 
-    private static NullableRecord MapNullableRecordFromHeaders(ExcelRow row)
-    {
-        return new NullableRecord
+    private static NullableRecord MapNullableRecordFromHeaders(ExcelRow row) =>
+        new()
         {
             Id = row.Get("Id", 0),
             NullableInt = row.Get<int?>("NullableInt"),
             NullableString = row.Get<string>("NullableString"),
         };
-    }
 
-    private static DateTimeRecord MapDateTimeRecordFromHeaders(ExcelRow row)
-    {
-        return new DateTimeRecord
+    private static DateTimeRecord MapDateTimeRecordFromHeaders(ExcelRow row) =>
+        new()
         {
             Id = row.Get("Id", 0),
             Date = row.Get("Date", default(DateTime)),
         };
-    }
 
-    private static BoolRecord MapBoolRecordFromHeaders(ExcelRow row)
-    {
-        return new BoolRecord
+    private static BoolRecord MapBoolRecordFromHeaders(ExcelRow row) =>
+        new()
         {
             Id = row.Get("Id", 0),
             IsActive = row.Get("IsActive", false),
         };
-    }
 
-    private static DecimalRecord MapDecimalRecordFromHeaders(ExcelRow row)
-    {
-        return new DecimalRecord
+    private static DecimalRecord MapDecimalRecordFromHeaders(ExcelRow row) =>
+        new()
         {
             Id = row.Get("Id", 0),
             Amount = row.Get("Amount", 0m),
         };
-    }
 
     // Test record classes
     private sealed record TestRecord

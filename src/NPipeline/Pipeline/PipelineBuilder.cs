@@ -2,12 +2,13 @@ using System.Collections.Immutable;
 using NPipeline.Configuration;
 using NPipeline.Execution;
 using NPipeline.Execution.Plans;
-using NPipeline.Lineage;
 using NPipeline.Graph;
 using NPipeline.Graph.PipelineDelegates;
 using NPipeline.Graph.Validation;
+using NPipeline.Lineage;
 using NPipeline.Nodes;
 using NPipeline.Pipeline.Internals;
+using NPipeline.Reliability;
 
 namespace NPipeline.Pipeline;
 
@@ -29,11 +30,15 @@ public sealed partial class PipelineBuilder
     // Flag to prevent builder reuse after Build() has been called
     private bool _built;
 
+    // State objects encapsulating related fields by concern
+
+    private BuilderConfig _config = BuilderConfig.Default;
+
     /// <summary>
     ///     Creates a builder that does not track item-level lineage.
     /// </summary>
     public PipelineBuilder()
-        : this(null, null)
+        : this(null)
     {
     }
 
@@ -75,9 +80,6 @@ public sealed partial class PipelineBuilder
     /// </remarks>
     public INodeRegistrationPlanner RegistrationPlanner { get; }
 
-    // State objects encapsulating related fields by concern
-
-    private BuilderConfig _config = BuilderConfig.Default;
     internal IReadOnlyList<IAsyncDisposable> BuilderDisposables => _builderDisposables;
     internal PipelineOptimizationProfile CurrentOptimizationProfile => _config.OptimizationProfile;
 
@@ -123,11 +125,8 @@ public sealed partial class PipelineBuilder
         bool EarlyNameValidation,
         bool ItemLevelLineageEnabled,
         GraphValidationMode GraphValidationMode,
-        PipelineCircuitBreakerOptions? CircuitBreakerOptions,
-        CircuitBreakerMemoryManagementOptions? CircuitBreakerMemoryOptions,
         LineageOptions? LineageOptions,
-        PipelineRetryOptions RetryOptions,
-        bool RetryExplicitlyConfigured,
+        Func<PipelineResilienceOptions, PipelineResilienceOptions>? ConfigureResilience,
         PipelineOptimizationProfile OptimizationProfile)
     {
         /// <summary>
@@ -145,9 +144,6 @@ public sealed partial class PipelineBuilder
             GraphValidationMode.Error,
             null,
             null,
-            null,
-            PipelineRetryOptions.Default,
-            false,
             PipelineOptimizationProfile.Default);
     }
 
@@ -565,18 +561,12 @@ public sealed partial class PipelineBuilder
     /// <summary>
     ///     Generates a unique ID from a node name, ensuring uniqueness in the current builder state.
     /// </summary>
-    private string GenerateIdFromName(string name)
-    {
-        return NodeNameGenerator.GenerateIdFromName(name, NodeState.Nodes);
-    }
+    private string GenerateIdFromName(string name) => NodeNameGenerator.GenerateIdFromName(name, NodeState.Nodes);
 
     /// <summary>
     ///     Generates a unique node name by appending a suffix if necessary to avoid conflicts.
     /// </summary>
-    private string GenerateUniqueNodeName(string baseName)
-    {
-        return NodeNameGenerator.GenerateUniqueNodeName(baseName, NodeState.Nodes.Values);
-    }
+    private string GenerateUniqueNodeName(string baseName) => NodeNameGenerator.GenerateUniqueNodeName(baseName, NodeState.Nodes.Values);
 
     /// <summary>
     ///     Validates that a node name is unique; throws if a duplicate is found.

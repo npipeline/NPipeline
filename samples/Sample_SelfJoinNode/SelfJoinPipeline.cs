@@ -109,9 +109,8 @@ public class SelfJoinPipeline : IPipelineDefinition
     ///     Gets a description of what this pipeline demonstrates.
     /// </summary>
     /// <returns>A detailed description of the pipeline's purpose and flow.</returns>
-    public static string GetDescription()
-    {
-        return @"Self Join Node Sample:
+    public static string GetDescription() =>
+        @"Self Join Node Sample:
 
 This sample demonstrates NPipeline's self-join functionality using the AddSelfJoin extension method:
 
@@ -156,7 +155,6 @@ This implementation showcases production-ready patterns for:
 - Growth trend identification
 - Category-level performance tracking
 - Handling of new and discontinued products";
-    }
 
     /// <summary>
     ///     Gets a description of the specific join type being demonstrated.
@@ -181,10 +179,7 @@ This implementation showcases production-ready patterns for:
     ///     Gets the comparison year being used.
     /// </summary>
     /// <returns>The comparison year.</returns>
-    public int GetComparisonYear()
-    {
-        return _comparisonYear;
-    }
+    public int GetComparisonYear() => _comparisonYear;
 }
 
 /// <summary>
@@ -269,10 +264,7 @@ public class YearFilteredDataStream : IDataStream<SalesData>
 
     public string StreamName => $"{_source.StreamName}_filtered_{_targetYear}";
 
-    public Type GetDataType()
-    {
-        return typeof(SalesData);
-    }
+    public Type GetDataType() => typeof(SalesData);
 
     public IAsyncEnumerable<object?> ToAsyncEnumerable(CancellationToken cancellationToken = default)
     {
@@ -292,10 +284,7 @@ public class YearFilteredDataStream : IDataStream<SalesData>
     {
         return ReadAsyncInternal(cancellationToken).GetAsyncEnumerator(cancellationToken);
 
-        IAsyncEnumerable<SalesData> ReadAsyncInternal(CancellationToken ct)
-        {
-            return IterateAsync(ct);
-        }
+        IAsyncEnumerable<SalesData> ReadAsyncInternal(CancellationToken ct) => IterateAsync(ct);
 
         async IAsyncEnumerable<SalesData> IterateAsync([EnumeratorCancellation] CancellationToken ct)
         {

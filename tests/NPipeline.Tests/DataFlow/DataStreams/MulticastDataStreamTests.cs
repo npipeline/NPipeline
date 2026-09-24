@@ -92,7 +92,7 @@ public sealed class MulticastDataStreamTests
         // Act - Get first enumerator
         await foreach (var item in pipe)
 
-        // Consume first item
+            // Consume first item
         {
             break;
         }

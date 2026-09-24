@@ -150,16 +150,18 @@ public class PostgresTransientErrorDetectorTests
     }
 
     [Fact]
-    public void IsTransientSqlState_WithTooManyConnections_ReturnsFalse()
+    public void IsTransientSqlState_WithTooManyConnections_ReturnsTrueAndIsThrottling()
     {
         // Arrange
-        var sqlState = "53300"; // too_many_connections
+        var sqlState = "53300"; // too_many_connections: the server will accept the connection once load drops
 
         // Act
-        var result = PostgresTransientErrorDetector.IsTransientSqlState(sqlState);
+        var transient = PostgresTransientErrorDetector.IsTransientSqlState(sqlState);
+        var throttling = PostgresTransientErrorDetector.IsThrottlingSqlState(sqlState);
 
         // Assert
-        _ = result.Should().BeFalse();
+        _ = transient.Should().BeTrue();
+        _ = throttling.Should().BeTrue();
     }
 
     [Fact]

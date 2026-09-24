@@ -11,7 +11,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <CompilerVisibleProperty Include="NPipelineOptimizationProfile" />
+        <CompilerVisibleProperty Include="NPipelineOptimizationProfile"/>
 
         <!--
             Emit profile metadata so runtime can detect analyzer/runtime profile drift and warn.

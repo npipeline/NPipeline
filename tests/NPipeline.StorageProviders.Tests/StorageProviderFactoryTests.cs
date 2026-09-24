@@ -107,35 +107,18 @@ public class StorageProviderFactoryTests
 
         public StorageScheme Scheme => new("test");
 
-        public bool CanHandle(StorageUri uri)
-        {
-            return false;
-        }
+        public bool CanHandle(StorageUri uri) => false;
 
-        public Task<Stream> OpenReadAsync(StorageUri uri, CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
-        }
+        public Task<Stream> OpenReadAsync(StorageUri uri, CancellationToken cancellationToken = default) => throw new NotImplementedException();
 
-        public Task<Stream> OpenWriteAsync(StorageUri uri, CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
-        }
+        public Task<Stream> OpenWriteAsync(StorageUri uri, CancellationToken cancellationToken = default) => throw new NotImplementedException();
 
-        public Task<bool> ExistsAsync(StorageUri uri, CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
-        }
+        public Task<bool> ExistsAsync(StorageUri uri, CancellationToken cancellationToken = default) => throw new NotImplementedException();
 
-        public IAsyncEnumerable<StorageItem> ListAsync(StorageUri prefix, bool recursive = false, CancellationToken cancellationToken = default)
-        {
+        public IAsyncEnumerable<StorageItem> ListAsync(StorageUri prefix, bool recursive = false, CancellationToken cancellationToken = default) =>
             throw new NotImplementedException();
-        }
 
-        public Task<StorageMetadata?> GetMetadataAsync(StorageUri uri, CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
-        }
+        public Task<StorageMetadata?> GetMetadataAsync(StorageUri uri, CancellationToken cancellationToken = default) => throw new NotImplementedException();
     }
 
     private sealed class ConfigureThrowsProvider : IStorageProvider, IConfigurableStorageProvider
@@ -147,69 +130,35 @@ public class StorageProviderFactoryTests
 
         public StorageScheme Scheme => new("test");
 
-        public bool CanHandle(StorageUri uri)
-        {
-            return false;
-        }
+        public bool CanHandle(StorageUri uri) => false;
 
-        public Task<Stream> OpenReadAsync(StorageUri uri, CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
-        }
+        public Task<Stream> OpenReadAsync(StorageUri uri, CancellationToken cancellationToken = default) => throw new NotImplementedException();
 
-        public Task<Stream> OpenWriteAsync(StorageUri uri, CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
-        }
+        public Task<Stream> OpenWriteAsync(StorageUri uri, CancellationToken cancellationToken = default) => throw new NotImplementedException();
 
-        public Task<bool> ExistsAsync(StorageUri uri, CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
-        }
+        public Task<bool> ExistsAsync(StorageUri uri, CancellationToken cancellationToken = default) => throw new NotImplementedException();
 
-        public IAsyncEnumerable<StorageItem> ListAsync(StorageUri prefix, bool recursive = false, CancellationToken cancellationToken = default)
-        {
+        public IAsyncEnumerable<StorageItem> ListAsync(StorageUri prefix, bool recursive = false, CancellationToken cancellationToken = default) =>
             throw new NotImplementedException();
-        }
 
-        public Task<StorageMetadata?> GetMetadataAsync(StorageUri uri, CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
-        }
+        public Task<StorageMetadata?> GetMetadataAsync(StorageUri uri, CancellationToken cancellationToken = default) => throw new NotImplementedException();
     }
 
     private sealed class TestProvider : IStorageProvider
     {
         public StorageScheme Scheme => "test";
 
-        public bool CanHandle(StorageUri uri)
-        {
-            return false;
-        }
+        public bool CanHandle(StorageUri uri) => false;
 
-        public Task<Stream> OpenReadAsync(StorageUri uri, CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
-        }
+        public Task<Stream> OpenReadAsync(StorageUri uri, CancellationToken cancellationToken = default) => throw new NotImplementedException();
 
-        public Task<Stream> OpenWriteAsync(StorageUri uri, CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
-        }
+        public Task<Stream> OpenWriteAsync(StorageUri uri, CancellationToken cancellationToken = default) => throw new NotImplementedException();
 
-        public Task<bool> ExistsAsync(StorageUri uri, CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
-        }
+        public Task<bool> ExistsAsync(StorageUri uri, CancellationToken cancellationToken = default) => throw new NotImplementedException();
 
-        public IAsyncEnumerable<StorageItem> ListAsync(StorageUri prefix, bool recursive = false, CancellationToken cancellationToken = default)
-        {
+        public IAsyncEnumerable<StorageItem> ListAsync(StorageUri prefix, bool recursive = false, CancellationToken cancellationToken = default) =>
             throw new NotImplementedException();
-        }
 
-        public Task<StorageMetadata?> GetMetadataAsync(StorageUri uri, CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
-        }
+        public Task<StorageMetadata?> GetMetadataAsync(StorageUri uri, CancellationToken cancellationToken = default) => throw new NotImplementedException();
     }
 }

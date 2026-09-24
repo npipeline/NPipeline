@@ -28,26 +28,22 @@ public class MongoConnectorOptions
     /// <param name="name">The connection name. If null or empty, returns the default connection string.</param>
     /// <returns>The connection string.</returns>
     /// <exception cref="InvalidOperationException">Thrown when the named connection is not found.</exception>
-    public string? GetConnectionString(string? name = null)
-    {
-        return string.IsNullOrWhiteSpace(name)
+    public string? GetConnectionString(string? name = null) =>
+        string.IsNullOrWhiteSpace(name)
             ? DefaultConnectionString
             : Connections.TryGetValue(name, out var connectionString)
                 ? connectionString
                 : throw new InvalidOperationException($"Named connection '{name}' not found.");
-    }
 
     /// <summary>
     ///     Checks if a named connection exists.
     /// </summary>
     /// <param name="name">The connection name.</param>
     /// <returns>True if the named connection exists; otherwise, false.</returns>
-    public bool HasConnection(string name)
-    {
-        return string.IsNullOrWhiteSpace(name)
+    public bool HasConnection(string name) =>
+        string.IsNullOrWhiteSpace(name)
             ? !string.IsNullOrWhiteSpace(DefaultConnectionString)
             : Connections.ContainsKey(name);
-    }
 
     /// <summary>
     ///     Adds or updates a named connection.
@@ -70,10 +66,7 @@ public class MongoConnectorOptions
     /// </summary>
     /// <param name="name">The connection name.</param>
     /// <returns>True if the connection was removed; otherwise, false.</returns>
-    public bool RemoveConnection(string name)
-    {
-        return Connections.Remove(name);
-    }
+    public bool RemoveConnection(string name) => Connections.Remove(name);
 
     /// <summary>
     ///     Gets all configured connection names ("default" plus any named connections).

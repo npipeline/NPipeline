@@ -31,10 +31,8 @@ public static class ErrorSimulation
     /// <param name="operationName">The name of the operation that timed out.</param>
     /// <param name="timeoutDuration">The duration that was exceeded.</param>
     /// <returns>A TimeoutException with formatted message.</returns>
-    public static TimeoutException CreateTimeoutException(string operationName, TimeSpan timeoutDuration)
-    {
-        return new TimeoutException($"Operation '{operationName}' timed out after {timeoutDuration.TotalSeconds} seconds.");
-    }
+    public static TimeoutException CreateTimeoutException(string operationName, TimeSpan timeoutDuration) =>
+        new($"Operation '{operationName}' timed out after {timeoutDuration.TotalSeconds} seconds.");
 
     /// <summary>
     ///     Creates an ArgumentException with a detailed message.
@@ -42,10 +40,8 @@ public static class ErrorSimulation
     /// <param name="parameterName">The name of the invalid parameter.</param>
     /// <param name="reason">The reason why the parameter is invalid.</param>
     /// <returns>An ArgumentException with formatted message.</returns>
-    public static ArgumentException CreateArgumentException(string parameterName, string reason)
-    {
-        return new ArgumentException($"Parameter '{parameterName}' is invalid. {reason}", parameterName);
-    }
+    public static ArgumentException CreateArgumentException(string parameterName, string reason) =>
+        new($"Parameter '{parameterName}' is invalid. {reason}", parameterName);
 
     /// <summary>
     ///     Creates a custom exception with detailed error information.
@@ -248,10 +244,7 @@ public static class ErrorLogger
     ///     Gets the count of errors by exception type.
     /// </summary>
     /// <returns>A dictionary mapping exception types to their occurrence counts.</returns>
-    public static Dictionary<Type, int> GetErrorCounts()
-    {
-        return new Dictionary<Type, int>(ErrorCounts);
-    }
+    public static Dictionary<Type, int> GetErrorCounts() => new(ErrorCounts);
 
     /// <summary>
     ///     Gets the recent error history.
@@ -423,64 +416,43 @@ public static class ErrorMetrics
     ///     Gets the total number of operations recorded.
     /// </summary>
     /// <returns>The total operation count.</returns>
-    public static int GetTotalOperations()
-    {
-        return _totalOperations;
-    }
+    public static int GetTotalOperations() => _totalOperations;
 
     /// <summary>
     ///     Gets the total number of successful operations.
     /// </summary>
     /// <returns>The successful operation count.</returns>
-    public static int GetSuccessfulOperations()
-    {
-        return _successfulOperations;
-    }
+    public static int GetSuccessfulOperations() => _successfulOperations;
 
     /// <summary>
     ///     Gets the total number of failed operations.
     /// </summary>
     /// <returns>The failed operation count.</returns>
-    public static int GetFailedOperations()
-    {
-        return _failedOperations;
-    }
+    public static int GetFailedOperations() => _failedOperations;
 
     /// <summary>
     ///     Gets the total number of retry attempts.
     /// </summary>
     /// <returns>The retry count.</returns>
-    public static int GetRetryCount()
-    {
-        return _retryCount;
-    }
+    public static int GetRetryCount() => _retryCount;
 
     /// <summary>
     ///     Gets the total number of fallback activations.
     /// </summary>
     /// <returns>The fallback activation count.</returns>
-    public static int GetFallbackActivations()
-    {
-        return _fallbackActivations;
-    }
+    public static int GetFallbackActivations() => _fallbackActivations;
 
     /// <summary>
     ///     Gets failure counts by component name.
     /// </summary>
     /// <returns>A dictionary mapping component names to their failure counts.</returns>
-    public static Dictionary<string, int> GetComponentFailures()
-    {
-        return new Dictionary<string, int>(ComponentFailures);
-    }
+    public static Dictionary<string, int> GetComponentFailures() => new(ComponentFailures);
 
     /// <summary>
     ///     Gets exception counts by exception type.
     /// </summary>
     /// <returns>A dictionary mapping exception types to their occurrence counts.</returns>
-    public static Dictionary<Type, int> GetExceptionTypes()
-    {
-        return new Dictionary<Type, int>(ExceptionTypes);
-    }
+    public static Dictionary<Type, int> GetExceptionTypes() => new(ExceptionTypes);
 
     /// <summary>
     ///     Generates a comprehensive summary of all error metrics.

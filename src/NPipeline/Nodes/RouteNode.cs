@@ -9,8 +9,5 @@ namespace NPipeline.Nodes;
 public sealed class RouteNode<T> : TransformNode<T, T>
 {
     /// <inheritdoc />
-    public override ValueTask<T> TransformAsync(T item, PipelineContext context, CancellationToken cancellationToken)
-    {
-        return ValueTask.FromResult<T>(item);
-    }
+    public override ValueTask<T> TransformAsync(T item, PipelineContext context, CancellationToken cancellationToken) => ValueTask.FromResult<T>(item);
 }

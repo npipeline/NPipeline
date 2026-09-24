@@ -3,7 +3,6 @@ using System.Threading.Channels;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.Execution;
-using NPipeline.Execution.Lineage;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 
@@ -25,15 +24,42 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
     {
     }
 
-    /// <summary>
-    ///     Result envelope written by workers. Placeholder entries (<see cref="HasValue" /> = false) keep the
-    ///     sequence contiguous so the reorder buffer and the in-flight window can advance past skipped items.
-    /// </summary>
-    private readonly record struct SequencedResult<T>(long Sequence, bool HasValue, T Value);
-
     /// <inheritdoc />
     public override Task<IDataStream<TOut>> ExecuteAsync<TIn, TOut>(
         IDataStream<TIn> input,
+        ITransformNode<TIn, TOut> node,
+        PipelineContext context,
+        string nodeId,
+        CancellationToken cancellationToken) =>
+        Execute(input, 0, null, node, context, nodeId, cancellationToken);
+
+    /// <inheritdoc />
+    /// <remarks>
+    ///     With <see cref="ParallelOptions.PreserveOrdering" /> (the default) the checkpoint advances in input order, so
+    ///     each output is delivered exactly once across restarts. Without it, the checkpoint is the oldest item still
+    ///     in flight, and outputs delivered ahead of it are delivered again after a restart.
+    /// </remarks>
+    public override Task<IDataStream<TOut>> ExecuteFromAsync<TIn, TOut>(
+        IDataStream<TIn> input,
+        long offset,
+        RestartCheckpoint checkpoint,
+        ITransformNode<TIn, TOut> node,
+        PipelineContext context,
+        string nodeId,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(checkpoint);
+        return Execute(input, offset, checkpoint, node, context, nodeId, cancellationToken);
+    }
+
+    /// <summary>
+    ///     Executes the node over an input whose first item has index <c>offset</c>, reporting delivered items to
+    ///     <c>checkpoint</c> when the node is restartable (otherwise it is <see langword="null" />).
+    /// </summary>
+    private Task<IDataStream<TOut>> Execute<TIn, TOut>(
+        IDataStream<TIn> input,
+        long offset,
+        RestartCheckpoint? checkpoint,
         ITransformNode<TIn, TOut> node,
         PipelineContext context,
         string nodeId,
@@ -60,16 +86,16 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
         // Capture the current activity for tagging observability metrics
         var currentActivity = context.Observability.Tracer.CurrentActivity;
 
-        // Resolve effective retry options using our helper method
-        var effectiveRetries = GetRetryOptions(nodeId, context);
+        var cachedContext = CachedNodeExecutionContext.Create(context, nodeId);
+        var lineage = cachedContext.LineageOutcomeWriter;
+        var trackLineage = lineage.IsActive;
         var logger = context.Observability.LoggerFactory.CreateLogger(nameof(BlockingParallelStrategy));
-        ParallelExecutionStrategyLogMessages.FinalMaxRetries(logger, nodeId, effectiveRetries.MaxItemRetries);
+        ParallelExecutionStrategyLogMessages.FinalMaxRetries(logger, nodeId, cachedContext.Resilience.ItemRetry.MaxRetries);
 
         var effectiveDop = parallelOptions?.MaxDegreeOfParallelism ?? ConfiguredMaxDop ?? Environment.ProcessorCount;
         var windowSize = parallelOptions?.MaxQueueLength;
         var outputCap = parallelOptions?.OutputBufferCapacity;
         var preserveOrdering = parallelOptions?.PreserveOrdering ?? true;
-        var observer = context.Observability.ExecutionObserver;
 
         // Metrics for retry visibility.
         ParallelExecutionMetrics blockMetrics;
@@ -83,8 +109,7 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
             context.NodeEnvironment.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.ParallelMetrics(nodeId), blockMetrics);
         }
 
-        // Create cached execution context once for all items (performance optimization)
-        var cachedContext = CachedNodeExecutionContext.CreateWithRetryOptions(context, nodeId, effectiveRetries);
+        var onRetry = blockMetrics.RecordRetry;
 
         // Input channels: one dedicated channel per worker (single writer = feeder, single reader = the owning
         // worker). The feeder round-robins items across partitions. Giving each worker its own channel avoids the
@@ -148,19 +173,12 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
 
                     observabilityScope.IncrementProcessed();
 
-                    var lineageInputIndex = LineageExecutionItemContext.TryGetCurrentInputIndex(out var currentInputIndex)
-                        ? currentInputIndex
+                    // Lineage is keyed by the item's index in the node's input, which a restart preserves.
+                    var lineageInputIndex = trackLineage
+                        ? offset + sequence
                         : (long?)null;
 
-                    var hasMetadata = LineageExecutionItemContext.TryGetCurrentItemMetadata(out var currentMetadata);
-                    var correlationId = hasMetadata
-                        ? currentMetadata.CorrelationId
-                        : (Guid?)null;
-                    var ancestryInputIndices = hasMetadata
-                        ? currentMetadata.AncestryInputIndices
-                        : null;
-
-                    var work = new IndexedWorkItem<TIn>(item, lineageInputIndex, correlationId, ancestryInputIndices, sequence);
+                    var work = new IndexedWorkItem<TIn>(item, lineageInputIndex, sequence);
 
                     // Round-robin the item to a worker partition. The input channels are always unbounded and the
                     // feeder is the only writer, so TryWrite never fails here; there is no bounded-capacity path
@@ -182,7 +200,9 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
                 }
 
                 for (var i = 0; i < effectiveDop; i++)
+                {
                     _ = inputChannels[i].Writer.TryComplete();
+                }
             }
             catch (Exception ex)
             {
@@ -193,7 +213,9 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
                 faultCts.Cancel();
 
                 for (var i = 0; i < effectiveDop; i++)
+                {
                     _ = inputChannels[i].Writer.TryComplete(ex);
+                }
             }
         }, CancellationToken.None);
 
@@ -211,19 +233,18 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
                 {
                     await foreach (var work in reader.ReadAllAsync(faultCts.Token).ConfigureAwait(false))
                     {
-                        var result = await ExecuteWithRetryAsync(work.Item, node, context, cachedContext, blockMetrics, observer,
-                            work.LineageInputIndex, work.CorrelationId, work.AncestryInputIndices).ConfigureAwait(false);
+                        var result = await ExecuteItemAsync(work, node, context, cachedContext, onRetry).ConfigureAwait(false);
 
-                        if (result is not null)
+                        if (result.Produced)
                         {
-                            var envelope = new SequencedResult<TOut>(work.Sequence, true, result);
+                            var envelope = new SequencedResult<TOut>(work.Sequence, true, result.Output!);
 
                             if (!outputChannel.Writer.TryWrite(envelope))
                                 await outputChannel.Writer.WriteAsync(envelope, faultCts.Token).ConfigureAwait(false);
                         }
                         else if (preserveOrdering)
                         {
-                            // Skipped item: emit a placeholder so the reorder buffer can advance past this sequence.
+                            // Skipped or dead-lettered item: emit a placeholder so the reorder buffer can advance past this sequence.
                             var placeholder = new SequencedResult<TOut>(work.Sequence, false, default!);
 
                             if (!outputChannel.Writer.TryWrite(placeholder))
@@ -231,8 +252,10 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
                         }
                         else
                         {
-                            // Unordered mode never sees this sequence again; release its window slot directly.
+                            // Unordered mode never sees this sequence again; release its window slot directly. The item
+                            // has no output, so its outcome is delivered now.
                             _ = window?.Release();
+                            checkpoint?.Complete(offset + work.Sequence);
                         }
                     }
                 }
@@ -309,8 +332,13 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
                         if (current.HasValue)
                         {
                             observabilityScope.IncrementEmitted();
+                            lineage.ReportOutput(offset + current.Sequence);
                             yield return current.Value;
                         }
+
+                        // Reached once the consumer asks for the next output (or at once for a placeholder), so every
+                        // item below nextSequence has been delivered.
+                        checkpoint?.Advance(offset + nextSequence);
 
                         if (!pending.Remove(nextSequence, out current))
                             break;
@@ -335,7 +363,11 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
 
                     _ = window?.Release();
                     observabilityScope.IncrementEmitted();
+                    lineage.ReportOutput(offset + result.Sequence);
                     yield return result.Value;
+
+                    // Reached once the consumer asks for the next output, so this one has been delivered.
+                    checkpoint?.Complete(offset + result.Sequence);
                 }
             }
             finally
@@ -365,13 +397,16 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
             if (outputCap is not null)
             {
                 currentActivity?.SetTag("parallel.output.capacity", outputCap.Value);
+
                 context.NodeEnvironment.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.ParallelMetricsOutputCapacity(nodeId),
                     outputCap.Value);
             }
 
             // Store metrics in runtime annotations for downstream monitoring
             context.NodeEnvironment.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.ParallelMetricsInputHighWater(nodeId), inputHighWater);
-            context.NodeEnvironment.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.ParallelMetricsOutputHighWater(nodeId), outputHighWater);
+
+            context.NodeEnvironment.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.ParallelMetricsOutputHighWater(nodeId),
+                outputHighWater);
 
             currentActivity?.SetTag("parallel.retry.events", blockMetrics.RetryEvents);
             currentActivity?.SetTag("parallel.retry.items", blockMetrics.ItemsWithRetry);
@@ -379,10 +414,18 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
 
             context.NodeEnvironment.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.ParallelMetricsRetryEvents(nodeId),
                 blockMetrics.RetryEvents);
+
             context.NodeEnvironment.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.ParallelMetricsRetryItems(nodeId),
                 blockMetrics.ItemsWithRetry);
+
             context.NodeEnvironment.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.ParallelMetricsMaxItemRetryAttempts(nodeId),
                 blockMetrics.MaxItemRetryAttempts);
         }
     }
+
+    /// <summary>
+    ///     Result envelope written by workers. Placeholder entries (<see cref="HasValue" /> = false) keep the
+    ///     sequence contiguous so the reorder buffer and the in-flight window can advance past skipped items.
+    /// </summary>
+    private readonly record struct SequencedResult<T>(long Sequence, bool HasValue, T Value);
 }

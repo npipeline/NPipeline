@@ -44,6 +44,6 @@ public sealed class LineageGuardrailTests
     private sealed class DummyTransform : TransformNode<int, int>
     {
         public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken ct)
-            => ValueTask.FromResult<int>(item);
+            => ValueTask.FromResult(item);
     }
 }

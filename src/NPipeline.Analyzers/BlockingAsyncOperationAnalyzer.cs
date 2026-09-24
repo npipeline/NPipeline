@@ -215,10 +215,7 @@ public sealed class BlockingAsyncOperationAnalyzer : DiagnosticAnalyzer
         /// <summary>
         ///     Determines if the expression represents Thread type.
         /// </summary>
-        private bool IsThreadType(ExpressionSyntax expression)
-        {
-            return expression is IdentifierNameSyntax { Identifier.Text: "Thread" };
-        }
+        private bool IsThreadType(ExpressionSyntax expression) => expression is IdentifierNameSyntax { Identifier.Text: "Thread" };
 
         /// <summary>
         ///     Checks if the member access is a synchronous file I/O operation.

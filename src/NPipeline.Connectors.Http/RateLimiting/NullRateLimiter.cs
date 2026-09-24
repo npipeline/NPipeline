@@ -11,8 +11,5 @@ public sealed class NullRateLimiter : IRateLimiter
     }
 
     /// <inheritdoc />
-    public ValueTask WaitAsync(CancellationToken cancellationToken = default)
-    {
-        return ValueTask.CompletedTask;
-    }
+    public ValueTask WaitAsync(CancellationToken cancellationToken = default) => ValueTask.CompletedTask;
 }

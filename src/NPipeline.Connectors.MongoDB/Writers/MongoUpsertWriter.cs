@@ -11,7 +11,7 @@ namespace NPipeline.Connectors.MongoDB.Writers;
 ///     Updates existing documents or inserts new ones based on key fields.
 /// </summary>
 /// <typeparam name="T">The type of objects to write.</typeparam>
-public class MongoUpsertWriter<T> : IMongoWriter<T>
+public class MongoUpsertWriter<T> : IMongoWriter<T>, IPreparedMongoWriter<T>
 {
     private readonly Func<T, BsonDocument>? _documentMapper;
     private readonly Func<T, FilterDefinition<BsonDocument>>? _upsertFilterBuilder;
@@ -50,11 +50,27 @@ public class MongoUpsertWriter<T> : IMongoWriter<T>
         ArgumentNullException.ThrowIfNull(collection);
         ArgumentNullException.ThrowIfNull(configuration);
 
+        var models = Prepare(items, configuration);
+
+        if (models.Count > 0)
+            await SendAsync(collection, models, configuration, cancellationToken).ConfigureAwait(false);
+    }
+
+    IReadOnlyList<WriteModel<BsonDocument>> IPreparedMongoWriter<T>.Prepare(IEnumerable<T> items, MongoConfiguration configuration) =>
+        Prepare(items, configuration);
+
+    Task IPreparedMongoWriter<T>.SendAsync(
+        IMongoCollection<BsonDocument> collection,
+        IReadOnlyList<WriteModel<BsonDocument>> models,
+        MongoConfiguration configuration,
+        CancellationToken cancellationToken) =>
+        SendAsync(collection, models, configuration, cancellationToken);
+
+    private List<WriteModel<BsonDocument>> Prepare(IEnumerable<T> items, MongoConfiguration configuration)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+
         var itemList = items.ToList();
-
-        if (itemList.Count == 0)
-            return;
-
         var mapper = _documentMapper ?? MongoWriteDocumentMapper.GetOrCreateMapper<T>();
         var keyFields = _upsertKeyFields ?? configuration.UpsertKeyFields;
 
@@ -94,9 +110,15 @@ public class MongoUpsertWriter<T> : IMongoWriter<T>
             }
         }
 
-        if (writeModels.Count == 0)
-            return;
+        return writeModels;
+    }
 
+    private static async Task SendAsync(
+        IMongoCollection<BsonDocument> collection,
+        IReadOnlyList<WriteModel<BsonDocument>> writeModels,
+        MongoConfiguration configuration,
+        CancellationToken cancellationToken)
+    {
         var options = new BulkWriteOptions
         {
             IsOrdered = configuration.OrderedWrites,

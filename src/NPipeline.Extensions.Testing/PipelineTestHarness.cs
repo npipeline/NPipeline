@@ -2,7 +2,7 @@ using System.Diagnostics;
 using NPipeline.Configuration;
 using NPipeline.Execution;
 using NPipeline.Pipeline;
-using NPipeline.Resilience;
+using NPipeline.Reliability;
 
 namespace NPipeline.Extensions.Testing;
 
@@ -147,13 +147,9 @@ public sealed class PipelineTestHarness<TPipeline> where TPipeline : IPipelineDe
             IResiliencePolicy resiliencePolicy;
 
             if (_captureErrors)
-            {
                 resiliencePolicy = new CapturingResiliencePolicy(Context.ExecutionConfiguration.ResiliencePolicy, _capturedErrors, _errorHandlingDecision);
-            }
             else
-            {
                 resiliencePolicy = Context.ExecutionConfiguration.ResiliencePolicy;
-            }
 
             executionContext = new PipelineContext(
                 new PipelineContextConfiguration(
@@ -169,8 +165,7 @@ public sealed class PipelineTestHarness<TPipeline> where TPipeline : IPipelineDe
                     LineageFactory: Context.Lineage.LineageFactory,
                     ObservabilityFactory: Context.Observability.ObservabilityFactory,
                     LoggerFactory: Context.Observability.LoggerFactory,
-                    Tracer: Context.Observability.Tracer,
-                    RetryOptions: Context.ExecutionConfiguration.RetryOptions));
+                    Tracer: Context.Observability.Tracer));
 
             // Preserve the ExecutionObserver from the original context
             executionContext.Observability.ExecutionObserver = Context.Observability.ExecutionObserver;
@@ -197,8 +192,8 @@ public sealed class PipelineTestHarness<TPipeline> where TPipeline : IPipelineDe
         // Combine any captured errors with uncaught exceptions
         List<Exception> allErrors =
         [
-            .._capturedErrors,
-            ..uncaughtErrors,
+            .. _capturedErrors,
+            .. uncaughtErrors,
         ];
 
         return new PipelineExecutionResult(success, stopwatch.Elapsed, allErrors, executionContext);

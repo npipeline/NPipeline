@@ -79,12 +79,10 @@ public class MonitoringTransform : TransformNode<SourceData, SourceData>
     ///     Calculates the current error rate as a percentage.
     /// </summary>
     /// <returns>The error rate as a decimal between 0 and 1.</returns>
-    private double CalculateErrorRate()
-    {
-        return _totalProcessed > 0
+    private double CalculateErrorRate() =>
+        _totalProcessed > 0
             ? (double)_totalErrors / _totalProcessed
             : 0;
-    }
 
     /// <summary>
     ///     Checks error rate against thresholds and triggers alerts if needed.

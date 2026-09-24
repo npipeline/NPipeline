@@ -221,12 +221,10 @@ public class LateDataStatistics
     ///     Returns a string representation of the late data statistics.
     /// </summary>
     /// <returns>String representation of the late data statistics.</returns>
-    public override string ToString()
-    {
-        return $"Late Data Stats: Total={TotalLateEvents} | " +
-               $"Accepted={AcceptedEvents} ({AcceptanceRate:P0}) | " +
-               $"Rejected={RejectedEvents} ({RejectionRate:P0}) | " +
-               $"Avg Lateness={AverageLateness.TotalMilliseconds:F0}ms | " +
-               $"Max Lateness={MaximumLateness.TotalMilliseconds:F0}ms";
-    }
+    public override string ToString() =>
+        $"Late Data Stats: Total={TotalLateEvents} | " +
+        $"Accepted={AcceptedEvents} ({AcceptanceRate:P0}) | " +
+        $"Rejected={RejectedEvents} ({RejectionRate:P0}) | " +
+        $"Avg Lateness={AverageLateness.TotalMilliseconds:F0}ms | " +
+        $"Max Lateness={MaximumLateness.TotalMilliseconds:F0}ms";
 }

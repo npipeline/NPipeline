@@ -200,10 +200,7 @@ public sealed class SynchronousOverAsyncAnalyzer : DiagnosticAnalyzer
         /// <summary>
         ///     Determines if the expression represents Task.Run.
         /// </summary>
-        private bool IsTaskRunType(ExpressionSyntax expression)
-        {
-            return expression is IdentifierNameSyntax { Identifier.Text: "Task" };
-        }
+        private bool IsTaskRunType(ExpressionSyntax expression) => expression is IdentifierNameSyntax { Identifier.Text: "Task" };
 
         /// <summary>
         ///     Determines if a member access is an async method call.

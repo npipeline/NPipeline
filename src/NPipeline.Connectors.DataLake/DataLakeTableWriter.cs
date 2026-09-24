@@ -333,10 +333,8 @@ public sealed class DataLakeTableWriter<T> : IAsyncDisposable
 
     private Task FlushUnpartitionedBufferAsync(
         List<T> buffer,
-        CancellationToken cancellationToken)
-    {
-        return FlushPartitionBufferAsync(string.Empty, buffer, cancellationToken);
-    }
+        CancellationToken cancellationToken) =>
+        FlushPartitionBufferAsync(string.Empty, buffer, cancellationToken);
 
     private string BuildFullPath(string relativePath)
     {
@@ -360,9 +358,6 @@ public sealed class DataLakeTableWriter<T> : IAsyncDisposable
     {
         private int _current;
 
-        public int GetNext()
-        {
-            return Interlocked.Increment(ref _current) - 1;
-        }
+        public int GetNext() => Interlocked.Increment(ref _current) - 1;
     }
 }

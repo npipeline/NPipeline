@@ -6,10 +6,9 @@ using NPipeline.DataFlow.DataStreams;
 using NPipeline.ErrorHandling;
 using NPipeline.Execution;
 using NPipeline.Execution.Strategies;
-using NPipeline.Graph;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
-using NPipeline.Resilience;
+using NPipeline.Reliability;
 
 namespace NPipeline.Tests.Resilience.Restart;
 
@@ -21,6 +20,8 @@ namespace NPipeline.Tests.Resilience.Restart;
 /// </summary>
 public sealed class ResilientCancellationTests
 {
+    private static readonly PassthroughNode Node = new();
+
     [Fact]
     public async Task AlreadyCancelledToken_ThrowsBeforeTheFirstAttempt()
     {
@@ -91,10 +92,9 @@ public sealed class ResilientCancellationTests
     [Fact]
     public async Task CancellationDuringTheRetryDelay_ThrowsRatherThanRetrying()
     {
-        // The retry delay is awaited inside a catch-all that logs and carries on. Cancellation during the delay must
-        // escape that handler instead of being logged and swallowed.
+        // Cancellation during the restart delay must propagate instead of being followed by another run.
         var policy = new RecordingPolicy { CancelDuringRetryDelay = true };
-        var context = CreateContext(policy);
+        var context = CreateContext(policy, RetryBackoff.Constant(TimeSpan.FromSeconds(30)));
         using var cts = new CancellationTokenSource();
         policy.CancellationSource = cts;
 
@@ -129,13 +129,16 @@ public sealed class ResilientCancellationTests
         policy.PipelineFailureDecisions.Should().BeGreaterThan(0, "an unrelated timeout is a failure the policy should rule on");
     }
 
-    private static readonly PassthroughNode Node = new();
-
-    private static PipelineContext CreateContext(IResiliencePolicy policy)
+    private static PipelineContext CreateContext(IResiliencePolicy policy, RetryBackoff restartBackoff = default)
     {
-        return new PipelineContext(new PipelineContextConfiguration(
-            RetryOptions: PipelineRetryOptions.Default with { MaxNodeRestartAttempts = 3, MaxMaterializedItems = 128 },
-            ResiliencePolicy: policy));
+        var context = new PipelineContext(new PipelineContextConfiguration(ResiliencePolicy: policy));
+
+        context.ExecutionConfiguration.Resilience = PipelineResilienceOptions.None with
+        {
+            NodeRestart = new NodeRestartOptions { MaxRestarts = 3, MaxReplayWindow = 128, Backoff = restartBackoff },
+        };
+
+        return context;
     }
 
     private static (ResilientExecutionStrategy Strategy, StubInnerStrategy Inner) CreateStrategy(Func<CancellationToken, IAsyncEnumerable<int>> produce)
@@ -144,11 +147,10 @@ public sealed class ResilientCancellationTests
         return (new ResilientExecutionStrategy(inner), inner);
     }
 
-    private static IDataStream<int> Input()
-    {
-        // Not IForwardOnlyDataStream, so the strategy skips materialization and the test exercises only the loops.
-        return new NPipeline.DataFlow.DataStreams.InMemoryDataStream<int>([0], "input");
-    }
+    private static IDataStream<int> Input() =>
+
+        // The stub strategy ignores its input, so the test exercises only the restart loop.
+        new NPipeline.DataFlow.DataStreams.InMemoryDataStream<int>([0], "input");
 
     private static async Task<List<int>> DrainAsync(IDataStream<int> stream, CancellationToken cancellationToken)
     {
@@ -160,6 +162,71 @@ public sealed class ResilientCancellationTests
         }
 
         return received;
+    }
+
+    /// <summary>
+    ///     Yields the given items, then cancels the pipeline and observes the token, as a node should.
+    /// </summary>
+    private static async IAsyncEnumerable<int> ProduceThenCancel(IEnumerable<int> items, CancellationTokenSource cts,
+        [EnumeratorCancellation] CancellationToken ct)
+    {
+        foreach (var item in items)
+        {
+            yield return item;
+        }
+
+        await cts.CancelAsync();
+        ct.ThrowIfCancellationRequested();
+    }
+
+    private sealed class StubInnerStrategy(Func<CancellationToken, IAsyncEnumerable<int>> produce) : IResumableExecutionStrategy
+    {
+        public int Attempts { get; private set; }
+
+        public Task<IDataStream<TOut>> ExecuteAsync<TIn, TOut>(IDataStream<TIn> input, ITransformNode<TIn, TOut> node, PipelineContext context,
+            string nodeId, CancellationToken cancellationToken)
+        {
+            Attempts++;
+            var stream = new DataStream<int>(produce(cancellationToken), "stub");
+            return Task.FromResult((IDataStream<TOut>)(object)stream);
+        }
+
+        public Task<IDataStream<TOut>> ExecuteFromAsync<TIn, TOut>(IDataStream<TIn> input, long offset, RestartCheckpoint checkpoint,
+            ITransformNode<TIn, TOut> node, PipelineContext context, string nodeId, CancellationToken cancellationToken) =>
+            ExecuteAsync(input, node, context, nodeId, cancellationToken);
+    }
+
+    private sealed class PassthroughNode : TransformNode<int, int>
+    {
+        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken) => ValueTask.FromResult(item);
+    }
+
+    private sealed class RecordingPolicy : IResiliencePolicy
+    {
+        public int PipelineFailureDecisions { get; private set; }
+
+        public bool CancelDuringRetryDelay { get; init; }
+
+        public CancellationTokenSource? CancellationSource { get; set; }
+
+        public ValueTask<ResilienceDecision> DecideNodeFailureAsync(NodeFailure failure, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(ResilienceDecision.Fail);
+
+        public ValueTask<ResilienceDecision> DecideRestartAsync(StreamFailure failure, CancellationToken cancellationToken)
+        {
+            PipelineFailureDecisions++;
+
+            // A shutdown arriving just as the restart backoff begins.
+            if (CancelDuringRetryDelay)
+                CancellationSource?.Cancel();
+
+            return ValueTask.FromResult(failure.CanRestart
+                ? ResilienceDecision.RestartNode
+                : ResilienceDecision.Fail);
+        }
+
+        public ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(ResilienceDecision.Fail);
     }
 
 #pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
@@ -179,81 +246,4 @@ public sealed class ResilientCancellationTests
         yield break;
     }
 #pragma warning restore CS1998
-
-    /// <summary>
-    ///     Yields the given items, then cancels the pipeline and observes the token, as a node should.
-    /// </summary>
-    private static async IAsyncEnumerable<int> ProduceThenCancel(IEnumerable<int> items, CancellationTokenSource cts,
-        [EnumeratorCancellation] CancellationToken ct)
-    {
-        foreach (var item in items)
-        {
-            yield return item;
-        }
-
-        await cts.CancelAsync();
-        ct.ThrowIfCancellationRequested();
-    }
-
-    private sealed class StubInnerStrategy(Func<CancellationToken, IAsyncEnumerable<int>> produce) : IExecutionStrategy
-    {
-        public int Attempts { get; private set; }
-
-        public Task<IDataStream<TOut>> ExecuteAsync<TIn, TOut>(IDataStream<TIn> input, ITransformNode<TIn, TOut> node, PipelineContext context,
-            string nodeId, CancellationToken cancellationToken)
-        {
-            Attempts++;
-            var stream = new DataStream<int>(produce(cancellationToken), "stub");
-            return Task.FromResult((IDataStream<TOut>)(object)stream);
-        }
-    }
-
-    private sealed class PassthroughNode : TransformNode<int, int>
-    {
-        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult<int>(item);
-        }
-    }
-
-    private sealed class RecordingPolicy : IResiliencePolicy
-    {
-        public int PipelineFailureDecisions { get; private set; }
-
-        public bool CancelDuringRetryDelay { get; init; }
-
-        public CancellationTokenSource? CancellationSource { get; set; }
-
-        public Task<ResilienceDecision> DecideNodeFailureAsync(NodeDefinition nodeDefinition, INode node, Exception exception,
-            PipelineContext context, CancellationToken cancellationToken)
-        {
-            return Task.FromResult(ResilienceDecision.Fail);
-        }
-
-        public Task<ResilienceDecision> DecidePipelineFailureAsync(string nodeId, Exception exception, PipelineContext context,
-            CancellationToken cancellationToken)
-        {
-            PipelineFailureDecisions++;
-            return Task.FromResult(ResilienceDecision.RestartNode);
-        }
-
-        public Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(ITransformNode<TIn, TOut> node, TIn failedItem, Exception exception,
-            PipelineContext context, string nodeId, int retryAttempt, CancellationToken cancellationToken)
-        {
-            return Task.FromResult(ResilienceDecision.Fail);
-        }
-
-        public async ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, RetryKind retryKind, int attemptNumber, CancellationToken cancellationToken)
-        {
-            if (CancelDuringRetryDelay && CancellationSource is not null)
-                await CancellationSource.CancelAsync();
-
-            return TimeSpan.FromMilliseconds(50);
-        }
-
-        public IResilienceCircuitBreaker? GetCircuitBreaker(PipelineContext context, string nodeId)
-        {
-            return DefaultResiliencePolicy.Instance.GetCircuitBreaker(context, nodeId);
-        }
-    }
 }

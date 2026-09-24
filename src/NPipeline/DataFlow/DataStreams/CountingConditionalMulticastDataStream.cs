@@ -11,13 +11,13 @@ namespace NPipeline.DataFlow.DataStreams;
 /// </summary>
 internal sealed class CountingConditionalMulticastDataStream<T> : IForwardOnlyDataStream<T>, IHasBranchMetrics, IEdgeRoutedDataStream
 {
-    private readonly Channel<T>[] _channels;
+    private readonly int[] _abandonedChannels;
     private readonly int[] _channelTaken;
+    private readonly Channel<T>[] _channels;
     private readonly StatsCounter _counter;
     private readonly CancellationTokenSource _cts = new();
     private readonly Dictionary<Edge, int> _edgeToChannel;
     private readonly Dictionary<string, int[]> _namedOutputChannels;
-    private readonly int[] _abandonedChannels;
     private readonly RouteOptions<T> _options;
     private readonly int[] _pendingPerChannel;
     private readonly Task _pumpTask;
@@ -74,9 +74,7 @@ internal sealed class CountingConditionalMulticastDataStream<T> : IForwardOnlyDa
             _edgeToChannel[edge] = i;
 
             if (edge.SourceOutputName is null)
-            {
                 continue;
-            }
 
             if (!namedOutputChannels.TryGetValue(edge.SourceOutputName, out var channelIndexes))
             {
@@ -97,14 +95,22 @@ internal sealed class CountingConditionalMulticastDataStream<T> : IForwardOnlyDa
             Metrics.SetPerSubscriberCapacity(perSubscriberBuffer.Value);
     }
 
+    public IDataStream GetEdgeView(Edge edge)
+    {
+        ArgumentNullException.ThrowIfNull(edge);
+
+        if (!_edgeToChannel.TryGetValue(edge, out var channelIndex))
+        {
+            throw new InvalidOperationException(
+                $"Edge '{edge.SourceNodeId}->{edge.TargetNodeId}' (output='{edge.SourceOutputName ?? "<default>"}') was not registered for stream '{StreamName}'.");
+        }
+
+        return new EdgeRoutedDataStream(this, edge, channelIndex);
+    }
+
     public string StreamName => $"CountedConditionalMulticast_{_source.StreamName}";
 
-    public BranchMetrics Metrics { get; }
-
-    public Type GetDataType()
-    {
-        return typeof(T);
-    }
+    public Type GetDataType() => typeof(T);
 
     public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
     {
@@ -122,22 +128,10 @@ internal sealed class CountingConditionalMulticastDataStream<T> : IForwardOnlyDa
         return GetAsyncEnumeratorForChannel(idx, cancellationToken);
     }
 
-    public IDataStream GetEdgeView(Edge edge)
-    {
-        ArgumentNullException.ThrowIfNull(edge);
-
-        if (!_edgeToChannel.TryGetValue(edge, out var channelIndex))
-        {
-            throw new InvalidOperationException(
-                $"Edge '{edge.SourceNodeId}->{edge.TargetNodeId}' (output='{edge.SourceOutputName ?? "<default>"}') was not registered for stream '{StreamName}'.");
-        }
-
-        return new EdgeRoutedDataStream(this, edge, channelIndex);
-    }
-
     public async IAsyncEnumerable<object?> ToAsyncEnumerable([EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
+
         await foreach (var item in this.WithCancellation(cancellationToken).ConfigureAwait(false))
         {
             yield return item;
@@ -157,6 +151,8 @@ internal sealed class CountingConditionalMulticastDataStream<T> : IForwardOnlyDa
         _cts.Dispose();
         await _source.DisposeAsync().ConfigureAwait(false);
     }
+
+    public BranchMetrics Metrics { get; }
 
     internal IAsyncEnumerator<T> GetAsyncEnumeratorForChannel(int channelIndex, CancellationToken cancellationToken)
     {
@@ -264,9 +260,7 @@ internal sealed class CountingConditionalMulticastDataStream<T> : IForwardOnlyDa
                 if (!matched)
                 {
                     if (_options.OtherwiseOutputName is { } otherwiseOutput)
-                    {
                         QueueNamedOutput(otherwiseOutput, QueueWrite);
-                    }
                     else if (_options.NoMatchBehavior == NoRouteMatchBehavior.Throw)
                     {
                         throw new InvalidOperationException(
@@ -278,13 +272,9 @@ internal sealed class CountingConditionalMulticastDataStream<T> : IForwardOnlyDa
                     continue;
 
                 if (writeCount == 1)
-                {
                     await writes[0].ConfigureAwait(false);
-                }
                 else
-                {
                     await Task.WhenAll(writes[..writeCount]).ConfigureAwait(false);
-                }
 
                 Metrics.ObservePending(aggregatePending);
             }
@@ -389,15 +379,10 @@ internal sealed class CountingConditionalMulticastDataStream<T> : IForwardOnlyDa
     {
         public string StreamName => $"{owner.StreamName}_{edge.SourceNodeId}_{edge.TargetNodeId}";
 
-        public Type GetDataType()
-        {
-            return typeof(T);
-        }
+        public Type GetDataType() => typeof(T);
 
-        public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
-        {
-            return owner.GetAsyncEnumeratorForChannel(channelIndex, cancellationToken);
-        }
+        public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default) =>
+            owner.GetAsyncEnumeratorForChannel(channelIndex, cancellationToken);
 
         public async IAsyncEnumerable<object?> ToAsyncEnumerable([EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
@@ -407,9 +392,6 @@ internal sealed class CountingConditionalMulticastDataStream<T> : IForwardOnlyDa
             }
         }
 
-        public ValueTask DisposeAsync()
-        {
-            return ValueTask.CompletedTask;
-        }
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 }

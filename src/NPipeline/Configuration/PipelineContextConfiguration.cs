@@ -4,7 +4,7 @@ using NPipeline.Lineage;
 using NPipeline.Observability;
 using NPipeline.Observability.Tracing;
 using NPipeline.Pipeline;
-using NPipeline.Resilience;
+using NPipeline.Reliability;
 
 namespace NPipeline.Configuration;
 
@@ -27,7 +27,6 @@ public sealed record PipelineContextConfiguration(
     IDictionary<string, object>? Parameters = null,
     IDictionary<string, object>? Items = null,
     IDictionary<string, object>? Properties = null,
-    PipelineRetryOptions? RetryOptions = null,
     IErrorHandlerFactory? ErrorHandlerFactory = null,
     IResiliencePolicy? ResiliencePolicy = null,
     IDeadLetterSink? DeadLetterSink = null,
@@ -54,24 +53,11 @@ public sealed record PipelineContextConfiguration(
     public static PipelineContextConfiguration WithFactories(
         IErrorHandlerFactory? errorHandlerFactory = null,
         ILineageFactory? lineageFactory = null,
-        IObservabilityFactory? observabilityFactory = null)
-    {
-        return new PipelineContextConfiguration(
+        IObservabilityFactory? observabilityFactory = null) =>
+        new(
             ErrorHandlerFactory: errorHandlerFactory,
             LineageFactory: lineageFactory,
             ObservabilityFactory: observabilityFactory);
-    }
-
-    /// <summary>
-    ///     Creates a configuration with retry options.
-    ///     Useful for configuring pipeline resilience behavior without affecting other settings.
-    /// </summary>
-    /// <param name="retries">The retry options to apply globally across the pipeline.</param>
-    /// <returns>A new configuration with the specified retry options.</returns>
-    public static PipelineContextConfiguration WithRetry(PipelineRetryOptions retries)
-    {
-        return Default with { RetryOptions = retries };
-    }
 
     /// <summary>
     ///     Creates a configuration with logger factory.
@@ -79,10 +65,7 @@ public sealed record PipelineContextConfiguration(
     /// </summary>
     /// <param name="loggerFactory">The logger factory for the pipeline.</param>
     /// <returns>A new configuration with the specified logger factory.</returns>
-    public static PipelineContextConfiguration WithLogging(ILoggerFactory loggerFactory)
-    {
-        return Default with { LoggerFactory = loggerFactory };
-    }
+    public static PipelineContextConfiguration WithLogging(ILoggerFactory loggerFactory) => Default with { LoggerFactory = loggerFactory };
 
     /// <summary>
     ///     Creates a configuration with parameters.
@@ -90,10 +73,7 @@ public sealed record PipelineContextConfiguration(
     /// </summary>
     /// <param name="parameters">The parameters dictionary to attach to the context.</param>
     /// <returns>A new configuration with the specified parameters.</returns>
-    public static PipelineContextConfiguration WithParameters(IDictionary<string, object> parameters)
-    {
-        return new PipelineContextConfiguration(parameters);
-    }
+    public static PipelineContextConfiguration WithParameters(IDictionary<string, object> parameters) => new(parameters);
 
     /// <summary>
     ///     Creates a configuration with a cancellation token.
@@ -101,10 +81,7 @@ public sealed record PipelineContextConfiguration(
     /// </summary>
     /// <param name="cancellationToken">The cancellation token for the pipeline execution.</param>
     /// <returns>A new configuration with the specified cancellation token.</returns>
-    public static PipelineContextConfiguration WithCancellation(CancellationToken cancellationToken)
-    {
-        return new PipelineContextConfiguration(CancellationToken: cancellationToken);
-    }
+    public static PipelineContextConfiguration WithCancellation(CancellationToken cancellationToken) => new(CancellationToken: cancellationToken);
 
     /// <summary>
     ///     Creates a configuration with logger and tracer factories.
@@ -115,12 +92,10 @@ public sealed record PipelineContextConfiguration(
     /// <returns>A new configuration with the specified observability components.</returns>
     public static PipelineContextConfiguration WithObservability(
         ILoggerFactory? loggerFactory = null,
-        IPipelineTracer? tracer = null)
-    {
-        return new PipelineContextConfiguration(
+        IPipelineTracer? tracer = null) =>
+        new(
             LoggerFactory: loggerFactory,
             Tracer: tracer);
-    }
 
     /// <summary>
     ///     Creates a configuration with dead-letter handling components.
@@ -128,11 +103,9 @@ public sealed record PipelineContextConfiguration(
     /// <param name="deadLetterSink">The dead-letter sink for failed items.</param>
     /// <returns>A new configuration with the specified dead-letter components.</returns>
     public static PipelineContextConfiguration WithErrorHandling(
-        IDeadLetterSink? deadLetterSink = null)
-    {
-        return new PipelineContextConfiguration(
+        IDeadLetterSink? deadLetterSink = null) =>
+        new(
             DeadLetterSink: deadLetterSink);
-    }
 
     /// <summary>
     ///     Creates a configuration with a unified resilience policy.

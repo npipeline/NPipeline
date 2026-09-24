@@ -33,10 +33,7 @@ public abstract class DataStreamBase<T> : IForwardOnlyDataStream<T>
     ///     Gets the data type of the pipe.
     /// </summary>
     /// <returns>The type of data flowing through the pipe.</returns>
-    public virtual Type GetDataType()
-    {
-        return typeof(T);
-    }
+    public virtual Type GetDataType() => typeof(T);
 
     /// <summary>
     ///     Internal method that converts the pipe to a non-generic async enumerable.

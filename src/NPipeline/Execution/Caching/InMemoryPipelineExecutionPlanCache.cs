@@ -123,10 +123,8 @@ public sealed class InMemoryPipelineExecutionPlanCache : IPipelineExecutionPlanC
     ///     See <see cref="PipelineExecutionPlanCacheKey" /> for why the key is derived from the node definitions
     ///     directly rather than from a hash of the graph as a whole.
     /// </remarks>
-    private static PipelineExecutionPlanCacheKey GenerateCacheKey(Type pipelineDefinitionType, PipelineGraph graph)
-    {
-        return PipelineExecutionPlanCacheKey.Create(pipelineDefinitionType, graph);
-    }
+    private static PipelineExecutionPlanCacheKey GenerateCacheKey(Type pipelineDefinitionType, PipelineGraph graph) =>
+        PipelineExecutionPlanCacheKey.Create(pipelineDefinitionType, graph);
 
     private sealed class CacheEntry(Dictionary<string, NodeExecutionPlan> plans, long lastAccess)
     {

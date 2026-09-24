@@ -24,52 +24,35 @@ internal sealed class SnowflakeDatabaseReader(DbDataReader reader) : IDatabaseRe
     /// <summary>
     ///     Gets column name by ordinal position.
     /// </summary>
-    public string GetName(int ordinal)
-    {
-        return Reader.GetName(ordinal);
-    }
+    public string GetName(int ordinal) => Reader.GetName(ordinal);
 
     /// <summary>
     ///     Gets column type by ordinal position.
     /// </summary>
-    public Type GetFieldType(int ordinal)
-    {
-        return Reader.GetFieldType(ordinal);
-    }
+    public Type GetFieldType(int ordinal) => Reader.GetFieldType(ordinal);
 
     /// <summary>
     ///     Advances reader to next row.
     /// </summary>
-    public Task<bool> ReadAsync(CancellationToken cancellationToken = default)
-    {
-        return Reader.ReadAsync(cancellationToken);
-    }
+    public Task<bool> ReadAsync(CancellationToken cancellationToken = default) => Reader.ReadAsync(cancellationToken);
 
     /// <summary>
     ///     Advances reader to next result set.
     /// </summary>
-    public Task<bool> NextResultAsync(CancellationToken cancellationToken = default)
-    {
-        return Reader.NextResultAsync(cancellationToken);
-    }
+    public Task<bool> NextResultAsync(CancellationToken cancellationToken = default) => Reader.NextResultAsync(cancellationToken);
 
     /// <summary>
     ///     Gets field value by ordinal position.
     /// </summary>
-    public T? GetFieldValue<T>(int ordinal)
-    {
-        return Reader.IsDBNull(ordinal)
+    public T? GetFieldValue<T>(int ordinal) =>
+        Reader.IsDBNull(ordinal)
             ? default
             : Reader.GetFieldValue<T>(ordinal);
-    }
 
     /// <summary>
     ///     Checks if field value is DBNull.
     /// </summary>
-    public bool IsDBNull(int ordinal)
-    {
-        return Reader.IsDBNull(ordinal);
-    }
+    public bool IsDBNull(int ordinal) => Reader.IsDBNull(ordinal);
 
     /// <summary>
     ///     Disposes reader asynchronously.

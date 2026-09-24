@@ -1,9 +1,8 @@
 using AwesomeAssertions;
 using FakeItEasy;
-using NPipeline.ErrorHandling;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
-using NPipeline.Resilience;
+using NPipeline.Reliability;
 
 namespace NPipeline.Extensions.Nodes.Tests;
 
@@ -17,7 +16,7 @@ public sealed class DefaultErrorHandlersTests
         var exception = new ValidationException("Name", "NotEmpty", "", "Name cannot be empty");
         var context = PipelineContext.CreateDefault();
 
-        var decision = await handler.DecideItemFailureAsync(node, "test", exception, context, "test-node", 0, CancellationToken.None);
+        var decision = await handler.DecideItemFailureAsync(Failure(node, "test", exception, context), CancellationToken.None);
 
         decision.Should().Be(ResilienceDecision.Skip);
     }
@@ -30,7 +29,7 @@ public sealed class DefaultErrorHandlersTests
         var exception = new InvalidOperationException("Unexpected error");
         var context = PipelineContext.CreateDefault();
 
-        var decision = await handler.DecideItemFailureAsync(node, "test", exception, context, "test-node", 0, CancellationToken.None);
+        var decision = await handler.DecideItemFailureAsync(Failure(node, "test", exception, context), CancellationToken.None);
 
         decision.Should().Be(ResilienceDecision.Fail);
     }
@@ -43,7 +42,7 @@ public sealed class DefaultErrorHandlersTests
         var exception = new ValidationException("Age", "Range", 150, "Age out of range");
         var context = PipelineContext.CreateDefault();
 
-        var decision = await handler.DecideItemFailureAsync(node, "test", exception, context, "test-node", 0, CancellationToken.None);
+        var decision = await handler.DecideItemFailureAsync(Failure(node, "test", exception, context), CancellationToken.None);
 
         decision.Should().Be(ResilienceDecision.Retry);
     }
@@ -56,7 +55,7 @@ public sealed class DefaultErrorHandlersTests
         var exception = new FilteringException("Item does not meet criteria");
         var context = PipelineContext.CreateDefault();
 
-        var decision = await handler.DecideItemFailureAsync(node, "test", exception, context, "test-node", 0, CancellationToken.None);
+        var decision = await handler.DecideItemFailureAsync(Failure(node, "test", exception, context), CancellationToken.None);
 
         decision.Should().Be(ResilienceDecision.Skip);
     }
@@ -69,7 +68,7 @@ public sealed class DefaultErrorHandlersTests
         var exception = new InvalidOperationException("Unexpected error");
         var context = PipelineContext.CreateDefault();
 
-        var decision = await handler.DecideItemFailureAsync(node, "test", exception, context, "test-node", 0, CancellationToken.None);
+        var decision = await handler.DecideItemFailureAsync(Failure(node, "test", exception, context), CancellationToken.None);
 
         decision.Should().Be(ResilienceDecision.Fail);
     }
@@ -82,7 +81,7 @@ public sealed class DefaultErrorHandlersTests
         var exception = new TypeConversionException(typeof(string), typeof(int), "abc", "Cannot convert");
         var context = PipelineContext.CreateDefault();
 
-        var decision = await handler.DecideItemFailureAsync(node, "test", exception, context, "test-node", 0, CancellationToken.None);
+        var decision = await handler.DecideItemFailureAsync(Failure(node, "test", exception, context), CancellationToken.None);
 
         decision.Should().Be(ResilienceDecision.Skip);
     }
@@ -95,7 +94,7 @@ public sealed class DefaultErrorHandlersTests
         var exception = new InvalidOperationException("Unexpected error");
         var context = PipelineContext.CreateDefault();
 
-        var decision = await handler.DecideItemFailureAsync(node, "test", exception, context, "test-node", 0, CancellationToken.None);
+        var decision = await handler.DecideItemFailureAsync(Failure(node, "test", exception, context), CancellationToken.None);
 
         decision.Should().Be(ResilienceDecision.Fail);
     }
@@ -110,7 +109,7 @@ public sealed class DefaultErrorHandlersTests
         var cts = new CancellationTokenSource();
         cts.Cancel();
 
-        var decision = await handler.DecideItemFailureAsync(node, "test", exception, context, "test-node", 0, cts.Token);
+        var decision = await handler.DecideItemFailureAsync(Failure(node, "test", exception, context), cts.Token);
 
         decision.Should().Be(ResilienceDecision.Skip);
     }
@@ -125,7 +124,7 @@ public sealed class DefaultErrorHandlersTests
         var cts = new CancellationTokenSource();
         cts.Cancel();
 
-        var decision = await handler.DecideItemFailureAsync(node, "test", exception, context, "test-node", 0, cts.Token);
+        var decision = await handler.DecideItemFailureAsync(Failure(node, "test", exception, context), cts.Token);
 
         decision.Should().Be(ResilienceDecision.Skip);
     }
@@ -140,8 +139,19 @@ public sealed class DefaultErrorHandlersTests
         var cts = new CancellationTokenSource();
         cts.Cancel();
 
-        var decision = await handler.DecideItemFailureAsync(node, "test", exception, context, "test-node", 0, cts.Token);
+        var decision = await handler.DecideItemFailureAsync(Failure(node, "test", exception, context), cts.Token);
 
         decision.Should().Be(ResilienceDecision.Skip);
     }
+
+    private static ItemFailure<TIn> Failure<TIn>(INode node, TIn item, Exception exception, PipelineContext context) =>
+        new()
+        {
+            Item = item,
+            Node = node,
+            NodeId = "test-node",
+            Exception = exception,
+            Attempt = 1,
+            Context = context,
+        };
 }

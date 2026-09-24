@@ -25,11 +25,9 @@ public sealed class ServiceBusTransientErrorDetector : AzureTransientErrorDetect
     }
 
     /// <inheritdoc />
-    public override bool IsRateLimited(Exception? exception)
-    {
-        return exception is ServiceBusException { Reason: ServiceBusFailureReason.QuotaExceeded }
-               || base.IsRateLimited(exception);
-    }
+    public override bool IsRateLimited(Exception? exception) =>
+        exception is ServiceBusException { Reason: ServiceBusFailureReason.QuotaExceeded }
+        || base.IsRateLimited(exception);
 
     private static bool IsTransientServiceBusReason(ServiceBusException ex)
     {

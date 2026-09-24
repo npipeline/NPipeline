@@ -40,10 +40,7 @@ public abstract class S3ClientFactoryBase
     /// </summary>
     /// <param name="uri">The storage URI.</param>
     /// <returns>A cache key string.</returns>
-    protected virtual string BuildCacheKey(StorageUri uri)
-    {
-        return $"{GetType().FullName}|{uri.Host}";
-    }
+    protected virtual string BuildCacheKey(StorageUri uri) => $"{GetType().FullName}|{uri.Host}";
 
     /// <summary>
     ///     Clears the client cache. Useful for testing or when credentials change.

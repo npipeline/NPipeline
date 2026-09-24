@@ -4,7 +4,7 @@ using NPipeline.Connectors.SqlServer.Configuration;
 namespace NPipeline.Connectors.SqlServer.Exceptions;
 
 /// <summary>
-///     Utility methods for handling SQL Server exceptions and implementing retry logic.
+///     Utility methods for translating and describing SQL Server exceptions.
 /// </summary>
 public static class SqlServerExceptionHandler
 {
@@ -30,48 +30,6 @@ public static class SqlServerExceptionHandler
         [49919] = "Azure SQL Database insufficient resources",
         [49920] = "Azure SQL Database insufficient resources",
     };
-
-    /// <summary>
-    ///     Determines whether an exception should be retried based on the configuration.
-    /// </summary>
-    /// <param name="exception">The exception to evaluate.</param>
-    /// <param name="configuration">The SQL Server configuration.</param>
-    /// <returns>True if the exception should be retried; otherwise, false.</returns>
-    public static bool ShouldRetry(Exception exception, SqlServerConfiguration configuration)
-    {
-        if (configuration.MaxRetryAttempts <= 0)
-            return false;
-
-        return SqlServerTransientErrorDetector.IsTransient(exception);
-    }
-
-    /// <summary>
-    ///     Gets the retry delay for a given attempt using exponential backoff with jitter.
-    /// </summary>
-    /// <param name="exception">The exception that triggered the retry.</param>
-    /// <param name="attemptCount">The current attempt count (1-based).</param>
-    /// <param name="configuration">The SQL Server configuration.</param>
-    /// <returns>The delay before the next retry attempt.</returns>
-    public static TimeSpan GetRetryDelay(Exception exception, int attemptCount, SqlServerConfiguration configuration)
-    {
-        // Calculate exponential backoff: baseDelay * 2^(attemptCount - 1)
-        var exponentialDelay = TimeSpan.FromSeconds(
-            configuration.RetryDelay.TotalSeconds * Math.Pow(2, attemptCount - 1));
-
-        // Add jitter to avoid thundering herd problem (±25%)
-        var jitterFactor = 0.75 + Random.Shared.NextDouble() * 0.5;
-
-        var delayWithJitter = TimeSpan.FromMilliseconds(
-            exponentialDelay.TotalMilliseconds * jitterFactor);
-
-        // Cap at a reasonable maximum (30 seconds)
-        const int maxDelaySeconds = 30;
-
-        if (delayWithJitter.TotalSeconds > maxDelaySeconds)
-            delayWithJitter = TimeSpan.FromSeconds(maxDelaySeconds);
-
-        return delayWithJitter;
-    }
 
     /// <summary>
     ///     Handles an exception by either wrapping it in a SqlServerException or rethrowing it.
@@ -122,12 +80,10 @@ public static class SqlServerExceptionHandler
     /// </summary>
     /// <param name="errorCode">The SQL Server error code.</param>
     /// <returns>A description of the error, or null if not found.</returns>
-    public static string? GetErrorDescription(int errorCode)
-    {
-        return ErrorDescriptions.TryGetValue(errorCode, out var description)
+    public static string? GetErrorDescription(int errorCode) =>
+        ErrorDescriptions.TryGetValue(errorCode, out var description)
             ? description
             : null;
-    }
 
     /// <summary>
     ///     Determines if an exception represents a connection error.
@@ -152,8 +108,5 @@ public static class SqlServerExceptionHandler
     /// </summary>
     /// <param name="errorCode">The SQL Server error code.</param>
     /// <returns>True if the error code is a connection error; otherwise, false.</returns>
-    private static bool IsConnectionErrorCode(int errorCode)
-    {
-        return errorCode is -2 or 53 or 64 or 121;
-    }
+    private static bool IsConnectionErrorCode(int errorCode) => errorCode is -2 or 53 or 64 or 121;
 }

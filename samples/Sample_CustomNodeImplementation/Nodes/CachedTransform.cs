@@ -38,6 +38,37 @@ public class CachedTransform : TransformNode<SensorData, ProcessedSensorData>, I
     }
 
     /// <summary>
+    ///     Asynchronously disposes of resources used by the cached transform node.
+    /// </summary>
+    /// <returns>A ValueTask representing the asynchronous dispose operation.</returns>
+    public ValueTask DisposeAsync()
+    {
+        if (!_disposed)
+        {
+            // Clean up expired cache entries
+            CleanupExpiredCacheEntries();
+
+            var hitRate = _processedCount > 0
+                ? _cacheHits * 100.0 / _processedCount
+                : 0;
+
+            Console.WriteLine($"CachedTransform: Processing complete - {_processedCount} items processed");
+            Console.WriteLine($"CachedTransform: Cache performance - {_cacheHits} hits, {_cacheMisses} misses, {hitRate:F1}% hit rate");
+            Console.WriteLine($"CachedTransform: Cache contains {_cache.Count} valid entries");
+            Console.WriteLine("Disposing CachedTransform...");
+            Console.WriteLine($"Final cache statistics: {string.Join(", ", GetCacheStatistics().Select(kvp => $"{kvp.Key}={kvp.Value}"))}");
+
+            _cache.Clear();
+            _cacheTimestamps.Clear();
+
+            _disposed = true;
+            GC.SuppressFinalize(this);
+        }
+
+        return ValueTask.CompletedTask;
+    }
+
+    /// <summary>
     ///     Processes sensor data with caching for performance optimization.
     /// </summary>
     /// <param name="item">The sensor data to process.</param>
@@ -85,12 +116,11 @@ public class CachedTransform : TransformNode<SensorData, ProcessedSensorData>, I
     /// </summary>
     /// <param name="sensorData">The sensor data to generate a key for.</param>
     /// <returns>A cache key string.</returns>
-    private string GenerateCacheKey(SensorData sensorData)
-    {
+    private string GenerateCacheKey(SensorData sensorData) =>
+
         // Create a cache key based on sensor ID, value rounded to 2 decimals, and unit
         // This ensures similar readings from the same sensor use cached results
-        return $"{sensorData.SensorId}_{Math.Round(sensorData.Value, 2)}_{sensorData.Unit}";
-    }
+        $"{sensorData.SensorId}_{Math.Round(sensorData.Value, 2)}_{sensorData.Unit}";
 
     /// <summary>
     ///     Performs an expensive calculation on sensor data.
@@ -168,9 +198,8 @@ public class CachedTransform : TransformNode<SensorData, ProcessedSensorData>, I
     ///     Gets cache statistics for monitoring.
     /// </summary>
     /// <returns>A dictionary containing cache statistics.</returns>
-    public Dictionary<string, object> GetCacheStatistics()
-    {
-        return new Dictionary<string, object>
+    public Dictionary<string, object> GetCacheStatistics() =>
+        new()
         {
             ["CacheHits"] = _cacheHits,
             ["CacheMisses"] = _cacheMisses,
@@ -181,36 +210,4 @@ public class CachedTransform : TransformNode<SensorData, ProcessedSensorData>, I
             ["CacheSize"] = _cache.Count,
             ["CacheExpiryMinutes"] = _cacheExpiry.TotalMinutes,
         };
-    }
-
-    /// <summary>
-    ///     Asynchronously disposes of resources used by the cached transform node.
-    /// </summary>
-    /// <returns>A ValueTask representing the asynchronous dispose operation.</returns>
-    public ValueTask DisposeAsync()
-    {
-        if (!_disposed)
-        {
-            // Clean up expired cache entries
-            CleanupExpiredCacheEntries();
-
-            var hitRate = _processedCount > 0
-                ? _cacheHits * 100.0 / _processedCount
-                : 0;
-
-            Console.WriteLine($"CachedTransform: Processing complete - {_processedCount} items processed");
-            Console.WriteLine($"CachedTransform: Cache performance - {_cacheHits} hits, {_cacheMisses} misses, {hitRate:F1}% hit rate");
-            Console.WriteLine($"CachedTransform: Cache contains {_cache.Count} valid entries");
-            Console.WriteLine("Disposing CachedTransform...");
-            Console.WriteLine($"Final cache statistics: {string.Join(", ", GetCacheStatistics().Select(kvp => $"{kvp.Key}={kvp.Value}"))}");
-
-            _cache.Clear();
-            _cacheTimestamps.Clear();
-
-            _disposed = true;
-            GC.SuppressFinalize(this);
-        }
-
-        return ValueTask.CompletedTask;
-    }
 }

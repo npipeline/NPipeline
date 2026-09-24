@@ -1,3 +1,4 @@
+using NPipeline.Execution.CircuitBreaking;
 using NPipeline.Graph;
 
 namespace NPipeline.Pipeline;
@@ -16,6 +17,12 @@ public sealed class Pipeline
     ///     Gets the graph definition of the pipeline.
     /// </summary>
     public PipelineGraph Graph { get; }
+
+    /// <summary>
+    ///     The circuit breakers of this pipeline's definition, owned by the <see cref="PipelineFactory" /> that created
+    ///     it. Null for a pipeline built some other way.
+    /// </summary>
+    internal CircuitBreakerRegistry? CircuitBreakers { get; set; }
 
     internal IReadOnlyList<IAsyncDisposable> BuilderDisposables { get; set; } = Array.Empty<IAsyncDisposable>();
 

@@ -18,14 +18,12 @@ public sealed class OffsetCheckpointHandlerTests
 
     #region Helper Methods
 
-    private CheckpointManager CreateCheckpointManager(ICheckpointStorage storage)
-    {
-        return new CheckpointManager(
+    private CheckpointManager CreateCheckpointManager(ICheckpointStorage storage) =>
+        new(
             storage,
             TestPipelineId,
             TestNodeId,
             CheckpointStrategy.Offset);
-    }
 
     #endregion
 

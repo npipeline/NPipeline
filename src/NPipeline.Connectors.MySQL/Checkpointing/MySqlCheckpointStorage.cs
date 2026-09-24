@@ -45,9 +45,8 @@ public sealed class MySqlCheckpointStorage : DatabaseCheckpointStorage
     }
 
     /// <inheritdoc />
-    protected override string GetUpsertSql()
-    {
-        return $@"
+    protected override string GetUpsertSql() =>
+        $@"
             INSERT INTO {QuotedTableName}
                 (pipeline_id, node_id, checkpoint_value, checkpoint_timestamp, metadata, created_at, updated_at)
             VALUES
@@ -57,5 +56,4 @@ public sealed class MySqlCheckpointStorage : DatabaseCheckpointStorage
                 checkpoint_timestamp = VALUES(checkpoint_timestamp),
                 metadata = VALUES(metadata),
                 updated_at = VALUES(updated_at);";
-    }
 }

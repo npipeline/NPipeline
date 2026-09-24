@@ -1,20 +1,15 @@
-using NPipeline.Nodes;
-using NPipeline.Pipeline;
-using NPipeline.Resilience;
+using NPipeline.Reliability;
 
 namespace NPipeline.Tests.Common;
 
+/// <summary>
+///     Retries every item failure, transient or not, until the node's <see cref="ItemRetryOptions.MaxRetries" /> runs
+///     out, then fails.
+/// </summary>
 public sealed class RetryHandler : ResiliencePolicyBase
 {
-    public override Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
-        ITransformNode<TIn, TOut> node,
-        TIn failedItem,
-        Exception exception,
-        PipelineContext context,
-        string nodeId,
-        int retryAttempt,
-        CancellationToken cancellationToken)
-    {
-        return Task.FromResult(ResilienceDecision.Retry);
-    }
+    public override ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken) =>
+        ValueTask.FromResult(failure.Attempt <= failure.MaxRetries
+            ? ResilienceDecision.Retry
+            : ResilienceDecision.Fail);
 }

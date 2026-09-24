@@ -61,9 +61,8 @@ public class PortfolioAnalyticsCalculator : AdvancedAggregateNode<ValidatedTrade
     ///     This creates a default PortfolioAnalyticsAccumulator that will track portfolio metrics.
     /// </summary>
     /// <returns>The initial accumulator with default values.</returns>
-    public override PortfolioAnalyticsAccumulator CreateAccumulator()
-    {
-        return new PortfolioAnalyticsAccumulator(
+    public override PortfolioAnalyticsAccumulator CreateAccumulator() =>
+        new(
             string.Empty, // Will be set when first trade is processed
             new Dictionary<string, decimal>(),
             new Dictionary<string, decimal>(),
@@ -74,7 +73,6 @@ public class PortfolioAnalyticsCalculator : AdvancedAggregateNode<ValidatedTrade
             DateTime.MinValue, // Will be set when first trade is processed
             DateTime.MinValue // Will be updated as trades are processed
         );
-    }
 
     /// <summary>
     ///     Accumulates a validated trade into the portfolio analytics accumulator.

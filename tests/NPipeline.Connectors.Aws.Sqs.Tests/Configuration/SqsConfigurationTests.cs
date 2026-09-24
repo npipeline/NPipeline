@@ -1,3 +1,4 @@
+using Amazon.Runtime;
 using NPipeline.Connectors.Aws.Sqs.Configuration;
 using NPipeline.Connectors.Configuration;
 
@@ -5,14 +6,12 @@ namespace NPipeline.Connectors.Aws.Sqs.Tests.Configuration;
 
 public class SqsConfigurationTests
 {
-    private static SqsConfiguration CreateValidConfiguration()
-    {
-        return new SqsConfiguration
+    private static SqsConfiguration CreateValidConfiguration() =>
+        new()
         {
             SourceQueueUrl = "https://sqs.us-east-1.amazonaws.com/123456789012/source-queue",
             SinkQueueUrl = "https://sqs.us-east-1.amazonaws.com/123456789012/sink-queue",
         };
-    }
 
     public class ConstructorAndDefaults
     {
@@ -32,8 +31,8 @@ public class SqsConfigurationTests
             config.DelaySeconds.Should().Be(0);
             config.PropertyNamingPolicy.Should().Be(JsonPropertyNamingPolicy.CamelCase);
             config.PropertyNameCaseInsensitive.Should().BeTrue();
-            config.MaxRetries.Should().Be(3);
-            config.RetryBaseDelayMs.Should().Be(1000);
+            config.RetryMode.Should().Be(RequestRetryMode.Standard);
+            config.MaxErrorRetry.Should().Be(3);
             config.ContinueOnError.Should().BeTrue();
             config.AcknowledgmentStrategy.Should().Be(AcknowledgmentStrategy.AutoOnSinkSuccess);
             config.AcknowledgmentDelayMs.Should().Be(5000);
@@ -62,8 +61,8 @@ public class SqsConfigurationTests
                 DelaySeconds = 30,
                 PropertyNamingPolicy = JsonPropertyNamingPolicy.SnakeCase,
                 PropertyNameCaseInsensitive = false,
-                MaxRetries = 5,
-                RetryBaseDelayMs = 2000,
+                RetryMode = RequestRetryMode.Adaptive,
+                MaxErrorRetry = 5,
                 ContinueOnError = false,
                 AcknowledgmentStrategy = AcknowledgmentStrategy.Manual,
                 AcknowledgmentDelayMs = 10000,
@@ -87,8 +86,8 @@ public class SqsConfigurationTests
             config.DelaySeconds.Should().Be(30);
             config.PropertyNamingPolicy.Should().Be(JsonPropertyNamingPolicy.SnakeCase);
             config.PropertyNameCaseInsensitive.Should().BeFalse();
-            config.MaxRetries.Should().Be(5);
-            config.RetryBaseDelayMs.Should().Be(2000);
+            config.RetryMode.Should().Be(RequestRetryMode.Adaptive);
+            config.MaxErrorRetry.Should().Be(5);
             config.ContinueOnError.Should().BeFalse();
             config.AcknowledgmentStrategy.Should().Be(AcknowledgmentStrategy.Manual);
             config.AcknowledgmentDelayMs.Should().Be(10000);

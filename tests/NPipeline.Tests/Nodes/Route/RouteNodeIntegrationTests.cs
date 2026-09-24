@@ -77,8 +77,7 @@ public sealed class RouteNodeIntegrationTests
 
         var runner = PipelineRunner.Create();
 
-        var ex = await Assert.ThrowsAsync<NodeExecutionException>(
-            () => runner.RunAsync<NoMatchThrowPipeline>(context));
+        var ex = await Assert.ThrowsAsync<NodeExecutionException>(() => runner.RunAsync<NoMatchThrowPipeline>(context));
 
         ex.InnerException.Should().NotBeNull();
         ex.InnerException!.Message.Should().Contain("No route rule matched an item");
@@ -181,10 +180,7 @@ public sealed class RouteNodeIntegrationTests
             var positiveHandle = builder.AddSink<InMemorySinkNode<int>, int>("positive");
             builder.AddPreconfiguredNodeInstance(positiveHandle.Id, positiveSink);
 
-            builder.ConfigureRoute(route, options =>
-            {
-                options.WithNoMatchBehavior(NoRouteMatchBehavior.Throw);
-            });
+            builder.ConfigureRoute(route, options => { options.WithNoMatchBehavior(NoRouteMatchBehavior.Throw); });
 
             builder.Connect(source, route);
             builder.ConnectWhen(route, positiveHandle, x => x > 0, "positive");

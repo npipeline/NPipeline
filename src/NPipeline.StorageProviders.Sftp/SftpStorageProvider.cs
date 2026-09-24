@@ -202,9 +202,8 @@ public sealed class SftpStorageProvider : IStorageProvider, IStorageProviderMeta
     }
 
     /// <inheritdoc />
-    public StorageProviderMetadata GetMetadata()
-    {
-        return new StorageProviderMetadata
+    public StorageProviderMetadata GetMetadata() =>
+        new()
         {
             Name = "SFTP",
             SupportedSchemes = [StorageScheme.Sftp.ToString()],
@@ -221,7 +220,6 @@ public sealed class SftpStorageProvider : IStorageProvider, IStorageProviderMeta
                 ["connectionTimeout"] = _options.ConnectionTimeout,
             },
         };
-    }
 
     private static (string host, int port, string path) ParseUri(StorageUri uri)
     {

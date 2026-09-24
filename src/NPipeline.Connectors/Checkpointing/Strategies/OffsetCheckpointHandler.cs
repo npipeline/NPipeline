@@ -38,10 +38,7 @@ public class OffsetCheckpointHandler
     ///     Gets the current offset value.
     /// </summary>
     /// <returns>The current offset, or 0 if no checkpoint exists.</returns>
-    public long GetCurrentOffset()
-    {
-        return _checkpointManager.GetCurrentOffset() ?? 0;
-    }
+    public long GetCurrentOffset() => _checkpointManager.GetCurrentOffset() ?? 0;
 
     /// <summary>
     ///     Loads the checkpoint and returns the offset value.

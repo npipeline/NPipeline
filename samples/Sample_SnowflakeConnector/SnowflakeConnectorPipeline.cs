@@ -30,50 +30,48 @@ public sealed class SnowflakeConnectorPipeline
     /// <summary>
     ///     Gets a description of the pipeline and its features.
     /// </summary>
-    public static string GetDescription()
-    {
-        return """
-               Snowflake Connector Sample Pipeline
-               ====================================
+    public static string GetDescription() =>
+        """
+        Snowflake Connector Sample Pipeline
+        ====================================
 
-               This pipeline demonstrates the following features:
+        This pipeline demonstrates the following features:
 
-               1. Reading from Snowflake
-                  - SnowflakeSourceNode for data retrieval
-                  - Parameterized queries
-                  - Streaming results
+        1. Reading from Snowflake
+           - SnowflakeSourceNode for data retrieval
+           - Parameterized queries
+           - Streaming results
 
-               2. Writing to Snowflake
-                  - SnowflakeSinkNode for data insertion
-                  - PerRow write strategy (row-by-row)
-                  - Batch write strategy (batched inserts)
-                  - StagedCopy write strategy (PUT + COPY INTO)
+        2. Writing to Snowflake
+           - SnowflakeSinkNode for data insertion
+           - PerRow write strategy (row-by-row)
+           - Batch write strategy (batched inserts)
+           - StagedCopy write strategy (PUT + COPY INTO)
 
-               3. Mapping Strategies
-                  - Attribute-based mapping (SnowflakeTable, SnowflakeColumn, Column, IgnoreColumn)
-                  - Convention-based mapping (PascalCase to UPPER_SNAKE_CASE)
-                  - Custom mappers (Func<T, IEnumerable<DatabaseParameter>>)
+        3. Mapping Strategies
+           - Attribute-based mapping (SnowflakeTable, SnowflakeColumn, Column, IgnoreColumn)
+           - Convention-based mapping (PascalCase to UPPER_SNAKE_CASE)
+           - Custom mappers (Func<T, IEnumerable<DatabaseParameter>>)
 
-               4. Connection Management
-                  - Connection pooling
-                  - Snowflake cloud connectivity
-                  - Query tagging for observability
+        4. Connection Management
+           - Connection pooling
+           - Snowflake cloud connectivity
+           - Query tagging for observability
 
-               5. Upsert Operations
-                  - MERGE-based insert-or-update semantics
-                  - Configurable key columns
+        5. Upsert Operations
+           - MERGE-based insert-or-update semantics
+           - Configurable key columns
 
-               6. Error Handling
-                  - Retry logic for transient errors
-                  - Row-level error handling
-                  - Transaction support (PerRow and Batch)
+        6. Error Handling
+           - Retry logic for transient errors
+           - Row-level error handling
+           - Transaction support (PerRow and Batch)
 
-               7. Transformations
-                  - Data enrichment
-                  - Aggregation
-                  - Multiple table processing
-               """;
-    }
+        7. Transformations
+           - Data enrichment
+           - Aggregation
+           - Multiple table processing
+        """;
 
     /// <summary>
     ///     Executes the pipeline with the given context and cancellation token.

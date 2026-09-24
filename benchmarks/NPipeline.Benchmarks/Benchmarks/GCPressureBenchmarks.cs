@@ -530,7 +530,9 @@ public class GCPressureBenchmarks
         public override async Task ConsumeAsync(IDataStream<ProcessedGCItem> input, PipelineContext context, CancellationToken cancellationToken)
         {
             await foreach (var item in input.WithCancellation(cancellationToken))
+            {
                 _processedItems.Add(item);
+            }
         }
 
         public GCMetrics GetGCMetrics()

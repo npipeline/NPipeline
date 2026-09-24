@@ -61,9 +61,8 @@ public class ParallelProcessingPipeline : IPipelineDefinition
     ///     Gets a description of what this pipeline demonstrates.
     /// </summary>
     /// <returns>A detailed description of the pipeline's purpose and parallel processing capabilities.</returns>
-    public static string GetDescription()
-    {
-        return @"Parallel Processing Pipeline Sample:
+    public static string GetDescription() =>
+        @"Parallel Processing Pipeline Sample:
 
 This sample demonstrates advanced NPipeline parallel processing capabilities:
 - CPU-bound parallel transforms with configurable degree of parallelism
@@ -95,5 +94,4 @@ This implementation follows best practices for:
 - Proper resource management and cleanup
 - Thread-safe operations and data sharing
 - Performance monitoring and optimization";
-    }
 }

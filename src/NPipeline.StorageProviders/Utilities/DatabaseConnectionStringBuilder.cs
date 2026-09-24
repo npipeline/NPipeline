@@ -56,19 +56,15 @@ public static class DatabaseConnectionStringBuilder
     /// </summary>
     /// <param name="value">The value to escape.</param>
     /// <returns>The escaped value.</returns>
-    private static string EscapeValue(string value)
-    {
+    private static string EscapeValue(string value) =>
+
         // Simple escaping - database-specific implementations may need more
-        return value.Replace(";", "\\;");
-    }
+        value.Replace(";", "\\;");
 
     /// <summary>
     ///     Unescapes value from connection string.
     /// </summary>
     /// <param name="value">The value to unescape.</param>
     /// <returns>The unescaped value.</returns>
-    private static string UnescapeValue(string value)
-    {
-        return value.Replace("\\;", ";");
-    }
+    private static string UnescapeValue(string value) => value.Replace("\\;", ";");
 }

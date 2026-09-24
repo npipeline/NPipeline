@@ -94,10 +94,7 @@ public sealed class AzuriteAdlsFixture : IAsyncLifetime
     }
 
     /// <summary>Returns the Azurite connection string (dynamically mapped host ports).</summary>
-    public string GetConnectionString()
-    {
-        return _azuriteContainer!.GetConnectionString();
-    }
+    public string GetConnectionString() => _azuriteContainer!.GetConnectionString();
 
     /// <summary>
     ///     Returns the Azurite blob service URI parsed from the connection string.

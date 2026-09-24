@@ -180,17 +180,11 @@ public class DeadLetterQueueSink : SinkNode<SourceData>
     ///     Gets the current dead letter queue items for external processing.
     /// </summary>
     /// <returns>A read-only list of dead letter items.</returns>
-    public IReadOnlyList<DeadLetterItem> GetDeadLetterItems()
-    {
-        return _deadLetterQueue.AsReadOnly();
-    }
+    public IReadOnlyList<DeadLetterItem> GetDeadLetterItems() => _deadLetterQueue.AsReadOnly();
 
     /// <summary>
     ///     Gets the count of successfully processed items.
     /// </summary>
     /// <returns>The number of successfully processed items.</returns>
-    public int GetSuccessfullyProcessedCount()
-    {
-        return _successfullyProcessed.Count;
-    }
+    public int GetSuccessfullyProcessedCount() => _successfullyProcessed.Count;
 }

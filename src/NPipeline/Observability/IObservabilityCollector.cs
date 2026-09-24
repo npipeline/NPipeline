@@ -1,3 +1,4 @@
+using NPipeline.Execution;
 using NPipeline.Observability.Metrics;
 
 namespace NPipeline.Observability;
@@ -44,7 +45,9 @@ public interface IObservabilityCollector
     void RecordItemMetrics(string nodeId, long itemsProcessed, long itemsEmitted, Guid pipelineId, string? pipelineName = null);
 
     /// <summary>
-    ///     Records a retry attempt for a node.
+    ///     Records a retry attempt for a node, at any of the three retry layers. Every call is one retry event;
+    ///     <paramref name="retryCount" /> is the attempt number, and the node's <see cref="INodeMetrics.RetryCount" />
+    ///     keeps the highest one seen.
     /// </summary>
     /// <param name="nodeId">The unique identifier of the node.</param>
     /// <param name="retryCount">The current retry attempt number.</param>
@@ -52,6 +55,27 @@ public interface IObservabilityCollector
     /// <param name="reason">The reason for the retry.</param>
     /// <param name="pipelineName">The name of the pipeline this node belongs to. Null for top-level pipelines.</param>
     void RecordRetry(string nodeId, int retryCount, Guid pipelineId, string? reason = null, string? pipelineName = null);
+
+    /// <summary>
+    ///     Records that a retry layer gave up on a node after retrying it.
+    /// </summary>
+    /// <param name="nodeId">The unique identifier of the node.</param>
+    /// <param name="pipelineId">The unique pipeline identity this node belongs to.</param>
+    /// <param name="pipelineName">The name of the pipeline this node belongs to. Null for top-level pipelines.</param>
+    void RecordRetryExhausted(string nodeId, Guid pipelineId, string? pipelineName = null)
+    {
+    }
+
+    /// <summary>
+    ///     Records a state change of a node's circuit breaker.
+    /// </summary>
+    /// <param name="nodeId">The unique identifier of the node.</param>
+    /// <param name="state">The breaker's new state.</param>
+    /// <param name="pipelineId">The unique pipeline identity this node belongs to.</param>
+    /// <param name="pipelineName">The name of the pipeline this node belongs to. Null for top-level pipelines.</param>
+    void RecordCircuitStateChanged(string nodeId, CircuitState state, Guid pipelineId, string? pipelineName = null)
+    {
+    }
 
     /// <summary>
     ///     Records performance metrics for a completed node execution.
@@ -81,10 +105,7 @@ public interface IObservabilityCollector
     /// <param name="nodeId">The unique identifier of the node.</param>
     /// <param name="pipelineId">The unique pipeline identity this node belongs to.</param>
     /// <returns>True when explicit timing buckets were recorded for this node; otherwise false.</returns>
-    bool HasTimingBreakdown(string nodeId, Guid pipelineId)
-    {
-        return false;
-    }
+    bool HasTimingBreakdown(string nodeId, Guid pipelineId) => false;
 
     /// <summary>
     ///     Gets the collected metrics for all nodes.

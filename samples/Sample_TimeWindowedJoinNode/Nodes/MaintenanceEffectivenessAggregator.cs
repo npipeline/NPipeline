@@ -23,14 +23,10 @@ public class MaintenanceEffectivenessAggregator : AdvancedAggregateNode<Enriched
         _logger = logger;
     }
 
-    public override string GetKey(EnrichedSensorData item)
-    {
-        return item.JoinData.SensorReading.DeviceId;
-    }
+    public override string GetKey(EnrichedSensorData item) => item.JoinData.SensorReading.DeviceId;
 
-    public override MaintenanceEffectivenessReport CreateAccumulator()
-    {
-        return new MaintenanceEffectivenessReport(
+    public override MaintenanceEffectivenessReport CreateAccumulator() =>
+        new(
             string.Empty,
             0,
             0.0,
@@ -38,7 +34,6 @@ public class MaintenanceEffectivenessAggregator : AdvancedAggregateNode<Enriched
             Array.Empty<string>(),
             DateTime.MinValue
         );
-    }
 
     public override MaintenanceEffectivenessReport Accumulate(MaintenanceEffectivenessReport accumulator, EnrichedSensorData item)
     {

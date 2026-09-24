@@ -45,10 +45,7 @@ public sealed class BaseJoinNodeFallbackTests
             JoinType = JoinType.Inner;
         }
 
-        public override UserProjection CreateOutput(User item1, UserProfile item2)
-        {
-            return new UserProjection(item1.Id, item1.Name, item2.ProfileInfo);
-        }
+        public override UserProjection CreateOutput(User item1, UserProfile item2) => new(item1.Id, item1.Name, item2.ProfileInfo);
     }
 
     private sealed record User(int Id, string Name);

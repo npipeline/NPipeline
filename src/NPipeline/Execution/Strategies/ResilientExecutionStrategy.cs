@@ -1,452 +1,208 @@
 using System.Runtime.CompilerServices;
-using NPipeline.Configuration;
+using System.Runtime.ExceptionServices;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.ErrorHandling;
 using NPipeline.Nodes;
 using NPipeline.Observability.Logging;
 using NPipeline.Pipeline;
-using NPipeline.Resilience;
+using NPipeline.Reliability;
 
 namespace NPipeline.Execution.Strategies;
 
 /// <summary>
-///     An execution strategy that wraps another strategy to provide resilience against stream failures.
-///     <para>
-///         If the underlying stream fails, this strategy consults the configured <see cref="IResiliencePolicy" />
-///         to decide whether to restart the node, continue without it, or fail the pipeline.
-///     </para>
-///     <para>
-///         Performance considerations:
-///         - Materializes streaming inputs only when necessary for resilience
-///         - Uses CappedReplayableDataStream for efficient restart support
-///         - Implements circuit breaker pattern to prevent cascading failures
-///         - Provides configurable retry limits with exponential backoff
-///     </para>
+///     Node restart (L2): runs a transform node through a resumable strategy, and when the node's stream fails,
+///     restarts it from its checkpoint for as long as the resilience policy answers
+///     <see cref="ResilienceDecision.RestartNode" />.
 /// </summary>
 /// <remarks>
 ///     <para>
-///         This strategy is particularly useful for:
-///         - External service calls that may experience transient failures
-///         - Database operations that might encounter connection issues
-///         - Network-dependent processing that requires fault tolerance
-///         - Long-running pipelines where reliability is critical
+///         The builder wraps a transform in this strategy when its <see cref="NodeRestartOptions.MaxRestarts" /> is
+///         above zero. The inner strategy is the node's configured one, or when it has none, the node's default
+///         (<see cref="IExecutionStrategyProvider" />) or <see cref="SequentialExecutionStrategy" />. It must implement
+///         <see cref="IResumableExecutionStrategy" />.
 ///     </para>
 ///     <para>
-///         The resilience pattern implemented here includes:
-///         - Automatic restart on failure (when configured)
-///         - Circuit breaker to prevent repeated failures
-///         - Configurable retry limits and materialization caps
-///         - Integration with pipeline-wide error handling
+///         A restart resumes at the checkpoint: the first input item whose outcome has not been delivered. Items from
+///         the checkpoint to the read head are held for replay, bounded by <see cref="NodeRestartOptions.MaxReplayWindow" />,
+///         which pauses reading when reached. With an in-order inner strategy each output is delivered exactly once;
+///         see <see cref="IResumableExecutionStrategy" />. Work inside <c>TransformAsync</c> for items in flight at the
+///         failure is done again.
 ///     </para>
 ///     <para>
-///         Circuit breaker semantics:
-///         - The circuit breaker tracks consecutive failures (not total failures)
-///         - A successful item production resets the consecutive failure counter
-///         - The breaker trips only when consecutive failures exceed the threshold
-///         - This prevents premature breaker trips due to intermittent failures
-///         - Total failures are still tracked separately for retry limits
-///     </para>
-///     <para>
-///         Delivery guarantee on restart — <b>at-least-once, with duplicates</b>:
-///         a restart calls the stream factory again and re-yields from the beginning of the input, but items already
-///         emitted downstream before the failure are not retracted. A node that fails after emitting items therefore
-///         delivers those items twice. Sinks fed by a resilient node must be idempotent, or must tolerate duplicates
-///         some other way (for example by deduplicating on a key).
-///     </para>
-///     <para>
-///         Cancellation: cancelling the pipeline's token throws <see cref="OperationCanceledException" /> out of the
-///         stream rather than ending it. A cancelled run never completes normally with a partial result set, and
-///         cancellation neither consumes a restart attempt nor counts as a circuit-breaker failure.
-///     </para>
-///     <para>
-///         Pattern matching enhancements:
-///         - Uses C# switch expressions for efficient error decision handling
-///         - Implements pattern-based circuit breaker logic
-///         - Leverages tuple patterns for retry state management
+///         A failure of the input itself is not restarted: the input cannot be read again, so the failure propagates.
+///         Cancelling the pipeline's token throws <see cref="OperationCanceledException" /> and never uses a restart.
 ///     </para>
 /// </remarks>
-/// <example>
-///     <code>
-///     // Create a resilient strategy wrapping another strategy
-///     var innerStrategy = new SequentialExecutionStrategy();
-///     var resilientStrategy = new ResilientExecutionStrategy(innerStrategy);
-/// 
-///     // Apply to a transform node
-///     var node = new TransformNode&lt;TInput, TOutput&gt;(transformFunction)
-///     {
-///         ExecutionStrategy = resilientStrategy
-///     };
-///     </code>
-/// </example>
-public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy) : IExecutionStrategy
+internal sealed class ResilientExecutionStrategy(IExecutionStrategy? innerStrategy) : IExecutionStrategy
 {
-    /// <inheritdoc />
     /// <summary>
-    ///     Executes a node with resilience capabilities, including automatic restart on failure.
-    ///     <para>
-    ///         This method wraps the inner strategy's execution with resilience features such as
-    ///         materialization for restart support, circuit breaker functionality, and retry logic.
-    ///     </para>
+    ///     The strategy the node runs through between restarts, or <see langword="null" /> to use the node's default.
     /// </summary>
-    /// <typeparam name="TIn">The input type of the node.</typeparam>
-    /// <typeparam name="TOut">The output type of the node.</typeparam>
-    /// <param name="input">The input data pipe.</param>
-    /// <param name="node">The transform node to execute.</param>
-    /// <param name="context">The pipeline execution context.</param>
-    /// <param name="nodeId">The id of the node being executed, passed explicitly rather than read from the shared context.</param>
-    /// <param name="cancellationToken">Cancellation token for the operation.</param>
-    /// <returns>A data pipe containing the node's output with resilience capabilities.</returns>
-    /// <exception cref="CircuitBreakerOpenException">Thrown when the circuit breaker is open and blocking execution.</exception>
-    /// <exception cref="RetryExhaustedException">Thrown when all retry attempts are exhausted.</exception>
-    /// <exception cref="OperationCanceledException">Thrown when the operation is canceled.</exception>
-    /// <remarks>
-    ///     <para>
-    ///         The resilience process follows these steps:
-    ///         1. Check if error handling is available; if not, delegate directly to inner strategy
-    ///         2. Materialize streaming inputs if necessary to support restarts
-    ///         3. Apply materialization caps to prevent memory issues
-    ///         4. Create a resilient stream that handles failures according to the error handler's decisions
-    ///         5. Implement circuit breaker logic to prevent cascading failures
-    ///     </para>
-    ///     <para>
-    ///         Materialization is a performance trade-off that enables resilience:
-    ///         - Pros: Allows restart from the beginning on failure
-    ///         - Cons: Increased memory usage and potential latency
-    ///         - Mitigation: Configurable caps limit memory usage
-    ///     </para>
-    /// </remarks>
-    public async Task<IDataStream<TOut>> ExecuteAsync<TIn, TOut>(IDataStream<TIn> input, ITransformNode<TIn, TOut> node, PipelineContext context,
+    public IExecutionStrategy? InnerStrategy { get; } = innerStrategy;
+
+    /// <inheritdoc />
+    public Task<IDataStream<TOut>> ExecuteAsync<TIn, TOut>(IDataStream<TIn> input, ITransformNode<TIn, TOut> node, PipelineContext context,
         string nodeId, CancellationToken cancellationToken)
     {
-        // Create a resilience activity to track and tag resilience-related telemetry
+        var inner = InnerStrategy
+                    ?? (node as IExecutionStrategyProvider)?.DefaultExecutionStrategy
+                    ?? SequentialExecutionStrategy.Instance;
+
+        if (inner is not IResumableExecutionStrategy resumable)
+            throw new InvalidOperationException(ErrorMessages.NodeRestartRequiresResumableStrategy(nodeId, inner.GetType().Name));
+
         using var resilientActivity = context.Observability.Tracer.StartActivity("Node.Resilience");
         resilientActivity.SetTag("resilience.enabled", true);
 
-        // Runtime validation: Check for missing prerequisites
-        // This provides a safety net for issues that analyzers might miss
-        if (context.ExecutionConfiguration.ResiliencePolicy is DefaultResiliencePolicy)
-        {
-            throw new InvalidOperationException(
-            $"Node '{nodeId}' is using ResilientExecutionStrategy but no custom IResiliencePolicy is configured. " +
-            "Node restarts require a policy that can return RestartNode. Configure: builder.AddResiliencePolicy<T>()");
-        }
+        // Captured now: the stream is enumerated by a downstream consumer, long after this call returned.
+        var options = context.ExecutionConfiguration.GetResilienceOptions(nodeId);
+        var policy = ResilienceRuntime.ResolvePolicy(context, nodeId);
 
-        var effectiveRetries = RetryOptionsResolver.Resolve(context, nodeId);
-
-        if (effectiveRetries.MaxNodeRestartAttempts <= 0)
-        {
-            throw new InvalidOperationException(
-                $"Node '{nodeId}' is using ResilientExecutionStrategy but MaxNodeRestartAttempts is {effectiveRetries.MaxNodeRestartAttempts} (must be > 0). " +
-                "Restart functionality is disabled. Configure: builder.WithRetryOptions(o => o with { MaxNodeRestartAttempts = 3 })");
-        }
-
-        // Check for streaming inputs without materialization
-        if (input is IForwardOnlyDataStream && effectiveRetries.MaxMaterializedItems is null or <= 0)
-        {
-            throw new InvalidOperationException(
-                $"Node '{nodeId}' has streaming inputs but MaxMaterializedItems is {effectiveRetries.MaxMaterializedItems} (must be > 0). " +
-                "Restart functionality is disabled for streaming inputs. Configure: builder.WithRetryOptions(o => o with { MaxMaterializedItems = 1000 })");
-        }
-
-        // If the input is a streaming pipe, we must materialize it to support restarts.
-        // This is a performance trade-off for resiliency.
-        if (input is IForwardOnlyDataStream)
-        {
-            var cap = effectiveRetries.MaxMaterializedItems;
-
-            // Always wrap in replayable pipe so restarts re-enumerate buffered items. Cap enforced when specified.
-#pragma warning disable CA2000 // Ownership transferred to PipelineContext via RegisterForDisposal
-            var replay = new CappedReplayableDataStream<TIn>(input, cap, cap is not null
-                ? input.StreamName + ":capped"
-                : input.StreamName + ":replay");
-#pragma warning restore CA2000
-            context.RegisterForDisposal(replay);
-
-            // Eagerly pre-buffer entire stream when a cap is set to enforce limit even if no failure occurs.
-            // This ensures memory limits are respected even in successful execution scenarios.
-            if (cap is not null)
-            {
-                var count = 0;
-
-                await foreach (var _ in replay.WithCancellation(cancellationToken).ConfigureAwait(false))
-                {
-                    count++;
-
-                    if (count > cap)
-                        break; // enforcement done by pipe; break early once exceeded triggers exception.
-                }
-            }
-
-            input = replay;
-        }
-
-        // The streamFactory is a function that can be called to regenerate the source stream.
-        // This is necessary for RestartNode decision.
-        Task<IDataStream<TOut>> StreamFactory()
-        {
-            return innerStrategy.ExecuteAsync(input, node, context, nodeId, cancellationToken);
-        }
-
-        // Capture retry options at creation time so later enumeration (during sink execution) still uses correct values.
-        var effectiveAtCreation = RetryOptionsResolver.Resolve(context, nodeId);
-
-        var resilientStream = CreateResilientStream<TIn, TOut>(StreamFactory, context, nodeId, effectiveAtCreation, cancellationToken);
-        var pipe = new DataStream<TOut>(resilientStream);
-        context.RegisterForDisposal(pipe);
-        return pipe;
+        IDataStream<TOut> stream = new DataStream<TOut>(RunAsync(input, resumable, node, context, nodeId, options, policy, cancellationToken));
+        context.RegisterForDisposal(stream);
+        return Task.FromResult(stream);
     }
 
     /// <summary>
-    ///     Creates a resilient async enumerable stream that handles failures according to the configured error handling strategy.
-    ///     <para>
-    ///         This method implements the core resilience logic using pattern matching for efficient decision making
-    ///         and circuit breaker functionality to prevent cascading failures.
-    ///     </para>
+    ///     Enumerates the node's stream, restarting it from its checkpoint for as long as the policy asks.
     /// </summary>
-    /// <typeparam name="TIn">The input type of the node.</typeparam>
-    /// <typeparam name="TOut">The output type of the node.</typeparam>
-    /// <param name="streamFactory">Factory function to create new streams on restart.</param>
-    /// <param name="context">The pipeline execution context.</param>
-    /// <param name="creationNodeId">The node ID captured at creation time.</param>
-    /// <param name="capturedRetryOptions">The retry options captured at creation time.</param>
-    /// <param name="cancellationToken">Cancellation token for the operation.</param>
-    /// <returns>A resilient async enumerable stream.</returns>
-    /// <remarks>
-    ///     <para>
-    ///         The resilience logic uses pattern matching for:
-    ///         - Error decision handling (RestartNode, ContinueWithoutNode, FailPipeline)
-    ///         - Circuit breaker state management
-    ///         - Retry limit enforcement
-    ///     </para>
-    ///     <para>
-    ///         Performance optimizations:
-    ///         - Minimal allocations in the hot path
-    ///         - Efficient state tracking with value types
-    ///         - Early exit conditions to avoid unnecessary processing
-    ///     </para>
-    /// </remarks>
-    private static async IAsyncEnumerable<TOut> CreateResilientStream<TIn, TOut>(Func<Task<IDataStream<TOut>>> streamFactory, PipelineContext context,
-        string creationNodeId, PipelineRetryOptions capturedRetryOptions, [EnumeratorCancellation] CancellationToken cancellationToken)
+    private static async IAsyncEnumerable<TOut> RunAsync<TIn, TOut>(IDataStream<TIn> source, IResumableExecutionStrategy inner,
+        ITransformNode<TIn, TOut> node, PipelineContext context, string nodeId, PipelineResilienceOptions options, IResiliencePolicy policy,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
     {
+        var activity = context.Observability.Tracer.CurrentActivity;
         var logger = context.Observability.LoggerFactory.CreateLogger(nameof(ResilientExecutionStrategy));
+        var restartOptions = options.NodeRestart;
 
-        // Use the captured nodeId and retry options: this stream is enumerated by a downstream consumer, long after
-        // the call that created it returned.
-        var nodeId = creationNodeId;
-        var effectiveRetries = capturedRetryOptions;
+        // Created here rather than in ExecuteAsync, so that each enumeration of the returned stream reads the input afresh.
+        var input = new ResumableInput<TIn>(source, restartOptions.MaxReplayWindow, cancellationToken);
 
-        // failures == number of restart-triggering failures observed so far (each leading to a restart decision)
-        var failures = 0;
-
-        // consecutiveFailures == number of consecutive failures without a successful item production
-        var consecutiveFailures = 0;
-        Exception? lastFailure = null;
-        IResilienceCircuitBreaker? circuitBreaker = null;
-
-        // Get or create a resilience activity for recording exceptions
-        var resilientActivity = context.Observability.Tracer.CurrentActivity;
-
-        // Resolve circuit breaker instance for this node through the policy.
-        circuitBreaker = context.ExecutionConfiguration.ResiliencePolicy.GetCircuitBreaker(context, nodeId);
-
-        if (circuitBreaker is not null)
-            ResilientExecutionStrategyLogMessages.CircuitBreakerResolved(logger, nodeId, circuitBreaker.GetSnapshot().State);
-
-        while (true)
+        await using (input.ConfigureAwait(false))
         {
-            // Cancellation must surface as an OperationCanceledException. Exiting the loop instead would complete the
-            // iterator normally, and a cancelled run would report success with a silently truncated result set.
-            cancellationToken.ThrowIfCancellationRequested();
-
-            if (circuitBreaker is not null && !circuitBreaker.CanExecute())
-            {
-                context.NodeEnvironment.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.DiagnosticsResilienceFailures(nodeId), failures);
-                context.NodeEnvironment.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.DiagnosticsResilienceConsecutiveFailures(nodeId),
-                    consecutiveFailures);
-                context.NodeEnvironment.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.DiagnosticsResilienceThrowingOnFailure(nodeId), true);
-                throw CreateCircuitBreakerOpenException(nodeId, circuitBreaker, "Execution blocked before attempt due to open circuit breaker.");
-            }
-
-            // Gate semantics using pattern matching:
-            // MaxNodeRestartAttempts defines the maximum number of restart attempts AFTER the initial attempt.
-            // failures counts how many restart decisions have already occurred.
-            // If failures >= MaxNodeRestartAttempts we should surface the last failure (or a descriptive exception) and stop.
-            ResilientExecutionStrategyLogMessages.CheckingRetryLimit(logger, nodeId, failures, effectiveRetries.MaxNodeRestartAttempts);
-
-            if (failures >= effectiveRetries.MaxNodeRestartAttempts)
-            {
-                ResilientExecutionStrategyLogMessages.RetryLimitExceeded(logger, nodeId);
-
-                throw new RetryExhaustedException(nodeId, effectiveRetries.MaxNodeRestartAttempts,
-                    lastFailure ?? new InvalidOperationException($"Node '{nodeId}' exceeded maximum restart attempts without a specific failure."));
-            }
-
-            var sourceStream = await streamFactory().ConfigureAwait(false);
-#pragma warning disable CA2007
-            // CA2007 false positive: the enumerator comes from a ConfigureAwait(false) sequence, so its
-            // MoveNextAsync and DisposeAsync already return configured awaitables - the analyzer only
-            // recognises ConfigureAwait applied directly to the await using expression.
-            await using var enumerator = sourceStream.WithCancellation(cancellationToken).ConfigureAwait(false).GetAsyncEnumerator();
-#pragma warning restore CA2007
-            var restartRequested = false;
+            // restarts == restarts counted against MaxRestarts; the run in progress is restarts + 1.
+            var restarts = 0;
+            var totalRestarts = 0;
+            long delivered = 0;
+            long deliveredSinceRestart = 0;
 
             while (true)
             {
+                // Cancellation must surface as an OperationCanceledException. Ending the stream instead would report a
+                // cancelled run as a success with a silently truncated result set.
                 cancellationToken.ThrowIfCancellationRequested();
 
-                TOut current;
+                var (runInput, checkpoint) = input.Open(out var offset);
+                var stream = await inner.ExecuteFromAsync(runInput, offset, checkpoint, node, context, nodeId, cancellationToken).ConfigureAwait(false);
 
-                try
+#pragma warning disable CA2007
+
+                // CA2007 false positive: the enumerator comes from a ConfigureAwait(false) sequence, so its
+                // MoveNextAsync and DisposeAsync already return configured awaitables - the analyzer only
+                // recognises ConfigureAwait applied directly to the await using expression.
+                await using var enumerator = stream.WithCancellation(cancellationToken).ConfigureAwait(false).GetAsyncEnumerator();
+#pragma warning restore CA2007
+
+                var restart = false;
+
+                while (true)
                 {
-                    if (!await enumerator.MoveNextAsync())
-                        yield break; // completed successfully
+                    cancellationToken.ThrowIfCancellationRequested();
 
-                    current = enumerator.Current;
-                }
-                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-                {
-                    // Cancellation of the pipeline's own token is not a node failure: it must not consume a restart
-                    // attempt, trip the circuit breaker, or be rewritten into a RetryExhaustedException.
-                    throw;
-                }
-                catch (Exception ex)
-                {
-                    lastFailure = ex;
+                    TOut current;
 
-                    // Record exception on resilience activity for observability
-                    resilientActivity?.RecordException(ex);
-
-                    // Increment consecutive failure counter for circuit breaker
-                    consecutiveFailures++;
-
-                    if (circuitBreaker is not null)
+                    try
                     {
-                        var breakerResult = circuitBreaker.RecordFailure();
+                        if (!await enumerator.MoveNextAsync())
+                            yield break;
 
-                        if (!breakerResult.Allowed)
-                        {
-                            context.NodeEnvironment.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.DiagnosticsResilienceFailures(nodeId), failures);
-                            context.NodeEnvironment.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.DiagnosticsResilienceConsecutiveFailures(nodeId),
-                                consecutiveFailures);
-                            context.NodeEnvironment.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.DiagnosticsResilienceThrowingOnFailure(nodeId),
-                                true);
-                            throw CreateCircuitBreakerOpenException(nodeId, circuitBreaker, breakerResult.Message);
-                        }
+                        current = enumerator.Current;
                     }
-
-                    // Pattern matching for failure limit check before attempting retry
-                    if (failures >= effectiveRetries.MaxNodeRestartAttempts)
+                    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                     {
-                        context.NodeEnvironment.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.DiagnosticsResilienceFailures(nodeId), failures);
-                        context.NodeEnvironment.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.DiagnosticsResilienceConsecutiveFailures(nodeId),
-                            consecutiveFailures);
-                        context.NodeEnvironment.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.DiagnosticsResilienceThrowingOnFailure(nodeId),
-                            true);
-
-                        // Log before throwing to capture the state
-                        ResilientExecutionStrategyLogMessages.FailureLimitReached(logger, nodeId, failures, consecutiveFailures,
-                            effectiveRetries.MaxNodeRestartAttempts);
-
-                        var retryEx = new RetryExhaustedException(nodeId, effectiveRetries.MaxNodeRestartAttempts, ex);
-                        ResilientExecutionStrategyLogMessages.RetryExhaustedExceptionCreated(logger, retryEx.Message);
-                        throw retryEx;
+                        // Cancellation of the pipeline's own token is not a node failure: it must not use a restart or be
+                        // rewritten into a RetryExhaustedException.
+                        throw;
                     }
-
-                    var decision = await context.ExecutionConfiguration.ResiliencePolicy
-                        .DecidePipelineFailureAsync(nodeId, ex, context, cancellationToken)
-                        .ConfigureAwait(false);
-
-                    // Log the decision from the error handler
-                    ResilientExecutionStrategyLogMessages.ErrorHandlerDecision(logger, decision.ToString(), nodeId, failures, consecutiveFailures);
-
-                    // Pattern matching for error decision handling - this is a key enhancement using C# switch expressions
-                    var shouldContinue = decision switch
+                    catch (Exception ex)
                     {
-                        ResilienceDecision.RestartNode when failures < effectiveRetries.MaxNodeRestartAttempts => true,
-                        ResilienceDecision.ContinueWithoutNode => false,
-                        ResilienceDecision.Fail => false,
-                        _ => false,
-                    };
+                        activity?.RecordException(ex);
 
-                    ResilientExecutionStrategyLogMessages.ShouldContinueDecision(logger, nodeId, shouldContinue);
+                        // The input itself failed. It cannot be read again, so restarting the node cannot help.
+                        if (input.InputFault is { } inputFault)
+                            ExceptionDispatchInfo.Throw(inputFault);
 
-                    if (shouldContinue)
-                    {
-                        failures++;
-
-                        // Apply retry delay before restarting the node
-                        try
+                        var decision = await policy.DecideRestartAsync(new StreamFailure
                         {
-                            var delay = await context.ExecutionConfiguration.ResiliencePolicy.GetRetryDelayAsync(context, RetryKind.NodeRestart, failures, cancellationToken)
-                                .ConfigureAwait(false);
+                            NodeId = nodeId,
+                            Exception = ex,
+                            Attempt = restarts + 1,
+                            MaxRestarts = restartOptions.MaxRestarts,
+                            Checkpoint = checkpoint.Watermark,
+                            Delivered = delivered,
+                            Context = context,
+                        }, cancellationToken).ConfigureAwait(false);
 
-                            if (delay > TimeSpan.Zero)
-                            {
-                                ResilientExecutionStrategyLogMessages.ApplyingRetryDelay(logger, delay.TotalMilliseconds, nodeId, failures);
+                        ResilientExecutionStrategyLogMessages.ErrorHandlerDecision(logger, decision.ToString(), nodeId, restarts, checkpoint.Watermark);
 
-                                await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
-                            }
-                        }
-                        catch (Exception delayEx) when (delayEx is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+                        if (decision == ResilienceDecision.ContinueWithoutNode)
+                            yield break;
+
+                        if (decision != ResilienceDecision.RestartNode)
                         {
-                            // Log delay strategy failure but continue with retry. A cancellation of the pipeline's own
-                            // token is excluded by the filter so it propagates instead of being logged and ignored.
-                            ResilientExecutionStrategyLogMessages.RetryDelayFailed(logger, delayEx, nodeId);
+                            RecordDiagnostics(context, nodeId, totalRestarts);
+
+                            if (totalRestarts == 0)
+                                throw;
+
+                            ResilientExecutionStrategyLogMessages.RetryExhausted(logger, nodeId, totalRestarts + 1);
+                            ResilienceRuntime.ReportRetryExhausted(context, nodeId, RetryKind.NodeRestart, totalRestarts + 1, ex);
+                            throw new RetryExhaustedException(nodeId, totalRestarts + 1, ex);
                         }
 
-                        context.Observability.ExecutionObserver.OnRetry(new NodeRetryEvent(nodeId, RetryKind.NodeRestart, failures, ex,
-                            context.RunIdentity.PipelineId,
-                            context.RunIdentity.PipelineName));
+                        if (totalRestarts >= ResilienceRuntime.MaxPolicyRepeats)
+                            throw ResilienceRuntime.RepeatCeilingExceeded(policy, nodeId, decision, ex);
 
-                        restartRequested = true;
+                        restarts++;
+                        totalRestarts++;
+                        deliveredSinceRestart = 0;
+
+                        var delay = restartOptions.Backoff.DelayFor(restarts);
+
+                        if (delay > TimeSpan.Zero)
+                        {
+                            ResilientExecutionStrategyLogMessages.ApplyingRetryDelay(logger, delay.TotalMilliseconds, nodeId, restarts);
+                            await Task.Delay(delay, options.Time, cancellationToken).ConfigureAwait(false);
+                        }
+
+                        ResilienceRuntime.ReportRetry(context, nodeId, RetryKind.NodeRestart, restarts, ex);
+
+                        restart = true;
                         break;
                     }
 
-                    // Either ContinueWithoutNode or FailPipeline
-                    if (decision == ResilienceDecision.ContinueWithoutNode)
-                        yield break;
+                    delivered++;
 
-                    // FailPipeline or default
-                    throw;
+                    // A long-running stream with rare faults gets its restarts back once it has run cleanly for a while.
+                    if (restarts > 0 && restartOptions.ResetAfterItems is { } resetAfter && ++deliveredSinceRestart >= resetAfter)
+                    {
+                        restarts = 0;
+                        deliveredSinceRestart = 0;
+                    }
+
+                    yield return current;
                 }
 
-                // Successful item production - reset consecutive failure counter for circuit breaker
-                consecutiveFailures = 0;
-
-                if (circuitBreaker is not null)
-                    circuitBreaker.RecordSuccess();
-
-                yield return current;
+                if (!restart)
+                    yield break;
             }
-
-            if (restartRequested)
-            {
-                // Maintain consecutive failure count (breaker counts consecutive restarts). If a restart succeeds and we yield an item, it resets above.
-                continue; // outer loop will re-check gate and restart
-            }
-
-            // If we got here without restart or completion already yielded all items, exit outer loop.
-            break;
         }
     }
 
-    private static NodeExecutionException CreateCircuitBreakerOpenException(string nodeId, IResilienceCircuitBreaker circuitBreaker, string? reason)
+    private static void RecordDiagnostics(PipelineContext context, string nodeId, int restarts)
     {
-        var detail = reason;
-
-        if (string.IsNullOrWhiteSpace(detail))
-            detail = "Circuit breaker is open and blocking execution.";
-
-        var snapshot = circuitBreaker.GetSnapshot();
-        var telemetrySuffix = snapshot.TotalOperations <= 0
-            ? $"(state: {snapshot.State}, threshold: {snapshot.FailureThreshold})"
-            :
-            $"(state: {snapshot.State}, failures: {snapshot.FailureCount}, total: {snapshot.TotalOperations}, threshold: {snapshot.FailureThreshold})";
-
-        var innerMessage = $"{detail} {telemetrySuffix}";
-        var inner = new CircuitBreakerOpenException(innerMessage.Trim());
-
-        return new NodeExecutionException(nodeId, "Circuit breaker is open and blocking execution", inner);
+        var registry = context.NodeEnvironment.NodeExecutionScopeRegistry;
+        registry.SetRuntimeAnnotation(PipelineContextKeys.DiagnosticsResilienceFailures(nodeId), restarts);
+        registry.SetRuntimeAnnotation(PipelineContextKeys.DiagnosticsResilienceThrowingOnFailure(nodeId), true);
     }
 }

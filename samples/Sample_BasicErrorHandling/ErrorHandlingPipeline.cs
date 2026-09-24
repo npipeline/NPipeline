@@ -1,5 +1,5 @@
-using NPipeline.Configuration;
 using NPipeline.Pipeline;
+using NPipeline.Reliability;
 using Sample_BasicErrorHandling.Nodes;
 
 namespace Sample_BasicErrorHandling;
@@ -70,21 +70,18 @@ public class ErrorHandlingPipeline : IPipelineDefinition
         Console.WriteLine("=== DIAGNOSTIC: ErrorHandlingPipeline.Define() called ===");
         Console.WriteLine("DIAGNOSTIC: About to add nodes to pipeline...");
 
-        // Configure error handling with retry options and circuit breaker
-        // This enables the pipeline to handle failures gracefully and demonstrate resilience patterns
-        builder.WithRetryOptions(options => new PipelineRetryOptions(
-            3,
-            MaxNodeRestartAttempts: 2,
-            MaxSequentialNodeAttempts: 5
-        ));
-
-        // Configure circuit breaker to prevent cascading failures
-        // This enables the circuit breaker pattern to trip after consecutive failures
-        builder.WithCircuitBreaker(
-            3, // Trip after 3 consecutive failures
-            TimeSpan.FromSeconds(30), // Wait 30 seconds before attempting recovery
-            TimeSpan.FromMinutes(5) // Track operations for monitoring
-        );
+        // Configure resilience: retry transient item failures three times, retry a failed node twice, and guard each
+        // item attempt with a circuit breaker that opens after three consecutive transient failures.
+        builder.WithResilience(options => options with
+        {
+            ItemRetry = ItemRetryOptions.Default with { MaxRetries = 3 },
+            NodeRetry = new NodeRetryOptions { MaxRetries = 2 },
+            CircuitBreaker = new CircuitBreakerOptions
+            {
+                ConsecutiveFailures = 3, // Open after 3 transient failures in a row
+                OpenDuration = TimeSpan.FromSeconds(30), // Wait 30 seconds before letting a probe through
+            },
+        });
 
         // Add the source node that generates data with potential intermittent failures
         // This node simulates real-world scenarios where data sources might be temporarily unavailable
@@ -118,19 +115,16 @@ public class ErrorHandlingPipeline : IPipelineDefinition
         var pipeline = builder.Build();
         var graph = pipeline.Graph;
 
-        Console.WriteLine($"DIAGNOSTIC: Graph.ErrorHandling.RetryOptions: {graph.ErrorHandling.RetryOptions}");
-        Console.WriteLine($"DIAGNOSTIC: Graph.ErrorHandling.CircuitBreakerOptions: {graph.ErrorHandling.CircuitBreakerOptions}");
+        Console.WriteLine($"DIAGNOSTIC: Graph.ErrorHandling.Resilience: {graph.ErrorHandling.Resilience}");
         Console.WriteLine($"DIAGNOSTIC: Graph.ErrorHandling.ResiliencePolicy: {graph.ErrorHandling.ResiliencePolicy}");
         Console.WriteLine($"DIAGNOSTIC: Graph.ErrorHandling.ResiliencePolicyType: {graph.ErrorHandling.ResiliencePolicyType}");
         Console.WriteLine($"DIAGNOSTIC: Graph.ErrorHandling.DeadLetterSink: {graph.ErrorHandling.DeadLetterSink}");
         Console.WriteLine($"DIAGNOSTIC: Graph.ErrorHandling.DeadLetterSinkType: {graph.ErrorHandling.DeadLetterSinkType}");
 
-        if (graph.ErrorHandling.RetryOptions == null)
-            Console.WriteLine("DIAGNOSTIC: *** ISSUE DETECTED: No retry options configured! This is likely the root cause. ***");
-        else
+        if (graph.ErrorHandling.Resilience is { } resilience)
         {
             Console.WriteLine(
-                $"DIAGNOSTIC: Retry options configured: MaxItemRetries={graph.ErrorHandling.RetryOptions.MaxItemRetries}, MaxNodeRestartAttempts={graph.ErrorHandling.RetryOptions.MaxNodeRestartAttempts}");
+                $"DIAGNOSTIC: Resilience configured: ItemRetry.MaxRetries={resilience.ItemRetry.MaxRetries}, NodeRetry.MaxRetries={resilience.NodeRetry.MaxRetries}");
         }
 
         Console.WriteLine("=== DIAGNOSTIC: ErrorHandlingPipeline.Define() completed ===");
@@ -144,9 +138,8 @@ public class ErrorHandlingPipeline : IPipelineDefinition
     ///     This description provides educational context about the error handling patterns demonstrated
     ///     in this pipeline, making it suitable for learning about resilience in data processing systems.
     /// </remarks>
-    public static string GetDescription()
-    {
-        return @"Basic Error Handling Sample:
+    public static string GetDescription() =>
+        @"Basic Error Handling Sample:
 
 This sample demonstrates fundamental error handling concepts and resilience patterns in NPipeline:
 
@@ -196,5 +189,4 @@ By studying this sample, developers will understand:
 - How to isolate errors to prevent system-wide failures
 - How to maintain observability through comprehensive error logging
 - How to build resilient data processing pipelines that handle real-world failures";
-    }
 }

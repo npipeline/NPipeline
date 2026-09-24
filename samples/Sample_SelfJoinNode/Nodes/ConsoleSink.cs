@@ -100,22 +100,18 @@ public class ConsoleSink<T> : SinkNode<T>
     /// <summary>
     ///     Formats a CategorySummary for display.
     /// </summary>
-    private static string FormatCategorySummary(CategorySummary summary)
-    {
-        return $"Category: {summary.Category} - " +
-               $"Products: {summary.TotalProducts}, " +
-               $"Growing: {summary.GrowingProducts} ({summary.GrowthPercentage:F1}%), " +
-               $"Declining: {summary.DecliningProducts}, " +
-               $"New: {summary.NewProducts}, " +
-               $"Avg Growth: {summary.AverageRevenueGrowth:+0.0;-0.0}%";
-    }
+    private static string FormatCategorySummary(CategorySummary summary) =>
+        $"Category: {summary.Category} - " +
+        $"Products: {summary.TotalProducts}, " +
+        $"Growing: {summary.GrowingProducts} ({summary.GrowthPercentage:F1}%), " +
+        $"Declining: {summary.DecliningProducts}, " +
+        $"New: {summary.NewProducts}, " +
+        $"Avg Growth: {summary.AverageRevenueGrowth:+0.0;-0.0}%";
 
     /// <summary>
     ///     Formats SalesData for display.
     /// </summary>
-    private static string FormatSalesData(SalesData sales)
-    {
-        return $"Product {sales.ProductId}: {sales.ProductName} ({sales.Category}) - " +
-               $"Year {sales.Year}, Revenue {sales.Revenue:C}, Units {sales.UnitsSold}";
-    }
+    private static string FormatSalesData(SalesData sales) =>
+        $"Product {sales.ProductId}: {sales.ProductName} ({sales.Category}) - " +
+        $"Year {sales.Year}, Revenue {sales.Revenue:C}, Units {sales.UnitsSold}";
 }

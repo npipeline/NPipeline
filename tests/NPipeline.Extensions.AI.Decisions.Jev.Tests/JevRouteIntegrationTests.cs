@@ -49,7 +49,7 @@ public sealed class JevRouteIntegrationTests
                     .AddChoice(RouteLabel.Billing, "billing", "Charges and refunds")
                     .AddChoice(RouteLabel.Technical, "technical", "Bugs and outages")
                     .AddChoice(RouteLabel.Other, "other", "None of the other routes apply"))
-                .WhenLabel(RouteLabel.Technical, technical, minimumConfidence: 0.75)
+                .WhenLabel(RouteLabel.Technical, technical, 0.75)
                 .Otherwise(review);
 
             builder.Connect(source, route);
@@ -58,9 +58,9 @@ public sealed class JevRouteIntegrationTests
 
     private sealed class FakeJevClient : IJevClient
     {
-        public string DefaultModel => "jev-latest";
         public int CallCount { get; private set; }
         public IReadOnlyDictionary<string, JevQuestion>? Questions { get; private set; }
+        public string DefaultModel => "jev-latest";
 
         public ValueTask<JevSystemOneResponse> EvaluateAsync(
             JsonNode? state,
@@ -70,6 +70,7 @@ public sealed class JevRouteIntegrationTests
         {
             CallCount++;
             Questions = questions;
+
             var answer = new JevChoiceAnswer(
                 "technical",
                 0.9,
@@ -79,6 +80,7 @@ public sealed class JevRouteIntegrationTests
                     ["technical"] = 0.9,
                     ["other"] = 0.05,
                 });
+
             return ValueTask.FromResult(new JevSystemOneResponse(
                 "jev-1.13.0",
                 new Dictionary<string, JevAnswer> { ["route"] = answer },

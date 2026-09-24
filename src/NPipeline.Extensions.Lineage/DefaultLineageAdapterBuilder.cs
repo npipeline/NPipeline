@@ -1,4 +1,3 @@
-using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using NPipeline.Attributes.Lineage;
@@ -7,7 +6,6 @@ using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.Execution.Lineage;
 using NPipeline.Graph.PipelineDelegates;
-using NPipeline.Lineage;
 
 namespace NPipeline.Lineage;
 
@@ -20,26 +18,23 @@ internal sealed class DefaultLineageAdapterBuilder
         ILineageMapper? cachedMapper = null;
 
         if (lineageMapperType is not null)
-        {
             cachedMapper = (ILineageMapper)Activator.CreateInstance(lineageMapperType)!;
-        }
 
         return (transformInput, nodeId, pipelineId, pipelineName, declaredCardinality, options, cancellationToken) =>
         {
             var typedInput = (IDataStream<LineagePacket<TIn>>)transformInput;
-            LineageNodeOutcomeRegistry.BeginNode(pipelineId, nodeId);
+
+            // The node executor starts the node's lineage state, knowing whether its strategy reports provenance.
+            var nodeLineage = LineageNodeOutcomeRegistry.GetOrBeginNode(pipelineId, nodeId);
 
             // Read typed input once and fan out packets + raw values via channels.
-            var dataChannel = Channel.CreateUnbounded<(long Index, Guid CorrelationId, int[]? AncestryInputIndices, TIn Data)>(
-                new UnboundedChannelOptions { SingleWriter = true });
+            var dataChannel = Channel.CreateUnbounded<TIn>(new UnboundedChannelOptions { SingleWriter = true });
 
             var packetChannel = Channel.CreateUnbounded<LineagePacket<TIn>>(new UnboundedChannelOptions { SingleWriter = true });
 
-            _ = PumpInputAsync(typedInput, dataChannel.Writer, packetChannel.Writer, cancellationToken);
+            _ = PumpInputAsync(typedInput, dataChannel.Writer, packetChannel.Writer, nodeLineage, cancellationToken);
 
-            var unwrappedPipe = new DataStream<TIn>(
-                ProjectWithInputIndex(dataChannel.Reader.ReadAllAsync(cancellationToken), cancellationToken),
-                $"Unwrapped_{typedInput.StreamName}");
+            var unwrappedPipe = new DataStream<TIn>(dataChannel.Reader.ReadAllAsync(cancellationToken), $"Unwrapped_{typedInput.StreamName}");
 
             return (unwrappedPipe, RewrapFunc);
 
@@ -71,9 +66,13 @@ internal sealed class DefaultLineageAdapterBuilder
                 LineageOptions? lineageOptions,
                 CancellationToken ct)
             {
-                cachedStrategy ??= SelectLineageMappingStrategy<TIn, TOut>(lineageMapperType, transformCardinality, lineageOptions);
+                // A strategy that reports each output's input is mapped by index; a declared mapper still wins, and
+                // any other node is mapped by position.
+                var strategy = nodeLineage.ReportsProvenance && lineageMapperType is null
+                    ? ProvenanceMappingStrategy<TIn, TOut>.Instance
+                    : cachedStrategy ??= SelectLineageMappingStrategy<TIn, TOut>(lineageMapperType, transformCardinality, lineageOptions);
 
-                return cachedStrategy.MapAsync(
+                return strategy.MapAsync(
                     inputStream,
                     outputStream,
                     currentId,
@@ -84,24 +83,6 @@ internal sealed class DefaultLineageAdapterBuilder
                     lineageMapperType,
                     cachedMapper,
                     ct);
-            }
-
-            static async IAsyncEnumerable<TIn> ProjectWithInputIndex(
-                IAsyncEnumerable<(long Index, Guid CorrelationId, int[]? AncestryInputIndices, TIn Data)> source,
-                [EnumeratorCancellation] CancellationToken ct)
-            {
-                try
-                {
-                    await foreach (var (index, correlationId, ancestryInputIndices, data) in source.WithCancellation(ct).ConfigureAwait(false))
-                    {
-                        LineageExecutionItemContext.SetCurrentInputContext(index, correlationId, ancestryInputIndices);
-                        yield return data;
-                    }
-                }
-                finally
-                {
-                    LineageExecutionItemContext.ClearCurrentInputIndex();
-                }
             }
 
             static async IAsyncEnumerable<LineagePacket<TOut>> CleanupOnComplete(
@@ -126,8 +107,9 @@ internal sealed class DefaultLineageAdapterBuilder
 
         static async Task PumpInputAsync(
             IDataStream<LineagePacket<TIn>> source,
-            ChannelWriter<(long Index, Guid CorrelationId, int[]? AncestryInputIndices, TIn Data)> dataWriter,
+            ChannelWriter<TIn> dataWriter,
             ChannelWriter<LineagePacket<TIn>> packetWriter,
+            LineageNodeOutcomeWriter nodeLineage,
             CancellationToken ct)
         {
             try
@@ -143,14 +125,16 @@ internal sealed class DefaultLineageAdapterBuilder
                         var latestRecord = packet.LineageRecords[^1];
 
                         if (latestRecord.ContributorInputIndices is { Count: > 0 })
-                        {
                             ancestryInputIndices = [.. latestRecord.ContributorInputIndices];
-                        }
                     }
+
+                    // The strategy looks the item's lineage up by its input index, which a node restart preserves.
+                    // Registered before the item is written, so it is there when the strategy reads the item.
+                    nodeLineage.RegisterInput(inputIndex, packet.CorrelationId, ancestryInputIndices);
 
                     // Write packet first so strategy input is available before transform output is consumed.
                     await packetWriter.WriteAsync(packet, ct).ConfigureAwait(false);
-                    await dataWriter.WriteAsync((inputIndex, packet.CorrelationId, ancestryInputIndices, packet.Data), ct).ConfigureAwait(false);
+                    await dataWriter.WriteAsync(packet.Data, ct).ConfigureAwait(false);
                     inputIndex++;
                 }
 
@@ -192,7 +176,11 @@ internal sealed class DefaultLineageAdapterBuilder
             async IAsyncEnumerable<TIn> Project(IDataStream<LineagePacket<TIn>> input, [EnumeratorCancellation] CancellationToken token)
             {
                 var terminalCorrelations = new HashSet<Guid>();
-                var emittedRecordsByCorrelation = new Dictionary<Guid, HashSet<LineageRecord>>();
+
+                // Packets of the same item share the hop records made before they diverged: a node that emits several
+                // outputs for one input copies its input's records onto each. Each record is emitted once, found by
+                // reference. The table holds its keys weakly, so it keeps no record alive once no packet refers to it.
+                var emittedRecords = new ConditionalWeakTable<LineageRecord, object?>();
 
                 await foreach (var packet in input.WithCancellation(token).ConfigureAwait(false))
                 {
@@ -200,14 +188,10 @@ internal sealed class DefaultLineageAdapterBuilder
                     {
                         if (options?.EmitIntermediateNodeRecords != false)
                         {
-                            var emittedForCorrelation = GetOrCreateEmittedSet(packet.CorrelationId);
-
                             foreach (var record in packet.LineageRecords)
                             {
-                                if (emittedForCorrelation.Add(record))
-                                {
+                                if (emittedRecords.TryAdd(record, null))
                                     await lineageSink.RecordAsync(record, token).ConfigureAwait(false);
-                                }
                             }
                         }
 
@@ -216,6 +200,7 @@ internal sealed class DefaultLineageAdapterBuilder
                             terminalCorrelations.Add(packet.CorrelationId))
                         {
                             var finalPath = packet.TraversalPath.Add($"{pipelineId:N}::{sinkNodeId}");
+
                             var latestRecord = packet.LineageRecords.Length > 0
                                 ? packet.LineageRecords[^1]
                                 : null;
@@ -245,25 +230,9 @@ internal sealed class DefaultLineageAdapterBuilder
 
                             await lineageSink.RecordAsync(terminalRecord, token).ConfigureAwait(false);
                         }
-
-                        if (packet.LineageRecords.Any(static r => r.IsTerminal) || terminalCorrelations.Contains(packet.CorrelationId))
-                        {
-                            _ = emittedRecordsByCorrelation.Remove(packet.CorrelationId);
-                        }
                     }
 
                     yield return packet.Data;
-                }
-
-                HashSet<LineageRecord> GetOrCreateEmittedSet(Guid correlationId)
-                {
-                    if (!emittedRecordsByCorrelation.TryGetValue(correlationId, out var emittedForCorrelation))
-                    {
-                        emittedForCorrelation = new HashSet<LineageRecord>(ReferenceEqualityComparer.Instance);
-                        emittedRecordsByCorrelation[correlationId] = emittedForCorrelation;
-                    }
-
-                    return emittedForCorrelation;
                 }
             }
         };
@@ -275,16 +244,12 @@ internal sealed class DefaultLineageAdapterBuilder
         LineageOptions? options)
     {
         if (mapperType is null && cardinality == TransformCardinality.OneToOne)
-        {
             return StreamingOneToOneStrategy<TIn, TOut>.Instance;
-        }
 
         var cap = options?.MaterializationCap;
 
         if (cap is not null && cap > 0)
-        {
             return CapAwareMaterializingStrategy<TIn, TOut>.Instance;
-        }
 
         return MaterializingStrategy<TIn, TOut>.Instance;
     }

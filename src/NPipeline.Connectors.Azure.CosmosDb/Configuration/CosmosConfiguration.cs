@@ -70,9 +70,8 @@ public class CosmosConfiguration
     ///     Creates a deep copy of this configuration.
     /// </summary>
     /// <returns>A new <see cref="CosmosConfiguration" /> instance with copied values.</returns>
-    public CosmosConfiguration Clone()
-    {
-        return new CosmosConfiguration
+    public CosmosConfiguration Clone() =>
+        new()
         {
             ConnectionString = ConnectionString,
             ApiType = ApiType,
@@ -114,7 +113,6 @@ public class CosmosConfiguration
             DeliverySemantic = DeliverySemantic,
             CheckpointStrategy = CheckpointStrategy,
         };
-    }
 
     #region Connection Settings
 

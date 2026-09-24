@@ -1,11 +1,9 @@
-using System.Net;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
-using Amazon;
-using Amazon.Runtime.CredentialManagement;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using NPipeline.Connectors.Aws.Sqs.Configuration;
+using NPipeline.Connectors.Aws.Sqs.Internal;
 using NPipeline.Connectors.Aws.Sqs.Models;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
@@ -32,7 +30,7 @@ public sealed class SqsSourceNode<T> : SourceNode<SqsMessage<T>>
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         _configuration.ValidateSource();
 
-        _sqsClient = CreateSqsClient(configuration);
+        _sqsClient = SqsClientFactory.Create(configuration);
         _serializerOptions = CreateSerializerOptions(configuration);
     }
 
@@ -57,82 +55,48 @@ public sealed class SqsSourceNode<T> : SourceNode<SqsMessage<T>>
 
     private async IAsyncEnumerable<SqsMessage<T>> PollMessagesAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var attempt = 0;
-
-        while (!cancellationToken.IsCancellationRequested)
+        // A failed receive is not retried here. The SDK client already retried it (see SqsConfiguration.RetryMode and
+        // MaxErrorRetry), so an exception that reaches this loop has used up its retries and fails the stream.
+        while (true)
         {
-            List<SqsMessage<T>>? messagesToYield = null;
+            // Cancellation surfaces as OperationCanceledException rather than ending the stream as if it had drained.
+            cancellationToken.ThrowIfCancellationRequested();
 
-            try
+            var receiveRequest = new ReceiveMessageRequest
             {
-                var receiveRequest = new ReceiveMessageRequest
-                {
-                    QueueUrl = _configuration.SourceQueueUrl,
-                    MaxNumberOfMessages = _configuration.MaxNumberOfMessages,
-                    WaitTimeSeconds = _configuration.WaitTimeSeconds,
-                    VisibilityTimeout = _configuration.VisibilityTimeout,
-                    MessageSystemAttributeNames = ["All"],
-                    MessageAttributeNames = ["All"],
-                };
+                QueueUrl = _configuration.SourceQueueUrl,
+                MaxNumberOfMessages = _configuration.MaxNumberOfMessages,
+                WaitTimeSeconds = _configuration.WaitTimeSeconds,
+                VisibilityTimeout = _configuration.VisibilityTimeout,
+                MessageSystemAttributeNames = ["All"],
+                MessageAttributeNames = ["All"],
+            };
 
-                var response = await _sqsClient.ReceiveMessageAsync(receiveRequest, cancellationToken).ConfigureAwait(false);
+            var response = await _sqsClient.ReceiveMessageAsync(receiveRequest, cancellationToken).ConfigureAwait(false);
+            var messagesToYield = new List<SqsMessage<T>>(response.Messages.Count);
 
-                attempt = 0;
+            foreach (var message in response.Messages)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
 
-                if (response.Messages.Count == 0)
-                {
-                    // No messages available, wait before polling again
-                    if (_configuration.PollingIntervalMs > 0)
-                        await Task.Delay(_configuration.PollingIntervalMs, cancellationToken).ConfigureAwait(false);
+                var sqsMessage = CreateSqsMessage(message);
 
-                    continue;
-                }
-
-                messagesToYield = new List<SqsMessage<T>>(response.Messages.Count);
-
-                foreach (var message in response.Messages)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-
-                    var sqsMessage = CreateSqsMessage(message);
-
-                    if (sqsMessage != null)
-                        messagesToYield.Add(sqsMessage);
-                }
+                if (sqsMessage != null)
+                    messagesToYield.Add(sqsMessage);
             }
-            catch (OperationCanceledException)
-            {
-                break;
-            }
-            catch (AmazonSQSException ex) when (IsTransientError(ex))
-            {
-                attempt++;
 
-                if (_configuration.MaxRetries <= 0 || attempt > _configuration.MaxRetries)
-                    throw;
+            // No messages, or all of them filtered out (e.g., invalid JSON with ContinueOnError): wait before polling again.
+            if (messagesToYield.Count == 0)
+            {
+                if (_configuration.PollingIntervalMs > 0)
+                    await Task.Delay(_configuration.PollingIntervalMs, cancellationToken).ConfigureAwait(false);
 
-                var backoffDelay = CalculateBackoffDelay(_configuration.RetryBaseDelayMs, attempt);
-                await Task.Delay(backoffDelay, cancellationToken).ConfigureAwait(false);
                 continue;
             }
 
-            // Yield messages outside the try-catch block
-            if (messagesToYield != null)
+            foreach (var message in messagesToYield)
             {
-                // If we received messages but filtered them all out (e.g., invalid JSON with ContinueOnError),
-                // continue polling for new messages.
-                if (messagesToYield.Count == 0)
-                {
-                    if (_configuration.PollingIntervalMs > 0)
-                        await Task.Delay(_configuration.PollingIntervalMs, cancellationToken).ConfigureAwait(false);
-
-                    continue;
-                }
-
-                foreach (var message in messagesToYield)
-                {
-                    yield return message;
-                }
+                yield return message;
             }
         }
     }
@@ -189,34 +153,6 @@ public sealed class SqsSourceNode<T> : SourceNode<SqsMessage<T>>
         }
     }
 
-    private static IAmazonSQS CreateSqsClient(SqsConfiguration configuration)
-    {
-        var config = new AmazonSQSConfig
-        {
-            RegionEndpoint = RegionEndpoint.GetBySystemName(configuration.Region),
-        };
-
-        if (!string.IsNullOrWhiteSpace(configuration.AccessKeyId) &&
-            !string.IsNullOrWhiteSpace(configuration.SecretAccessKey))
-        {
-            return new AmazonSQSClient(
-                configuration.AccessKeyId,
-                configuration.SecretAccessKey,
-                config);
-        }
-
-        if (!string.IsNullOrWhiteSpace(configuration.ProfileName))
-        {
-            var chain = new CredentialProfileStoreChain();
-
-            if (chain.TryGetProfile(configuration.ProfileName, out var profile))
-                return new AmazonSQSClient(profile.GetAWSCredentials(chain), config);
-        }
-
-        // Use default credential chain
-        return new AmazonSQSClient(config);
-    }
-
     private static JsonSerializerOptions CreateSerializerOptions(SqsConfiguration configuration)
     {
         var options = new JsonSerializerOptions
@@ -236,31 +172,14 @@ public sealed class SqsSourceNode<T> : SourceNode<SqsMessage<T>>
         return options;
     }
 
-    private static bool IsTransientError(AmazonSQSException ex)
-    {
-        return ex.StatusCode == HttpStatusCode.ServiceUnavailable ||
-               ex.StatusCode == HttpStatusCode.TooManyRequests ||
-               ex.StatusCode == HttpStatusCode.InternalServerError;
-    }
-
-    private static TimeSpan CalculateBackoffDelay(int baseDelayMs, int attempt)
-    {
-        var cappedAttempt = Math.Min(attempt, 6);
-        var exponential = baseDelayMs * (int)Math.Pow(2, cappedAttempt - 1);
-        var jitter = Random.Shared.Next(0, Math.Max(1, baseDelayMs / 2));
-        return TimeSpan.FromMilliseconds(Math.Min(exponential + jitter, 30000));
-    }
-
     private sealed class LowerCaseNamingPolicy : JsonNamingPolicy
     {
         public static readonly LowerCaseNamingPolicy Instance = new();
 
-        public override string ConvertName(string name)
-        {
-            return string.IsNullOrEmpty(name)
+        public override string ConvertName(string name) =>
+            string.IsNullOrEmpty(name)
                 ? name
                 : name.ToLowerInvariant();
-        }
     }
 
     private sealed class PascalCaseNamingPolicy : JsonNamingPolicy

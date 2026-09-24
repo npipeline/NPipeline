@@ -7,7 +7,7 @@ using NPipeline.Nodes;
 using NPipeline.Pipeline;
 using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Models;
-using DriverMongoWriteException = MongoDB.Driver.MongoWriteException;
+using NResilience;
 using OurMongoWriteException = NPipeline.Connectors.MongoDB.Exceptions.MongoWriteException;
 
 namespace NPipeline.Connectors.MongoDB.Nodes;
@@ -121,14 +121,9 @@ public class MongoSinkNode<T> : SinkNode<T>, IAsyncDisposable
     protected virtual int WriteBatchSize => _configuration.WriteBatchSize;
 
     /// <summary>
-    ///     Gets the maximum retry attempts.
+    ///     Gets the policy that retries each batch write.
     /// </summary>
-    protected virtual int MaxRetryAttempts => _configuration.MaxRetryAttempts;
-
-    /// <summary>
-    ///     Gets the retry delay.
-    /// </summary>
-    protected virtual TimeSpan RetryDelay => _configuration.RetryDelay;
+    protected virtual Resilience Resilience => _configuration.Resilience;
 
     /// <summary>
     ///     Disposes resources used by the sink node.
@@ -257,8 +252,14 @@ public class MongoSinkNode<T> : SinkNode<T>, IAsyncDisposable
     }
 
     /// <summary>
-    ///     Writes a batch with retry logic.
+    ///     Writes a batch, retrying transient failures according to <see cref="Resilience" />.
     /// </summary>
+    /// <remarks>
+    ///     The batch is mapped once, before the first attempt, and each inserted document gets its <c>_id</c> then. Every
+    ///     attempt sends the same documents, so a retry after a partly applied write finds the documents it already wrote
+    ///     (a duplicate key) instead of writing them again under new ids. A bulk write that reported write errors is not
+    ///     retried at all.
+    /// </remarks>
     /// <param name="writer">The writer to use.</param>
     /// <param name="collection">The collection to write to.</param>
     /// <param name="batch">The batch to write.</param>
@@ -269,141 +270,31 @@ public class MongoSinkNode<T> : SinkNode<T>, IAsyncDisposable
         List<T> batch,
         CancellationToken cancellationToken)
     {
-        var attempts = 0;
-        var delay = RetryDelay;
-
-        while (attempts <= MaxRetryAttempts)
+        if (writer is not IPreparedMongoWriter<T> prepared)
         {
-            try
-            {
-                await writer.WriteBatchAsync(collection, batch, _configuration, cancellationToken).ConfigureAwait(false);
-                return;
-            }
-            catch (OurMongoWriteException ex)
-            {
-                // Don't retry if ContinueOnError handled the error or it's a non-retryable error
-                if (!IsRetryableException(ex))
-                    throw;
-
-                attempts++;
-
-                if (attempts > MaxRetryAttempts)
-                {
-                    throw new OurMongoWriteException(
-                        $"Failed to write batch after {MaxRetryAttempts} attempts: {ex.Message}",
-                        _configuration.CollectionName,
-                        batch.Count,
-                        ex);
-                }
-
-                await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
-
-                // Exponential backoff
-                delay = TimeSpan.FromMilliseconds(delay.TotalMilliseconds * 2);
-            }
-            catch (DriverMongoWriteException ex)
-            {
-                attempts++;
-
-                if (attempts > MaxRetryAttempts)
-                {
-                    throw new OurMongoWriteException(
-                        $"Failed to write batch after {MaxRetryAttempts} attempts: {ex.Message}",
-                        _configuration.CollectionName,
-                        batch.Count,
-                        ex);
-                }
-
-                await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
-                delay = TimeSpan.FromMilliseconds(delay.TotalMilliseconds * 2);
-            }
-            catch (Exception ex) when (ex is not OurMongoWriteException and not DriverMongoWriteException)
-            {
-                // Check if this is a transient MongoDB error
-                if (IsTransientMongoException(ex))
-                {
-                    attempts++;
-
-                    if (attempts > MaxRetryAttempts)
-                    {
-                        throw new OurMongoWriteException(
-                            $"Failed to write batch after {MaxRetryAttempts} attempts: {ex.Message}",
-                            _configuration.CollectionName,
-                            batch.Count,
-                            ex);
-                    }
-
-                    await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
-                    delay = TimeSpan.FromMilliseconds(delay.TotalMilliseconds * 2);
-                }
-                else
-                {
-                    throw new OurMongoWriteException(
-                        $"Failed to write batch: {ex.Message}",
-                        _configuration.CollectionName,
-                        batch.Count,
-                        ex);
-                }
-            }
-        }
-    }
-
-    /// <summary>
-    ///     Determines if a MongoWriteException is retryable.
-    /// </summary>
-    /// <param name="exception">The exception to check.</param>
-    /// <returns>True if the exception is retryable.</returns>
-    private static bool IsRetryableException(OurMongoWriteException exception)
-    {
-        // Duplicate key errors are not retryable
-        if (exception.WriteErrorCode.HasValue)
-        {
-            var code = exception.WriteErrorCode.Value;
-
-            // MongoDB duplicate key error code is 11000
-            if (code == 11000)
-                return false;
+            // A writer that maps as it sends can't guarantee a retry re-sends the same documents, so it is not retried.
+            await writer.WriteBatchAsync(collection, batch, _configuration, cancellationToken).ConfigureAwait(false);
+            return;
         }
 
-        return true;
-    }
+        var models = prepared.Prepare(batch, _configuration);
 
-    /// <summary>
-    ///     Determines if a general MongoDB exception is transient and retryable.
-    /// </summary>
-    /// <param name="exception">The exception to check.</param>
-    /// <returns>True if the exception is transient.</returns>
-    private static bool IsTransientMongoException(Exception exception)
-    {
-        return exception switch
+        if (models.Count == 0)
+            return;
+
+        try
         {
-            MongoConnectionException => true,
-            MongoCommandException cmdEx when IsRetryableCommandError(cmdEx) => true,
-            TimeoutException => true,
-            _ => false,
-        };
-    }
-
-    /// <summary>
-    ///     Determines if a MongoDB command error is retryable.
-    /// </summary>
-    /// <param name="exception">The command exception.</param>
-    /// <returns>True if the error is retryable.</returns>
-    private static bool IsRetryableCommandError(MongoCommandException exception)
-    {
-        // Common retryable error codes
-        var retryableCodes = new HashSet<int>
+            await Resilience.RunAsync(
+                token => prepared.SendAsync(collection, models, _configuration, token),
+                cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OurMongoWriteException and not OperationCanceledException)
         {
-            6, // HostUnreachable
-            7, // HostNotFound
-            89, // NetworkTimeout
-            91, // ShutdownInProgress
-            189, // PrimarySteppedDown
-            262, // ExceededTimeLimit
-            9001, // SocketException
-            10107, // NotWritablePrimary
-        };
-
-        return retryableCodes.Contains(exception.Code);
+            throw new OurMongoWriteException(
+                $"Failed to write batch: {ex.Message}",
+                _configuration.CollectionName,
+                batch.Count,
+                ex);
+        }
     }
 }

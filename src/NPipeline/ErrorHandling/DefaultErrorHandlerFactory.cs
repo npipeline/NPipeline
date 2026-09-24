@@ -26,10 +26,7 @@ public sealed class DefaultErrorHandlerFactory : IErrorHandlerFactory
     /// </summary>
     /// <param name="sinkType">The type of the dead-letter sink to create.</param>
     /// <returns>An instance of <see cref="IDeadLetterSink" />, or null if it cannot be created.</returns>
-    public IDeadLetterSink? CreateDeadLetterSink(Type sinkType)
-    {
-        return TryCreateInstance<IDeadLetterSink>(sinkType, nameof(CreateDeadLetterSink));
-    }
+    public IDeadLetterSink? CreateDeadLetterSink(Type sinkType) => TryCreateInstance<IDeadLetterSink>(sinkType, nameof(CreateDeadLetterSink));
 
     /// <summary>
     ///     Attempts to create an instance of the specified type using reflection.

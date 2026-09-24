@@ -64,16 +64,18 @@ public class ChatBatchedEnrichmentNodeTests
         _ = await node.TransformAsync(batch, Context(), CancellationToken.None);
 
         Assert.NotNull(capturedFormat);
-        var schemaFormat = Assert.IsType<ChatResponseFormatJson>(capturedFormat, exactMatch: false);
+        var schemaFormat = Assert.IsType<ChatResponseFormatJson>(capturedFormat, false);
         Assert.False(string.IsNullOrWhiteSpace(schemaFormat.SchemaName));
         Assert.True(schemaFormat.Schema.HasValue);
         var schema = schemaFormat.Schema.Value;
         Assert.Equal("object", schema.GetProperty("type").GetString());
 
         var properties = schema.GetProperty("properties");
+
         var items = properties.TryGetProperty("Items", out var pascalItems)
             ? pascalItems
             : properties.GetProperty("items");
+
         Assert.Equal("array", items.GetProperty("type").GetString());
 
         var itemSchema = items.GetProperty("items");
@@ -207,8 +209,5 @@ public class ChatBatchedEnrichmentNodeTests
         Assert.IsType<InvalidOperationException>(ex.InnerException, false);
     }
 
-    private static PipelineContext Context()
-    {
-        return new PipelineContext();
-    }
+    private static PipelineContext Context() => new();
 }

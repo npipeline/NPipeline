@@ -77,32 +77,23 @@ NPipeline provides several stream types, each with different memory characterist
 |--------|--------|------------|----------|
 | `DataStream<T>` | Constant | No (forward-only) | Default: lazy streaming |
 | `InMemoryDataStream<T>` | O(n) | Yes | Small, bounded reference data |
-| `CappedReplayableDataStream<T>` | Bounded | Yes (up to cap) | Resilience with node restart |
 | `MulticastDataStream<T>` | Bounded | N/A | Branching to multiple consumers |
 
 ### Forward-Only Streams
 
-`DataStream<T>` implements `IForwardOnlyDataStream<T>`, signaling that it cannot be replayed. When resilience with node restart is enabled, the execution strategy wraps forward-only streams in a `CappedReplayableDataStream<T>` to buffer items for replay.
+`DataStream<T>` implements `IForwardOnlyDataStream<T>`, signaling that it cannot be replayed. Node restart doesn't need a replayable input: it keeps only the items it may have to process again.
 
 ### Bounded Replay
 
-`CappedReplayableDataStream<T>` buffers items as they're consumed. On retry, it replays from the buffer. If the buffer exceeds `MaxMaterializedItems`, it throws to prevent unbounded memory growth:
-
-```csharp
-builder.WithRetryOptions(handle, new PipelineRetryOptions
-{
-    MaxItemRetries = 3,
-    MaxMaterializedItems = 10_000  // cap buffer at 10,000 items
-});
-```
-
-> ⚠️ **Warning:** Setting `MaxMaterializedItems` to `null` allows unbounded buffering. The `UnboundedMaterializationConfigurationAnalyzer` (NP9002) errors on this.
+A transform with node restart resumes from its checkpoint. It holds at most `NodeRestartOptions.MaxReplayWindow` items
+for replay, and stops reading input while the window is full. For more information, see
+[Node restart and the replay window](../error-handling/materialization.md).
 
 ## Best Practices
 
 1. **Return `DataStream<T>` from sources** - wrap `IAsyncEnumerable<T>` in `DataStream`, not `InMemoryDataStream`
 2. **Use `yield return`** - stream items lazily from I/O sources
-3. **Set `MaxMaterializedItems`** when using resilience - bound the replay buffer
+3. **Size `MaxReplayWindow`** for node restart - it bounds how many items are held for replay
 4. **Use batching for bulk I/O** - batch items before database inserts instead of holding all items
 5. **Avoid LINQ in hot paths** - `.ToList()`, `.OrderBy()`, `.GroupBy()` materialize sequences. The `LinqInHotPathsAnalyzer` (NP9103) warns about this
 6. **Forward cancellation tokens** - always pass `CancellationToken` and use `.WithCancellation(ct)` on async enumerables
@@ -122,4 +113,4 @@ services.AddNPipelineObservability(new ObservabilityExtensionOptions
 
 - [Batching and Windowing](batching-and-windowing.md) - batch items for efficient bulk operations
 - [Parallel Execution](parallel-execution.md) - bounded queues and backpressure
-- [Error Handling: Materialization](../error-handling/materialization.md) - buffering for node restart
+- [Node restart and the replay window](../error-handling/materialization.md) - how node restart bounds the items it holds for replay

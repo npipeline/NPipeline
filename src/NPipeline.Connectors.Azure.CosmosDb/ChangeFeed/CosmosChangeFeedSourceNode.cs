@@ -112,9 +112,7 @@ public class CosmosChangeFeedSourceNode<T> : SourceNode<T>, IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         if (_disposed)
-        {
             return;
-        }
 
         if (_ownsClient)
             _client.Dispose();
@@ -268,11 +266,10 @@ public class CosmosChangeFeedSourceNode<T> : SourceNode<T>, IAsyncDisposable
         };
     }
 
-    private static ChangeFeedMode BuildChangeFeedMode()
-    {
+    private static ChangeFeedMode BuildChangeFeedMode() =>
+
         // Use latest version mode - gets the most recent version of each item
-        return ChangeFeedMode.LatestVersion;
-    }
+        ChangeFeedMode.LatestVersion;
 
     private static async Task<List<CosmosRow>> ParseChangeFeedResponse(Stream stream, CancellationToken cancellationToken)
     {

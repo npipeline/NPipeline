@@ -178,9 +178,5 @@ public sealed record NodeDefinition(
     /// </summary>
     /// <param name="executionStrategy">The new execution strategy.</param>
     /// <returns>A new NodeDefinition with the updated execution strategy.</returns>
-    public NodeDefinition WithExecutionStrategy(IExecutionStrategy? executionStrategy)
-    {
-        return this with { ExecutionStrategy = executionStrategy };
-    }
-
+    public NodeDefinition WithExecutionStrategy(IExecutionStrategy? executionStrategy) => this with { ExecutionStrategy = executionStrategy };
 }

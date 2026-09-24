@@ -83,10 +83,7 @@ public sealed class PipelineRunner(
     ///     await runner.RunAsync&lt;MyPipelineDefinition&gt;();
     ///     </code>
     /// </example>
-    public static PipelineRunner Create()
-    {
-        return new PipelineRunnerBuilder().Build();
-    }
+    public static PipelineRunner Create() => new PipelineRunnerBuilder().Build();
 
     /// <summary>
     ///     Runs a pipeline defined by <typeparamref name="TDefinition" /> using a default context and cancellation token.
@@ -96,7 +93,7 @@ public sealed class PipelineRunner(
     /// <param name="cancellationToken">Optional cancellation token for the pipeline execution.</param>
     /// <exception cref="PipelineExecutionException">Thrown when pipeline execution fails.</exception>
     /// <exception cref="NodeExecutionException">Thrown when a specific node fails execution.</exception>
-    /// <exception cref="CircuitBreakerTrippedException">Thrown when the circuit breaker trips due to too many failures.</exception>
+    /// <exception cref="CircuitBreakerOpenException">Thrown when a node's open circuit breaker refuses an item attempt.</exception>
     /// <exception cref="RetryExhaustedException">Thrown when all retry attempts are exhausted.</exception>
     /// <example>
     ///     <code>
@@ -121,7 +118,7 @@ public sealed class PipelineRunner(
     /// <param name="cancellationToken">Cancellation token for the pipeline execution.</param>
     /// <exception cref="PipelineExecutionException">Thrown when pipeline execution fails.</exception>
     /// <exception cref="NodeExecutionException">Thrown when a specific node fails execution.</exception>
-    /// <exception cref="CircuitBreakerTrippedException">Thrown when the circuit breaker trips due to too many failures.</exception>
+    /// <exception cref="CircuitBreakerOpenException">Thrown when a node's open circuit breaker refuses an item attempt.</exception>
     /// <exception cref="RetryExhaustedException">Thrown when all retry attempts are exhausted.</exception>
     /// <example>
     ///     <code>
@@ -163,6 +160,7 @@ public sealed class PipelineRunner(
 
         if (string.IsNullOrWhiteSpace(context.RunIdentity.PipelineName))
             context.RunIdentity.PipelineName = PipelineAttributeHelper.GetPipelineName(definitionType);
+
         await _executionOrchestrator
             .RunAsync(definitionType, context, createPipeline, cancellationToken)
             .ConfigureAwait(false);

@@ -2,7 +2,6 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using NPipeline.Attributes.Lineage;
 using NPipeline.Configuration;
-using NPipeline.Lineage;
 
 namespace NPipeline.Lineage;
 
@@ -58,7 +57,7 @@ internal sealed class StreamingOneToOneStrategy<TIn, TOut> : LineageMappingStrat
                 }
 
                 yield return new LineagePacket<TOut>(outputData, inputPacket.CorrelationId, traversalPath)
-                { Collect = inputPacket.Collect, LineageRecords = lineageRecords };
+                    { Collect = inputPacket.Collect, LineageRecords = lineageRecords };
 
                 matchedInputCount2++;
                 matchedOutputCount2++;

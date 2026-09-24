@@ -91,11 +91,22 @@ public class SftpClientFactory : IDisposable, IAsyncDisposable
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            // Connect with timeout
+            // ConnectionInfo.Timeout bounds each step of the SSH handshake; this bounds the connect as a whole and lets the
+            // caller's token cancel a connect that is already in progress.
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             cts.CancelAfter(_options.ConnectionTimeout);
 
-            await Task.Run(client.Connect, cts.Token).ConfigureAwait(false);
+            try
+            {
+                await client.ConnectAsync(cts.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+            {
+                // Our timeout, not the caller's cancellation: report it as a failure
+                throw new SshOperationTimeoutException(
+                    $"Connecting to SFTP server '{connectionInfo.Host}:{connectionInfo.Port}' timed out after {_options.ConnectionTimeout}.",
+                    ex);
+            }
 
             return client;
         }

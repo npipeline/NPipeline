@@ -8,7 +8,7 @@
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
 
         <PackageId>NPipeline.Connectors.Http</PackageId>
-        <Description>HTTP/REST API source and sink nodes for NPipeline - paginated source and POST/PUT/PATCH sink with auth, retry, rate limiting and observability</Description>
+        <Description>HTTP/REST API source and sink nodes for NPipeline - paginated source and POST/PUT/PATCH sink with auth, NResilience retries, rate limiting and observability</Description>
         <PackageTags>npipeline;http;rest;api;connector;pagination;httpclient</PackageTags>
         <Authors>NPipeline contributors</Authors>
         <RepositoryUrl>https://github.com/NPipeline/NPipeline.git</RepositoryUrl>
@@ -30,6 +30,7 @@
         <PackageReference Include="Microsoft.Extensions.Logging.Abstractions"/>
         <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions"/>
         <PackageReference Include="System.Threading.RateLimiting"/>
+        <PackageReference Include="NResilience"/>
     </ItemGroup>
 
     <ItemGroup>

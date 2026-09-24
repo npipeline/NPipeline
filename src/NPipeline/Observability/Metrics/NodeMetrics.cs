@@ -6,12 +6,15 @@ namespace NPipeline.Observability.Metrics;
 /// <param name="NodeId">The unique identifier of the node.</param>
 /// <param name="StartTime">The timestamp when the node execution started.</param>
 /// <param name="EndTime">The timestamp when the node execution completed.</param>
-/// <param name="DurationMs">The node-owned work duration in milliseconds. Breaking change: this parameter previously represented wall-clock elapsed time; use WallDurationMs for wall-clock comparisons.</param>
+/// <param name="DurationMs">
+///     The node-owned work duration in milliseconds. Breaking change: this parameter previously represented wall-clock elapsed time; use
+///     WallDurationMs for wall-clock comparisons.
+/// </param>
 /// <param name="Success">Whether the node execution was successful.</param>
 /// <param name="ItemsProcessed">The number of items processed by this node.</param>
 /// <param name="ItemsEmitted">The number of items emitted by this node.</param>
 /// <param name="Exception">Any exception that occurred during execution.</param>
-/// <param name="RetryCount">The number of retries that occurred during processing.</param>
+/// <param name="RetryCount">The highest retry attempt number recorded for this node, at any retry layer.</param>
 /// <param name="PeakMemoryUsageMb">The peak memory usage in megabytes during node execution.</param>
 /// <param name="ProcessorTimeMs">The processor time used in milliseconds.</param>
 /// <param name="ThroughputItemsPerSec">The throughput in items per second.</param>
@@ -23,6 +26,9 @@ namespace NPipeline.Observability.Metrics;
 /// <param name="InputWaitDurationMs">The upstream input wait duration in milliseconds.</param>
 /// <param name="OutputBlockDurationMs">The downstream output block duration in milliseconds.</param>
 /// <param name="WallDurationMs">The total elapsed wall-clock duration for this node in milliseconds.</param>
+/// <param name="RetryEvents">The number of retries recorded for this node, across item retry, node restart, and node retry.</param>
+/// <param name="RetriesExhausted">The number of times a retry layer gave up on this node after retrying it.</param>
+/// <param name="CircuitBreakerTrips">The number of times this node's circuit breaker opened.</param>
 public sealed record NodeMetrics(
     string NodeId,
     DateTimeOffset? StartTime,
@@ -43,4 +49,7 @@ public sealed record NodeMetrics(
     double? WorkDurationMs = null,
     double? InputWaitDurationMs = null,
     double? OutputBlockDurationMs = null,
-    double? WallDurationMs = null) : INodeMetrics;
+    double? WallDurationMs = null,
+    long RetryEvents = 0,
+    long RetriesExhausted = 0,
+    long CircuitBreakerTrips = 0) : INodeMetrics;

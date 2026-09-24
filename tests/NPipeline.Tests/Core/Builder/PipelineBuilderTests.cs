@@ -1,14 +1,12 @@
-using NPipeline.Execution;
 using AwesomeAssertions;
 using NPipeline.DataFlow;
 using NPipeline.Execution.Annotations;
 using NPipeline.Execution.Strategies;
-using NPipeline.ErrorHandling;
 using NPipeline.Graph;
 using NPipeline.Graph.Validation;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
-using NPipeline.Resilience;
+using NPipeline.Reliability;
 using Xunit.Abstractions;
 
 namespace NPipeline.Tests.Core.Builder;
@@ -175,7 +173,7 @@ public sealed class PipelineBuilderTests(ITestOutputHelper output)
     }
 
     [Fact]
-    public void WithResilience_ShouldWrapStrategyInResilientStrategy()
+    public void NodeRestartOptions_WrapTheTransformForRestart()
     {
         _ = output; // Parameter is unused but required for test infrastructure
 
@@ -186,12 +184,43 @@ public sealed class PipelineBuilderTests(ITestOutputHelper output)
         builder.Connect(source, transform);
 
         // Act
-        builder.WithResilience(transform);
+        builder.WithResilience(transform, o => o with { NodeRestart = new NodeRestartOptions { MaxRestarts = 2 } });
         var pipeline = builder.Build();
 
         // Assert
         var nodeDef = pipeline.Graph.Nodes.Single(n => n.Id == "transform");
-        nodeDef.ExecutionStrategy.Should().BeOfType<ResilientExecutionStrategy>();
+
+        nodeDef.ExecutionStrategy.Should().BeOfType<ResilientExecutionStrategy>()
+            .Which.InnerStrategy.Should().BeNull("the node had no strategy of its own, so its default is resolved when it runs");
+    }
+
+    [Fact]
+    public void NodeRestartOptions_KeepTheConfiguredStrategyAsTheInnerOne()
+    {
+        var builder = new PipelineBuilder().WithoutExtendedValidation();
+        var source = builder.AddSource<TestSourceNode, string>("source");
+        var strategy = new SequentialExecutionStrategy();
+        var transform = builder.AddTransform<TestTransformNode, string, int>("transform").WithExecutionStrategy(builder, strategy);
+        builder.Connect(source, transform);
+
+        builder.WithResilience(transform, o => o with { NodeRestart = new NodeRestartOptions { MaxRestarts = 1 } });
+        var pipeline = builder.Build();
+
+        pipeline.Graph.Nodes.Single(n => n.Id == "transform").ExecutionStrategy.Should().BeOfType<ResilientExecutionStrategy>()
+            .Which.InnerStrategy.Should().BeSameAs(strategy);
+    }
+
+    [Fact]
+    public void WithoutRestarts_TheTransformIsNotWrapped()
+    {
+        var builder = new PipelineBuilder().WithoutExtendedValidation();
+        var source = builder.AddSource<TestSourceNode, string>("source");
+        var transform = builder.AddTransform<TestTransformNode, string, int>("transform");
+        builder.Connect(source, transform);
+
+        var pipeline = builder.Build();
+
+        pipeline.Graph.Nodes.Single(n => n.Id == "transform").ExecutionStrategy.Should().BeNull();
     }
 
     [Fact]
@@ -206,7 +235,7 @@ public sealed class PipelineBuilderTests(ITestOutputHelper output)
         builder.Connect(source, transform);
 
         // Act
-        builder.SetNodeResiliencePolicy(transform, new TestResiliencePolicy());
+        builder.AddResiliencePolicy(transform, new TestResiliencePolicy());
         var pipeline = builder.Build();
 
         // Assert
@@ -214,91 +243,46 @@ public sealed class PipelineBuilderTests(ITestOutputHelper output)
         pipeline.Graph.ExecutionOptions.NodeExecutionAnnotations.Should().ContainKey(key);
     }
 
-
     // Test Node Implementations
     private sealed class TestSourceNode : SourceNode<string>
     {
-        public override IDataStream<string> OpenStream(PipelineContext context, CancellationToken cancellationToken)
-        {
-            throw new NotImplementedException();
-        }
+        public override IDataStream<string> OpenStream(PipelineContext context, CancellationToken cancellationToken) => throw new NotImplementedException();
     }
 
     private sealed class TestTransformNode : TransformNode<string, int>
     {
-        public override ValueTask<int> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
-        {
+        public override ValueTask<int> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken) =>
             throw new NotImplementedException();
-        }
     }
 
     private sealed class TestSinkNode : SinkNode<int>
     {
         public override Task ConsumeAsync(IDataStream<int> input, PipelineContext context,
-            CancellationToken cancellationToken)
-        {
+            CancellationToken cancellationToken) =>
             throw new NotImplementedException();
-        }
     }
 
     private sealed class TestResiliencePolicy : IResiliencePolicy
     {
-        public Task<ResilienceDecision> DecideNodeFailureAsync(
-            NodeDefinition nodeDefinition,
-            INode node,
-            Exception error,
-            PipelineContext context,
-            CancellationToken cancellationToken)
-        {
-            return Task.FromResult(ResilienceDecision.Fail);
-        }
+        public ValueTask<ResilienceDecision> DecideNodeFailureAsync(NodeFailure failure, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(ResilienceDecision.Fail);
 
-        public Task<ResilienceDecision> DecidePipelineFailureAsync(
-            string nodeId,
-            Exception error,
-            PipelineContext context,
-            CancellationToken cancellationToken)
-        {
-            return Task.FromResult(ResilienceDecision.Fail);
-        }
+        public ValueTask<ResilienceDecision> DecideRestartAsync(StreamFailure failure, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(ResilienceDecision.Fail);
 
-        public Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
-            ITransformNode<TIn, TOut> node,
-            TIn failedItem,
-            Exception exception,
-            PipelineContext context,
-            string nodeId,
-            int retryAttempt,
-            CancellationToken cancellationToken)
-        {
-            return Task.FromResult(ResilienceDecision.Fail);
-        }
-
-        public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, RetryKind retryKind, int attemptNumber, CancellationToken cancellationToken)
-        {
-            return context.GetRetryDelayStrategy().GetDelayAsync(attemptNumber, cancellationToken);
-        }
-
-        public IResilienceCircuitBreaker? GetCircuitBreaker(PipelineContext context, string nodeId)
-        {
-            return DefaultResiliencePolicy.Instance.GetCircuitBreaker(context, nodeId);
-        }
+        public ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(ResilienceDecision.Fail);
     }
 
     private sealed class AutoSourceNode : SourceNode<int>
     {
-        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
-        {
-            return new NPipeline.DataFlow.DataStreams.InMemoryDataStream<int>([1]);
-        }
+        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken) =>
+            new NPipeline.DataFlow.DataStreams.InMemoryDataStream<int>([1]);
     }
 
     private sealed class AutoTransformNode : TransformNode<int, int>
     {
-        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult<int>(item);
-        }
+        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken) => ValueTask.FromResult(item);
     }
 
     private sealed class AutoSinkNode : SinkNode<int>

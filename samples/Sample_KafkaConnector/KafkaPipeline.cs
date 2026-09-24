@@ -4,7 +4,7 @@ using NPipeline.Connectors.Kafka.Configuration;
 using NPipeline.Connectors.Kafka.Metrics;
 using NPipeline.Connectors.Kafka.Models;
 using NPipeline.Connectors.Kafka.Nodes;
-using NPipeline.Connectors.Kafka.Retry;
+using NPipeline.Connectors.Kafka.Reliability;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 using DeliverySemantic = NPipeline.Connectors.Kafka.Configuration.DeliverySemantic;
@@ -35,9 +35,8 @@ public sealed class KafkaConnectorPipeline : IPipelineDefinition
     /// <summary>
     ///     Creates the default Kafka configuration for this sample.
     /// </summary>
-    public static KafkaConfiguration CreateConfiguration()
-    {
-        return new KafkaConfiguration
+    public static KafkaConfiguration CreateConfiguration() =>
+        new()
         {
             BootstrapServers = "localhost:9092",
             ClientId = "sample-kafka-connector",
@@ -53,45 +52,35 @@ public sealed class KafkaConnectorPipeline : IPipelineDefinition
             DeliverySemantic = DeliverySemantic.AtLeastOnce,
             AcknowledgmentStrategy = AcknowledgmentStrategy.AutoOnSinkSuccess,
             ContinueOnError = false,
-        };
-    }
 
-    /// <summary>
-    ///     Creates the retry strategy used by the sample.
-    /// </summary>
-    public static IRetryStrategy CreateRetryStrategy()
-    {
-        return new ExponentialBackoffRetryStrategy
-        {
-            MaxRetries = 3,
-            BaseDelayMs = 100,
-            MaxDelayMs = 5000,
-            JitterFactor = 0.2,
+            // Retries a retriable consume error up to three times, waiting at most five seconds between attempts.
+            // The sink does not retry: librdkafka and the idempotent producer already do.
+            Resilience = KafkaConnectorResilience.Default with
+            {
+                Backoff = KafkaConnectorResilience.Default.Backoff with { MaximumDelay = TimeSpan.FromSeconds(5) },
+            },
         };
-    }
 
     /// <summary>
     ///     Gets a description of what the Kafka pipeline demonstrates.
     /// </summary>
-    public static string GetDescription()
-    {
-        return """
-               Kafka Connector Sample:
+    public static string GetDescription() =>
+        """
+        Kafka Connector Sample:
 
-               This sample demonstrates an end-to-end Kafka pipeline using NPipeline:
+        This sample demonstrates an end-to-end Kafka pipeline using NPipeline:
 
-               Pipeline Flow:
-               KafkaSourceNode<SampleMessage>
-                 -> MessageEnricher (adds processing metadata)
-                   -> KafkaSinkNode<SampleMessage>
+        Pipeline Flow:
+        KafkaSourceNode<SampleMessage>
+          -> MessageEnricher (adds processing metadata)
+            -> KafkaSinkNode<SampleMessage>
 
-               Key Features:
-               - Kafka consumer group processing from input-events
-               - Simple enrichment transform with metadata
-               - Batched Kafka production to output-events
-               - Configurable retry strategy and partitioning
-               """;
-    }
+        Key Features:
+        - Kafka consumer group processing from input-events
+        - Simple enrichment transform with metadata
+        - Batched Kafka production to output-events
+        - Consume retries through NResilience, and configurable partitioning
+        """;
 }
 
 /// <summary>
@@ -171,6 +160,11 @@ public sealed class ConsoleKafkaMetrics : IKafkaMetrics
     public void RecordPollLatency(string topic, TimeSpan latency)
     {
         Log("PollLatency", topic, latency.TotalMilliseconds);
+    }
+
+    public void RecordConsumeError(string topic, Exception ex)
+    {
+        Log("ConsumeError", topic, ex.Message);
     }
 
     public void RecordCommitLatency(string topic, TimeSpan latency)

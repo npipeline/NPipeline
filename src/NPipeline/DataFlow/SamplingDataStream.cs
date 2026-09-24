@@ -60,18 +60,13 @@ public sealed class SamplingDataStream<T>(
     /// <summary>
     ///     Gets the runtime data type emitted by the wrapped stream.
     /// </summary>
-    public Type GetDataType()
-    {
-        return inner.GetDataType();
-    }
+    public Type GetDataType() => inner.GetDataType();
 
     /// <summary>
     ///     Returns an enumerator over sampled stream items.
     /// </summary>
-    public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
-    {
-        return Enumerate(cancellationToken).GetAsyncEnumerator(cancellationToken);
-    }
+    public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default) =>
+        Enumerate(cancellationToken).GetAsyncEnumerator(cancellationToken);
 
     /// <summary>
     ///     Projects sampled items as an object-typed asynchronous sequence.
@@ -87,10 +82,7 @@ public sealed class SamplingDataStream<T>(
     /// <summary>
     ///     Disposes the wrapped stream.
     /// </summary>
-    public ValueTask DisposeAsync()
-    {
-        return inner.DisposeAsync();
-    }
+    public ValueTask DisposeAsync() => inner.DisposeAsync();
 
     private async IAsyncEnumerable<T> Enumerate([EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
@@ -157,6 +149,7 @@ public sealed class SamplingDataStream<T>(
             return 0;
 
         var retryCount = lineageRecords[^1].RetryCount;
+
         return retryCount is > 0
             ? retryCount.Value
             : 0;

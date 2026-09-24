@@ -5,6 +5,7 @@ using NPipeline.Execution;
 using NPipeline.Observability.Logging;
 using NPipeline.Observability.Tracing;
 using NPipeline.Pipeline;
+using NPipeline.Reliability;
 
 namespace NPipeline.Tests.Execution;
 
@@ -25,72 +26,44 @@ public sealed class CachedNodeExecutionContextTests
 
         // Assert
         _ = cached.NodeId.Should().Be(nodeId);
-        _ = cached.RetryOptions.Should().Be(context.ExecutionConfiguration.RetryOptions);
+        _ = cached.Resilience.Should().BeSameAs(context.ExecutionConfiguration.Resilience);
         _ = cached.TracingEnabled.Should().BeFalse(); // Default uses NullPipelineTracer
         _ = cached.LoggingEnabled.Should().BeFalse(); // Default uses NullLoggerFactory
         _ = cached.CancellationToken.Should().Be(context.CancellationToken);
     }
 
     [Fact]
-    public void Create_WithNodeSpecificRetryOptions_ShouldUseNodeOptions()
+    public void Create_WithNodeSpecificResilienceOptions_ShouldUseNodeOptions()
     {
         // Arrange
         var context = PipelineContext.CreateDefault();
         var nodeId = "testNode";
-
-        var nodeRetryOptions = new PipelineRetryOptions(
-            5,
-            MaxNodeRestartAttempts: 3,
-            MaxSequentialNodeAttempts: 5);
-
-        context.ExecutionConfiguration.NodeRetryOverrides[nodeId] = nodeRetryOptions;
+        var nodeOptions = PipelineResilienceOptions.None with { ItemRetry = new ItemRetryOptions { MaxRetries = 5 } };
+        context.ExecutionConfiguration.SetNodeResilienceOptions(nodeId, nodeOptions);
 
         // Act
         var cached = CachedNodeExecutionContext.Create(context, nodeId);
 
         // Assert
-        _ = cached.RetryOptions.Should().BeSameAs(nodeRetryOptions);
-        _ = cached.RetryOptions.MaxItemRetries.Should().Be(5);
-        _ = cached.RetryOptions.MaxNodeRestartAttempts.Should().Be(3);
+        _ = cached.Resilience.Should().BeSameAs(nodeOptions);
+        _ = cached.Resilience.ItemRetry.MaxRetries.Should().Be(5);
     }
 
     [Fact]
-    public void Create_WithGlobalRetryOptions_ShouldUseGlobalOptions()
+    public void Create_WithPipelineResilienceOptions_ShouldUsePipelineOptions()
     {
         // Arrange
-        var globalRetryOptions = new PipelineRetryOptions(
-            10,
-            MaxNodeRestartAttempts: 2,
-            MaxSequentialNodeAttempts: 0);
-
-        var context = new PipelineContext(PipelineContextConfiguration.WithRetry(globalRetryOptions));
-        var nodeId = "testNode";
+        var context = PipelineContext.CreateDefault();
+        var pipelineOptions = PipelineResilienceOptions.None with { ItemRetry = new ItemRetryOptions { MaxRetries = 10 } };
+        context.ExecutionConfiguration.Resilience = pipelineOptions;
+        context.ExecutionConfiguration.SetNodeResilienceOptions("otherNode", PipelineResilienceOptions.None);
 
         // Act
-        var cached = CachedNodeExecutionContext.Create(context, nodeId);
+        var cached = CachedNodeExecutionContext.Create(context, "testNode");
 
         // Assert
-        _ = cached.RetryOptions.Should().BeSameAs(globalRetryOptions);
-        _ = cached.RetryOptions.MaxItemRetries.Should().Be(10);
-    }
-
-    [Fact]
-    public void Create_WithBothNodeAndGlobalOptions_ShouldPreferNodeOptions()
-    {
-        // Arrange
-        var nodeId = "testNode";
-        var nodeRetryOptions = new PipelineRetryOptions(5, MaxNodeRestartAttempts: 0, MaxSequentialNodeAttempts: 0);
-        var globalRetryOptions = new PipelineRetryOptions(10, MaxNodeRestartAttempts: 0, MaxSequentialNodeAttempts: 0);
-        var context = new PipelineContext(PipelineContextConfiguration.WithRetry(globalRetryOptions));
-
-        context.ExecutionConfiguration.NodeRetryOverrides[nodeId] = nodeRetryOptions;
-
-        // Act
-        var cached = CachedNodeExecutionContext.Create(context, nodeId);
-
-        // Assert
-        cached.RetryOptions.Should().BeSameAs(nodeRetryOptions);
-        cached.RetryOptions.MaxItemRetries.Should().Be(5);
+        _ = cached.Resilience.Should().BeSameAs(pipelineOptions);
+        _ = cached.Resilience.ItemRetry.MaxRetries.Should().Be(10);
     }
 
     [Fact]
@@ -182,59 +155,17 @@ public sealed class CachedNodeExecutionContextTests
             .WithParameterName("nodeId");
     }
 
-    [Fact]
-    public void CreateWithRetryOptions_ShouldUseProvidedRetryOptions()
-    {
-        // Arrange
-        var context = PipelineContext.CreateDefault();
-        var nodeId = "testNode";
-
-        var preResolvedRetryOptions = new PipelineRetryOptions(
-            15,
-            MaxNodeRestartAttempts: 0,
-            MaxSequentialNodeAttempts: 0);
-
-        // Act
-        var cached = CachedNodeExecutionContext.CreateWithRetryOptions(context, nodeId, preResolvedRetryOptions);
-
-        // Assert
-        _ = cached.RetryOptions.Should().BeSameAs(preResolvedRetryOptions);
-        _ = cached.RetryOptions.MaxItemRetries.Should().Be(15);
-    }
-
-    [Fact]
-    public void CreateWithRetryOptions_WithNullRetryOptions_ShouldThrowArgumentNullException()
-    {
-        // Arrange
-        var context = PipelineContext.CreateDefault();
-        var nodeId = "testNode";
-        PipelineRetryOptions preResolvedRetryOptions = null!;
-
-        // Act
-        var act = () => CachedNodeExecutionContext.CreateWithRetryOptions(context, nodeId, preResolvedRetryOptions);
-
-        // Assert
-        _ = act.Should().Throw<ArgumentNullException>()
-            .WithParameterName("preResolvedRetryOptions");
-    }
-
     // Test helper classes
     private sealed class TestPipelineTracer : IPipelineTracer
     {
         public IPipelineActivity? CurrentActivity => null;
 
-        public IPipelineActivity StartActivity(string name)
-        {
-            return NullPipelineActivity.Instance;
-        }
+        public IPipelineActivity StartActivity(string name) => NullPipelineActivity.Instance;
     }
 
     private sealed class TestPipelineLoggerFactory : ILoggerFactory
     {
-        public ILogger CreateLogger(string categoryName)
-        {
-            return NullLogger.Instance;
-        }
+        public ILogger CreateLogger(string categoryName) => NullLogger.Instance;
 
         public void AddProvider(ILoggerProvider provider)
         {

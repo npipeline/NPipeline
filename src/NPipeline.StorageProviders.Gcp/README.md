@@ -8,7 +8,7 @@
 - **Stream-based I/O** - Efficient read/write operations for large objects with streaming support
 - **Metadata & Existence** - Check if objects exist and retrieve detailed metadata
 - **Flexible Listing** - List objects by prefix with recursive and non-recursive options
-- **Built-in Retries** - Automatic retry handling for transient failures (HTTP 429/5xx errors)
+- **Built-in Retries** - Retries network failures and HTTP 408, 429, and 5xx errors with jittered exponential backoff
 - **Multiple Auth Methods** - Support for default credentials, service account keys, access tokens, or emulator endpoints
 - **URI-based Configuration** - Override settings per-object through query parameters
 - **Emulator Support** - Full compatibility with Google Cloud Storage emulator for local development
@@ -42,6 +42,7 @@ Register the GCS storage provider in your dependency injection container:
 ```csharp
 using Microsoft.Extensions.DependencyInjection;
 using NPipeline.StorageProviders.Gcp;
+using NPipeline.StorageProviders.Gcp.Reliability;
 
 var services = new ServiceCollection();
 
@@ -53,13 +54,8 @@ services.AddGcsStorageProvider(options =>
     // Set default project ID for all operations
     options.DefaultProjectId = "my-project-id";
 
-    // Optional: Configure retries for transient failures
-    options.RetrySettings = new GcsRetrySettings
-    {
-        MaxAttempts = 3,
-        InitialDelay = TimeSpan.FromSeconds(1),
-        MaxDelay = TimeSpan.FromSeconds(32),
-    };
+    // Optional: change how transient failures are retried
+    options.Resilience = GcsStorageResilience.Default with { Attempts = 5 };
 });
 
 var provider = services
@@ -74,7 +70,7 @@ var provider = services
 | `DefaultProjectId`      | Project ID used for all operations       | (not required)    |
 | `UseDefaultCredentials` | Use Application Default Credentials      | `true`            |
 | `ServiceUrl`            | Custom GCS endpoint (for emulator)       | GCS production    |
-| `RetrySettings`         | Retry configuration for transient errors | `null` (disabled) |
+| `Resilience`            | Retries and timeouts for each request    | `GcsStorageResilience.Default` |
 
 ## Usage Examples
 
@@ -224,10 +220,51 @@ Or set the environment variable:
 export STORAGE_EMULATOR_HOST="http://localhost:4443"
 ```
 
+## Resilience
+
+The provider sends every GCS request (object metadata, each page of a listing, downloads, and uploads) through
+[NResilience](https://github.com/nresilience/NResilience). The `Resilience` option configures it. The default,
+`GcsStorageResilience.Default`, does the following:
+
+- Makes up to three attempts (two retries), the same count as the Google SDK's own default retry.
+- Retries network failures, HTTP client timeouts, 408, and 5xx responses. A 429 response is treated as throttling:
+  it takes the throttled backoff curve and honors `Retry-After` when the server sends one. Other 4xx responses, such
+  as 403 and 404, are not retried.
+- Waits with exponential backoff and full jitter, from 1 second up to 32 seconds, so parallel writers don't retry
+  in lockstep.
+- Has no attempt timeout and no overall deadline, because a large download or upload can run for a long time. The
+  SDK's HTTP client timeout (100 seconds by default) still bounds each HTTP request.
+
+To change a setting, derive a policy with a `with` expression. To turn retries off, use `Resilience.None`:
+
+```csharp
+services.AddGcsStorageProvider(options =>
+{
+    options.Resilience = GcsStorageResilience.Default with { Attempts = 5 };
+    // or: options.Resilience = Resilience.None;
+});
+```
+
+A retried download starts again with an empty buffer, and a retried upload re-sends the whole object from its
+first byte in a new upload session. Uploading an object replaces it, so a retry can't leave a partial or duplicated
+object.
+
+The provider is the only layer that retries. Clients built by `GcsClientFactory` send each HTTP request once
+(`ConfigurableMessageHandler.NumTries = 1`), which turns off the Google SDK's retry of metadata calls and its
+in-session resume of resumable uploads, and metadata requests also pass `RetryOptions.Never`. Two consequences:
+
+- A transient failure part-way through a large upload restarts the upload after a backoff instead of resuming the
+  session immediately.
+- If you subclass `GcsClientFactory` and build your own `StorageClient`, set
+  `client.Service.HttpClient.MessageHandler.NumTries = 1` on it. Otherwise the SDK's upload resume runs inside each
+  provider attempt and the attempts multiply.
+
+A `GcsWriteStream` that you construct directly, rather than through `OpenWriteAsync`, uploads once without retrying.
+
 ## Important Notes
 
 - **Upload Chunking** - For large objects, uploads are split into 256 KiB chunks. The chunk size parameter must be a positive multiple of 256 KiB.
-- **Transient Errors** - The provider automatically retries HTTP 429 (rate limit) and 5xx errors with exponential backoff when `RetrySettings` is configured.
+- **Transient Errors** - The provider retries transient failures according to `Resilience`. See [Resilience](#resilience).
 - **Streaming** - Use `OpenReadAsync` and `OpenWriteAsync` for efficient handling of large objects without loading them entirely into memory.
 - **Metadata Freshness** - Object metadata may be cached briefly. For critical operations requiring current state, consider adding a small delay between checks.
 - **Special Characters** - Object names with special characters must be URL-encoded in URIs.

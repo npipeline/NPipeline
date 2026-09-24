@@ -1,6 +1,6 @@
 ---
 title: "Google Cloud Storage Provider"
-description: "Read and write files in Google Cloud Storage with Application Default Credentials, resumable uploads, and retry."
+description: "Read and write files in Google Cloud Storage with Application Default Credentials, resumable uploads, and resilient retries."
 order: 5
 ---
 
@@ -8,7 +8,7 @@ order: 5
 
 > **Prerequisites:** [Storage Providers Overview](index.md)
 
-The `NPipeline.StorageProviders.Gcp` package implements `IStorageProvider` for [Google Cloud Storage](https://cloud.google.com/storage). Supports Application Default Credentials (ADC), explicit service account credentials, resumable uploads with configurable chunk sizes, and exponential backoff retry.
+The `NPipeline.StorageProviders.Gcp` package implements `IStorageProvider` for [Google Cloud Storage](https://cloud.google.com/storage). Supports Application Default Credentials (ADC), explicit service account credentials, resumable uploads with configurable chunk sizes, and retries with jittered exponential backoff.
 
 ## Installation
 
@@ -81,18 +81,48 @@ var options = new GcsStorageProviderOptions
 | `UploadChunkSizeBytes` | `int` | `16 MB` | Resumable upload chunk size (must be multiple of 256 KiB) |
 | `UploadBufferThresholdBytes` | `long` | `64 MB` | Reserved for future use |
 | `ClientCacheSizeLimit` | `int` | `100` | Max cached `StorageClient` instances |
-| `RetrySettings` | `GcsRetrySettings?` | `null` | Retry configuration |
+| `Resilience` | `Resilience` | `GcsStorageResilience.Default` | Retries and timeouts for each request. See [Resilience](#resilience) |
 
-### Retry Settings
+## Resilience
 
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `InitialDelay` | `TimeSpan` | `1s` | First retry delay |
-| `MaxDelay` | `TimeSpan` | `32s` | Maximum retry delay |
-| `DelayMultiplier` | `double` | `2.0` | Exponential backoff multiplier |
-| `MaxAttempts` | `int` | `3` | Total attempts (0 = disable) |
-| `RetryOnRateLimit` | `bool` | `true` | Retry on HTTP 429 |
-| `RetryOnServerErrors` | `bool` | `true` | Retry on HTTP 5xx |
+The provider sends every GCS request (object metadata, each page of a listing, downloads, and uploads) through
+[NResilience](https://github.com/nresilience/NResilience). The `Resilience` option configures it. The default,
+`GcsStorageResilience.Default`, does the following:
+
+- Makes up to three attempts (two retries), the same count as the Google SDK's own default retry.
+- Retries network failures, HTTP client timeouts, 408, and 5xx responses. A 429 response is treated as throttling:
+  it takes the throttled backoff curve and honors `Retry-After` when the server sends one. Other 4xx responses, such
+  as 403 and 404, are not retried.
+- Waits with exponential backoff and full jitter, from 1 second up to 32 seconds, so parallel writers don't retry
+  in lockstep.
+- Has no attempt timeout and no overall deadline, because a large download or upload can run for a long time. The
+  SDK's HTTP client timeout (100 seconds by default) still bounds each HTTP request.
+
+To change a setting, derive a policy with a `with` expression. To turn retries off, use `Resilience.None`:
+
+```csharp
+services.AddGcsStorageProvider(options =>
+{
+    options.Resilience = GcsStorageResilience.Default with { Attempts = 5 };
+    // or: options.Resilience = Resilience.None;
+});
+```
+
+A retried download starts again with an empty buffer, and a retried upload re-sends the whole object from its
+first byte in a new upload session. Uploading an object replaces it, so a retry can't leave a partial or duplicated
+object.
+
+The provider is the only layer that retries. Clients built by `GcsClientFactory` send each HTTP request once
+(`ConfigurableMessageHandler.NumTries = 1`), which turns off the Google SDK's retry of metadata calls and its
+in-session resume of resumable uploads, and metadata requests also pass `RetryOptions.Never`. Two consequences:
+
+- A transient failure part-way through a large upload restarts the upload after a backoff instead of resuming the
+  session immediately.
+- If you subclass `GcsClientFactory` and build your own `StorageClient`, set
+  `client.Service.HttpClient.MessageHandler.NumTries = 1` on it. Otherwise the SDK's upload resume runs inside each
+  provider attempt and the attempts multiply.
+
+A `GcsWriteStream` that you construct directly, rather than through `OpenWriteAsync`, uploads once without retrying.
 
 ## Dependency Injection
 
@@ -102,11 +132,7 @@ services.AddGcsStorageProvider();
 services.AddGcsStorageProvider(options =>
 {
     options.DefaultProjectId = "my-project";
-    options.RetrySettings = new GcsRetrySettings
-    {
-        MaxAttempts = 5,
-        RetryOnRateLimit = true
-    };
+    options.Resilience = GcsStorageResilience.Default with { Attempts = 5 };
 });
 ```
 
@@ -115,7 +141,7 @@ Registers: `IStorageProvider`, `IStorageProviderMetadataProvider`
 ## Features
 
 - **Resumable uploads** - large files upload in chunks (256 KiB aligned)
-- **Exponential backoff** - configurable retry with rate-limit and server error handling
+- **Retries** - jittered exponential backoff for network failures, 408, 429 (honoring `Retry-After`), and 5xx
 - **Client caching** - `StorageClient` instances cached per project; LRU eviction
 - **Metadata** - `Size`, `LastModified`, `ContentType`, `ETag`
 

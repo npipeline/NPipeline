@@ -9,6 +9,7 @@ using NPipeline.Execution;
 using NPipeline.Extensions.Testing;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
+using NPipeline.Reliability;
 
 namespace NPipeline.Benchmarks.Benchmarks;
 
@@ -53,18 +54,16 @@ public class MicroOptimizationBenchmarks
     // ------------------------------------------------------------------------
 
     [Benchmark(Description = "Direct: Task.FromResult")]
-    public Task Direct_Task_FromResult()
-    {
+    public Task Direct_Task_FromResult() =>
+
         // Direct comparison of the micro-optimization
-        return Task.FromResult(ItemCount);
-    }
+        Task.FromResult(ItemCount);
 
     [Benchmark(Description = "Direct: ValueTask.AsTask")]
-    public Task Direct_ValueTask_AsTask()
-    {
+    public Task Direct_ValueTask_AsTask() =>
+
         // Direct comparison of the previous implementation
-        return new ValueTask<int>(ItemCount).AsTask();
-    }
+        new ValueTask<int>(ItemCount).AsTask();
 
     // ------------------------------------------------------------------------
     // 3) Memory allocation patterns
@@ -152,8 +151,8 @@ public class MicroOptimizationBenchmarks
             var t = b.AddTransform<PassThroughTransformNode<int, int>, int, int>("t");
             var sink = b.AddSink<BlackHoleSink, int>("sink");
 
-            // Wrap transform with resilient execution strategy
-            b.WithResilience(t);
+            // Restarts wrap the transform in the node restart strategy
+            b.WithResilience(t, o => o with { NodeRestart = new NodeRestartOptions { MaxRestarts = 1 } });
 
             b.Connect(src, t).Connect(t, sink);
         }

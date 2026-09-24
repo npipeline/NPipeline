@@ -24,9 +24,8 @@ public sealed class PostgresCheckpointStorage : DatabaseCheckpointStorage
     }
 
     /// <inheritdoc />
-    protected override string GetCreateTableSql()
-    {
-        return $@"
+    protected override string GetCreateTableSql() =>
+        $@"
             CREATE TABLE IF NOT EXISTS {QuotedTableName} (
                 id BIGSERIAL PRIMARY KEY,
                 pipeline_id VARCHAR(255) NOT NULL,
@@ -41,12 +40,10 @@ public sealed class PostgresCheckpointStorage : DatabaseCheckpointStorage
             
             CREATE INDEX IF NOT EXISTS {QuotedTableName}_pipeline_id_idx ON {QuotedTableName}(pipeline_id);
             CREATE INDEX IF NOT EXISTS {QuotedTableName}_updated_at_idx ON {QuotedTableName}(updated_at);";
-    }
 
     /// <inheritdoc />
-    protected override string GetUpsertSql()
-    {
-        return $@"
+    protected override string GetUpsertSql() =>
+        $@"
             INSERT INTO {QuotedTableName} (pipeline_id, node_id, checkpoint_value, checkpoint_timestamp, metadata, created_at, updated_at)
             VALUES (@pipelineId, @nodeId, @value, @timestamp, @metadata, @createdAt, @updatedAt)
             ON CONFLICT (pipeline_id, node_id) 
@@ -55,5 +52,4 @@ public sealed class PostgresCheckpointStorage : DatabaseCheckpointStorage
                 checkpoint_timestamp = EXCLUDED.checkpoint_timestamp,
                 metadata = EXCLUDED.metadata,
                 updated_at = EXCLUDED.updated_at;";
-    }
 }

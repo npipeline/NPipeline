@@ -62,35 +62,36 @@ public class NestedCompositionTests
 
     private sealed class IntSource : ISourceNode<int>, IAsyncDisposable
     {
-        public IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
-        {
-            return new InMemoryDataStream<int>([1, 2, 3], "IntSource");
-        }
-
         public ValueTask DisposeAsync()
         {
             GC.SuppressFinalize(this);
             return ValueTask.CompletedTask;
         }
+
+        public IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken) => new InMemoryDataStream<int>([1, 2, 3], "IntSource");
     }
 
     private sealed class SmallIntSource : ISourceNode<int>, IAsyncDisposable
     {
-        public IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
-        {
-            return new InMemoryDataStream<int>([1, 2], "SmallIntSource");
-        }
-
         public ValueTask DisposeAsync()
         {
             GC.SuppressFinalize(this);
             return ValueTask.CompletedTask;
         }
+
+        public IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken) =>
+            new InMemoryDataStream<int>([1, 2], "SmallIntSource");
     }
 
     private sealed class CollectorSink : ISinkNode<int>, IAsyncDisposable
     {
         public static readonly List<int> CollectedValues = [];
+
+        public ValueTask DisposeAsync()
+        {
+            GC.SuppressFinalize(this);
+            return ValueTask.CompletedTask;
+        }
 
         public async Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken cancellationToken)
         {
@@ -101,20 +102,12 @@ public class NestedCompositionTests
                 CollectedValues.Add(item);
             }
         }
-
-        public ValueTask DisposeAsync()
-        {
-            GC.SuppressFinalize(this);
-            return ValueTask.CompletedTask;
-        }
     }
 
     private sealed class DoubleTransform : TransformNode<int, int>
     {
-        public override ValueTask<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult<int>(input * 2);
-        }
+        public override ValueTask<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(input * 2);
     }
 
     // Inner sub-pipeline (multiplies by 2)
@@ -251,7 +244,7 @@ public class NestedCompositionTests
                 ? value?.ToString()
                 : null;
 
-            return ValueTask.FromResult<int>(input);
+            return ValueTask.FromResult(input);
         }
     }
 

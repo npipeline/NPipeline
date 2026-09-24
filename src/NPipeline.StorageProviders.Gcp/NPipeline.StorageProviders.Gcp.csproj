@@ -10,6 +10,11 @@
         <PackageReference Include="Google.Cloud.Storage.V1"/>
         <PackageReference Include="Google.Apis.Auth"/>
         <PackageReference Include="Microsoft.Extensions.DependencyInjection"/>
+        <PackageReference Include="NResilience"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="NPipeline.StorageProviders.Gcp.Tests"/>
     </ItemGroup>
 
     <ItemGroup>

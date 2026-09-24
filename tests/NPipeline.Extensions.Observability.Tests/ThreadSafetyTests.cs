@@ -426,20 +426,11 @@ public sealed class ThreadSafetyTests
         public TestMetricsSink NodeMetricsSink { get; } = new();
         public TestPipelineMetricsSink PipelineMetricsSink { get; } = new();
 
-        public IObservabilityCollector ResolveObservabilityCollector()
-        {
-            throw new NotImplementedException();
-        }
+        public IObservabilityCollector ResolveObservabilityCollector() => throw new NotImplementedException();
 
-        public IMetricsSink ResolveMetricsSink()
-        {
-            return NodeMetricsSink;
-        }
+        public IMetricsSink ResolveMetricsSink() => NodeMetricsSink;
 
-        public IPipelineMetricsSink ResolvePipelineMetricsSink()
-        {
-            return PipelineMetricsSink;
-        }
+        public IPipelineMetricsSink ResolvePipelineMetricsSink() => PipelineMetricsSink;
     }
 
     private sealed class TestMetricsSink : IMetricsSink

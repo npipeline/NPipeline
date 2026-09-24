@@ -102,9 +102,8 @@ public record TransformationLineage(
     Dictionary<string, object> Metadata
 )
 {
-    public static TransformationLineage Create<T>(string sourceNode, string targetNode, string operation, T data)
-    {
-        return new TransformationLineage(
+    public static TransformationLineage Create<T>(string sourceNode, string targetNode, string operation, T data) =>
+        new(
             Guid.NewGuid(),
             sourceNode,
             targetNode,
@@ -116,7 +115,6 @@ public record TransformationLineage(
                 ["Data"] = data?.ToString() ?? "null",
             }
         );
-    }
 }
 
 /// <summary>

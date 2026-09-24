@@ -110,10 +110,8 @@ public sealed class ResourceDisposalTests : IAsyncLifetime
             await ValueTask.CompletedTask;
         }
 
-        public override ValueTask<string> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult<string>(item + "_transformed");
-        }
+        public override ValueTask<string> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken) =>
+            ValueTask.FromResult<string>(item + "_transformed");
     }
 
     /// <summary>
@@ -177,10 +175,8 @@ public sealed class ResourceDisposalTests : IAsyncLifetime
             await ValueTask.CompletedTask;
         }
 
-        public override ValueTask<string> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
-        {
+        public override ValueTask<string> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken) =>
             throw new InvalidOperationException("Test exception from transform");
-        }
     }
 
     #endregion
@@ -504,18 +500,12 @@ public sealed class ResourceDisposalTests : IAsyncLifetime
 
     private sealed class ThrowingAsyncDisposable : IAsyncDisposable
     {
-        public ValueTask DisposeAsync()
-        {
-            throw new InvalidOperationException("Test dispose exception");
-        }
+        public ValueTask DisposeAsync() => throw new InvalidOperationException("Test dispose exception");
     }
 
     private sealed class TestPipeWrapper(IAsyncDisposable inner) : IAsyncDisposable
     {
-        public ValueTask DisposeAsync()
-        {
-            return inner.DisposeAsync();
-        }
+        public ValueTask DisposeAsync() => inner.DisposeAsync();
     }
 
     #endregion

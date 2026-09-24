@@ -13,6 +13,7 @@ public sealed class JevChoiceClassifierTests
                 ["billing"] = 0.3,
                 ["technical"] = 0.7,
             })));
+
         var options = new JevChoiceClassifierOptionsBuilder<Ticket, RouteLabel>()
             .WithState(ticket => new { ticket.Message })
             .WithInstructions("Which team?")
@@ -20,6 +21,7 @@ public sealed class JevChoiceClassifierTests
             .AddChoice(RouteLabel.Technical, "technical", "Bugs")
             .WithModel("jev-1.13.0")
             .Build();
+
         var classifier = new JevChoiceClassifier<Ticket, RouteLabel>(client, options);
 
         var result = await classifier.ClassifyAsync(new Ticket("site is down"));
@@ -44,6 +46,7 @@ public sealed class JevChoiceClassifierTests
                 ["technical"] = 0,
                 ["unknown"] = 1,
             })));
+
         var classifier = CreateClassifier(client);
 
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
@@ -72,25 +75,24 @@ public sealed class JevChoiceClassifierTests
             .AddChoice(RouteLabel.Billing, "billing")
             .AddChoice(RouteLabel.Technical, "technical")
             .Build();
+
         return new JevChoiceClassifier<Ticket, RouteLabel>(client, options);
     }
 
-    private static JevSystemOneResponse Response(JevChoiceAnswer answer)
-    {
-        return new JevSystemOneResponse(
+    private static JevSystemOneResponse Response(JevChoiceAnswer answer) =>
+        new(
             "jev-1.13.0",
             new Dictionary<string, JevAnswer> { ["route"] = answer },
             new JevUsage(10, 2))
         {
             RequestId = "request-1",
         };
-    }
 
     private sealed class FakeJevClient(JevSystemOneResponse response) : IJevClient
     {
-        public string DefaultModel => "jev-latest";
         public JsonNode? ObservedState { get; private set; }
         public string? ObservedModel { get; private set; }
+        public string DefaultModel => "jev-latest";
 
         public ValueTask<JevSystemOneResponse> EvaluateAsync(
             JsonNode? state,

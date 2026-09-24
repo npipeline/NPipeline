@@ -6,6 +6,7 @@ using NPipeline.Connectors.Attributes;
 using NPipeline.Connectors.Snowflake.Configuration;
 using NPipeline.Connectors.Snowflake.Exceptions;
 using NPipeline.Connectors.Snowflake.Mapping;
+using NPipeline.Connectors.Snowflake.Reliability;
 using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Models;
 
@@ -28,6 +29,7 @@ internal sealed class SnowflakeBatchWriter<T> : IDatabaseWriter<T>
     private readonly int _parameterCount;
     private readonly Func<T, IEnumerable<DatabaseParameter>>? _parameterMapper;
     private readonly List<object?[]> _pendingRows;
+    private readonly ConnectionResilience _resilience;
     private readonly string _schema;
     private readonly string _tableName;
     private readonly Func<T, object?[]> _valueFactory;
@@ -58,6 +60,7 @@ internal sealed class SnowflakeBatchWriter<T> : IDatabaseWriter<T>
         _pendingRows = new List<object?[]>(_flushThreshold);
         _insertSql = BuildInsertSql();
         _mergeSqlTemplate = BuildMergeSqlTemplate();
+        _resilience = new ConnectionResilience(_configuration.Resilience, _connection);
     }
 
     /// <inheritdoc />
@@ -87,26 +90,17 @@ internal sealed class SnowflakeBatchWriter<T> : IDatabaseWriter<T>
         if (_pendingRows.Count == 0)
             return;
 
-        var attempt = 0;
-        var maxAttempts = _configuration.MaxRetryAttempts + 1;
-
-        while (attempt < maxAttempts)
+        try
         {
-            try
-            {
-                await ExecuteFlushAsync(cancellationToken).ConfigureAwait(false);
-                return;
-            }
-            catch (Exception ex) when (attempt < maxAttempts - 1 && SnowflakeExceptionHandler.ShouldRetry(ex, _configuration))
-            {
-                attempt++;
-                var delay = SnowflakeExceptionHandler.GetRetryDelay(ex, attempt, _configuration);
-                await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
-            }
+            // The flush is one INSERT or MERGE statement, which commits every row or none, so it is safe to retry.
+            await _resilience.RunAsync(ExecuteFlushAsync, cancellationToken).ConfigureAwait(false);
         }
-
-        // All retries failed
-        await ExecuteFlushAsync(cancellationToken).ConfigureAwait(false);
+        finally
+        {
+            // Written, or reported to the caller as failed: either way the rows must not ride along in the next flush
+            // or be sent again when the writer is disposed.
+            _pendingRows.Clear();
+        }
     }
 
     /// <inheritdoc />
@@ -115,7 +109,7 @@ internal sealed class SnowflakeBatchWriter<T> : IDatabaseWriter<T>
         await FlushAsync().ConfigureAwait(false);
     }
 
-    private async Task ExecuteFlushAsync(CancellationToken cancellationToken = default)
+    private async Task ExecuteFlushAsync(CancellationToken cancellationToken)
     {
         var valueClauses = new List<string>(_pendingRows.Count);
         var paramIndex = 0;
@@ -146,15 +140,12 @@ internal sealed class SnowflakeBatchWriter<T> : IDatabaseWriter<T>
             : _insertSql + string.Join(", ", valueClauses);
 
         _ = await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-        _pendingRows.Clear();
     }
 
-    private bool ShouldUseMerge()
-    {
-        return _configuration.UseUpsert
-               && _configuration.UpsertKeyColumns != null
-               && _configuration.UpsertKeyColumns.Length > 0;
-    }
+    private bool ShouldUseMerge() =>
+        _configuration.UseUpsert
+        && _configuration.UpsertKeyColumns != null
+        && _configuration.UpsertKeyColumns.Length > 0;
 
     /// <summary>
     ///     Builds the INSERT SQL statement using double-quote identifier quoting (Snowflake convention).

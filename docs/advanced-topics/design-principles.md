@@ -10,11 +10,11 @@ These principles explain *why* NPipeline is built the way it is. Understanding t
 
 ## Streaming-First
 
-Data flows item-by-item through `IAsyncEnumerable<T>`. Nothing is buffered in memory unless the user explicitly opts in (materialization, batching, in-memory streams).
+Data flows item-by-item through `IAsyncEnumerable<T>`. Nothing is buffered in memory unless the user explicitly opts in (the node restart replay window, batching, in-memory streams).
 
 **Why:** Pipelines often process datasets larger than available memory. Streaming lets you process a 10GB CSV file with constant memory usage.
 
-**Implication for contributors:** Never collect an entire stream into a list as a convenience. If a feature requires buffering, make it opt-in with a configurable cap (see `MaxMaterializedItems` and `CappedReplayableDataStream<T>`).
+**Implication for contributors:** Never collect an entire stream into a list as a convenience. If a feature requires buffering, make it opt-in, hold only what it needs, and bound it with backpressure rather than an error. For an example, see `NodeRestartOptions.MaxReplayWindow`: node restart holds only the items between the checkpoint and the read head, and stops reading its input when the window is full.
 
 ## Lazy Evaluation
 
@@ -22,7 +22,7 @@ Source nodes don't produce items until the downstream consumer requests them. Tr
 
 **Why:** Lazy evaluation enables backpressure for free. A slow sink automatically slows down the source without explicit flow control logic.
 
-**Implication for contributors:** Don't eagerly enumerate streams in execution strategies unless required for correctness (e.g., materialization for restart). Use `await foreach` and yield results as `IAsyncEnumerable<T>`.
+**Implication for contributors:** Don't eagerly enumerate streams in execution strategies. Even node restart reads its input lazily and holds only the items it might replay. Use `await foreach` and yield results as `IAsyncEnumerable<T>`.
 
 ## Type Safety at the Graph Level
 
@@ -34,7 +34,7 @@ Node connections are validated at build time through typed handles (`SourceNodeH
 
 ## Immutable Configuration
 
-All configuration records (`PipelineRetryOptions`, `PipelineCircuitBreakerOptions`, `LineageOptions`, etc.) are `sealed record` types. They're modified using `with` expressions, never mutation.
+All configuration records (`PipelineResilienceOptions`, `ItemRetryOptions`, `NodeRestartOptions`, `CircuitBreakerOptions`, `LineageOptions`, and others) are `sealed record` types. They're modified using `with` expressions, never mutation.
 
 **Why:** Immutability prevents configuration changes during execution from creating race conditions. It also enables safe sharing across threads.
 
@@ -42,11 +42,11 @@ All configuration records (`PipelineRetryOptions`, `PipelineCircuitBreakerOption
 
 ## Fail-Fast Defaults
 
-The default resilience policy returns `Fail` for all failure types. No items are silently skipped or retried. The user must explicitly opt into error recovery.
+The default resilience policy carries out the node's resilience options exactly and adds no rules of its own. Under the `Default` optimization profile, a transform retries a transient item failure three times with exponential backoff, and a permanent failure fails at once. Under `HighThroughput`, nothing is retried. In either profile, nothing is skipped, dead-lettered, or restarted until you opt in.
 
 **Why:** Silent data loss is worse than a loud failure. In data pipelines, a dropped item that nobody notices can corrupt downstream reports, analytics, or databases.
 
-**Implication for contributors:** New features should default to the strictest (safest) behavior. Permissive behavior requires explicit opt-in.
+**Implication for contributors:** New features should default to the strictest (safest) behavior. Permissive behavior requires explicit opt-in. Retrying transient item failures is the only recovery that's on by default, and it never drops an item: when the retries run out, the node fails.
 
 ## Zero-Allocation Hot Paths
 

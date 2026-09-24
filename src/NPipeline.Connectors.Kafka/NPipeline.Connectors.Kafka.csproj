@@ -32,11 +32,16 @@
         <PackageReference Include="Confluent.SchemaRegistry.Serdes.Avro"/>
         <PackageReference Include="Confluent.SchemaRegistry.Serdes.Protobuf"/>
         <PackageReference Include="Microsoft.Extensions.Logging.Abstractions"/>
+        <PackageReference Include="NResilience"/>
     </ItemGroup>
 
     <ItemGroup>
         <ProjectReference Include="..\NPipeline\NPipeline.csproj"/>
         <ProjectReference Include="..\NPipeline.Connectors\NPipeline.Connectors.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="NPipeline.Connectors.Kafka.Tests"/>
     </ItemGroup>
 
     <ItemGroup>

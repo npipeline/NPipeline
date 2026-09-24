@@ -77,24 +77,19 @@ public class CompositeErrorHandlingTests
 
     private sealed class ErrorSource : ISourceNode<int>, IAsyncDisposable
     {
-        public IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
-        {
-            return new InMemoryDataStream<int>([1], "ErrorSource");
-        }
-
         public ValueTask DisposeAsync()
         {
             GC.SuppressFinalize(this);
             return ValueTask.CompletedTask;
         }
+
+        public IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken) => new InMemoryDataStream<int>([1], "ErrorSource");
     }
 
     private sealed class ErrorTransform : TransformNode<int, int>
     {
-        public override ValueTask<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
-        {
+        public override ValueTask<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken) =>
             throw new InvalidOperationException("Test error in sub-pipeline");
-        }
     }
 
     private sealed class ErrorSubPipeline : IPipelineDefinition
@@ -129,18 +124,18 @@ public class CompositeErrorHandlingTests
 
     private sealed class TestSink : ISinkNode<int>, IAsyncDisposable
     {
+        public ValueTask DisposeAsync()
+        {
+            GC.SuppressFinalize(this);
+            return ValueTask.CompletedTask;
+        }
+
         public async Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken cancellationToken)
         {
             await foreach (var _ in input.WithCancellation(cancellationToken))
             {
                 // Consume items
             }
-        }
-
-        public ValueTask DisposeAsync()
-        {
-            GC.SuppressFinalize(this);
-            return ValueTask.CompletedTask;
         }
     }
 
@@ -196,16 +191,13 @@ public class CompositeErrorHandlingTests
 
     private sealed class EmptySource : ISourceNode<int>, IAsyncDisposable
     {
-        public IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
-        {
-            return new InMemoryDataStream<int>([], "EmptySource");
-        }
-
         public ValueTask DisposeAsync()
         {
             GC.SuppressFinalize(this);
             return ValueTask.CompletedTask;
         }
+
+        public IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken) => new InMemoryDataStream<int>([], "EmptySource");
     }
 
     private sealed class EmptyOutputParentPipeline : IPipelineDefinition
@@ -229,24 +221,20 @@ public class CompositeErrorHandlingTests
 
     private sealed class NullableSource : ISourceNode<string?>, IAsyncDisposable
     {
-        public IDataStream<string?> OpenStream(PipelineContext context, CancellationToken cancellationToken)
-        {
-            return new InMemoryDataStream<string?>(["test"], "NullableSource");
-        }
-
         public ValueTask DisposeAsync()
         {
             GC.SuppressFinalize(this);
             return ValueTask.CompletedTask;
         }
+
+        public IDataStream<string?> OpenStream(PipelineContext context, CancellationToken cancellationToken) =>
+            new InMemoryDataStream<string?>(["test"], "NullableSource");
     }
 
     private sealed class NullReturningTransform : TransformNode<string?, string?>
     {
-        public override ValueTask<string?> TransformAsync(string? input, PipelineContext context, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult<string?>(null);
-        }
+        public override ValueTask<string?> TransformAsync(string? input, PipelineContext context, CancellationToken cancellationToken) =>
+            ValueTask.FromResult<string?>(null);
     }
 
     private sealed class NullableSubPipeline : IPipelineDefinition
@@ -266,18 +254,18 @@ public class CompositeErrorHandlingTests
     {
         public static string? ReceivedValue { get; private set; }
 
+        public ValueTask DisposeAsync()
+        {
+            GC.SuppressFinalize(this);
+            return ValueTask.CompletedTask;
+        }
+
         public async Task ConsumeAsync(IDataStream<string?> input, PipelineContext context, CancellationToken cancellationToken)
         {
             await foreach (var item in input.WithCancellation(cancellationToken))
             {
                 ReceivedValue = item;
             }
-        }
-
-        public ValueTask DisposeAsync()
-        {
-            GC.SuppressFinalize(this);
-            return ValueTask.CompletedTask;
         }
     }
 
@@ -315,10 +303,8 @@ public class CompositeErrorHandlingTests
 
     private sealed class ToStringTransform : TransformNode<int, string>
     {
-        public override ValueTask<string> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult<string>(input.ToString());
-        }
+        public override ValueTask<string> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken) =>
+            ValueTask.FromResult<string>(input.ToString());
     }
 
     private sealed class TypeMismatchParentPipeline : IPipelineDefinition

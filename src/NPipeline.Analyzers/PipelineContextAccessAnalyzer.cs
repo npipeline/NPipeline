@@ -187,11 +187,10 @@ public sealed class PipelineContextAccessAnalyzer : DiagnosticAnalyzer
     /// <summary>
     ///     Determines if property is nullable.
     /// </summary>
-    private static bool IsNullableProperty(string propertyName)
-    {
+    private static bool IsNullableProperty(string propertyName) =>
+
         // Check for direct access to nullable properties
-        return propertyName is "DeadLetterSink" or "StateManager" or "StatefulRegistry";
-    }
+        propertyName is "DeadLetterSink" or "StateManager" or "StatefulRegistry";
 
     /// <summary>
     ///     Determines if null-conditional operator is used.
@@ -276,9 +275,7 @@ public sealed class PipelineContextAccessAnalyzer : DiagnosticAnalyzer
     /// <summary>
     ///     Determines if expression is a null literal.
     /// </summary>
-    private static bool IsNullLiteralExpression(ExpressionSyntax expression)
-    {
-        return expression is LiteralExpressionSyntax literal &&
-               literal.Kind() == SyntaxKind.NullLiteralExpression;
-    }
+    private static bool IsNullLiteralExpression(ExpressionSyntax expression) =>
+        expression is LiteralExpressionSyntax literal &&
+        literal.Kind() == SyntaxKind.NullLiteralExpression;
 }

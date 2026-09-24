@@ -126,7 +126,7 @@ sftp://hostname:2222/path/to/file.csv?username=user&password=secret
 | `MaxPoolSize`               | `10`         | Maximum connections in the pool              |
 | `ConnectionIdleTimeout`     | `5 minutes`  | Time before idle connections are cleaned up  |
 | `KeepAliveInterval`         | `30 seconds` | Interval for keep-alive packets              |
-| `ConnectionTimeout`         | `30 seconds` | Timeout for establishing connections         |
+| `ConnectionTimeout`         | `30 seconds` | Timeout for establishing connections (cancellable) |
 | `ValidateServerFingerprint` | `true`       | Whether to validate server fingerprint       |
 | `ExpectedFingerprint`       | `null`       | Expected server fingerprint                  |
 | `ValidateOnAcquire`         | `true`       | Validate connection health before use        |

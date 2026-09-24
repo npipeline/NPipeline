@@ -108,12 +108,10 @@ public class InventoryProcessor : TransformNode<OrderEvent, InventoryUpdate>
     /// </summary>
     /// <param name="productId">The product identifier.</param>
     /// <returns>The current inventory level.</returns>
-    private int GetCurrentInventory(string productId)
-    {
-        return _currentInventory.TryGetValue(productId, out var inventory)
+    private int GetCurrentInventory(string productId) =>
+        _currentInventory.TryGetValue(productId, out var inventory)
             ? inventory
             : 100;
-    }
 
     /// <summary>
     ///     Calculates processing priority based on inventory level.
@@ -136,12 +134,10 @@ public class InventoryProcessor : TransformNode<OrderEvent, InventoryUpdate>
     /// </summary>
     /// <param name="productId">The product identifier.</param>
     /// <returns>The warehouse location identifier.</returns>
-    private string GetProductLocation(string productId)
-    {
-        return _productLocations.TryGetValue(productId, out var location)
+    private string GetProductLocation(string productId) =>
+        _productLocations.TryGetValue(productId, out var location)
             ? location
             : "WAREHOUSE_MAIN";
-    }
 
     /// <summary>
     ///     Assigns warehouse location based on product type.

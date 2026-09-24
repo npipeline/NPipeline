@@ -1,7 +1,6 @@
 using DuckDB.NET.Data;
 using NPipeline.Connectors.DuckDB.Configuration;
 using NPipeline.Connectors.DuckDB.Nodes;
-using NPipeline.DataFlow;
 using NPipeline.Pipeline;
 
 namespace NPipeline.Connectors.DuckDB.Tests;

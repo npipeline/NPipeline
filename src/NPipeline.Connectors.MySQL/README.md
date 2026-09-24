@@ -42,8 +42,7 @@ services.AddMySqlConnector(options =>
     {
         MinPoolSize = 2,
         MaxPoolSize = 20,
-        MaxRetryAttempts = 3,
-        RetryDelay = TimeSpan.FromSeconds(2),
+        Resilience = MySqlConnectorResilience.Default,
     };
 });
 ```
@@ -129,8 +128,7 @@ var sink   = new MySqlSinkNode<Product>(uri, "products");
 | `MaxPoolSize`          | 10       | Maximum open connections in pool              |
 | `WriteStrategy`        | `PerRow` | `PerRow`, `Batch`, `BulkLoad`                 |
 | `BatchSize`            | 100      | Rows per batch (Batch strategy)               |
-| `MaxRetryAttempts`     | 3        | Retry count on transient errors               |
-| `RetryDelay`           | 2 s      | Initial retry back-off                        |
+| `Resilience` | `MySqlConnectorResilience.Default` | How transient failures are retried (see Resilience) |
 | `UseUpsert`            | `false`  | Enable upsert semantics                       |
 | `UpsertKeyColumns`     | `[]`     | Columns forming the upsert key                |
 | `OnDuplicateKeyAction` | `Update` | `Update`, `Ignore`, `Replace`                 |
@@ -138,17 +136,45 @@ var sink   = new MySqlSinkNode<Product>(uri, "products");
 | `ConvertZeroDateTime`  | `true`   | Map MySQL `0000-00-00` to `DateTime.MinValue` |
 | `AllowLoadLocalInfile` | `false`  | Enable `LOAD DATA LOCAL INFILE` (BulkLoad)    |
 
-## Transient Error Handling
+## Resilience
 
-The connector automatically retries on the following MySQL error codes:
+The sink retries transient failures with [NResilience](https://github.com/nresilience/NResilience). The `Resilience`
+property on `MySqlConfiguration` configures it. The default, `MySqlConnectorResilience.Default`, does the following:
 
-| Code | Description                     |
-|------|---------------------------------|
-| 1040 | Too many connections            |
-| 1205 | Lock wait timeout exceeded      |
-| 1213 | Deadlock found                  |
-| 2006 | MySQL server has gone away      |
-| 2013 | Lost connection to MySQL server |
+- Makes up to four attempts (three retries). It replaces `MaxRetryAttempts = 3` and `RetryDelay = 2 s`.
+- Retries lock wait timeouts (1205), deadlocks (1213), and lost connections (2006, 2013).
+- Treats too many connections (1040 and 1203) as throttling, which waits longer: backoff starts at 5 seconds.
+- Doesn't retry other errors, such as a duplicate key or a missing table.
+- Waits with exponential backoff and full jitter, from 2 seconds up to 30 seconds.
+- Has no attempt timeout and no deadline. The driver's own timeout bounds each attempt: `CommandTimeout` for rows and batches, and `BulkLoadTimeout` for bulk loads.
+  A long bulk write isn't cut off by a retry policy's timeout.
+
+Each write strategy retries one unit of work that commits all or nothing, so a retry never inserts rows that an
+earlier attempt committed:
+
+- `PerRow`: one `INSERT` per row.
+- `Batch`: one multi-row statement per flush.
+- `BulkLoad`: one `LOAD DATA LOCAL INFILE` per flush.
+
+Each unit commits all or nothing on a transactional engine such as InnoDB. A non-transactional engine such as MyISAM keeps the rows a failed statement wrote before it failed, so a retry could insert them again. For such tables, turn retries off with `Resilience.None`.
+
+With `DeliverySemantic.ExactlyOnce`, the sink wraps all writes in one transaction. A failure can abort that whole
+transaction, so the writers make one attempt and the sink rolls the transaction back. A batch that fails isn't
+written again when the writer is disposed.
+
+To change a setting, derive a policy with a `with` expression:
+
+```csharp
+var config = new MySqlConfiguration
+{
+    Resilience = MySqlConnectorResilience.Default with { Attempts = 6 },
+};
+```
+
+To turn retries off, use `Resilience.None`.
+
+The connector is the only layer that retries; MySqlConnector doesn't retry commands. Retries aren't logged by the
+connector. To observe them, attach a listener: `MySqlConnectorResilience.Default.WithListener(e => ...)`.
 
 ## Checkpointing
 

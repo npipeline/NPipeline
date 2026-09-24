@@ -22,12 +22,12 @@ public sealed class DataStreamWrapperServiceRouteOptionsTests
         const string routeNodeId = "route";
 
         var source = new NPipeline.DataFlow.DataStreams.InMemoryDataStream<LineagePacket<int>>(
-        [
-            CreatePacket(1),
-            CreatePacket(2),
-            CreatePacket(3),
-            CreatePacket(4),
-        ],
+            [
+                CreatePacket(1),
+                CreatePacket(2),
+                CreatePacket(3),
+                CreatePacket(4),
+            ],
             "Rewrapped_DefaultStream");
 
         var routeOptions = new RouteOptions<int>()
@@ -41,7 +41,7 @@ public sealed class DataStreamWrapperServiceRouteOptionsTests
         var counter = new StatsCounter();
         var service = new DataStreamWrapperService();
 
-        Action act = () =>
+        var act = () =>
         {
             _ = service.WrapWithCountingAndBranching(
                 source,
@@ -62,12 +62,12 @@ public sealed class DataStreamWrapperServiceRouteOptionsTests
         const string routeNodeId = "route";
 
         var source = new NPipeline.DataFlow.DataStreams.InMemoryDataStream<LineagePacket<int>>(
-        [
-            CreatePacket(1),
-            CreatePacket(2),
-            CreatePacket(3),
-            CreatePacket(4),
-        ],
+            [
+                CreatePacket(1),
+                CreatePacket(2),
+                CreatePacket(3),
+                CreatePacket(4),
+            ],
             "Rewrapped_DefaultStream");
 
         var routeOptions = new RouteOptions<int>()
@@ -152,8 +152,5 @@ public sealed class DataStreamWrapperServiceRouteOptionsTests
         return values;
     }
 
-    private static LineagePacket<int> CreatePacket(int value)
-    {
-        return new LineagePacket<int>(value, Guid.NewGuid(), ImmutableArray<string>.Empty);
-    }
+    private static LineagePacket<int> CreatePacket(int value) => new(value, Guid.NewGuid(), ImmutableArray<string>.Empty);
 }

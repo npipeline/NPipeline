@@ -4,7 +4,7 @@ using NPipeline.Connectors.Snowflake.Configuration;
 namespace NPipeline.Connectors.Snowflake.Exceptions;
 
 /// <summary>
-///     Utility methods for handling Snowflake exceptions and implementing retry logic.
+///     Utility methods for translating and describing Snowflake exceptions.
 /// </summary>
 public static class SnowflakeExceptionHandler
 {
@@ -24,48 +24,6 @@ public static class SnowflakeExceptionHandler
         [2043] = "Column not found",
         [100038] = "External function error",
     };
-
-    /// <summary>
-    ///     Determines whether an exception should be retried based on the configuration.
-    /// </summary>
-    /// <param name="exception">The exception to evaluate.</param>
-    /// <param name="configuration">The Snowflake configuration.</param>
-    /// <returns>True if the exception should be retried; otherwise, false.</returns>
-    public static bool ShouldRetry(Exception exception, SnowflakeConfiguration configuration)
-    {
-        if (configuration.MaxRetryAttempts <= 0)
-            return false;
-
-        return SnowflakeTransientErrorDetector.IsTransient(exception);
-    }
-
-    /// <summary>
-    ///     Gets the retry delay for a given attempt using exponential backoff with jitter.
-    /// </summary>
-    /// <param name="exception">The exception that triggered the retry.</param>
-    /// <param name="attemptCount">The current attempt count (1-based).</param>
-    /// <param name="configuration">The Snowflake configuration.</param>
-    /// <returns>The delay before the next retry attempt.</returns>
-    public static TimeSpan GetRetryDelay(Exception exception, int attemptCount, SnowflakeConfiguration configuration)
-    {
-        // Calculate exponential backoff: baseDelay * 2^(attemptCount - 1)
-        var exponentialDelay = TimeSpan.FromSeconds(
-            configuration.RetryDelay.TotalSeconds * Math.Pow(2, attemptCount - 1));
-
-        // Add jitter to avoid thundering herd problem (±25%)
-        var jitterFactor = 0.75 + Random.Shared.NextDouble() * 0.5;
-
-        var delayWithJitter = TimeSpan.FromMilliseconds(
-            exponentialDelay.TotalMilliseconds * jitterFactor);
-
-        // Cap at 60 seconds for cloud service (higher than SqlServer's 30s due to Snowflake latency)
-        const int maxDelaySeconds = 60;
-
-        if (delayWithJitter.TotalSeconds > maxDelaySeconds)
-            delayWithJitter = TimeSpan.FromSeconds(maxDelaySeconds);
-
-        return delayWithJitter;
-    }
 
     /// <summary>
     ///     Handles an exception by either wrapping it in a SnowflakeException or rethrowing it.
@@ -116,12 +74,10 @@ public static class SnowflakeExceptionHandler
     /// </summary>
     /// <param name="errorCode">The Snowflake error code.</param>
     /// <returns>A description of the error, or null if not found.</returns>
-    public static string? GetErrorDescription(int errorCode)
-    {
-        return ErrorDescriptions.TryGetValue(errorCode, out var description)
+    public static string? GetErrorDescription(int errorCode) =>
+        ErrorDescriptions.TryGetValue(errorCode, out var description)
             ? description
             : null;
-    }
 
     /// <summary>
     ///     Determines if an exception represents a connection error.

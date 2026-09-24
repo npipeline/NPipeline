@@ -120,8 +120,5 @@ public sealed class CustomerEnricher : TransformNode<ValidatedCustomer, Enriched
         };
     }
 
-    private static int CalculateLoyaltyPoints(int customerId)
-    {
-        return customerId * 10;
-    }
+    private static int CalculateLoyaltyPoints(int customerId) => customerId * 10;
 }

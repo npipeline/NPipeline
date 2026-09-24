@@ -88,8 +88,6 @@ public static class DuckDBServiceCollectionExtensions
     /// <returns>The service collection for chaining.</returns>
     public static IServiceCollection AddDuckDBInMemory(
         this IServiceCollection services,
-        Action<DuckDBConfiguration>? configure = null)
-    {
-        return services.AddDefaultDuckDBDatabase(null, configure);
-    }
+        Action<DuckDBConfiguration>? configure = null) =>
+        services.AddDefaultDuckDBDatabase(null, configure);
 }

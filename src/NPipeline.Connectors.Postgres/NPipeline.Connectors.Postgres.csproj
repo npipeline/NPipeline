@@ -32,13 +32,8 @@
     </ItemGroup>
 
     <ItemGroup>
-        <Compile Remove="PostgresSourceNode.cs"/>
-        <Compile Remove="PostgresSinkNode.cs"/>
-        <Compile Remove="Nodes/PostgresWriteStrategy.cs"/>
-    </ItemGroup>
-
-    <ItemGroup>
         <PackageReference Include="Npgsql"/>
+        <PackageReference Include="NResilience"/>
     </ItemGroup>
 
     <ItemGroup>

@@ -6,7 +6,7 @@ using NPipeline.Configuration;
 using NPipeline.Execution.Annotations;
 using NPipeline.Graph;
 using NPipeline.Graph.Validation;
-using NPipeline.Lineage;
+using NPipeline.Reliability;
 
 namespace NPipeline.Pipeline;
 
@@ -38,10 +38,12 @@ public sealed partial class PipelineBuilder
             throw new InvalidOperationException(ErrorMessages.PipelineRequiresAtLeastOneNode());
 
         if (_config.ItemLevelLineageEnabled && !Lineage.SupportsItemLevelLineage)
+        {
             throw new InvalidOperationException(
                 "Item-level lineage requires NPipeline.Extensions.Lineage. " +
                 "Install the NPipeline.Extensions.Lineage package and call services.AddNPipelineLineage() " +
                 "in your DI configuration.");
+        }
 
         if (ConfigurationState.GlobalExecutionObserver is not null)
             NodeState.ExecutionAnnotations[ExecutionAnnotationKeys.GlobalExecutionObserver] = ConfigurationState.GlobalExecutionObserver;
@@ -49,8 +51,8 @@ public sealed partial class PipelineBuilder
         // Build configuration objects from builder state
         var (errorHandlingConfig, lineageConfig, executionConfig) = BuildConfigurations();
 
-        // Create the immutable nodes array
-        var nodesList = NodeState.Nodes.Values.ToImmutableArray();
+        // Create the immutable nodes array, with node restart applied to the transforms that configure it
+        var nodesList = WithNodeRestart(NodeState.Nodes.Values, errorHandlingConfig);
 
         // Create a cached frozen dictionary for O(1) node lookups during execution
         var nodeDefinitionMap = nodesList.ToFrozenDictionary(n => n.Id);
@@ -138,8 +140,8 @@ public sealed partial class PipelineBuilder
         // Build configuration objects from builder state
         var (errorHandlingConfig, lineageConfig, executionConfig) = BuildConfigurations();
 
-        // Create the immutable nodes array
-        var nodesList = NodeState.Nodes.Values.ToImmutableArray();
+        // Create the immutable nodes array, with node restart applied to the transforms that configure it
+        var nodesList = WithNodeRestart(NodeState.Nodes.Values, errorHandlingConfig);
 
         // Create a cached frozen dictionary for O(1) node lookups during execution
         var nodeDefinitionMap = nodesList.ToFrozenDictionary(n => n.Id);
@@ -198,15 +200,22 @@ public sealed partial class PipelineBuilder
     /// </summary>
     private ErrorHandlingConfiguration BuildErrorHandlingConfiguration()
     {
-        var retryOptions = _config.RetryOptions;
-        var profileBehavior = OptimizationProfileBehaviorRegistry.For(_config.OptimizationProfile);
+        var profileDefaults = OptimizationProfileBehaviorRegistry.For(_config.OptimizationProfile).ResilienceDefaults;
+        var resilience = BuildResilienceOptions(_config.ConfigureResilience, profileDefaults, "the pipeline");
 
-        if (!_config.RetryExplicitlyConfigured && profileBehavior.AutomaticRetryDefaults is not null)
-            retryOptions = profileBehavior.AutomaticRetryDefaults;
+        ImmutableDictionary<string, PipelineResilienceOptions>? nodeResilience = null;
 
-        var overrideDict = NodeState.RetryOverrides.Count > 0
-            ? NodeState.RetryOverrides.ToImmutableDictionary()
-            : null;
+        if (NodeState.ResilienceOverrides.Count > 0)
+        {
+            var builder = ImmutableDictionary.CreateBuilder<string, PipelineResilienceOptions>();
+
+            foreach (var (nodeId, configure) in NodeState.ResilienceOverrides)
+            {
+                builder[nodeId] = BuildResilienceOptions(configure, resilience, $"node '{nodeId}'");
+            }
+
+            nodeResilience = builder.ToImmutable();
+        }
 
         return new ErrorHandlingConfiguration
         {
@@ -214,19 +223,37 @@ public sealed partial class PipelineBuilder
             ResiliencePolicyType = ConfigurationState.ResiliencePolicyType,
             DeadLetterSink = ConfigurationState.DeadLetterSink,
             DeadLetterSinkType = ConfigurationState.DeadLetterSinkType,
-            RetryOptions = retryOptions,
-            NodeRetryOverrides = overrideDict,
-            CircuitBreakerOptions = _config.CircuitBreakerOptions,
-            CircuitBreakerMemoryOptions = _config.CircuitBreakerMemoryOptions,
+            Resilience = resilience,
+            NodeResilience = nodeResilience,
         };
+    }
+
+    private static PipelineResilienceOptions BuildResilienceOptions(
+        Func<PipelineResilienceOptions, PipelineResilienceOptions>? configure,
+        PipelineResilienceOptions baseline,
+        string owner)
+    {
+        if (configure is null)
+            return baseline;
+
+        var options = configure(baseline)
+                      ?? throw new InvalidOperationException($"The resilience configuration for {owner} returned null.");
+
+        try
+        {
+            return options.Validate();
+        }
+        catch (ArgumentException ex)
+        {
+            throw new InvalidOperationException($"The resilience options for {owner} are invalid: {ex.Message}", ex);
+        }
     }
 
     /// <summary>
     ///     Builds a LineageConfiguration from the current builder state.
     /// </summary>
-    private LineageConfiguration BuildLineageConfiguration()
-    {
-        return new LineageConfiguration
+    private LineageConfiguration BuildLineageConfiguration() =>
+        new()
         {
             ItemLevelLineageEnabled = _config.ItemLevelLineageEnabled,
             LineageSink = ConfigurationState.LineageSink,
@@ -235,21 +262,18 @@ public sealed partial class PipelineBuilder
             PipelineLineageSinkType = ConfigurationState.PipelineLineageSinkType,
             LineageOptions = _config.LineageOptions,
         };
-    }
 
     /// <summary>
     ///     Builds an ExecutionOptionsConfiguration from the current builder state.
     /// </summary>
-    private ExecutionOptionsConfiguration BuildExecutionOptionsConfiguration()
-    {
-        return new ExecutionOptionsConfiguration
+    private ExecutionOptionsConfiguration BuildExecutionOptionsConfiguration() =>
+        new()
         {
             NodeExecutionAnnotations = NodeState.ExecutionAnnotations.Count > 0
                 ? NodeState.ExecutionAnnotations.ToImmutableDictionary()
                 : null,
             Visualizer = ConfigurationState.Visualizer,
         };
-    }
 
     private void WarnIfCompileTimeOptimizationProfileDiffers()
     {

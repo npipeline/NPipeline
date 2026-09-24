@@ -55,7 +55,9 @@ public sealed class CompositeTransformNode<TIn, TOut, TDefinition>
         subContext.RunIdentity.PipelineName = PipelineAttributeHelper.GetPipelineName(typeof(TDefinition));
 
         // Store input item in sub-context
-        subContext.Parameters[CompositeContextKeys.InputItem] = item is null ? DBNull.Value : item;
+        subContext.Parameters[CompositeContextKeys.InputItem] = item is null
+            ? DBNull.Value
+            : item;
 
         var definition = ResolveDefinition();
         await _pipelineRunner.RunAsync(definition, subContext, cancellationToken).ConfigureAwait(false);
@@ -124,16 +126,19 @@ public sealed class CompositeTransformNode<TIn, TOut, TDefinition>
             Tracer: parentContext.Observability.Tracer,
             ErrorHandlerFactory: parentContext.ErrorHandlerFactory,
             LineageFactory: parentContext.Lineage.LineageFactory,
-            ObservabilityFactory: parentContext.Observability.ObservabilityFactory,
-            RetryOptions: parentContext.ExecutionConfiguration.RetryOptions);
+            ObservabilityFactory: parentContext.Observability.ObservabilityFactory);
 
         var subContext = new PipelineContext(config);
         subContext.RunIdentity.PipelineId = Guid.NewGuid();
 
         // Stamp parent linkage for observability
         subContext.Properties[CompositeContextKeys.ParentNodeId] =
-            parentContext.NodeEnvironment.TryGetNodeId(this, out var parentNodeId) ? parentNodeId : string.Empty;
+            parentContext.NodeEnvironment.TryGetNodeId(this, out var parentNodeId)
+                ? parentNodeId
+                : string.Empty;
+
         subContext.Properties[CompositeContextKeys.ParentPipelineId] = parentContext.RunIdentity.PipelineId;
+
         if (parentContext.RunIdentity.PipelineName is not null)
             subContext.Properties[CompositeContextKeys.ParentPipelineName] = parentContext.RunIdentity.PipelineName;
 

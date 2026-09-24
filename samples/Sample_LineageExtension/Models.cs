@@ -85,10 +85,8 @@ public sealed record OrderEvent
     /// </summary>
     public bool IsFlaggedForFraud { get; init; }
 
-    public override string ToString()
-    {
-        return $"OrderEvent #{OrderId}: Customer {CustomerId}, Product {ProductId}, Qty {Quantity}, Total {TotalAmount:C}, Status {Status}";
-    }
+    public override string ToString() =>
+        $"OrderEvent #{OrderId}: Customer {CustomerId}, Product {ProductId}, Qty {Quantity}, Total {TotalAmount:C}, Status {Status}";
 }
 
 /// <summary>
@@ -161,10 +159,7 @@ public sealed record CustomerData
     /// </summary>
     public bool IsVip => LoyaltyTier == LoyaltyTier.Platinum || LoyaltyTier == LoyaltyTier.Gold;
 
-    public override string ToString()
-    {
-        return $"CustomerData #{CustomerId}: {FullName} ({LoyaltyTier}), LTV {LifetimeValue:C}, Orders {OrderCount}";
-    }
+    public override string ToString() => $"CustomerData #{CustomerId}: {FullName} ({LoyaltyTier}), LTV {LifetimeValue:C}, Orders {OrderCount}";
 }
 
 /// <summary>
@@ -216,11 +211,8 @@ public sealed record EnrichedOrder
     /// </summary>
     public DateTime EnrichedAt { get; init; }
 
-    public override string ToString()
-    {
-        return
-            $"EnrichedOrder #{Order.OrderId}: {Customer.FullName}, Original {Order.TotalAmount:C}, Discount {Discount:C}, Final {FinalAmount:C}, Priority {Priority}";
-    }
+    public override string ToString() =>
+        $"EnrichedOrder #{Order.OrderId}: {Customer.FullName}, Original {Order.TotalAmount:C}, Discount {Discount:C}, Final {FinalAmount:C}, Priority {Priority}";
 }
 
 /// <summary>
@@ -259,12 +251,10 @@ public sealed record ValidatedOrder
     /// </summary>
     public DateTime ValidatedAt { get; init; }
 
-    public override string ToString()
-    {
-        return IsValid
+    public override string ToString() =>
+        IsValid
             ? $"ValidatedOrder #{EnrichedOrder.Order.OrderId}: VALID, Final {EnrichedOrder.FinalAmount:C}"
             : $"ValidatedOrder #{EnrichedOrder.Order.OrderId}: INVALID, Errors: {string.Join(", ", ValidationErrors)}";
-    }
 }
 
 /// <summary>
@@ -303,10 +293,8 @@ public sealed record ProcessedOrder
     /// </summary>
     public string? Notes { get; init; }
 
-    public override string ToString()
-    {
-        return $"ProcessedOrder #{ValidatedOrder.EnrichedOrder.Order.OrderId}: Result {Result}, {(Notes != null ? $"Notes: {Notes}" : "")}";
-    }
+    public override string ToString() =>
+        $"ProcessedOrder #{ValidatedOrder.EnrichedOrder.Order.OrderId}: Result {Result}, {(Notes != null ? $"Notes: {Notes}" : "")}";
 }
 
 /// <summary>

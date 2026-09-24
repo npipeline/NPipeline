@@ -11,24 +11,38 @@ public sealed class MetricsCollectingExecutionObserverTests
 {
     private static readonly Guid s_pipelineId = Guid.Parse("11111111-1111-1111-1111-111111111111");
 
+    #region Performance Metrics Guard Tests
+
+    [Fact]
+    public void OnNodeCompleted_ShouldPreserveExistingPerfMetrics_WhenAvgItemMsAlreadySet()
+    {
+        var collector = new ObservabilityCollector(new TestObservabilityFactory());
+        var observer = new MetricsCollectingExecutionObserver(collector);
+        var nodeId = "streamNode";
+        var startTime = DateTimeOffset.UtcNow;
+
+        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", startTime, s_pipelineId));
+        collector.RecordItemMetrics(nodeId, 8, 8, s_pipelineId);
+        collector.RecordPerformanceMetrics(nodeId, 0.38, 2600.0, s_pipelineId);
+
+        observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, "TransformNode", TimeSpan.FromMilliseconds(5), true, null, s_pipelineId));
+
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
+        Assert.NotNull(metrics);
+        Assert.InRange(metrics.AverageItemProcessingMs!.Value, 2550, 2650);
+    }
+
+    #endregion
+
     #region Test Helpers
 
     private sealed class TestObservabilityFactory : IObservabilityFactory
     {
-        public IObservabilityCollector ResolveObservabilityCollector()
-        {
-            throw new NotImplementedException();
-        }
+        public IObservabilityCollector ResolveObservabilityCollector() => throw new NotImplementedException();
 
-        public IMetricsSink ResolveMetricsSink()
-        {
-            throw new NotImplementedException();
-        }
+        public IMetricsSink ResolveMetricsSink() => throw new NotImplementedException();
 
-        public IPipelineMetricsSink ResolvePipelineMetricsSink()
-        {
-            throw new NotImplementedException();
-        }
+        public IPipelineMetricsSink ResolvePipelineMetricsSink() => throw new NotImplementedException();
     }
 
     #endregion
@@ -282,6 +296,7 @@ public sealed class MetricsCollectingExecutionObserverTests
         observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, "TransformNode", TimeSpan.FromMilliseconds(25), true, null, s_pipelineId));
 
         var dataflowEnd = startTime.AddSeconds(2);
+
         observer.OnNodeDataflowCompleted(new NodeDataflowCompleted(
             nodeId,
             "TransformNode",
@@ -314,6 +329,7 @@ public sealed class MetricsCollectingExecutionObserverTests
 
         // Act
         var dataflowEnd = startTime.AddMilliseconds(900);
+
         observer.OnNodeDataflowCompleted(new NodeDataflowCompleted(
             nodeId,
             "TransformNode",
@@ -347,6 +363,7 @@ public sealed class MetricsCollectingExecutionObserverTests
 
         // Dataflow completes before execution completion and before item metrics are available.
         var dataflowEnd = startTime.AddSeconds(2);
+
         observer.OnNodeDataflowCompleted(new NodeDataflowCompleted(
             nodeId,
             "TransformNode",
@@ -421,29 +438,6 @@ public sealed class MetricsCollectingExecutionObserverTests
 
     #endregion
 
-    #region Performance Metrics Guard Tests
-
-    [Fact]
-    public void OnNodeCompleted_ShouldPreserveExistingPerfMetrics_WhenAvgItemMsAlreadySet()
-    {
-        var collector = new ObservabilityCollector(new TestObservabilityFactory());
-        var observer = new MetricsCollectingExecutionObserver(collector);
-        var nodeId = "streamNode";
-        var startTime = DateTimeOffset.UtcNow;
-
-        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", startTime, s_pipelineId));
-        collector.RecordItemMetrics(nodeId, 8, 8, s_pipelineId);
-        collector.RecordPerformanceMetrics(nodeId, 0.38, 2600.0, s_pipelineId);
-
-        observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, "TransformNode", TimeSpan.FromMilliseconds(5), true, null, s_pipelineId));
-
-        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
-        Assert.NotNull(metrics);
-        Assert.InRange(metrics.AverageItemProcessingMs!.Value, 2550, 2650);
-    }
-
-    #endregion
-
     #region OnRetry Tests
 
     [Fact]
@@ -487,6 +481,57 @@ public sealed class MetricsCollectingExecutionObserverTests
         var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Equal(3, metrics.RetryCount); // Should track maximum
+        Assert.Equal(3, metrics.RetryEvents); // Every retry counts, at every layer
+    }
+
+    [Fact]
+    public void RetriesFromEveryLayer_AreCountedByOneCounter()
+    {
+        var collector = new ObservabilityCollector(new TestObservabilityFactory());
+        var observer = new MetricsCollectingExecutionObserver(collector);
+        var failure = new TimeoutException("transient");
+
+        observer.OnRetry(new NodeRetryEvent("node", RetryKind.ItemRetry, 1, failure, s_pipelineId));
+        observer.OnRetry(new NodeRetryEvent("node", RetryKind.ItemRetry, 1, failure, s_pipelineId));
+        observer.OnRetry(new NodeRetryEvent("node", RetryKind.NodeRestart, 1, failure, s_pipelineId));
+        observer.OnRetry(new NodeRetryEvent("node", RetryKind.NodeRetry, 1, failure, s_pipelineId));
+
+        var metrics = collector.GetNodeMetrics("node", s_pipelineId);
+        Assert.NotNull(metrics);
+        Assert.Equal(4, metrics.RetryEvents);
+        Assert.Equal(1, metrics.RetryCount);
+    }
+
+    [Fact]
+    public void OnRetryExhausted_CountsExhaustions()
+    {
+        var collector = new ObservabilityCollector(new TestObservabilityFactory());
+        var observer = new MetricsCollectingExecutionObserver(collector);
+        var failure = new TimeoutException("still down");
+
+        observer.OnRetryExhausted(new RetryExhaustedEvent("node", RetryKind.ItemRetry, 4, failure, s_pipelineId));
+        observer.OnRetryExhausted(new RetryExhaustedEvent("node", RetryKind.NodeRetry, 2, failure, s_pipelineId));
+
+        var metrics = collector.GetNodeMetrics("node", s_pipelineId);
+        Assert.NotNull(metrics);
+        Assert.Equal(2, metrics.RetriesExhausted);
+    }
+
+    [Fact]
+    public void OnCircuitStateChanged_CountsOnlyTransitionsToOpen()
+    {
+        var collector = new ObservabilityCollector(new TestObservabilityFactory());
+        var observer = new MetricsCollectingExecutionObserver(collector);
+
+        observer.OnCircuitStateChanged(new CircuitStateChangedEvent("node", CircuitState.Closed, CircuitState.Open, "tripped", s_pipelineId));
+        observer.OnCircuitStateChanged(new CircuitStateChangedEvent("node", CircuitState.Open, CircuitState.HalfOpen, "timer", s_pipelineId));
+        observer.OnCircuitStateChanged(new CircuitStateChangedEvent("node", CircuitState.HalfOpen, CircuitState.Open, "probe failed", s_pipelineId));
+        observer.OnCircuitStateChanged(new CircuitStateChangedEvent("node", CircuitState.Open, CircuitState.HalfOpen, "timer", s_pipelineId));
+        observer.OnCircuitStateChanged(new CircuitStateChangedEvent("node", CircuitState.HalfOpen, CircuitState.Closed, "recovered", s_pipelineId));
+
+        var metrics = collector.GetNodeMetrics("node", s_pipelineId);
+        Assert.NotNull(metrics);
+        Assert.Equal(2, metrics.CircuitBreakerTrips);
     }
 
     [Fact]

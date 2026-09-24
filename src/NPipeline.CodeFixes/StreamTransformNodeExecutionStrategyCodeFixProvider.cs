@@ -21,10 +21,7 @@ public class StreamTransformNodeExecutionStrategyCodeFixProvider : CodeFixProvid
         ["NP9402"];
 
     /// <inheritdoc />
-    public sealed override FixAllProvider GetFixAllProvider()
-    {
-        return WellKnownFixAllProviders.BatchFixer;
-    }
+    public sealed override FixAllProvider GetFixAllProvider() => WellKnownFixAllProviders.BatchFixer;
 
     /// <inheritdoc />
     public sealed override async Task RegisterCodeFixesAsync(CodeFixContext context)

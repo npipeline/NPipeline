@@ -1,9 +1,11 @@
+using System.Diagnostics.CodeAnalysis;
+using System.Runtime.ExceptionServices;
 using NPipeline.ErrorHandling;
 using NPipeline.Graph;
 using NPipeline.Nodes;
 using NPipeline.Observability.Logging;
 using NPipeline.Pipeline;
-using NPipeline.Resilience;
+using NPipeline.Reliability;
 
 namespace NPipeline.Execution.Services;
 
@@ -54,7 +56,7 @@ public sealed class ErrorHandlingService : IErrorHandlingService
     /// <param name="cancellationToken">Cancellation token for the operation.</param>
     /// <returns>A task that represents asynchronous execution.</returns>
     /// <exception cref="NodeExecutionException">Thrown when the node execution fails after all retries.</exception>
-    /// <exception cref="CircuitBreakerTrippedException">Thrown when the circuit breaker trips due to too many failures.</exception>
+    /// <exception cref="CircuitBreakerOpenException">Thrown when a node's open circuit breaker refuses an item attempt.</exception>
     /// <exception cref="RetryExhaustedException">Thrown when all retry attempts are exhausted.</exception>
     /// <exception cref="OperationCanceledException">Thrown when the operation is canceled.</exception>
     /// <remarks>
@@ -107,62 +109,25 @@ public sealed class ErrorHandlingService : IErrorHandlingService
         }
         catch (Exception ex)
         {
-            // Check if this is a parallel execution scenario where we want to preserve the original exception
-            var isParallelExecution = IsParallelExecution(context);
-
-            // FIRST PRIORITY: Check if there's a RetryExhaustedException in the context that might be related to this failure
-            // This handles cases where an upstream node failed with RetryExhaustedException but the current node
-            // is seeing a different exception (like InvalidOperationException) when trying to process the data
-
-            // Taken, not read: leaving it set would attribute this node's root cause to every later failure too.
-            if (context.ExecutionConfiguration.TakeLastRetryExhaustedException() is { } contextRetryEx)
-                throw new NodeExecutionException(nodeDef.Id, contextRetryEx.Message, contextRetryEx);
-
-            // SECOND PRIORITY: Check if the exception or any of its inner exceptions is a RetryExhaustedException
-            var currentException = ex;
-
-            while (currentException is not null)
+            // A retry-exhausted failure, here or from an upstream node whose stream this node was reading, names the
+            // node and attempts it belongs to, so it is reported as the cause.
+            for (var current = ex; current is not null; current = current.InnerException)
             {
-                if (currentException is RetryExhaustedException)
-                {
-                    // Wrap the RetryExhaustedException in NodeExecutionException with RetryExhaustedException as inner exception
-                    throw new NodeExecutionException(nodeDef.Id, currentException.Message, currentException);
-                }
-
-                currentException = currentException.InnerException;
+                if (current is RetryExhaustedException)
+                    throw new NodeExecutionException(nodeDef.Id, current.Message, current);
             }
 
-            // THIRD PRIORITY: If the exception is a NodeExecutionException, check if it has a RetryExhaustedException as inner exception
-            if (ex is NodeExecutionException nodeEx)
-            {
-                if (nodeEx.InnerException is RetryExhaustedException innerRetryEx)
-                    throw;
-            }
-
-            // FOURTH PRIORITY: If the exception is a RetryExhaustedException, wrap it in NodeExecutionException with RetryExhaustedException as inner exception
-            if (ex is RetryExhaustedException retryEx)
-                throw new NodeExecutionException(nodeDef.Id, retryEx.Message, retryEx);
-
-            // FIFTH PRIORITY: Check if the exception message contains "Retry attempts exhausted" which indicates it's a RetryExhaustedException
-            if (ex.Message.Contains("Retry attempts exhausted"))
-            {
-                // The exception is already a RetryExhaustedException, just wrap it in NodeExecutionException
-                throw new NodeExecutionException(nodeDef.Id, ex.Message, ex);
-            }
-
-            if (isParallelExecution)
-            {
-                // For parallel execution, preserve the original exception type for correct exception propagation semantics
+            // For parallel execution, preserve the original exception type for correct exception propagation semantics
+            if (IsParallelExecution(context))
                 throw;
-            }
 
-            // Wrap other exceptions in NodeExecutionException
             throw new NodeExecutionException(nodeDef.Id, ex.Message, ex);
         }
     }
 
     /// <summary>
-    ///     Internal method that implements the retry logic.
+    ///     Executes the node, and executes it again for as long as the resilience policy answers
+    ///     <see cref="ResilienceDecision.Retry" />.
     /// </summary>
     private static async Task ExecuteWithRetriesInternalAsync(
         NodeDefinition nodeDefinition,
@@ -172,21 +137,27 @@ public sealed class ErrorHandlingService : IErrorHandlingService
         Func<Task> executeAsync,
         CancellationToken cancellationToken)
     {
-        var logger = context.Observability.LoggerFactory.CreateLogger(nameof(ErrorHandlingService));
-
         ArgumentNullException.ThrowIfNull(nodeDefinition);
         ArgumentNullException.ThrowIfNull(node);
         ArgumentNullException.ThrowIfNull(graph);
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(executeAsync);
 
-        var retryCount = 0;
-        var effectiveRetryOptions = RetryOptionsResolver.Resolve(context, nodeDefinition.Id);
-        var maxRetries = effectiveRetryOptions.MaxNodeRestartAttempts;
-        Exception? lastException = null;
+        var options = context.ExecutionConfiguration.GetResilienceOptions(nodeDefinition.Id);
+        var policy = ResilienceRuntime.ResolvePolicy(context, nodeDefinition.Id);
 
-        while (true)
+        // Only a node that could be executed again needs to know whether input reached it; the tracking costs a
+        // wrapper around each of its inputs.
+        var inputFlow = options.NodeRetry.MaxRetries > 0 || policy is not DefaultResiliencePolicy
+            ? context.ExecutionConfiguration.TrackInputFlow(nodeDefinition.Id)
+            : null;
+
+        // attempt is the 1-based number of the execution being made; retries so far is attempt - 1.
+        for (var attempt = 1;; attempt++)
         {
+            Exception failure;
+            inputFlow?.Reset();
+
             try
             {
                 await executeAsync().ConfigureAwait(false);
@@ -198,88 +169,81 @@ public sealed class ErrorHandlingService : IErrorHandlingService
             }
             catch (Exception ex)
             {
-                lastException = ex;
-
-                // Check whether a node exhausted its retries and left the root cause for us to report.
-                if (context.ExecutionConfiguration.TakeLastRetryExhaustedException() is { } contextRetryEx)
-                    throw new NodeExecutionException(nodeDefinition.Id, contextRetryEx.Message, contextRetryEx);
+                failure = ex;
             }
 
-            if (retryCount >= maxRetries)
-                break;
+            var inputConsumed = inputFlow?.HasFlowed == true;
 
-            // Call error handler to decide whether to retry
-            var errorDecision = await HandleNodeErrorAsync(nodeDefinition, node, lastException!, context, cancellationToken).ConfigureAwait(false);
-
-            if (errorDecision != ResilienceDecision.Retry)
+            var decision = await policy.DecideNodeFailureAsync(new NodeFailure
             {
-                // If the last exception was a cancellation, rethrow it rather than wrapping it.
-                if (lastException is OperationCanceledException)
-                    throw lastException;
+                Definition = nodeDefinition,
+                Node = node,
+                Exception = failure,
+                Attempt = attempt,
+                MaxRetries = options.NodeRetry.MaxRetries,
+                IsTransient = options.NodeRetry.Classifier.IsTransient(failure, cancellationToken),
+                InputConsumed = inputConsumed,
+                Context = context,
+            }, cancellationToken).ConfigureAwait(false);
 
-                if (lastException is PipelineException)
-                    throw lastException;
+            // Node retry covers setup only. Once the node has read input, executing it again would read a forward-only
+            // input from wherever it stopped, or from its start, losing or duplicating items, so a Retry is refused.
+            // Transforms recover mid-stream through node restart; sinks and sources through their connector's retries.
+            if (decision != ResilienceDecision.Retry || inputConsumed)
+            {
+                if (attempt > 1 && failure is not OperationCanceledException)
+                    ResilienceRuntime.ReportRetryExhausted(context, nodeDefinition.Id, RetryKind.NodeRetry, attempt, failure);
 
-                // Check if the exception or any of its inner exceptions is a RetryExhaustedException
-                var exToCheck = lastException;
-
-                while (exToCheck is not null)
-                {
-                    if (exToCheck is RetryExhaustedException)
-                        throw new NodeExecutionException(nodeDefinition.Id, exToCheck.Message, exToCheck);
-
-                    exToCheck = exToCheck.InnerException;
-                }
-
-                throw new NodeExecutionException(nodeDefinition.Id, lastException!.Message, lastException);
+                ThrowFinalFailure(nodeDefinition.Id, failure, attempt);
             }
 
-            retryCount++;
+            if (attempt > ResilienceRuntime.MaxPolicyRepeats)
+                throw new NodeExecutionException(nodeDefinition.Id, failure.Message,
+                    ResilienceRuntime.RepeatCeilingExceeded(policy, nodeDefinition.Id, decision, failure));
 
-            // Apply retry delay before retry attempt
-            try
-            {
-                var delay = await context.ExecutionConfiguration.ResiliencePolicy.GetRetryDelayAsync(context, RetryKind.NodeRestart, retryCount, cancellationToken).ConfigureAwait(false);
+            ResilienceRuntime.ReportRetry(context, nodeDefinition.Id, RetryKind.NodeRetry, attempt, failure);
 
-                if (delay > TimeSpan.Zero)
-                {
-                    ErrorHandlingServiceLogMessages.ApplyingRetryDelay(logger, delay.TotalMilliseconds, nodeDefinition.Id, retryCount);
-                    await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
-                }
-            }
-            catch (Exception delayEx)
+            var delay = options.NodeRetry.Backoff.DelayFor(attempt);
+
+            if (delay > TimeSpan.Zero)
             {
-                // Log delay strategy failure but continue with retry
-                ErrorHandlingServiceLogMessages.RetryDelayFailed(logger, delayEx, nodeDefinition.Id);
+                var logger = context.Observability.LoggerFactory.CreateLogger(nameof(ErrorHandlingService));
+                ErrorHandlingServiceLogMessages.ApplyingRetryDelay(logger, delay.TotalMilliseconds, nodeDefinition.Id, attempt);
+
+                // A cancellation during the delay propagates: the node is not executed again.
+                await Task.Delay(delay, options.Time, cancellationToken).ConfigureAwait(false);
             }
         }
+    }
 
-        // The execution loop exits only after capturing a failure.
-        var failureException = lastException!;
+    /// <summary>
+    ///     Throws the failure the node ends with once the policy stops retrying it.
+    /// </summary>
+    /// <param name="nodeId">The node id.</param>
+    /// <param name="failure">The last failure.</param>
+    /// <param name="attempts">How many times the node was executed.</param>
+    [DoesNotReturn]
+    private static void ThrowFinalFailure(string nodeId, Exception failure, int attempts)
+    {
+        if (failure is OperationCanceledException)
+            ExceptionDispatchInfo.Throw(failure);
 
-        // If failure was caused by cancellation, preserve the original OperationCanceledException
-        // instead of wrapping it in a NodeExecutionException. This ensures cancellation propagates
-        // correctly to callers and observers (e.g., OpenTelemetry tests expect OperationCanceledException).
-        if (failureException is OperationCanceledException)
-            throw failureException;
+        // Only a failure that was retried is an exhausted one; a first failure surfaces as itself.
+        if (attempts == 1 && failure is PipelineException)
+            ExceptionDispatchInfo.Throw(failure);
 
-        // Check if the exception or any of its inner exceptions is a RetryExhaustedException
-        var currentException = lastException;
-
-        while (currentException is not null)
+        // A retry-exhausted failure from an inner layer already names its node and attempts.
+        for (var current = failure; current is not null; current = current.InnerException)
         {
-            if (currentException is RetryExhaustedException)
-                throw currentException;
-
-            currentException = currentException.InnerException;
+            if (current is RetryExhaustedException)
+                throw new NodeExecutionException(nodeId, current.Message, current);
         }
 
-        if (failureException is PipelineException)
-            throw failureException;
+        if (attempts == 1)
+            throw new NodeExecutionException(nodeId, failure.Message, failure);
 
-        // Create a RetryExhaustedException when retries are exhausted
-        var retryExhaustedException = new RetryExhaustedException(nodeDefinition.Id, retryCount + 1, failureException);
-        throw new NodeExecutionException(nodeDefinition.Id, retryExhaustedException.Message, retryExhaustedException);
+        var exhausted = new RetryExhaustedException(nodeId, attempts, failure);
+        throw new NodeExecutionException(nodeId, exhausted.Message, exhausted);
     }
 
     /// <summary>
@@ -287,27 +251,5 @@ public sealed class ErrorHandlingService : IErrorHandlingService
     /// </summary>
     /// <param name="context">The pipeline context.</param>
     /// <returns>True if execution is in parallel mode, otherwise false.</returns>
-    private static bool IsParallelExecution(PipelineContext context)
-    {
-        return context.ExecutionConfiguration.IsParallelExecution;
-    }
-
-    /// <summary>
-    ///     Handles a node error by consulting to node's error handler if available.
-    /// </summary>
-    /// <param name="nodeDefinition">The node definition.</param>
-    /// <param name="node">The node instance.</param>
-    /// <param name="exception">The exception that occurred.</param>
-    /// <param name="context">The pipeline context.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>The resilience decision.</returns>
-    private static Task<ResilienceDecision> HandleNodeErrorAsync(
-        NodeDefinition nodeDefinition,
-        INode node,
-        Exception exception,
-        PipelineContext context,
-        CancellationToken cancellationToken)
-    {
-        return context.ExecutionConfiguration.ResiliencePolicy.DecideNodeFailureAsync(nodeDefinition, node, exception, context, cancellationToken);
-    }
+    private static bool IsParallelExecution(PipelineContext context) => context.ExecutionConfiguration.IsParallelExecution;
 }

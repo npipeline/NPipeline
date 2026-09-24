@@ -75,8 +75,5 @@ public interface IAutoObservabilityScope : IDisposable
     ///     The timing breakdown snapshot. Implementations may return a best-effort lock-free snapshot,
     ///     so small transient skew between buckets is possible under concurrent updates.
     /// </returns>
-    NodeTimingBreakdown GetTimingBreakdown()
-    {
-        return NodeTimingBreakdown.Empty;
-    }
+    NodeTimingBreakdown GetTimingBreakdown() => NodeTimingBreakdown.Empty;
 }

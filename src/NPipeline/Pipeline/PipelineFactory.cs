@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using NPipeline.Attributes;
+using NPipeline.Execution.CircuitBreaking;
 using NPipeline.Graph;
 using NPipeline.Lineage;
 
@@ -14,6 +15,11 @@ namespace NPipeline.Pipeline;
 ///     A definition marked <see cref="CacheableGraphAttribute" /> is built once and its graph reused, so the per-run
 ///     cost of <c>Define</c>, the immutable and frozen collections, the child graphs and the full validation rule set
 ///     is paid on the first run only. Everything else is rebuilt per run exactly as before.
+///     <para>
+///         The factory also owns the circuit breakers of every definition it builds, one registry per definition type,
+///         so a node's breaker state survives from one run to the next for as long as the factory lives. Register the
+///         factory as a singleton, as <c>AddNPipeline</c> does, to get that behavior.
+///     </para>
 /// </remarks>
 public sealed class PipelineFactory : IPipelineFactory
 {
@@ -25,6 +31,7 @@ public sealed class PipelineFactory : IPipelineFactory
     private const int MaxCachedGraphs = 64;
 
     private static readonly ConcurrentDictionary<Type, bool> CacheableDefinitions = new();
+    private readonly ConcurrentDictionary<Type, CircuitBreakerRegistry> _circuitBreakers = new();
     private readonly ConcurrentDictionary<GraphCacheKey, PipelineGraph> _graphCache = new();
     private readonly ConcurrentDictionary<Type, bool> _uncacheableReported = new();
 
@@ -45,6 +52,13 @@ public sealed class PipelineFactory : IPipelineFactory
     }
 
     private Pipeline BuildPipeline(IPipelineDefinition definition, PipelineContext context)
+    {
+        var pipeline = BuildPipelineCore(definition, context);
+        pipeline.CircuitBreakers = _circuitBreakers.GetOrAdd(definition.GetType(), static _ => new CircuitBreakerRegistry());
+        return pipeline;
+    }
+
+    private Pipeline BuildPipelineCore(IPipelineDefinition definition, PipelineContext context)
     {
         ArgumentNullException.ThrowIfNull(definition);
         ArgumentNullException.ThrowIfNull(context);
@@ -144,19 +158,10 @@ public sealed class PipelineFactory : IPipelineFactory
         private readonly Type _definitionType = definitionType;
         private readonly ILineage _lineageModule = lineageModule;
 
-        public bool Equals(GraphCacheKey other)
-        {
-            return _definitionType == other._definitionType && ReferenceEquals(_lineageModule, other._lineageModule);
-        }
+        public bool Equals(GraphCacheKey other) => _definitionType == other._definitionType && ReferenceEquals(_lineageModule, other._lineageModule);
 
-        public override bool Equals(object? obj)
-        {
-            return obj is GraphCacheKey other && Equals(other);
-        }
+        public override bool Equals(object? obj) => obj is GraphCacheKey other && Equals(other);
 
-        public override int GetHashCode()
-        {
-            return HashCode.Combine(_definitionType, RuntimeHelpers.GetHashCode(_lineageModule));
-        }
+        public override int GetHashCode() => HashCode.Combine(_definitionType, RuntimeHelpers.GetHashCode(_lineageModule));
     }
 }

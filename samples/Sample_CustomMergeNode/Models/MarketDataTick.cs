@@ -86,10 +86,7 @@ public class MarketDataTick
     ///     Returns a string representation of the market data tick
     /// </summary>
     /// <returns>String representation</returns>
-    public override string ToString()
-    {
-        return $"{Symbol}: ${Price:F2} ({Volume:N0} shares) at {Timestamp:HH:mm:ss.fff} from {Exchange} [{Priority}] {QualityScore}";
-    }
+    public override string ToString() => $"{Symbol}: ${Price:F2} ({Volume:N0} shares) at {Timestamp:HH:mm:ss.fff} from {Exchange} [{Priority}] {QualityScore}";
 }
 
 /// <summary>

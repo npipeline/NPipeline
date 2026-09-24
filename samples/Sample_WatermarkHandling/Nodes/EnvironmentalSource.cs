@@ -175,9 +175,8 @@ public class EnvironmentalSource : SourceNode<SensorReading>
     ///     Generates data quality indicators for Ethernet sensors with internal clocks.
     /// </summary>
     /// <returns>Data quality indicators with good scores reflecting Ethernet reliability.</returns>
-    private DataQualityIndicators GenerateEthernetQualityIndicators()
-    {
-        return new DataQualityIndicators
+    private DataQualityIndicators GenerateEthernetQualityIndicators() =>
+        new()
         {
             CompletenessScore = 0.92 + _random.NextDouble() * 0.06, // 92-98%
             TimelinessScore = 0.88 + _random.NextDouble() * 0.10, // 88-98%
@@ -193,5 +192,4 @@ public class EnvironmentalSource : SourceNode<SensorReading>
             IsDelayed = _random.NextDouble() < 0.08, // 8% chance
             HasErrors = _random.NextDouble() < 0.03, // 3% chance
         };
-    }
 }

@@ -183,20 +183,36 @@ public interface IPipelineStateManager
 }
 ```
 
-This interface provides checkpoint/restore semantics for pipeline state, enabling safe state management with parallel execution and resilience features. The framework calls `CreateSnapshotAsync` before node execution and `TryRestoreAsync` on retry, so your shared state can be rolled back after failures.
+This interface provides checkpoint/restore semantics for pipeline state, enabling safe state management with parallel execution and resilience features. The framework calls `CreateSnapshotAsync` after each node completes. It doesn't call `TryRestoreAsync` for you: node restart and node retry don't roll back shared state, so call it from your own recovery logic when you need a rollback.
 
 > 📝 **Note:** Ordering guarantees come with a performance cost. Set `AllowUnorderedOutput()` if downstream nodes don't depend on item order.
 
 ## Combining with Resilience
 
-Parallel execution and resilience work together. The `ResilientExecutionStrategy` wraps the parallel strategy:
+Parallel strategies transform items with the same item executor as the sequential strategy, so item retry, backoff,
+the circuit breaker, and `OnItemFailure` behave the same way. Parallel strategies also implement
+`IResumableExecutionStrategy`, so node restart works with them. You don't wrap the strategy yourself; when node
+restart is enabled for the node, the builder wraps it when you build the pipeline:
 
 ```csharp
 var transform = builder.AddTransform<MyTransform, In, Out>("transform");
 transform.RunParallel(builder, ParallelWorkloadType.IoBound);
-transform.WithResilience(builder);
-builder.WithRetryOptions(transform, new PipelineRetryOptions { MaxItemRetries = 3 });
+
+builder.WithResilience(transform, options => options with
+{
+    ItemRetry = ItemRetryOptions.Default with { MaxRetries = 5 },
+    NodeRestart = new NodeRestartOptions { MaxRestarts = 3 },
+});
 ```
+
+A restart resumes the node from its checkpoint. What a restart delivers depends on output ordering:
+
+- With ordered output, the default, each output is delivered exactly once across restarts.
+- With unordered output (`AllowUnorderedOutput()`) or a dropping queue policy, delivery is at least once. After a
+  restart, outputs that were delivered ahead of the checkpoint are delivered again, at most as many as were in flight
+  when the node failed. Make downstream nodes [idempotent](../reference/glossary.md#idempotent) if that matters.
+
+For more information, see [Node restart and the replay window](../error-handling/materialization.md).
 
 ## Next Steps
 

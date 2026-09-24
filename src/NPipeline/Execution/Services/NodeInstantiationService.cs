@@ -84,19 +84,19 @@ public sealed class NodeInstantiationService : INodeInstantiationService
 
                 NodeKind.Transform or NodeKind.Tap or NodeKind.Branch or NodeKind.Route or NodeKind.Lookup or NodeKind.Composite
                     when instance is ITransformNode => new NodeExecutionPlan(
-                    def.Id,
-                    def.Kind,
-                    def.InputType,
-                    def.OutputType,
-                    ExecuteTransform: BuildTransformDelegate(def)),
+                        def.Id,
+                        def.Kind,
+                        def.InputType,
+                        def.OutputType,
+                        ExecuteTransform: BuildTransformDelegate(def)),
 
                 NodeKind.Transform or NodeKind.Route or NodeKind.StreamTransform or NodeKind.Batch
                     when instance is IStreamTransformNode streamTransformNode => new NodeExecutionPlan(
-                    def.Id,
-                    def.Kind,
-                    def.InputType,
-                    def.OutputType,
-                    ExecuteTransform: BuildStreamTransformDelegate(def, streamTransformNode)),
+                        def.Id,
+                        def.Kind,
+                        def.InputType,
+                        def.OutputType,
+                        ExecuteTransform: BuildStreamTransformDelegate(def, streamTransformNode)),
 
                 NodeKind.Join when instance is IJoinNode => new NodeExecutionPlan(
                     def.Id,
@@ -128,7 +128,8 @@ public sealed class NodeInstantiationService : INodeInstantiationService
         return plans;
     }
 
-    private static Func<INode, IExecutionStrategy, IDataStream, PipelineContext, CancellationToken, Task<IDataStream>> BuildTransformDelegate(NodeDefinition def)
+    private static Func<INode, IExecutionStrategy, IDataStream, PipelineContext, CancellationToken, Task<IDataStream>> BuildTransformDelegate(
+        NodeDefinition def)
     {
         var inType = def.InputType ?? throw new InvalidOperationException($"Missing InputType for transform node '{def.Id}'.");
         var outType = def.OutputType ?? throw new InvalidOperationException($"Missing OutputType for transform node '{def.Id}'.");

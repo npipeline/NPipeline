@@ -78,19 +78,13 @@ public sealed class DiLineageFactory : ILineageFactory
     ///     Returns null when no provider is registered or available.
     /// </remarks>
     /// <returns>An <see cref="IPipelineLineageSinkProvider" /> instance or null.</returns>
-    public IPipelineLineageSinkProvider? ResolvePipelineLineageSinkProvider()
-    {
-        return _serviceProvider.GetService<IPipelineLineageSinkProvider>();
-    }
+    public IPipelineLineageSinkProvider? ResolvePipelineLineageSinkProvider() => _serviceProvider.GetService<IPipelineLineageSinkProvider>();
 
     /// <summary>
     ///     Resolves an optional lineage collector for tracking data lineage.
     /// </summary>
     /// <returns>An <see cref="ILineageCollector" /> instance or null if lineage is not enabled.</returns>
-    public ILineageCollector? ResolveLineageCollector()
-    {
-        return _serviceProvider.GetService<ILineageCollector>();
-    }
+    public ILineageCollector? ResolveLineageCollector() => _serviceProvider.GetService<ILineageCollector>();
 
     /// <summary>
     ///     Creates a lineage report for the given pipeline execution using <see cref="LineageGenerator" />.

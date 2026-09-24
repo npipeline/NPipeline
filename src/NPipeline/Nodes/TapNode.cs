@@ -14,6 +14,22 @@ public sealed class TapNode<T>(ISinkNode<T> sink) : TransformNode<T, T>, IAsyncD
 {
     private readonly ISinkNode<T> _sink = sink;
 
+    /// <summary>
+    ///     Disposes the sink this node taps into, if the sink owns resources.
+    /// </summary>
+    public async ValueTask DisposeAsync()
+    {
+        switch (_sink)
+        {
+            case IAsyncDisposable asyncDisposable:
+                await asyncDisposable.DisposeAsync().ConfigureAwait(false);
+                break;
+            case IDisposable disposable:
+                disposable.Dispose();
+                break;
+        }
+    }
+
     /// <inheritdoc />
     public override async ValueTask<T> TransformAsync(T item, PipelineContext context, CancellationToken cancellationToken)
     {
@@ -30,21 +46,5 @@ public sealed class TapNode<T>(ISinkNode<T> sink) : TransformNode<T, T>, IAsyncD
 
         // Return the original item unchanged to the main pipeline
         return item;
-    }
-
-    /// <summary>
-    ///     Disposes the sink this node taps into, if the sink owns resources.
-    /// </summary>
-    public async ValueTask DisposeAsync()
-    {
-        switch (_sink)
-        {
-            case IAsyncDisposable asyncDisposable:
-                await asyncDisposable.DisposeAsync().ConfigureAwait(false);
-                break;
-            case IDisposable disposable:
-                disposable.Dispose();
-                break;
-        }
     }
 }

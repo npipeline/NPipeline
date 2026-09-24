@@ -20,8 +20,5 @@ public interface IPartitionKeyProvider<T>
     /// <param name="message">The message to get the partition for.</param>
     /// <param name="partitionCount">The total number of partitions for the topic.</param>
     /// <returns>The target partition number, or null to use default partitioning.</returns>
-    int? GetPartition(T message, int partitionCount)
-    {
-        return null;
-    }
+    int? GetPartition(T message, int partitionCount) => null;
 }

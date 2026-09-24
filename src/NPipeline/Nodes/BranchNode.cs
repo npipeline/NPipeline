@@ -1,7 +1,7 @@
 using NPipeline.ErrorHandling;
 using NPipeline.Observability.Logging;
 using NPipeline.Pipeline;
-using NPipeline.Resilience;
+using NPipeline.Reliability;
 
 namespace NPipeline.Nodes;
 
@@ -204,12 +204,15 @@ public sealed class BranchNode<T> : TransformNode<T, T>
         PipelineContext context,
         CancellationToken cancellationToken)
     {
-        var decision = await context.ExecutionConfiguration.ResiliencePolicy
-            .DecidePipelineFailureAsync(
-                branchException.NodeId,
-                branchException,
-                context,
-                cancellationToken)
+        var decision = await ResilienceRuntime.ResolvePolicy(context, branchException.NodeId)
+            .DecideRestartAsync(new StreamFailure
+            {
+                NodeId = branchException.NodeId,
+                Exception = branchException,
+                Attempt = 1,
+                MaxRestarts = context.ExecutionConfiguration.GetResilienceOptions(branchException.NodeId).NodeRestart.MaxRestarts,
+                Context = context,
+            }, cancellationToken)
             .ConfigureAwait(false);
 
         switch (decision)
@@ -240,12 +243,10 @@ public sealed class BranchNode<T> : TransformNode<T, T>
     ///     Falls back to the type name when the node is not attached to a pipeline, which is the case when a branch
     ///     node is exercised directly in a test.
     /// </remarks>
-    private string ResolveNodeId(PipelineContext context)
-    {
-        return context.NodeEnvironment.TryGetNodeId(this, out var nodeId)
+    private string ResolveNodeId(PipelineContext context) =>
+        context.NodeEnvironment.TryGetNodeId(this, out var nodeId)
             ? nodeId
             : nameof(BranchNode<T>);
-    }
 
     private void LogBranchException(BranchHandlerException branchException, PipelineContext context, string? additionalMessage = null)
     {
@@ -277,7 +278,7 @@ public sealed class BranchNode<T> : TransformNode<T, T>
 public enum BranchErrorHandlingMode
 {
     /// <summary>
-    ///     Route exceptions through the configured <see cref="Resilience.IResiliencePolicy" />.
+    ///     Route exceptions through the configured <see cref="Reliability.IResiliencePolicy" />.
     ///     This is the default and recommended mode.
     /// </summary>
     RouteToErrorHandler,

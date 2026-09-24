@@ -1,5 +1,4 @@
 using System.Collections.Frozen;
-using System.Collections.Immutable;
 using AwesomeAssertions;
 using NPipeline.Graph;
 using NPipeline.Nodes;
@@ -73,7 +72,7 @@ public sealed class GraphTopologyTests
 
         var outgoing = GraphTopology.For(graph).OutgoingFrom("source");
 
-        outgoing.Select(edge => edge.TargetNodeId).Should().BeEquivalentTo(["left", "right"]);
+        outgoing.Select(edge => edge.TargetNodeId).Should().BeEquivalentTo("left", "right");
     }
 
     [Fact]
@@ -91,7 +90,7 @@ public sealed class GraphTopologyTests
 
         GraphTopology.For(graph).IncomingEdges["join"]
             .Select(edge => edge.SourceNodeId)
-            .Should().BeEquivalentTo(["left", "right"]);
+            .Should().BeEquivalentTo("left", "right");
     }
 
     [Fact]
@@ -113,7 +112,7 @@ public sealed class GraphTopologyTests
 
         topology.HasCycle.Should().BeTrue();
         topology.TopologicalOrder.Should().BeEmpty();
-        topology.CycleNodes.Should().BeEquivalentTo(["a", "b"]);
+        topology.CycleNodes.Should().BeEquivalentTo("a", "b");
     }
 
     /// <summary>

@@ -54,10 +54,41 @@ public sealed class ParallelExecutionStrategy : BlockingParallelStrategy
         {
             BoundedQueuePolicy.Block => await base.ExecuteAsync(input, node, context, nodeId, cancellationToken).ConfigureAwait(false),
             BoundedQueuePolicy.DropOldest =>
-                await (_dropOldest ??= new DropOldestParallelStrategy(ConfiguredMaxDop)).ExecuteAsync(input, node, context, nodeId, cancellationToken).ConfigureAwait(false),
+                await (_dropOldest ??= new DropOldestParallelStrategy(ConfiguredMaxDop)).ExecuteAsync(input, node, context, nodeId, cancellationToken)
+                    .ConfigureAwait(false),
             BoundedQueuePolicy.DropNewest =>
-                await (_dropNewest ??= new DropNewestParallelStrategy(ConfiguredMaxDop)).ExecuteAsync(input, node, context, nodeId, cancellationToken).ConfigureAwait(false),
+                await (_dropNewest ??= new DropNewestParallelStrategy(ConfiguredMaxDop)).ExecuteAsync(input, node, context, nodeId, cancellationToken)
+                    .ConfigureAwait(false),
             _ => await base.ExecuteAsync(input, node, context, nodeId, cancellationToken).ConfigureAwait(false),
+        };
+    }
+
+    /// <summary>
+    ///     Resumes the node through the implementation for its queue policy, as <see cref="ExecuteAsync{TIn,TOut}" /> selects it.
+    /// </summary>
+    public override async Task<IDataStream<TOut>> ExecuteFromAsync<TIn, TOut>(
+        IDataStream<TIn> input,
+        long offset,
+        RestartCheckpoint checkpoint,
+        ITransformNode<TIn, TOut> node,
+        PipelineContext context,
+        string nodeId,
+        CancellationToken cancellationToken)
+    {
+        var queuePolicy = BoundedQueuePolicy.Block;
+
+        if (context.NodeEnvironment.NodeExecutionScopeRegistry.TryGetNodeExecutionAnnotation(nodeId, out var opt) && opt is ParallelOptions po)
+            queuePolicy = po.QueuePolicy;
+
+        return queuePolicy switch
+        {
+            BoundedQueuePolicy.DropOldest =>
+                await (_dropOldest ??= new DropOldestParallelStrategy(ConfiguredMaxDop))
+                    .ExecuteFromAsync(input, offset, checkpoint, node, context, nodeId, cancellationToken).ConfigureAwait(false),
+            BoundedQueuePolicy.DropNewest =>
+                await (_dropNewest ??= new DropNewestParallelStrategy(ConfiguredMaxDop))
+                    .ExecuteFromAsync(input, offset, checkpoint, node, context, nodeId, cancellationToken).ConfigureAwait(false),
+            _ => await base.ExecuteFromAsync(input, offset, checkpoint, node, context, nodeId, cancellationToken).ConfigureAwait(false),
         };
     }
 

@@ -15,13 +15,14 @@ public sealed class PipeMergeServiceTests
     public async Task MergeAsync_NoInputStreams_ThrowsActionableError()
     {
         var service = new PipeMergeService(new MergeStrategySelector());
+
         var nodeDefinition = new NodeDefinition(
-            Id: "aggregate",
-            Name: "orders",
-            NodeType: typeof(object),
-            Kind: NodeKind.Aggregate,
-            InputType: typeof(int),
-            OutputType: typeof(int));
+            "aggregate",
+            "orders",
+            typeof(object),
+            NodeKind.Aggregate,
+            typeof(int),
+            typeof(int));
 
         Func<Task> act = () => service.MergeAsync(nodeDefinition, new NullNode(), []);
 
@@ -38,26 +39,26 @@ public sealed class PipeMergeServiceTests
         var node = new NullNode();
 
         var nodeDefinition = new NodeDefinition(
-            Id: "sink",
-            Name: "sink",
-            NodeType: typeof(object),
-            Kind: NodeKind.Sink,
-            InputType: typeof(int),
+            "sink",
+            "sink",
+            typeof(object),
+            NodeKind.Sink,
+            typeof(int),
             MergeStrategy: MergeType.Interleave);
 
         IDataStream[] inputPipes =
         [
             new NPipeline.DataFlow.DataStreams.InMemoryDataStream<LineagePacket<int>>(
-            [
-                CreatePacket(1),
-                CreatePacket(2),
-            ],
+                [
+                    CreatePacket(1),
+                    CreatePacket(2),
+                ],
                 "left"),
             new NPipeline.DataFlow.DataStreams.InMemoryDataStream<LineagePacket<int>>(
-            [
-                CreatePacket(3),
-                CreatePacket(4),
-            ],
+                [
+                    CreatePacket(3),
+                    CreatePacket(4),
+                ],
                 "right"),
         ];
 
@@ -83,11 +84,11 @@ public sealed class PipeMergeServiceTests
         var node = new NullNode();
 
         var nodeDefinition = new NodeDefinition(
-            Id: "sink",
-            Name: "sink",
-            NodeType: typeof(object),
-            Kind: NodeKind.Sink,
-            InputType: typeof(int),
+            "sink",
+            "sink",
+            typeof(object),
+            NodeKind.Sink,
+            typeof(int),
             MergeStrategy: MergeType.Interleave);
 
         IDataStream[] inputPipes =
@@ -96,7 +97,7 @@ public sealed class PipeMergeServiceTests
             new NPipeline.DataFlow.DataStreams.InMemoryDataStream<long>([2], "right"),
         ];
 
-        Func<Task> act = async () =>
+        var act = async () =>
         {
             await using var merged = await service.MergeAsync(nodeDefinition, node, inputPipes);
         };
@@ -107,16 +108,10 @@ public sealed class PipeMergeServiceTests
         _ = thrown.Which.Message.Should().Contain("System.Int64");
     }
 
-    private static LineagePacket<int> CreatePacket(int value)
-    {
-        return new LineagePacket<int>(value, Guid.NewGuid(), ImmutableArray<string>.Empty);
-    }
+    private static LineagePacket<int> CreatePacket(int value) => new(value, Guid.NewGuid(), ImmutableArray<string>.Empty);
 
     private sealed class NullNode : INode
     {
-        public ValueTask DisposeAsync()
-        {
-            return ValueTask.CompletedTask;
-        }
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 }

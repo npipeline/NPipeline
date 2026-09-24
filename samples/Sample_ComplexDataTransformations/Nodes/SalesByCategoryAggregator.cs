@@ -45,9 +45,8 @@ public class SalesByCategoryAggregator : AggregateNode<EnrichedOrder, string, Sa
     ///     Creates the initial accumulator value for a new category group.
     /// </summary>
     /// <returns>The initial accumulator with zero values.</returns>
-    public override SalesByCategory CreateAccumulator()
-    {
-        return new SalesByCategory(
+    public override SalesByCategory CreateAccumulator() =>
+        new(
             string.Empty, // Will be set when first item is processed
             0,
             0m,
@@ -55,7 +54,6 @@ public class SalesByCategoryAggregator : AggregateNode<EnrichedOrder, string, Sa
             DateTime.MinValue,
             DateTime.MaxValue
         );
-    }
 
     /// <summary>
     ///     Accumulates an enriched order into the category aggregator.

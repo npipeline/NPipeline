@@ -1,7 +1,5 @@
-using NPipeline.ErrorHandling;
 using NPipeline.Nodes;
-using NPipeline.Pipeline;
-using NPipeline.Resilience;
+using NPipeline.Reliability;
 
 // ReSharper disable once CheckNamespace
 namespace NPipeline.Extensions.Nodes;
@@ -15,23 +13,16 @@ public sealed class DefaultValidationErrorHandler<T>(
     : ResiliencePolicyBase
 {
     /// <inheritdoc />
-    public override Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
-        ITransformNode<TIn, TOut> node,
-        TIn failedItem,
-        Exception exception,
-        PipelineContext context,
-        string nodeId,
-        int retryAttempt,
-        CancellationToken cancellationToken)
+    /// <remarks>
+    ///     A <see cref="ValidationException" /> from this node gets the configured decision. Any other failure follows the node's
+    ///     resilience options.
+    /// </remarks>
+    public override ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken)
     {
-        if (node is not ITransformNode<T, T>)
-            return Task.FromResult(ResilienceDecision.Fail);
+        if (failure.Node is ITransformNode<T, T> && failure.Exception is ValidationException)
+            return ValueTask.FromResult(onValidationFailure);
 
-        var decision = exception is ValidationException
-            ? onValidationFailure
-            : ResilienceDecision.Fail;
-
-        return Task.FromResult(decision);
+        return base.DecideItemFailureAsync(failure, cancellationToken);
     }
 }
 
@@ -44,23 +35,16 @@ public sealed class DefaultFilteringErrorHandler<T>(
     : ResiliencePolicyBase
 {
     /// <inheritdoc />
-    public override Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
-        ITransformNode<TIn, TOut> node,
-        TIn failedItem,
-        Exception exception,
-        PipelineContext context,
-        string nodeId,
-        int retryAttempt,
-        CancellationToken cancellationToken)
+    /// <remarks>
+    ///     A <see cref="FilteringException" /> from this node gets the configured decision. Any other failure follows the node's
+    ///     resilience options.
+    /// </remarks>
+    public override ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken)
     {
-        if (node is not ITransformNode<T, T>)
-            return Task.FromResult(ResilienceDecision.Fail);
+        if (failure.Node is ITransformNode<T, T> && failure.Exception is FilteringException)
+            return ValueTask.FromResult(onFilteredOut);
 
-        var decision = exception is FilteringException
-            ? onFilteredOut
-            : ResilienceDecision.Fail;
-
-        return Task.FromResult(decision);
+        return base.DecideItemFailureAsync(failure, cancellationToken);
     }
 }
 
@@ -73,22 +57,15 @@ public sealed class DefaultTypeConversionErrorHandler<TIn, TOut>(
     : ResiliencePolicyBase
 {
     /// <inheritdoc />
-    public override Task<ResilienceDecision> DecideItemFailureAsync<TItemIn, TItemOut>(
-        ITransformNode<TItemIn, TItemOut> node,
-        TItemIn failedItem,
-        Exception exception,
-        PipelineContext context,
-        string nodeId,
-        int retryAttempt,
-        CancellationToken cancellationToken)
+    /// <remarks>
+    ///     A <see cref="TypeConversionException" /> from this node gets the configured decision. Any other failure follows the node's
+    ///     resilience options.
+    /// </remarks>
+    public override ValueTask<ResilienceDecision> DecideItemFailureAsync<TItemIn>(ItemFailure<TItemIn> failure, CancellationToken cancellationToken)
     {
-        if (node is not ITransformNode<TIn, TOut>)
-            return Task.FromResult(ResilienceDecision.Fail);
+        if (failure.Node is ITransformNode<TIn, TOut> && failure.Exception is TypeConversionException)
+            return ValueTask.FromResult(onConversionFailure);
 
-        var decision = exception is TypeConversionException
-            ? onConversionFailure
-            : ResilienceDecision.Fail;
-
-        return Task.FromResult(decision);
+        return base.DecideItemFailureAsync(failure, cancellationToken);
     }
 }

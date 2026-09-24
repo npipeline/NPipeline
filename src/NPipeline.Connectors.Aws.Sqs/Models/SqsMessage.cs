@@ -147,12 +147,11 @@ public sealed class SqsMessage<T> : IAcknowledgableMessage<T>, IAwsSqsAcknowledg
     /// <param name="requeue">Ignored for SQS. Redelivery is handled by visibility timeout.</param>
     /// <param name="cancellationToken">Cancellation token for the operation.</param>
     /// <returns>A completed task.</returns>
-    public Task NegativeAcknowledgeAsync(bool requeue = true, CancellationToken cancellationToken = default)
-    {
+    public Task NegativeAcknowledgeAsync(bool requeue = true, CancellationToken cancellationToken = default) =>
+
         // SQS does not support explicit nack - messages are redelivered
         // after the visibility timeout expires.
-        return Task.CompletedTask;
-    }
+        Task.CompletedTask;
 
     /// <summary>
     ///     Creates a new SqsMessage with the provided body while preserving acknowledgment behavior.
@@ -160,16 +159,14 @@ public sealed class SqsMessage<T> : IAcknowledgableMessage<T>, IAwsSqsAcknowledg
     /// <typeparam name="TNew">The new body type.</typeparam>
     /// <param name="body">The new message body.</param>
     /// <returns>A new SqsMessage with the same acknowledgment callback.</returns>
-    public IAcknowledgableMessage<TNew> WithBody<TNew>(TNew body)
-    {
-        return new SqsMessage<TNew>(
+    public IAcknowledgableMessage<TNew> WithBody<TNew>(TNew body) =>
+        new SqsMessage<TNew>(
             body,
             MessageId,
             ReceiptHandle,
             Attributes,
             Timestamp,
             _acknowledgeCallback);
-    }
 
     void IAwsSqsAcknowledgableMessage.MarkAcknowledged()
     {

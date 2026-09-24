@@ -8,6 +8,7 @@ using NPipeline.Connectors.Nodes;
 using NPipeline.Connectors.Postgres.Configuration;
 using NPipeline.Connectors.Postgres.Connection;
 using NPipeline.Connectors.Postgres.Mapping;
+using NPipeline.Connectors.Postgres.Reliability;
 using NPipeline.StorageProviders;
 using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Models;
@@ -215,7 +216,13 @@ public class PostgresSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
     /// </summary>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
-    protected override async Task<IDatabaseConnection> GetConnectionAsync(CancellationToken cancellationToken)
+    /// <remarks>
+    ///     Retried by <see cref="PostgresConfiguration.Resilience" />: no row has been read yet, so a retry cannot emit one twice.
+    /// </remarks>
+    protected override async Task<IDatabaseConnection> GetConnectionAsync(CancellationToken cancellationToken) =>
+        await _configuration.Resilience.RunAsync(ConnectAsync, cancellationToken).ConfigureAwait(false);
+
+    private async Task<IDatabaseConnection> ConnectAsync(CancellationToken cancellationToken)
     {
         // If using StorageUri-based construction, get connection from database storage provider
         if (_storageUri != null)
@@ -244,7 +251,18 @@ public class PostgresSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
     /// <param name="connection">The database connection.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
+    /// <remarks>
+    ///     Retried by <see cref="PostgresConfiguration.Resilience" /> until the reader opens. Once rows are flowing a failure is
+    ///     not retried, because the rows already emitted would be emitted again.
+    /// </remarks>
     protected override async Task<IDatabaseReader> ExecuteQueryAsync(IDatabaseConnection connection, CancellationToken cancellationToken)
+    {
+        return await new ConnectionResilience(_configuration.Resilience, connection)
+            .RunAsync(ct => ExecuteQueryOnceAsync(connection, ct), cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    private async Task<IDatabaseReader> ExecuteQueryOnceAsync(IDatabaseConnection connection, CancellationToken cancellationToken)
     {
         var postgresConnection = (PostgresDatabaseConnection)connection;
         var command = await postgresConnection.CreateCommandAsync(cancellationToken).ConfigureAwait(false);

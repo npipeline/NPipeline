@@ -108,19 +108,14 @@ public abstract class AdvancedAggregateNode<TIn, TKey, TAccumulate, TResult> : I
     ///     Gets metrics about the node's operation.
     /// </summary>
     /// <returns>A tuple containing metrics about windows processed, closed, and maximum concurrency.</returns>
-    public (long TotalWindowsProcessed, long TotalWindowsClosed, long MaxConcurrentWindows) GetMetrics()
-    {
-        return (Interlocked.Read(ref _totalWindowsProcessed), Interlocked.Read(ref _totalWindowsClosed), Interlocked.Read(ref _maxConcurrentWindows));
-    }
+    public (long TotalWindowsProcessed, long TotalWindowsClosed, long MaxConcurrentWindows) GetMetrics() => (Interlocked.Read(ref _totalWindowsProcessed),
+        Interlocked.Read(ref _totalWindowsClosed), Interlocked.Read(ref _maxConcurrentWindows));
 
     /// <summary>
     ///     Gets the current number of active windows being tracked.
     /// </summary>
     /// <returns>The current number of active windows.</returns>
-    public int GetActiveWindowCount()
-    {
-        return _accumulators.Count;
-    }
+    public int GetActiveWindowCount() => _accumulators.Count;
 
     private async IAsyncEnumerable<TResult> AggregateStreamAsync(IAsyncEnumerable<StreamItem<TIn>> inputStream,
         [EnumeratorCancellation] CancellationToken cancellationToken)

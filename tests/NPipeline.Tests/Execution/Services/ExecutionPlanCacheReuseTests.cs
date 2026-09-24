@@ -54,7 +54,7 @@ public sealed class ExecutionPlanCacheReuseTests
         await runner.RunAsync<RecordingPipeline>(CancellationToken.None);
         var secondRun = recorder.TakeConsumedItems();
 
-        _ = firstRun.Should().Equal([2, 4, 6]);
+        _ = firstRun.Should().Equal(2, 4, 6);
         _ = secondRun.Should().Equal([2, 4, 6], "plan reuse must not change observable behaviour");
     }
 
@@ -86,15 +86,17 @@ public sealed class ExecutionPlanCacheReuseTests
 
         public int UseAfterDisposeCount { get; private set; }
 
-        public int NextSourceId()
+        public void Dispose()
         {
-            return ++SourcesConstructed;
+            lock (Gate)
+            {
+                Current = null;
+            }
         }
 
-        public int NextSinkId()
-        {
-            return ++SinksConstructed;
-        }
+        public int NextSourceId() => ++SourcesConstructed;
+
+        public int NextSinkId() => ++SinksConstructed;
 
         public void RecordSourceExecuted(int instanceId)
         {
@@ -122,20 +124,18 @@ public sealed class ExecutionPlanCacheReuseTests
             _consumed.Clear();
             return snapshot;
         }
-
-        public void Dispose()
-        {
-            lock (Gate)
-            {
-                Current = null;
-            }
-        }
     }
 
     private sealed class RecordingSource : SourceNode<int>, IAsyncDisposable
     {
         private readonly int _instanceId = InstanceRecorder.Current!.NextSourceId();
         private bool _disposed;
+
+        public ValueTask DisposeAsync()
+        {
+            _disposed = true;
+            return ValueTask.CompletedTask;
+        }
 
         public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
@@ -147,26 +147,23 @@ public sealed class ExecutionPlanCacheReuseTests
             recorder.RecordSourceExecuted(_instanceId);
             return new NPipeline.DataFlow.DataStreams.InMemoryDataStream<int>([1, 2, 3], "numbers");
         }
-
-        public ValueTask DisposeAsync()
-        {
-            _disposed = true;
-            return ValueTask.CompletedTask;
-        }
     }
 
     private sealed class DoublingTransform : TransformNode<int, int>
     {
-        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult<int>(item * 2);
-        }
+        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken) => ValueTask.FromResult(item * 2);
     }
 
     private sealed class RecordingSink : SinkNode<int>, IAsyncDisposable
     {
         private readonly int _instanceId = InstanceRecorder.Current!.NextSinkId();
         private bool _disposed;
+
+        public ValueTask DisposeAsync()
+        {
+            _disposed = true;
+            return ValueTask.CompletedTask;
+        }
 
         public override async Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken cancellationToken)
         {
@@ -181,12 +178,6 @@ public sealed class ExecutionPlanCacheReuseTests
             {
                 recorder.RecordConsumed(item);
             }
-        }
-
-        public ValueTask DisposeAsync()
-        {
-            _disposed = true;
-            return ValueTask.CompletedTask;
         }
     }
 

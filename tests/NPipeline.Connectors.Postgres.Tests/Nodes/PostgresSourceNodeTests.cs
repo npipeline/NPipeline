@@ -54,10 +54,7 @@ public class PostgresSourceNodeTests
         const string connectionString = "Host=localhost;Database=test";
         const string query = "SELECT * FROM test_table";
 
-        static TestRecord Mapper(PostgresRow row)
-        {
-            return new TestRecord();
-        }
+        static TestRecord Mapper(PostgresRow row) => new();
 
         // Act
         var node = new PostgresSourceNode<TestRecord>(connectionString, query, Mapper);

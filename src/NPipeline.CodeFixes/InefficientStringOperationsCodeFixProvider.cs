@@ -23,10 +23,7 @@ public sealed class InefficientStringOperationsCodeFixProvider : CodeFixProvider
         [InefficientStringOperationsAnalyzer.InefficientStringOperationsId];
 
     /// <inheritdoc />
-    public override FixAllProvider GetFixAllProvider()
-    {
-        return WellKnownFixAllProviders.BatchFixer;
-    }
+    public override FixAllProvider GetFixAllProvider() => WellKnownFixAllProviders.BatchFixer;
 
     /// <inheritdoc />
     public override async Task RegisterCodeFixesAsync(CodeFixContext context)
@@ -409,12 +406,11 @@ public sealed class InefficientStringOperationsCodeFixProvider : CodeFixProvider
             parts.Add(expression);
     }
 
-    private static string GenerateUniqueVariableName(string baseName)
-    {
+    private static string GenerateUniqueVariableName(string baseName) =>
+
         // Simple implementation - in a real scenario, you'd want to check for conflicts
         // with existing variables in the scope
-        return baseName;
-    }
+        baseName;
 
     private static LocalDeclarationStatementSyntax CreateStringBuilderDeclaration(string variableName, List<ExpressionSyntax> stringParts)
     {

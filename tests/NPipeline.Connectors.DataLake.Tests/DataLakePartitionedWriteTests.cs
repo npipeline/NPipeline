@@ -2,7 +2,6 @@ using NPipeline.Connectors.DataLake.Manifest;
 using NPipeline.Connectors.DataLake.Partitioning;
 using NPipeline.Connectors.Parquet;
 using NPipeline.Connectors.Parquet.Attributes;
-using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.Pipeline;
 using NPipeline.StorageProviders;
@@ -484,9 +483,8 @@ public sealed class DataLakePartitionedWriteTests : IAsyncDisposable
 
     #region Helper Methods
 
-    private static OrderRecord CreateOrder(int id, string dateStr, string region)
-    {
-        return new OrderRecord
+    private static OrderRecord CreateOrder(int id, string dateStr, string region) =>
+        new()
         {
             Id = id,
             ProductName = $"Product_{id}",
@@ -494,7 +492,6 @@ public sealed class DataLakePartitionedWriteTests : IAsyncDisposable
             EventDate = DateOnly.Parse(dateStr),
             Region = region,
         };
-    }
 
     private static IEnumerable<OrderRecord> CreateOrdersForDate(DateOnly date, string region, int count)
     {

@@ -121,6 +121,11 @@ public sealed class DiHandlerFactory(IServiceProvider serviceProvider) : IErrorH
     }
 
     /// <summary>
+    ///     Creates a lineage report for the given pipeline.
+    /// </summary>
+    public PipelineLineageReport? CreateLineageReport(string pipelineName, Guid pipelineId, PipelineGraph graph, Guid runId) => null;
+
+    /// <summary>
     ///     Resolves an optional observability collector for tracking performance metrics.
     /// </summary>
     /// <returns>An <see cref="IObservabilityCollector" /> instance or null if observability is not enabled.</returns>
@@ -166,13 +171,5 @@ public sealed class DiHandlerFactory(IServiceProvider serviceProvider) : IErrorH
         {
             return null;
         }
-    }
-
-    /// <summary>
-    ///     Creates a lineage report for the given pipeline.
-    /// </summary>
-    public PipelineLineageReport? CreateLineageReport(string pipelineName, Guid pipelineId, PipelineGraph graph, Guid runId)
-    {
-        return null;
     }
 }

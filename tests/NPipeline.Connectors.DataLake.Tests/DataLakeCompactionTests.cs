@@ -5,7 +5,6 @@ using NPipeline.StorageProviders;
 using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Models;
 using Parquet;
-using Parquet.Data;
 using Parquet.Schema;
 
 namespace NPipeline.Connectors.DataLake.Tests;

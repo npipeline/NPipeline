@@ -421,10 +421,7 @@ public class JsonWriterMapperBuilderTests
         public int Id { get; private set; }
         public string Name { get; private set; } = string.Empty;
 
-        public static ModelWithPrivateSetter Create(int id, string name)
-        {
-            return new ModelWithPrivateSetter { Id = id, Name = name };
-        }
+        public static ModelWithPrivateSetter Create(int id, string name) => new() { Id = id, Name = name };
     }
 
     public class ModelWithColumnAndJsonPropertyName

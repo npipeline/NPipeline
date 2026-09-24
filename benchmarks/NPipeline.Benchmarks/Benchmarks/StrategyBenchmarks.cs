@@ -6,6 +6,7 @@ using NPipeline.DataFlow.DataStreams;
 using NPipeline.Execution;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
+using NPipeline.Reliability;
 
 namespace NPipeline.Benchmarks.Benchmarks;
 
@@ -81,8 +82,8 @@ public class StrategyBenchmarks
             var t = b.AddTransform<PassThrough, int, int>("t");
             var sink = b.AddSink<BlackHoleSink, int>("sink");
 
-            // Wrap transform with resilient execution strategy
-            b.WithResilience(t);
+            // Restarts wrap the transform in the node restart strategy, which streams its input through a replay window.
+            b.WithResilience(t, o => o with { NodeRestart = new NodeRestartOptions { MaxRestarts = 1 } });
 
             b.Connect(src, t).Connect(t, sink);
         }
@@ -144,18 +145,14 @@ public class StrategyBenchmarks
 
     private sealed class PassThrough : TransformNode<int, int>
     {
-        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult<int>(item);
-        }
+        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken) => ValueTask.FromResult(item);
     }
 
     private sealed class CollectionToEnumerableCast : TransformNode<IReadOnlyCollection<int>, IEnumerable<int>>
     {
-        public override ValueTask<IEnumerable<int>> TransformAsync(IReadOnlyCollection<int> item, PipelineContext context, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult<IEnumerable<int>>(item);
-        }
+        public override ValueTask<IEnumerable<int>>
+            TransformAsync(IReadOnlyCollection<int> item, PipelineContext context, CancellationToken cancellationToken) =>
+            ValueTask.FromResult<IEnumerable<int>>(item);
     }
 
     private sealed class BlackHoleSink : SinkNode<int>

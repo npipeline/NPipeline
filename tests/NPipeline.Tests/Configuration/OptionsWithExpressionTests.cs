@@ -1,6 +1,6 @@
 using AwesomeAssertions;
 using NPipeline.Configuration;
-using NPipeline.Configuration.RetryDelay;
+using NPipeline.Reliability;
 
 namespace NPipeline.Tests.Configuration;
 
@@ -37,31 +37,26 @@ public sealed class OptionsWithExpressionTests
     }
 
     [Fact]
-    public void PipelineRetryOptions_WithExpression_CanClearANullable()
+    public void PipelineResilienceOptions_WithExpression_CanClearANullable()
     {
-        var configured = PipelineRetryOptions.Default with
-        {
-            MaxMaterializedItems = 10_000,
-            DelayStrategyConfiguration = RetryDelayConfigurationExtensions.DefaultExponentialBackoffWithJitter,
-        };
+        var configured = PipelineResilienceOptions.None with { CircuitBreaker = CircuitBreakerOptions.Default };
 
-        var cleared = configured with { MaxMaterializedItems = null, DelayStrategyConfiguration = null };
+        var cleared = configured with { CircuitBreaker = null };
 
-        _ = cleared.MaxMaterializedItems.Should().BeNull();
-        _ = cleared.DelayStrategyConfiguration.Should().BeNull();
+        _ = cleared.CircuitBreaker.Should().BeNull();
     }
 
     [Fact]
-    public void PipelineRetryOptions_WithExpression_LeavesUnnamedPropertiesAlone()
+    public void PipelineResilienceOptions_WithExpression_LeavesUnnamedPropertiesAlone()
     {
-        var source = PipelineRetryOptions.ForProfile(PipelineOptimizationProfile.Default);
+        var source = PipelineResilienceOptions.ForProfile(PipelineOptimizationProfile.Default) with { OnItemFailure = ItemFailureAction.Skip };
 
-        var derived = source with { MaxItemRetries = 7 };
+        var derived = source with { NodeRetry = new NodeRetryOptions { MaxRetries = 7 } };
 
-        _ = derived.MaxItemRetries.Should().Be(7);
-        _ = derived.MaxMaterializedItems.Should().Be(source.MaxMaterializedItems);
-        _ = derived.DelayStrategyConfiguration.Should().Be(source.DelayStrategyConfiguration);
-        _ = derived.MaxNodeRestartAttempts.Should().Be(source.MaxNodeRestartAttempts);
-        _ = derived.MaxSequentialNodeAttempts.Should().Be(source.MaxSequentialNodeAttempts);
+        _ = derived.NodeRetry.MaxRetries.Should().Be(7);
+        _ = derived.ItemRetry.Should().BeSameAs(source.ItemRetry);
+        _ = derived.NodeRestart.Should().BeSameAs(source.NodeRestart);
+        _ = derived.OnItemFailure.Should().Be(source.OnItemFailure);
+        _ = derived.Time.Should().BeSameAs(source.Time);
     }
 }

@@ -12,28 +12,18 @@ namespace NPipeline.Connectors.MongoDB.Tests.Integration;
 [Collection(MongoTestCollection.Name)]
 public class MongoWriteStrategyIntegrationTests(MongoTestContainerFixture fixture)
 {
-    private MongoClient CreateClient()
-    {
-        return new MongoClient(fixture.ConnectionString);
-    }
+    private MongoClient CreateClient() => new(fixture.ConnectionString);
 
-    private static string UniqueCollection()
-    {
-        return $"col_{Guid.NewGuid():N}";
-    }
+    private static string UniqueCollection() => $"col_{Guid.NewGuid():N}";
 
-    private static async Task<long> CountAsync(IMongoDatabase db, string col)
-    {
-        return await db.GetCollection<BsonDocument>(col)
+    private static async Task<long> CountAsync(IMongoDatabase db, string col) =>
+        await db.GetCollection<BsonDocument>(col)
             .CountDocumentsAsync(FilterDefinition<BsonDocument>.Empty);
-    }
 
-    private static async Task<List<BsonDocument>> FindAllAsync(IMongoDatabase db, string col)
-    {
-        return await db.GetCollection<BsonDocument>(col)
+    private static async Task<List<BsonDocument>> FindAllAsync(IMongoDatabase db, string col) =>
+        await db.GetCollection<BsonDocument>(col)
             .Find(FilterDefinition<BsonDocument>.Empty)
             .ToListAsync();
-    }
 
     // ── InsertMany ────────────────────────────────────────────────────────────
 

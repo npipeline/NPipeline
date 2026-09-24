@@ -9,8 +9,5 @@ public sealed record ValidationIssue(ValidationSeverity Severity, string Message
     ///     Returns a string representation of the validation issue in the format "[Severity] Category: Message".
     /// </summary>
     /// <returns>A formatted string containing the severity, category, and message of the validation issue.</returns>
-    public override string ToString()
-    {
-        return $"[{Severity}] {Category}: {Message}";
-    }
+    public override string ToString() => $"[{Severity}] {Category}: {Message}";
 }

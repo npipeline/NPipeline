@@ -25,7 +25,6 @@ namespace NPipeline.Lineage;
 internal sealed class CollectorTeeingLineageSink : ILineageSink
 {
     private readonly ILineageCollector _collector;
-    private readonly ILineageSink? _inner;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="CollectorTeeingLineageSink" /> class.
@@ -35,21 +34,21 @@ internal sealed class CollectorTeeingLineageSink : ILineageSink
     public CollectorTeeingLineageSink(ILineageCollector collector, ILineageSink? inner)
     {
         _collector = collector ?? throw new ArgumentNullException(nameof(collector));
-        _inner = inner;
+        Inner = inner;
     }
 
     /// <summary>
     ///     Gets the sink this decorator forwards to, if any.
     /// </summary>
-    public ILineageSink? Inner => _inner;
+    public ILineageSink? Inner { get; }
 
     /// <inheritdoc />
     public Task RecordAsync(LineageRecord record, CancellationToken cancellationToken)
     {
         _collector.Record(record);
 
-        return _inner is null
+        return Inner is null
             ? Task.CompletedTask
-            : _inner.RecordAsync(record, cancellationToken);
+            : Inner.RecordAsync(record, cancellationToken);
     }
 }

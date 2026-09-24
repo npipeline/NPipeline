@@ -40,6 +40,12 @@ public sealed class LoggingPipelineMetricsSink : IPipelineMetricsSink
             new EventId(5, nameof(LoggingPipelineMetricsSink)),
             "    Node {NodeId} required {RetryCount} retry attempts");
 
+    private static readonly Action<ILogger, string, long, long, long, Exception?> s_logNodeResilience =
+        LoggerMessage.Define<string, long, long, long>(
+            LogLevel.Information,
+            new EventId(9, nameof(LoggingPipelineMetricsSink)),
+            "    Node {NodeId} retried {RetryEvents} times, gave up retrying {RetriesExhausted} times, and its circuit breaker opened {CircuitBreakerTrips} times");
+
     private static readonly Action<ILogger, string, double, Exception?> s_logNodeThroughput =
         LoggerMessage.Define<string, double>(
             LogLevel.Debug,
@@ -134,6 +140,9 @@ public sealed class LoggingPipelineMetricsSink : IPipelineMetricsSink
 
                 if (nodeMetric.RetryCount > 0)
                     s_logNodeRetryCount(_logger, nodeMetric.NodeId, nodeMetric.RetryCount, null);
+
+                if (nodeMetric.RetriesExhausted > 0 || nodeMetric.CircuitBreakerTrips > 0)
+                    s_logNodeResilience(_logger, nodeMetric.NodeId, nodeMetric.RetryEvents, nodeMetric.RetriesExhausted, nodeMetric.CircuitBreakerTrips, null);
 
                 if (nodeMetric.ThroughputItemsPerSec.HasValue)
                     s_logNodeThroughput(_logger, nodeMetric.NodeId, nodeMetric.ThroughputItemsPerSec.Value, null);

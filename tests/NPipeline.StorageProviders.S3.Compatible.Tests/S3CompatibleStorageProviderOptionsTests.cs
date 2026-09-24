@@ -5,15 +5,13 @@ namespace NPipeline.StorageProviders.S3.Compatible.Tests;
 
 public class S3CompatibleStorageProviderOptionsTests
 {
-    private static S3CompatibleStorageProviderOptions CreateValid()
-    {
-        return new S3CompatibleStorageProviderOptions
+    private static S3CompatibleStorageProviderOptions CreateValid() =>
+        new()
         {
             ServiceUrl = new Uri("http://localhost:9000"),
             AccessKey = "test-access-key",
             SecretKey = "test-secret-key",
         };
-    }
 
     // ── Defaults ──────────────────────────────────────────────────────────
 

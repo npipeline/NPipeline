@@ -51,20 +51,14 @@ public class DataQualityScore
     ///     Returns a string representation of the data quality score
     /// </summary>
     /// <returns>String representation</returns>
-    public override string ToString()
-    {
-        return $"Q:{OverallScore:F1} [C:{Completeness:F1},T:{Timeliness:F1},A:{Accuracy:F1},S:{Consistency:F1}]";
-    }
+    public override string ToString() => $"Q:{OverallScore:F1} [C:{Completeness:F1},T:{Timeliness:F1},A:{Accuracy:F1},S:{Consistency:F1}]";
 
     /// <summary>
     ///     Determines if the quality score is acceptable
     /// </summary>
     /// <param name="threshold">Minimum acceptable overall score</param>
     /// <returns>True if acceptable, false otherwise</returns>
-    public bool IsAcceptable(double threshold = 70.0)
-    {
-        return OverallScore >= threshold;
-    }
+    public bool IsAcceptable(double threshold = 70.0) => OverallScore >= threshold;
 
     /// <summary>
     ///     Multiplies the quality score by a factor
@@ -72,13 +66,11 @@ public class DataQualityScore
     /// <param name="score">The quality score</param>
     /// <param name="factor">The multiplication factor</param>
     /// <returns>The multiplied quality score</returns>
-    public static DataQualityScore operator *(DataQualityScore score, double factor)
-    {
-        return new DataQualityScore(
+    public static DataQualityScore operator *(DataQualityScore score, double factor) =>
+        new(
             score.Completeness * factor,
             score.Timeliness * factor,
             score.Accuracy * factor,
             score.Consistency * factor
         );
-    }
 }

@@ -198,34 +198,18 @@ public class ServiceCollectionExtensionsTests
     {
         public StorageScheme Scheme => new("test");
 
-        public bool CanHandle(StorageUri uri)
-        {
-            return uri.Scheme.ToString() == "test";
-        }
+        public bool CanHandle(StorageUri uri) => uri.Scheme.ToString() == "test";
 
-        public Task<Stream> OpenReadAsync(StorageUri uri, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<Stream>(Stream.Null);
-        }
+        public Task<Stream> OpenReadAsync(StorageUri uri, CancellationToken cancellationToken = default) => Task.FromResult<Stream>(Stream.Null);
 
-        public Task<Stream> OpenWriteAsync(StorageUri uri, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<Stream>(Stream.Null);
-        }
+        public Task<Stream> OpenWriteAsync(StorageUri uri, CancellationToken cancellationToken = default) => Task.FromResult<Stream>(Stream.Null);
 
-        public Task<bool> ExistsAsync(StorageUri uri, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(false);
-        }
+        public Task<bool> ExistsAsync(StorageUri uri, CancellationToken cancellationToken = default) => Task.FromResult(false);
 
-        public IAsyncEnumerable<StorageItem> ListAsync(StorageUri prefix, bool recursive = false, CancellationToken cancellationToken = default)
-        {
-            return AsyncEnumerable.Empty<StorageItem>();
-        }
+        public IAsyncEnumerable<StorageItem> ListAsync(StorageUri prefix, bool recursive = false, CancellationToken cancellationToken = default) =>
+            AsyncEnumerable.Empty<StorageItem>();
 
-        public Task<StorageMetadata?> GetMetadataAsync(StorageUri uri, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<StorageMetadata?>(null);
-        }
+        public Task<StorageMetadata?> GetMetadataAsync(StorageUri uri, CancellationToken cancellationToken = default) =>
+            Task.FromResult<StorageMetadata?>(null);
     }
 }

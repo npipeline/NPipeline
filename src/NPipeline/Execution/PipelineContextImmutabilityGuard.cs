@@ -36,7 +36,7 @@ namespace NPipeline.Execution;
 ///     </para>
 ///     <list type="bullet">
 ///         <item>
-///             <description>Retry options have not changed in typed context members</description>
+///             <description>Resilience options have not changed in typed context members</description>
 ///         </item>
 ///         <item>
 ///             <description>Tracer instance has not been replaced</description>
@@ -83,7 +83,7 @@ internal readonly struct PipelineContextImmutabilityGuard
 #if DEBUG
         return new PipelineContextImmutabilityGuard(
             cached.NodeId,
-            RuntimeHelpers.GetHashCode(cached.RetryOptions),
+            RuntimeHelpers.GetHashCode(cached.Resilience),
             RuntimeHelpers.GetHashCode(context.Observability.Tracer),
             RuntimeHelpers.GetHashCode(context.Observability.LoggerFactory),
             context.CancellationToken.GetHashCode());
@@ -103,16 +103,16 @@ internal readonly struct PipelineContextImmutabilityGuard
     [Conditional("DEBUG")]
     public void Validate(PipelineContext context)
     {
-        // Check if retry options changed in typed context members
-        var currentRetryOptionsHash = GetCurrentRetryOptionsHash(context, _nodeId);
+        // Check if the node's resilience options were replaced
+        var currentRetryOptionsHash = RuntimeHelpers.GetHashCode(context.ExecutionConfiguration.GetResilienceOptions(_nodeId));
 
         if (currentRetryOptionsHash != _retryOptionsHash)
         {
             throw new InvalidOperationException(
                 $"Context immutability violation detected for node '{_nodeId}': " +
-                "Retry options were modified during node execution. " +
+                "Resilience options were modified during node execution. " +
                 "When using CachedNodeExecutionContext, context state must remain immutable during node execution. " +
-                "Consider creating retry options before node execution begins.");
+                "Configure resilience options before node execution begins.");
         }
 
         // Check if tracer was replaced
@@ -141,14 +141,5 @@ internal readonly struct PipelineContextImmutabilityGuard
                 "Cancellation token was modified during node execution. " +
                 "When using CachedNodeExecutionContext, the cancellation token must remain immutable.");
         }
-    }
-
-    private static int GetCurrentRetryOptionsHash(PipelineContext context, string nodeId)
-    {
-        // Replicate the same retry options resolution logic used in CachedNodeExecutionContext.Create
-        if (context.ExecutionConfiguration.NodeRetryOverrides.TryGetValue(nodeId, out var nodeRetryOptions))
-            return RuntimeHelpers.GetHashCode(nodeRetryOptions);
-
-        return RuntimeHelpers.GetHashCode(context.ExecutionConfiguration.GlobalRetryOptions);
     }
 }

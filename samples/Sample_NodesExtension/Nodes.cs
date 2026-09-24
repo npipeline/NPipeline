@@ -61,10 +61,8 @@ public class CustomerDataSource : SourceNode<CustomerRecord>
 
     public override IDataStream<CustomerRecord> OpenStream(
         PipelineContext context,
-        CancellationToken cancellationToken)
-    {
-        return new InMemoryDataStream<CustomerRecord>(SampleData, "CustomerDataSource");
-    }
+        CancellationToken cancellationToken) =>
+        new InMemoryDataStream<CustomerRecord>(SampleData, "CustomerDataSource");
 }
 
 /// <summary>

@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using AwesomeAssertions;
 using NPipeline.Configuration;
+using NPipeline.Reliability;
 
 namespace NPipeline.Tests.Graph;
 
@@ -21,23 +22,22 @@ public class PipelineGraphTests
         _ = result.DeadLetterSink.Should().BeNull();
         _ = result.ResiliencePolicyType.Should().BeNull();
         _ = result.DeadLetterSinkType.Should().BeNull();
-        _ = result.RetryOptions.Should().BeNull();
-        _ = result.NodeRetryOverrides.Should().BeNull();
-        _ = result.CircuitBreakerOptions.Should().BeNull();
+        _ = result.Resilience.Should().BeNull();
+        _ = result.NodeResilience.Should().BeNull();
     }
 
     [Fact]
     public void ErrorHandlingConfiguration_WithValues_StoresProperties()
     {
-        PipelineRetryOptions retryOptions = new(1, MaxNodeRestartAttempts: 3, MaxSequentialNodeAttempts: 5);
+        var resilience = PipelineResilienceOptions.None with { ItemRetry = new ItemRetryOptions { MaxRetries = 1 } };
 
         ErrorHandlingConfiguration config = new()
         {
-            RetryOptions = retryOptions,
+            Resilience = resilience,
         };
 
-        _ = config.RetryOptions.Should().NotBeNull();
-        _ = config.RetryOptions?.MaxItemRetries.Should().Be(1);
+        _ = config.Resilience.Should().NotBeNull();
+        _ = config.Resilience?.ItemRetry.MaxRetries.Should().Be(1);
     }
 
     [Fact]
@@ -193,29 +193,16 @@ public class PipelineGraphTests
     }
 
     [Fact]
-    public void ErrorHandlingConfiguration_WithCircuitBreakerOptions_Stores()
+    public void ErrorHandlingConfiguration_WithNodeResilience_Stores()
     {
-        PipelineCircuitBreakerOptions cbOptions = new(1, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1), false);
+        var nodeOptions = PipelineResilienceOptions.None with { CircuitBreaker = new CircuitBreakerOptions { ConsecutiveFailures = 1 } };
 
         ErrorHandlingConfiguration config = new()
         {
-            CircuitBreakerOptions = cbOptions,
+            NodeResilience = ImmutableDictionary<string, PipelineResilienceOptions>.Empty.Add("node", nodeOptions),
         };
 
-        _ = config.CircuitBreakerOptions.Should().Be(cbOptions);
-    }
-
-    [Fact]
-    public void ErrorHandlingConfiguration_WithCircuitBreakerMemoryOptions_Stores()
-    {
-        var memoryOptions = CircuitBreakerMemoryManagementOptions.Disabled;
-
-        ErrorHandlingConfiguration config = new()
-        {
-            CircuitBreakerMemoryOptions = memoryOptions,
-        };
-
-        _ = config.CircuitBreakerMemoryOptions.Should().Be(memoryOptions);
+        _ = config.NodeResilience!["node"].Should().BeSameAs(nodeOptions);
     }
 
     [Fact]
@@ -232,22 +219,19 @@ public class PipelineGraphTests
     [Fact]
     public void ErrorHandlingConfiguration_AllPropertiesCanBeSet()
     {
-        PipelineRetryOptions retryOpts = new(1, MaxNodeRestartAttempts: 2, MaxSequentialNodeAttempts: 3);
-        PipelineCircuitBreakerOptions cbOpts = new(1, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1), false);
-        var memoryOptions = CircuitBreakerMemoryManagementOptions.Default;
+        var resilience = PipelineResilienceOptions.None with { NodeRetry = new NodeRetryOptions { MaxRetries = 2 } };
+        var nodeResilience = ImmutableDictionary<string, PipelineResilienceOptions>.Empty.Add("node", resilience);
 
         ErrorHandlingConfiguration config = new()
         {
-            RetryOptions = retryOpts,
-            CircuitBreakerOptions = cbOpts,
-            CircuitBreakerMemoryOptions = memoryOptions,
+            Resilience = resilience,
+            NodeResilience = nodeResilience,
             ResiliencePolicyType = typeof(object),
             DeadLetterSinkType = typeof(object),
         };
 
-        _ = config.RetryOptions.Should().Be(retryOpts);
-        _ = config.CircuitBreakerOptions.Should().Be(cbOpts);
-        _ = config.CircuitBreakerMemoryOptions.Should().Be(memoryOptions);
+        _ = config.Resilience.Should().Be(resilience);
+        _ = config.NodeResilience.Should().BeSameAs(nodeResilience);
         _ = config.ResiliencePolicyType.Should().NotBeNull();
         _ = config.DeadLetterSinkType.Should().NotBeNull();
     }

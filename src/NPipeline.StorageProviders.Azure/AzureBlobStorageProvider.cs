@@ -207,9 +207,8 @@ public sealed class AzureBlobStorageProvider : IStorageProvider, IStorageProvide
     ///     Gets metadata describing this storage provider's capabilities.
     /// </summary>
     /// <returns>A <see cref="StorageProviderMetadata" /> object containing information about the provider's supported features.</returns>
-    public StorageProviderMetadata GetMetadata()
-    {
-        return new StorageProviderMetadata
+    public StorageProviderMetadata GetMetadata() =>
+        new()
         {
             Name = "Azure Blob Storage",
             SupportedSchemes = ["azure"],
@@ -228,7 +227,6 @@ public sealed class AzureBlobStorageProvider : IStorageProvider, IStorageProvide
                 ["supportsDefaultCredentialChain"] = true,
             },
         };
-    }
 
     private static (string container, string blob) GetContainerAndBlob(StorageUri uri, bool requireBlob = false)
     {

@@ -84,9 +84,8 @@ public class CustomMergeNodePipeline : IPipelineDefinition
     ///     Gets a description of what this pipeline demonstrates.
     /// </summary>
     /// <returns>A detailed description of the pipeline's purpose and flow.</returns>
-    public static string GetDescription()
-    {
-        return @"CustomMergeNode Pipeline Sample:
+    public static string GetDescription() =>
+        @"CustomMergeNode Pipeline Sample:
 
 This sample demonstrates advanced stream merging patterns for financial trading systems using NPipeline's CustomMergeNode:
 
@@ -137,5 +136,4 @@ CustomMergeNode Concepts Demonstrated:
 This implementation provides a foundation for building high-frequency trading systems
 with NPipeline, demonstrating how CustomMergeNode enables advanced stream merging
 while maintaining data quality and performance in demanding financial scenarios.";
-    }
 }

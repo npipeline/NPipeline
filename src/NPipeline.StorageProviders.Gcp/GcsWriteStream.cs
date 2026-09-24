@@ -1,7 +1,8 @@
-using System.Net;
 using System.Runtime.ExceptionServices;
 using Google;
 using Google.Cloud.Storage.V1;
+using NPipeline.StorageProviders.Gcp.Reliability;
+using NResilience;
 using Object = Google.Apis.Storage.v1.Data.Object;
 
 namespace NPipeline.StorageProviders.Gcp;
@@ -18,14 +19,16 @@ public sealed class GcsWriteStream : Stream
     private readonly string? _contentType;
     private readonly CancellationToken _disposeCancellationToken;
     private readonly string _objectName;
-    private readonly GcsRetryPolicy _retryPolicy;
+    private readonly Resilience _resilience;
     private readonly StorageClient _storageClient;
     private int _disposeState; // 0 = not disposed, 1 = disposing, 2 = disposed
     private FileStream? _tempFileStream;
     private bool _uploaded;
 
     /// <summary>
-    ///     Initializes a new instance of the <see cref="GcsWriteStream" /> class.
+    ///     Initializes a new instance of the <see cref="GcsWriteStream" /> class. The upload is sent once, without retries;
+    ///     streams opened through <see cref="GcsStorageProvider.OpenWriteAsync" /> retry according to
+    ///     <see cref="GcsStorageProviderOptions.Resilience" />.
     /// </summary>
     /// <param name="storageClient">The Google Cloud Storage client.</param>
     /// <param name="bucket">The GCS bucket name.</param>
@@ -40,7 +43,7 @@ public sealed class GcsWriteStream : Stream
         string? contentType = null,
         int chunkSizeBytes = 16 * 1024 * 1024,
         CancellationToken disposeCancellationToken = default)
-        : this(storageClient, bucket, objectName, contentType, chunkSizeBytes, new GcsRetryPolicy(null), disposeCancellationToken)
+        : this(storageClient, bucket, objectName, contentType, chunkSizeBytes, Resilience.None, disposeCancellationToken)
     {
     }
 
@@ -50,14 +53,14 @@ public sealed class GcsWriteStream : Stream
         string objectName,
         string? contentType,
         int chunkSizeBytes,
-        GcsRetryPolicy retryPolicy,
+        Resilience resilience,
         CancellationToken disposeCancellationToken = default)
     {
         _storageClient = storageClient ?? throw new ArgumentNullException(nameof(storageClient));
         _bucket = bucket ?? throw new ArgumentNullException(nameof(bucket));
         _objectName = objectName ?? throw new ArgumentNullException(nameof(objectName));
         _contentType = contentType;
-        _retryPolicy = retryPolicy ?? throw new ArgumentNullException(nameof(retryPolicy));
+        _resilience = resilience ?? throw new ArgumentNullException(nameof(resilience));
         _disposeCancellationToken = disposeCancellationToken;
 
         if (chunkSizeBytes <= 0)
@@ -111,23 +114,16 @@ public sealed class GcsWriteStream : Stream
     }
 
     /// <inheritdoc />
-    public override Task FlushAsync(CancellationToken cancellationToken)
-    {
+    public override Task FlushAsync(CancellationToken cancellationToken) =>
+
         // Flush is a no-op - upload happens on disposal
-        return Task.CompletedTask;
-    }
+        Task.CompletedTask;
 
     /// <inheritdoc />
-    public override int Read(byte[] buffer, int offset, int count)
-    {
-        throw new NotSupportedException();
-    }
+    public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
 
     /// <inheritdoc />
-    public override long Seek(long offset, SeekOrigin origin)
-    {
-        throw new NotSupportedException();
-    }
+    public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
 
     /// <inheritdoc />
     public override void SetLength(long value)
@@ -189,9 +185,6 @@ public sealed class GcsWriteStream : Stream
                     // Flush the temp file stream to ensure all data is written
                     _tempFileStream.Flush();
 
-                    // Reset position to beginning for upload
-                    _tempFileStream.Position = 0;
-
                     // Upload to GCS synchronously
                     using var cts = CreateLinkedUploadCts();
                     UploadAsync(cts.Token).GetAwaiter().GetResult();
@@ -238,9 +231,6 @@ public sealed class GcsWriteStream : Stream
             {
                 // Flush the temp file stream to ensure all data is written
                 await _tempFileStream.FlushAsync(CancellationToken.None).ConfigureAwait(false);
-
-                // Reset position to beginning for upload
-                _tempFileStream.Position = 0;
 
                 // Upload to GCS
                 using var cts = CreateLinkedUploadCts();
@@ -295,11 +285,17 @@ public sealed class GcsWriteStream : Stream
             if (!string.IsNullOrEmpty(_contentType))
                 obj.ContentType = _contentType;
 
-            await _retryPolicy.ExecuteAsync(
-                token => _storageClient.UploadObjectAsync(
-                    obj,
-                    _tempFileStream,
-                    uploadOptions,
+            var source = _tempFileStream;
+
+            // Each attempt uploads the whole object from its first byte, in a new upload session. Re-sending an
+            // object replaces it, so a retry cannot leave a partial or duplicated object.
+            _ = await _resilience.RunAsync(
+                token => GcsRetryAfter.CaptureAsync(
+                    t =>
+                    {
+                        source.Position = 0;
+                        return _storageClient.UploadObjectAsync(obj, source, uploadOptions, t);
+                    },
                     token),
                 cancellationToken).ConfigureAwait(false);
 
@@ -307,7 +303,7 @@ public sealed class GcsWriteStream : Stream
         }
         catch (GoogleApiException ex)
         {
-            throw TranslateGcsException(ex, _bucket, _objectName, "upload");
+            throw GcsStorageProvider.TranslateGcsException(ex, _bucket, _objectName, "upload");
         }
     }
 
@@ -316,41 +312,5 @@ public sealed class GcsWriteStream : Stream
         var linkedSource = CancellationTokenSource.CreateLinkedTokenSource(_disposeCancellationToken);
         linkedSource.CancelAfter(UploadDisposeTimeout);
         return linkedSource;
-    }
-
-    /// <summary>
-    ///     Translates a Google API exception to an appropriate .NET exception.
-    /// </summary>
-    private static Exception TranslateGcsException(
-        GoogleApiException ex,
-        string bucket,
-        string objectName,
-        string operation)
-    {
-        return ex.HttpStatusCode switch
-        {
-            HttpStatusCode.Unauthorized
-                => new UnauthorizedAccessException(
-                    $"Access denied to GCS bucket '{bucket}' and object '{objectName}'. {ex.Message}", ex),
-            HttpStatusCode.Forbidden
-                => new UnauthorizedAccessException(
-                    $"Permission denied for GCS bucket '{bucket}' and object '{objectName}'. {ex.Message}", ex),
-            HttpStatusCode.NotFound
-                => new FileNotFoundException(
-                    $"GCS bucket '{bucket}' or object '{objectName}' not found.", ex),
-            HttpStatusCode.BadRequest
-                => new ArgumentException(
-                    $"Invalid request for GCS bucket '{bucket}' and object '{objectName}'. {ex.Message}", ex),
-            HttpStatusCode.Conflict
-                => new IOException(
-                    $"Conflict occurred for GCS bucket '{bucket}' and object '{objectName}'. {ex.Message}", ex),
-            _
-                => new GcsStorageException(
-                    $"Failed to {operation} on GCS bucket '{bucket}' and object '{objectName}'. {ex.Message}",
-                    bucket,
-                    objectName,
-                    operation,
-                    ex),
-        };
     }
 }

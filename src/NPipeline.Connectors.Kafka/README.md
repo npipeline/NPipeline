@@ -11,7 +11,11 @@ Apache Kafka connector for NPipeline - integrate with Kafka for high-throughput 
 - **Partition Management**: Custom partition key providers for sophisticated message routing
 - **Consumer Groups**: Offset management and parallel processing across partitions
 - **Message Acknowledgment**: Manual control over offset commits with acknowledgment callbacks
-- **Error Handling**: Exponential backoff retry strategies for transient errors
+- **Resilience**: The source retries retriable consume errors through
+  [NResilience](https://github.com/nresilience/NResilience) (`KafkaConfiguration.Resilience`, default four attempts
+  with jittered backoff from 100 ms); fatal, deserialization, and authorization errors surface at once. The sink does
+  not retry: librdkafka retries each produce and the idempotent producer removes duplicates, so it is the only layer
+  that retries a produce. Tune it with `DeliveryTimeoutMs`, `RetryBackoffMs`, and `RetryBackoffMaxMs`
 - **Kafka Authentication**: Support for SASL/PLAIN and SASL/SSL security protocols
 - **Message Metadata**: Access to Kafka-specific properties (topic, partition, offset, timestamp, headers)
 - **Dead-Letter Envelope**: Optional `DeadLetterEnvelope` model for custom routing

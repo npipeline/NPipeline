@@ -68,9 +68,8 @@ public class DataTransformationPipeline : IPipelineDefinition
     ///     Gets a description of what this pipeline demonstrates.
     /// </summary>
     /// <returns>A detailed description of the pipeline's purpose and flow.</returns>
-    public static string GetDescription()
-    {
-        return @"Simple Data Transformation Sample:
+    public static string GetDescription() =>
+        @"Simple Data Transformation Sample:
 
 This sample demonstrates data manipulation and type transformation patterns:
 - CSV to object transformation
@@ -91,5 +90,4 @@ This implementation follows the IPipelineDefinition pattern, which provides:
 - Proper node isolation between executions
 - Type-safe node connections
 - Clear separation of pipeline structure from execution logic";
-    }
 }

@@ -122,7 +122,8 @@ else
 
 ## Configuring Resilience in the Definition
 
-The builder exposes configuration methods for error handling, retry, and circuit breakers directly in the definition:
+You configure resilience in the definition with `WithResilience`. The call without a node handle sets the pipeline's
+options, and the call with a handle derives one node's options from the pipeline's:
 
 ```csharp
 public void Define(PipelineBuilder builder, PipelineContext context)
@@ -134,12 +135,20 @@ public void Define(PipelineBuilder builder, PipelineContext context)
     builder.Connect(source, transform);
     builder.Connect(transform, sink);
 
-    // Enable resilient execution on a specific node
-    transform.WithResilience(builder);
-    builder.WithRetryOptions(transform, new PipelineRetryOptions { MaxItemRetries = 3 });
+    // Pipeline-wide: retry transient item failures five times, then dead-letter the item
+    builder.WithResilience(options => options with
+    {
+        ItemRetry = ItemRetryOptions.Default with { MaxRetries = 5 },
+        OnItemFailure = ItemFailureAction.DeadLetter,
+    });
+    builder.AddDeadLetterSink(new BoundedInMemoryDeadLetterSink());
 
-    // Pipeline-wide circuit breaker
-    builder.WithCircuitBreaker(failureThreshold: 10, openDuration: TimeSpan.FromSeconds(30));
+    // One node: restart the stream from its checkpoint, and guard it with a circuit breaker
+    builder.WithResilience(transform, options => options with
+    {
+        NodeRestart = new NodeRestartOptions { MaxRestarts = 3 },
+        CircuitBreaker = new CircuitBreakerOptions { ConsecutiveFailures = 10, OpenDuration = TimeSpan.FromSeconds(30) },
+    });
 }
 ```
 

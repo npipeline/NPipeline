@@ -320,9 +320,8 @@ public static class SqlServerTestHelpers
         string password,
         bool trustServerCertificate = true,
         int connectTimeout = 30,
-        int commandTimeout = 30)
-    {
-        return new SqlConnectionStringBuilder
+        int commandTimeout = 30) =>
+        new()
         {
             DataSource = server,
             InitialCatalog = database,
@@ -337,7 +336,6 @@ public static class SqlServerTestHelpers
             Encrypt = false,
             IntegratedSecurity = false,
         };
-    }
 
     /// <summary>
     ///     Creates a connection string with integrated security.
@@ -347,9 +345,8 @@ public static class SqlServerTestHelpers
         string database,
         bool trustServerCertificate = true,
         int connectTimeout = 30,
-        int commandTimeout = 30)
-    {
-        return new SqlConnectionStringBuilder
+        int commandTimeout = 30) =>
+        new()
         {
             DataSource = server,
             InitialCatalog = database,
@@ -362,5 +359,4 @@ public static class SqlServerTestHelpers
             Encrypt = false,
             IntegratedSecurity = true,
         };
-    }
 }

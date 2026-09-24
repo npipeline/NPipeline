@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
-using System.Runtime.CompilerServices;
 using NPipeline.Execution;
 using NPipeline.Nodes;
 
@@ -12,10 +11,25 @@ namespace NPipeline.Pipeline;
 public sealed class PipelineNodeEnvironmentContext
 {
     private readonly ConcurrentDictionary<INode, string> _nodeIdsByInstance =
-        new(ReferenceEqualityComparer.Instance as IEqualityComparer<INode>);
+        new(ReferenceEqualityComparer.Instance);
 
     private readonly ConcurrentDictionary<string, NodeExecutionStatus> _nodeStatuses =
         new(StringComparer.Ordinal);
+
+    /// <summary>
+    ///     Registry for node execution annotations, observability scopes, and runtime annotations.
+    /// </summary>
+    public NodeExecutionScopeRegistry NodeExecutionScopeRegistry { get; } = new();
+
+    /// <summary>
+    ///     Optional preconfigured node instances to seed graph construction.
+    /// </summary>
+    public Dictionary<string, INode> PreconfiguredNodeInstances { get; } = new();
+
+    /// <summary>
+    ///     Indicates node lifetimes are owned externally (for example by DI container).
+    /// </summary>
+    public bool DiOwnedNodes { get; set; }
 
     /// <summary>
     ///     Gets the id under which <paramref name="node" /> is running in this pipeline.
@@ -86,7 +100,9 @@ public sealed class PipelineNodeEnvironmentContext
         _ = _nodeIdsByInstance.AddOrUpdate(
             node,
             nodeId,
-            (_, existing) => existing == nodeId ? existing : string.Empty);
+            (_, existing) => existing == nodeId
+                ? existing
+                : string.Empty);
     }
 
     internal void RegisterNodes(IReadOnlyDictionary<string, INode> nodeInstances)
@@ -109,7 +125,9 @@ public sealed class PipelineNodeEnvironmentContext
     {
         ArgumentException.ThrowIfNullOrEmpty(nodeId);
 
-        return _nodeStatuses.TryGetValue(nodeId, out var status) ? status : NodeExecutionStatus.Pending;
+        return _nodeStatuses.TryGetValue(nodeId, out var status)
+            ? status
+            : NodeExecutionStatus.Pending;
     }
 
     /// <summary>
@@ -118,10 +136,7 @@ public sealed class PipelineNodeEnvironmentContext
     /// <remarks>
     ///     Nodes still pending are absent rather than reported as <see cref="NodeExecutionStatus.Pending" />.
     /// </remarks>
-    public IEnumerable<KeyValuePair<string, NodeExecutionStatus>> EnumerateNodeStatuses()
-    {
-        return _nodeStatuses;
-    }
+    public IEnumerable<KeyValuePair<string, NodeExecutionStatus>> EnumerateNodeStatuses() => _nodeStatuses;
 
     /// <summary>
     ///     Records the outcome of a node that has finished executing.
@@ -134,19 +149,4 @@ public sealed class PipelineNodeEnvironmentContext
     {
         _nodeStatuses[nodeId] = status;
     }
-
-    /// <summary>
-    ///     Registry for node execution annotations, observability scopes, and runtime annotations.
-    /// </summary>
-    public NodeExecutionScopeRegistry NodeExecutionScopeRegistry { get; } = new();
-
-    /// <summary>
-    ///     Optional preconfigured node instances to seed graph construction.
-    /// </summary>
-    public Dictionary<string, INode> PreconfiguredNodeInstances { get; } = new();
-
-    /// <summary>
-    ///     Indicates node lifetimes are owned externally (for example by DI container).
-    /// </summary>
-    public bool DiOwnedNodes { get; set; }
 }

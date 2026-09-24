@@ -3,18 +3,15 @@ using System.Text;
 using NPipeline.Connectors.Http.Configuration;
 using NPipeline.Connectors.Http.Nodes;
 using NPipeline.Connectors.Http.Pagination;
-using NPipeline.Connectors.Http.Retry;
 using NPipeline.Connectors.Http.Tests.Helpers;
 using NPipeline.Pipeline;
+using NResilience;
 
 namespace NPipeline.Connectors.Http.Tests.Nodes;
 
 public class HttpSourceNodeTests
 {
-    private static HttpClient CreateClient(MockHttpMessageHandler handler)
-    {
-        return new HttpClient(handler) { BaseAddress = null };
-    }
+    private static HttpClient CreateClient(MockHttpMessageHandler handler) => new(handler) { BaseAddress = null };
 
     [Fact]
     public async Task Initialize_WithRootJsonArray_YieldsAllItems()
@@ -223,7 +220,7 @@ public class HttpSourceNodeTests
         var config = new HttpSourceConfiguration
         {
             BaseUri = new Uri("https://api.example.com/items"),
-            RetryStrategy = new ExponentialBackoffHttpRetryStrategy { MaxRetries = 0 },
+            Resilience = Resilience.None,
         };
 
         var node = new HttpSourceNode<Item>(config, httpClient);
@@ -264,15 +261,14 @@ public class HttpSourceNodeTests
     }
 
     [Fact]
-    public async Task Initialize_WhenRequestExceedsTimeout_ThrowsTaskCanceledException()
+    public async Task Initialize_WhenRequestExceedsAttemptTimeout_ThrowsTimeoutException()
     {
         using var httpClient = new HttpClient(new DelayedResponseHandler(TimeSpan.FromMilliseconds(250)));
 
         var config = new HttpSourceConfiguration
         {
             BaseUri = new Uri("https://api.example.com/items"),
-            Timeout = TimeSpan.FromMilliseconds(50),
-            RetryStrategy = new ExponentialBackoffHttpRetryStrategy { MaxRetries = 0 },
+            Resilience = Resilience.None with { AttemptTimeout = TimeSpan.FromMilliseconds(50) },
         };
 
         var node = new HttpSourceNode<Item>(config, httpClient);
@@ -284,7 +280,7 @@ public class HttpSourceNodeTests
             }
         };
 
-        await act.Should().ThrowAsync<TaskCanceledException>();
+        await act.Should().ThrowAsync<TimeoutException>();
     }
 
     [Fact]

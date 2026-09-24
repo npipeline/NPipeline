@@ -22,10 +22,10 @@ public class CosmosSinkNode<T> : DatabaseSinkNode<T>, IAsyncDisposable
     private readonly CosmosConfiguration _configuration;
     private readonly string? _connectionName;
     private readonly ICosmosConnectionPool? _connectionPool;
-    private readonly bool _ownsConnectionPool;
     private readonly string _containerId;
     private readonly string _databaseId;
     private readonly Func<T, string>? _idSelector;
+    private readonly bool _ownsConnectionPool;
     private readonly Func<T, PartitionKey>? _partitionKeySelector;
     private readonly IStorageProvider? _storageProvider;
     private readonly IStorageResolver? _storageResolver;
@@ -247,6 +247,17 @@ public class CosmosSinkNode<T> : DatabaseSinkNode<T>, IAsyncDisposable
     protected override bool ContinueOnError => _configuration.ContinueOnError;
 
     /// <summary>
+    ///     Disposes the connection pool, but only when this node created it: an injected pool belongs to its caller.
+    /// </summary>
+    public async ValueTask DisposeAsync()
+    {
+        GC.SuppressFinalize(this);
+
+        if (_ownsConnectionPool && _connectionPool is not null)
+            await _connectionPool.DisposeAsync().ConfigureAwait(false);
+    }
+
+    /// <summary>
     ///     Gets a database connection asynchronously.
     /// </summary>
     /// <param name="cancellationToken">The cancellation token.</param>
@@ -326,16 +337,5 @@ public class CosmosSinkNode<T> : DatabaseSinkNode<T>, IAsyncDisposable
         }
 
         return (segments[0], segments[1]);
-    }
-
-    /// <summary>
-    ///     Disposes the connection pool, but only when this node created it: an injected pool belongs to its caller.
-    /// </summary>
-    public async ValueTask DisposeAsync()
-    {
-        GC.SuppressFinalize(this);
-
-        if (_ownsConnectionPool && _connectionPool is not null)
-            await _connectionPool.DisposeAsync().ConfigureAwait(false);
     }
 }

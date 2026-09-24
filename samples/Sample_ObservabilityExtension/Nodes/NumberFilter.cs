@@ -19,6 +19,6 @@ public class NumberFilter : TransformNode<int, int>
         if (item <= 5 || item % 10 == 0) // Log a few examples
             Console.WriteLine($"[NumberFilter] {item} × 2 = {result}");
 
-        return await ValueTask.FromResult<int>(result);
+        return await ValueTask.FromResult(result);
     }
 }

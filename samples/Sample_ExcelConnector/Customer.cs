@@ -122,8 +122,5 @@ public class Customer
         }
     }
 
-    public override string ToString()
-    {
-        return $"Customer {Id}: {FullName} ({Age}, {NormalizedCountry}) - {CustomerStatus}";
-    }
+    public override string ToString() => $"Customer {Id}: {FullName} ({Age}, {NormalizedCountry}) - {CustomerStatus}";
 }

@@ -129,7 +129,6 @@ var partitionProvider = PartitionKeyProvider
 var sinkNode = new KafkaSinkNode<OrderMessage>(
     config, 
     metrics, 
-    retryStrategy,
     partitionProvider);  // Messages with same CustomerId go to same partition
 ```
 
@@ -162,19 +161,24 @@ public class MyKafkaMetrics : IKafkaMetrics
 }
 ```
 
-## Retry Strategy
+## Resilience
 
-Configure custom retry behavior:
+The source retries a retriable consume error through NResilience. Set `KafkaConfiguration.Resilience`:
 
 ```csharp
-var retryStrategy = new ExponentialBackoffRetryStrategy
+var config = new KafkaConfiguration
 {
-    MaxRetries = 5,
-    BaseDelayMs = 100,
-    MaxDelayMs = 30000,
-    JitterFactor = 0.2,  // Add 20% randomness to prevent thundering herd
+    // ...
+    Resilience = KafkaConnectorResilience.Default with
+    {
+        Attempts = 6,
+        Backoff = KafkaConnectorResilience.Default.Backoff with { MaximumDelay = TimeSpan.FromSeconds(5) },
+    },
 };
 ```
+
+Fatal, deserialization, and authorization errors are not retried. The sink does not retry a produce: librdkafka
+already retries it, and the idempotent producer removes the duplicates.
 
 ## Dead Letter Handling
 

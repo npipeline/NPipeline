@@ -208,6 +208,41 @@ _manifest/
 
 Snapshots track which partition files were written in each pipeline run, enabling time-travel queries and incremental processing.
 
+## Resilience
+
+The manifest writer appends to `_manifest/manifest.ndjson` through an NResilience policy,
+`DataLakeConnectorResilience.ManifestWrite`: three attempts (two retries) with exponential backoff and full jitter from
+100 ms, no attempt timeout, and no deadline. Only transient storage errors are retried (`IOException`,
+`TimeoutException`, socket errors). Access denied (`UnauthorizedAccessException`), missing paths, and invalid arguments
+fail at once. Pass a different policy to the `ManifestWriter` constructor to change this.
+
+A retry recovers from a transient error, not from a conflict with a concurrent writer. Each attempt re-reads the
+manifest and skips the append when its entries are already present, so a retry after an attempt that committed doesn't
+duplicate entries.
+
+The cloud storage providers' SDKs (Azure, AWS, Google) retry individual requests natively; this policy retries the whole
+append.
+
+### Concurrent writers
+
+The main manifest is **last-writer-wins**. An append reads `manifest.ndjson`, adds its entries, and replaces the file (by
+atomic rename on providers that support it, such as ADLS Gen2 and the local file system, and by overwriting it on the
+others). There is no conditional write, so when two writers append at the same time, one writer's entries can be
+missing from the main manifest.
+
+Readers still see every entry. Before appending, each flush writes the writer's per-snapshot manifest,
+`_manifest/snapshots/{snapshotId}.ndjson`, holding every entry that writer has flushed. Only that writer writes this
+file. `ManifestReader` (and so `DataLakeTableSourceNode` and time travel) merges all snapshot manifests into the main
+manifest, so entries lost from the main manifest come back. Two conditions apply:
+
+- Give each writer its own snapshot ID. The built-in writers generate one with `ManifestWriter.GenerateSnapshotId()`.
+- Tools that read `manifest.ndjson` directly, without the snapshot files, can miss entries.
+
+Reads use `DataLakeConnectorResilience.ManifestRead` (the same attempts, backoff, and classifier as writes). A missing
+manifest or snapshot directory reads as empty. Any other failure to list or read the manifest or a snapshot file is
+retried and then thrown, so a read never silently returns fewer entries than the table has. Pass a different policy to
+the `ManifestReader` constructor to change this.
+
 ## Schema Evolution
 
 When reading, use `SchemaCompatibilityMode.Additive` to handle schema drift:

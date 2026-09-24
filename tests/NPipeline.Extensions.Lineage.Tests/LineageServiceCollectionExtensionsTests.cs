@@ -457,38 +457,26 @@ public class LineageServiceCollectionExtensionsTests
     // Test implementations
     private sealed class TestPipelineLineageSink : IPipelineLineageSink
     {
-        public Task RecordAsync(PipelineLineageReport report, CancellationToken cancellationToken)
-        {
-            return Task.CompletedTask;
-        }
+        public Task RecordAsync(PipelineLineageReport report, CancellationToken cancellationToken) => Task.CompletedTask;
     }
 
     private sealed class TestPipelineLineageSink2 : IPipelineLineageSink
     {
-        public Task RecordAsync(PipelineLineageReport report, CancellationToken cancellationToken)
-        {
-            return Task.CompletedTask;
-        }
+        public Task RecordAsync(PipelineLineageReport report, CancellationToken cancellationToken) => Task.CompletedTask;
     }
 
     private sealed class TestLineageCollector : ILineageCollector
     {
         private readonly List<LineageRecord> _records = [];
 
-        public LineagePacket<T> CreateLineagePacket<T>(T item, string sourceNodeId)
-        {
-            return new LineagePacket<T>(item, Guid.NewGuid(), ImmutableArray.Create(sourceNodeId));
-        }
+        public LineagePacket<T> CreateLineagePacket<T>(T item, string sourceNodeId) => new(item, Guid.NewGuid(), ImmutableArray.Create(sourceNodeId));
 
         public void Record(LineageRecord record)
         {
             _records.Add(record);
         }
 
-        public bool ShouldCollectLineage(Guid correlationId, LineageOptions? options)
-        {
-            return true;
-        }
+        public bool ShouldCollectLineage(Guid correlationId, LineageOptions? options) => true;
 
         public IReadOnlyList<LineageRecord> GetCorrelationHistory(Guid correlationId)
         {
@@ -503,14 +491,12 @@ public class LineageServiceCollectionExtensionsTests
                 .LastOrDefault();
         }
 
-        public IReadOnlyList<LineageRecord> GetAllRecords()
-        {
-            return _records;
-        }
+        public IReadOnlyList<LineageRecord> GetAllRecords() => _records;
 
         public IReadOnlyList<Guid> GetUnresolvedCorrelations()
         {
             var grouped = _records.GroupBy(record => record.CorrelationId);
+
             return grouped
                 .Where(group => group.Key != Guid.Empty && !group.Any(record => record.IsTerminal))
                 .Select(group => group.Key)
@@ -539,10 +525,7 @@ public class LineageServiceCollectionExtensionsTests
 
         public ITestDependency Dependency { get; }
 
-        public Task RecordAsync(PipelineLineageReport report, CancellationToken cancellationToken)
-        {
-            return Task.CompletedTask;
-        }
+        public Task RecordAsync(PipelineLineageReport report, CancellationToken cancellationToken) => Task.CompletedTask;
     }
 
     private sealed class DependentLineageCollector : ILineageCollector
@@ -556,20 +539,14 @@ public class LineageServiceCollectionExtensionsTests
 
         public ITestDependency Dependency { get; }
 
-        public LineagePacket<T> CreateLineagePacket<T>(T item, string sourceNodeId)
-        {
-            return new LineagePacket<T>(item, Guid.NewGuid(), ImmutableArray.Create(sourceNodeId));
-        }
+        public LineagePacket<T> CreateLineagePacket<T>(T item, string sourceNodeId) => new(item, Guid.NewGuid(), ImmutableArray.Create(sourceNodeId));
 
         public void Record(LineageRecord record)
         {
             _records.Add(record);
         }
 
-        public bool ShouldCollectLineage(Guid correlationId, LineageOptions? options)
-        {
-            return true;
-        }
+        public bool ShouldCollectLineage(Guid correlationId, LineageOptions? options) => true;
 
         public IReadOnlyList<LineageRecord> GetCorrelationHistory(Guid correlationId)
         {
@@ -584,14 +561,12 @@ public class LineageServiceCollectionExtensionsTests
                 .LastOrDefault();
         }
 
-        public IReadOnlyList<LineageRecord> GetAllRecords()
-        {
-            return _records;
-        }
+        public IReadOnlyList<LineageRecord> GetAllRecords() => _records;
 
         public IReadOnlyList<Guid> GetUnresolvedCorrelations()
         {
             var grouped = _records.GroupBy(record => record.CorrelationId);
+
             return grouped
                 .Where(group => group.Key != Guid.Empty && !group.Any(record => record.IsTerminal))
                 .Select(group => group.Key)

@@ -25,8 +25,10 @@ namespace NPipeline.Attributes;
 ///         Two shapes are refused at build time rather than cached, because reusing them would hand a later run
 ///         objects the first run has already disposed:
 ///         <list type="bullet">
-///             <item>a definition that registers a preconfigured node instance — every builder overload that takes a
-///             node instance rather than a node type does this, and the instance is disposed when its run ends;</item>
+///             <item>
+///                 a definition that registers a preconfigured node instance — every builder overload that takes a
+///                 node instance rather than a node type does this, and the instance is disposed when its run ends;
+///             </item>
 ///             <item>a run whose context supplies preconfigured node instances of its own.</item>
 ///         </list>
 ///         Either one falls back to a normal rebuild, and the first is reported through

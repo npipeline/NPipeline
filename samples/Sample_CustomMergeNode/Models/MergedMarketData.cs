@@ -91,9 +91,6 @@ public class MergedMarketData
     ///     Returns a string representation of the merged market data
     /// </summary>
     /// <returns>String representation</returns>
-    public override string ToString()
-    {
-        return
-            $"{Symbol}: ${MergedPrice:F2} ({MergedVolume:N0} shares) at {MergeTimestamp:HH:mm:ss.fff} from {PrimaryExchange} [{MergeStrategy}] {QualityScore}";
-    }
+    public override string ToString() =>
+        $"{Symbol}: ${MergedPrice:F2} ({MergedVolume:N0} shares) at {MergeTimestamp:HH:mm:ss.fff} from {PrimaryExchange} [{MergeStrategy}] {QualityScore}";
 }

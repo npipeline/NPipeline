@@ -59,19 +59,15 @@ public sealed class CosmosCassandraApiAdapter : ICosmosApiAdapter
     }
 
     /// <inheritdoc />
-    public ICosmosSourceExecutor CreateSourceExecutor(object client, CosmosConfiguration configuration)
-    {
-        return new CosmosCassandraSourceExecutor(((CassandraClientContext)client).Session);
-    }
+    public ICosmosSourceExecutor CreateSourceExecutor(object client, CosmosConfiguration configuration) =>
+        new CosmosCassandraSourceExecutor(((CassandraClientContext)client).Session);
 
     /// <inheritdoc />
     public ICosmosSinkExecutor<T> CreateSinkExecutor<T>(
         object client,
         CosmosConfiguration configuration,
-        Func<T, string>? idSelector = null)
-    {
-        return new CosmosCassandraSinkExecutor<T>(((CassandraClientContext)client).Session, configuration);
-    }
+        Func<T, string>? idSelector = null) =>
+        new CosmosCassandraSinkExecutor<T>(((CassandraClientContext)client).Session, configuration);
 
     private static (string? Username, string? Password) ParseCassandraConnectionString(string connectionString)
     {

@@ -240,24 +240,12 @@ public class InMemorySinkNodeTests
 
         public string StreamName => "ThrowingDataStream";
 
-        public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
-        {
-            throw _exception;
-        }
+        public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default) => throw _exception;
 
-        public IAsyncEnumerable<object?> ToAsyncEnumerable(CancellationToken cancellationToken = default)
-        {
-            throw _exception;
-        }
+        public IAsyncEnumerable<object?> ToAsyncEnumerable(CancellationToken cancellationToken = default) => throw _exception;
 
-        public Type GetDataType()
-        {
-            return typeof(T);
-        }
+        public Type GetDataType() => typeof(T);
 
-        public ValueTask DisposeAsync()
-        {
-            return ValueTask.CompletedTask;
-        }
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 }

@@ -54,10 +54,7 @@ public sealed class MongoRow
     /// </summary>
     /// <param name="name">The field name.</param>
     /// <returns>True if the field exists; otherwise false.</returns>
-    public bool HasField(string name)
-    {
-        return Document.Contains(name);
-    }
+    public bool HasField(string name) => Document.Contains(name);
 
     /// <summary>
     ///     Gets the value of the specified field as type <typeparamref name="T" />.
@@ -116,66 +113,42 @@ public sealed class MongoRow
     /// <summary>
     ///     Gets the value of the specified field as a string.
     /// </summary>
-    public string GetString(string name, string defaultValue = "")
-    {
-        return Get(name, defaultValue);
-    }
+    public string GetString(string name, string defaultValue = "") => Get(name, defaultValue);
 
     /// <summary>
     ///     Gets the value of the specified field as an Int32.
     /// </summary>
-    public int GetInt32(string name, int defaultValue = 0)
-    {
-        return Get(name, defaultValue);
-    }
+    public int GetInt32(string name, int defaultValue = 0) => Get(name, defaultValue);
 
     /// <summary>
     ///     Gets the value of the specified field as an Int64.
     /// </summary>
-    public long GetInt64(string name, long defaultValue = 0)
-    {
-        return Get(name, defaultValue);
-    }
+    public long GetInt64(string name, long defaultValue = 0) => Get(name, defaultValue);
 
     /// <summary>
     ///     Gets the value of the specified field as a double.
     /// </summary>
-    public double GetDouble(string name, double defaultValue = 0)
-    {
-        return Get(name, defaultValue);
-    }
+    public double GetDouble(string name, double defaultValue = 0) => Get(name, defaultValue);
 
     /// <summary>
     ///     Gets the value of the specified field as a decimal.
     /// </summary>
-    public decimal GetDecimal(string name, decimal defaultValue = 0)
-    {
-        return Get(name, defaultValue);
-    }
+    public decimal GetDecimal(string name, decimal defaultValue = 0) => Get(name, defaultValue);
 
     /// <summary>
     ///     Gets the value of the specified field as a boolean.
     /// </summary>
-    public bool GetBoolean(string name, bool defaultValue = false)
-    {
-        return Get(name, defaultValue);
-    }
+    public bool GetBoolean(string name, bool defaultValue = false) => Get(name, defaultValue);
 
     /// <summary>
     ///     Gets the value of the specified field as a DateTime.
     /// </summary>
-    public DateTime GetDateTime(string name, DateTime defaultValue = default)
-    {
-        return Get(name, defaultValue);
-    }
+    public DateTime GetDateTime(string name, DateTime defaultValue = default) => Get(name, defaultValue);
 
     /// <summary>
     ///     Gets the value of the specified field as a Guid.
     /// </summary>
-    public Guid GetGuid(string name, Guid defaultValue = default)
-    {
-        return Get(name, defaultValue);
-    }
+    public Guid GetGuid(string name, Guid defaultValue = default) => Get(name, defaultValue);
 
     /// <summary>
     ///     Gets the value of the specified field as a nested BsonDocument wrapped in a MongoRow.
@@ -202,20 +175,15 @@ public sealed class MongoRow
     /// <summary>
     ///     Gets the raw BSON value for the specified field.
     /// </summary>
-    public BsonValue GetBsonValue(string name)
-    {
-        return Document.Contains(name)
+    public BsonValue GetBsonValue(string name) =>
+        Document.Contains(name)
             ? Document[name]
             : BsonNull.Value;
-    }
 
     /// <summary>
     ///     Determines whether the specified field is null or missing.
     /// </summary>
-    public bool IsNullOrMissing(string name)
-    {
-        return !Document.Contains(name) || Document[name] == BsonNull.Value;
-    }
+    public bool IsNullOrMissing(string name) => !Document.Contains(name) || Document[name] == BsonNull.Value;
 
     private static T ConvertBsonValue<T>(BsonValue bsonValue)
     {

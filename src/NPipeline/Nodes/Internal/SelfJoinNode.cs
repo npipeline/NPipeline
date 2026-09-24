@@ -205,13 +205,11 @@ internal sealed class SelfJoinNode<TKey, TLeft, TRight, TOut> : KeyedJoinNode<TK
         }
     }
 
-    private static object? UnwrapItem<TWrapper>(TWrapper wrapper, string wrapperRole)
-    {
-        return wrapper is ISelfJoinWrapper joinWrapper
+    private static object? UnwrapItem<TWrapper>(TWrapper wrapper, string wrapperRole) =>
+        wrapper is ISelfJoinWrapper joinWrapper
             ? joinWrapper.Item
             : throw new InvalidOperationException(
                 $"Self-join {wrapperRole} wrapper of type '{typeof(TWrapper).FullName}' must implement {nameof(ISelfJoinWrapper)}.");
-    }
 
     private static StoredItem<TItem> AddToBucket<TItem>(Dictionary<TKey, List<StoredItem<TItem>>> buckets, TKey key, TItem value)
     {

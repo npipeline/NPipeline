@@ -12,10 +12,7 @@ public static class BenchmarkDataGenerators
     /// <summary>
     ///     Generates a sequence of integers with configurable complexity.
     /// </summary>
-    public static IAsyncEnumerable<int> GenerateIntegers(int count, CancellationToken ct = default)
-    {
-        return GenerateIntegers(count, 0, 1, ct);
-    }
+    public static IAsyncEnumerable<int> GenerateIntegers(int count, CancellationToken ct = default) => GenerateIntegers(count, 0, 1, ct);
 
     /// <summary>
     ///     Generates a sequence of integers with configurable complexity.

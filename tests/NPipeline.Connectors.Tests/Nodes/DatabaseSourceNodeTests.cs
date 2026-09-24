@@ -130,20 +130,13 @@ public class DatabaseSourceNodeTests
 
         protected override ICheckpointStorage? CheckpointStorage { get; }
 
-        protected override Task<IDatabaseConnection> GetConnectionAsync(CancellationToken cancellationToken)
-        {
-            return Task.FromResult<IDatabaseConnection>(new NoopDatabaseConnection());
-        }
+        protected override Task<IDatabaseConnection> GetConnectionAsync(CancellationToken cancellationToken) =>
+            Task.FromResult<IDatabaseConnection>(new NoopDatabaseConnection());
 
-        protected override Task<FakeDatabaseReader> ExecuteQueryAsync(IDatabaseConnection connection, CancellationToken cancellationToken)
-        {
-            return Task.FromResult(new FakeDatabaseReader(_data));
-        }
+        protected override Task<FakeDatabaseReader> ExecuteQueryAsync(IDatabaseConnection connection, CancellationToken cancellationToken) =>
+            Task.FromResult(new FakeDatabaseReader(_data));
 
-        protected override int MapRow(FakeDatabaseReader reader)
-        {
-            return reader.GetFieldValue<int>(0);
-        }
+        protected override int MapRow(FakeDatabaseReader reader) => reader.GetFieldValue<int>(0);
 
         protected override bool TryMapRow(FakeDatabaseReader reader, out int item)
         {
@@ -165,15 +158,9 @@ public class DatabaseSourceNodeTests
         public bool HasRows => _data.Count > 0;
         public int FieldCount => 1;
 
-        public string GetName(int ordinal)
-        {
-            return "Value";
-        }
+        public string GetName(int ordinal) => "Value";
 
-        public Type GetFieldType(int ordinal)
-        {
-            return typeof(int);
-        }
+        public Type GetFieldType(int ordinal) => typeof(int);
 
         public Task<bool> ReadAsync(CancellationToken cancellationToken = default)
         {
@@ -182,25 +169,13 @@ public class DatabaseSourceNodeTests
             return Task.FromResult(_index < _data.Count);
         }
 
-        public Task<bool> NextResultAsync(CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(false);
-        }
+        public Task<bool> NextResultAsync(CancellationToken cancellationToken = default) => Task.FromResult(false);
 
-        public T? GetFieldValue<T>(int ordinal)
-        {
-            return (T?)(object?)_data[_index];
-        }
+        public T? GetFieldValue<T>(int ordinal) => (T?)(object?)_data[_index];
 
-        public bool IsDBNull(int ordinal)
-        {
-            return false;
-        }
+        public bool IsDBNull(int ordinal) => false;
 
-        public ValueTask DisposeAsync()
-        {
-            return ValueTask.CompletedTask;
-        }
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 
     private sealed class NoopDatabaseConnection : IDatabaseConnection
@@ -209,30 +184,17 @@ public class DatabaseSourceNodeTests
 
         public IDatabaseTransaction? CurrentTransaction => null;
 
-        public Task<IDatabaseTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default)
-        {
+        public Task<IDatabaseTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default) =>
             throw new NotSupportedException("Transactions are not supported by this noop connection.");
-        }
 
-        public Task OpenAsync(CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
-        }
+        public Task OpenAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
-        public Task CloseAsync(CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
-        }
+        public Task CloseAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
-        public Task<IDatabaseCommand> CreateCommandAsync(CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<IDatabaseCommand>(new NoopDatabaseCommand());
-        }
+        public Task<IDatabaseCommand> CreateCommandAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<IDatabaseCommand>(new NoopDatabaseCommand());
 
-        public ValueTask DisposeAsync()
-        {
-            return ValueTask.CompletedTask;
-        }
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 
     private sealed class NoopDatabaseCommand : IDatabaseCommand
@@ -245,19 +207,11 @@ public class DatabaseSourceNodeTests
         {
         }
 
-        public Task<IDatabaseReader> ExecuteReaderAsync(CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<IDatabaseReader>(new FakeDatabaseReader(Array.Empty<int>()));
-        }
+        public Task<IDatabaseReader> ExecuteReaderAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<IDatabaseReader>(new FakeDatabaseReader(Array.Empty<int>()));
 
-        public Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(0);
-        }
+        public Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken = default) => Task.FromResult(0);
 
-        public ValueTask DisposeAsync()
-        {
-            return ValueTask.CompletedTask;
-        }
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 }

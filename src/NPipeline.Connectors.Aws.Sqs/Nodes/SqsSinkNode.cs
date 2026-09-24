@@ -1,11 +1,10 @@
 using System.Text.Json;
-using Amazon;
-using Amazon.Runtime.CredentialManagement;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using Microsoft.Extensions.Logging;
 using NPipeline.Connectors.Abstractions;
 using NPipeline.Connectors.Aws.Sqs.Configuration;
+using NPipeline.Connectors.Aws.Sqs.Internal;
 using NPipeline.Connectors.Aws.Sqs.Models;
 using NPipeline.Connectors.Configuration;
 using NPipeline.DataFlow;
@@ -22,8 +21,8 @@ namespace NPipeline.Connectors.Aws.Sqs.Nodes;
 public sealed class SqsSinkNode<T> : SinkNode<T>, IAsyncDisposable
 {
     private readonly AcknowledgmentStrategy _acknowledgmentStrategy;
-    private readonly AcknowledgmentBatcher _batcher;
     private readonly BatchAcknowledgmentOptions _batchOptions;
+    private readonly AcknowledgmentBatcher _batcher;
 
     private readonly SqsConfiguration _configuration;
     private readonly List<Task> _delayedAcknowledgmentTasks = [];
@@ -39,7 +38,7 @@ public sealed class SqsSinkNode<T> : SinkNode<T>, IAsyncDisposable
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         _configuration.ValidateSink();
 
-        _sqsClient = CreateSqsClient(configuration);
+        _sqsClient = SqsClientFactory.Create(configuration);
         _serializerOptions = CreateSerializerOptions(configuration);
         _acknowledgmentStrategy = configuration.AcknowledgmentStrategy;
         _batchOptions = configuration.BatchAcknowledgment ?? new BatchAcknowledgmentOptions();
@@ -59,6 +58,34 @@ public sealed class SqsSinkNode<T> : SinkNode<T>, IAsyncDisposable
         _acknowledgmentStrategy = configuration.AcknowledgmentStrategy;
         _batchOptions = configuration.BatchAcknowledgment ?? new BatchAcknowledgmentOptions();
         _batcher = new AcknowledgmentBatcher(_batchOptions, _sqsClient, configuration.SourceQueueUrl, NullLogger.Instance);
+    }
+
+    /// <inheritdoc />
+    public async ValueTask DisposeAsync()
+    {
+        await _batcher.DisposeAsync().ConfigureAwait(false);
+        List<Task> delayedTasks;
+
+        lock (_delayedAcknowledgmentTasks)
+        {
+            delayedTasks = _delayedAcknowledgmentTasks.ToList();
+        }
+
+        try
+        {
+            await Task.WhenAll(delayedTasks).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            SqsSinkNodeLogMessages.DelayedAcknowledgmentFailed(_logger, ex);
+        }
+        finally
+        {
+            lock (_delayedAcknowledgmentTasks)
+            {
+                _delayedAcknowledgmentTasks.RemoveAll(task => task.IsCompleted);
+            }
+        }
     }
 
     /// <inheritdoc />
@@ -383,34 +410,6 @@ public sealed class SqsSinkNode<T> : SinkNode<T>, IAsyncDisposable
         }
     }
 
-    private static IAmazonSQS CreateSqsClient(SqsConfiguration configuration)
-    {
-        var config = new AmazonSQSConfig
-        {
-            RegionEndpoint = RegionEndpoint.GetBySystemName(configuration.Region),
-        };
-
-        if (!string.IsNullOrWhiteSpace(configuration.AccessKeyId) &&
-            !string.IsNullOrWhiteSpace(configuration.SecretAccessKey))
-        {
-            return new AmazonSQSClient(
-                configuration.AccessKeyId,
-                configuration.SecretAccessKey,
-                config);
-        }
-
-        if (!string.IsNullOrWhiteSpace(configuration.ProfileName))
-        {
-            var chain = new CredentialProfileStoreChain();
-
-            if (chain.TryGetProfile(configuration.ProfileName, out var profile))
-                return new AmazonSQSClient(profile.GetAWSCredentials(chain), config);
-        }
-
-        // Use default credential chain
-        return new AmazonSQSClient(config);
-    }
-
     private static JsonSerializerOptions CreateSerializerOptions(SqsConfiguration configuration)
     {
         var options = new JsonSerializerOptions
@@ -428,34 +427,6 @@ public sealed class SqsSinkNode<T> : SinkNode<T>, IAsyncDisposable
         };
 
         return options;
-    }
-
-    /// <inheritdoc />
-    public async ValueTask DisposeAsync()
-    {
-        await _batcher.DisposeAsync().ConfigureAwait(false);
-        List<Task> delayedTasks;
-
-        lock (_delayedAcknowledgmentTasks)
-        {
-            delayedTasks = _delayedAcknowledgmentTasks.ToList();
-        }
-
-        try
-        {
-            await Task.WhenAll(delayedTasks).ConfigureAwait(false);
-        }
-        catch (Exception ex)
-        {
-            SqsSinkNodeLogMessages.DelayedAcknowledgmentFailed(_logger, ex);
-        }
-        finally
-        {
-            lock (_delayedAcknowledgmentTasks)
-            {
-                _delayedAcknowledgmentTasks.RemoveAll(task => task.IsCompleted);
-            }
-        }
     }
 
     private void TrackDelayedAcknowledgmentTask(Task delayedTask)
@@ -722,10 +693,7 @@ internal sealed class AcknowledgmentBatcher : IDisposable, IAsyncDisposable
         public string MessageId => _inner.MessageId;
         public IReadOnlyDictionary<string, object> Metadata => _inner.Metadata;
 
-        public Task AcknowledgeAsync(CancellationToken cancellationToken = default)
-        {
-            return _inner.AcknowledgeAsync(cancellationToken);
-        }
+        public Task AcknowledgeAsync(CancellationToken cancellationToken = default) => _inner.AcknowledgeAsync(cancellationToken);
 
         public void MarkAcknowledged()
         {
@@ -742,15 +710,9 @@ internal sealed class NullLogger : ILogger
 {
     public static readonly NullLogger Instance = new();
 
-    public IDisposable? BeginScope<TState>(TState state) where TState : notnull
-    {
-        return null;
-    }
+    public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
 
-    public bool IsEnabled(LogLevel logLevel)
-    {
-        return false;
-    }
+    public bool IsEnabled(LogLevel logLevel) => false;
 
     public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
     {

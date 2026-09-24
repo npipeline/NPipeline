@@ -12,8 +12,9 @@ public sealed class PipelineContextDictionaryOwnershipTests
         // Arrange - use HighThroughput to get plain (non-ConcurrentDictionary) storage
         var context = new PipelineContext(new PipelineContextConfiguration
         {
-            OptimizationProfile = PipelineOptimizationProfile.HighThroughput
+            OptimizationProfile = PipelineOptimizationProfile.HighThroughput,
         });
+
         var parameters = context.Parameters;
         var items = context.Items;
         var properties = context.Properties;

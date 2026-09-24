@@ -10,6 +10,7 @@ public sealed class BoundedInMemoryDeadLetterSinkTests
 
     private static DeadLetterEnvelope Envelope(object item, Exception? error = null) =>
         new(item, error ?? new Exception(), TestAttribution);
+
     #region Error Message Tests
 
     [Fact]
@@ -54,7 +55,7 @@ public sealed class BoundedInMemoryDeadLetterSinkTests
 
         // The 1001st item should throw
         var act = async () => await sink.HandleAsync(Envelope("item-1000"), context, CancellationToken.None);
-        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*exceeded its capacity of 1000*");
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("[NP0502]*exceeded its capacity of 1000*");
     }
 
     [Fact]
@@ -224,7 +225,7 @@ public sealed class BoundedInMemoryDeadLetterSinkTests
         var context = PipelineContext.CreateDefault();
 
         // Act
-        var act = async () => await sink.HandleAsync(Envelope("item", null!), context, CancellationToken.None);
+        var act = async () => await sink.HandleAsync(Envelope("item"), context, CancellationToken.None);
 
         // Assert - should still handle it
         await act.Should().NotThrowAsync();

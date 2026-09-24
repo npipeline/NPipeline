@@ -37,9 +37,8 @@ public class CustomerBehaviorAggregator : AggregateNode<OrderCustomerJoin, int, 
     ///     Creates of initial accumulator value for a new customer group.
     /// </summary>
     /// <returns>The initial accumulator with default values.</returns>
-    public override CustomerPurchaseBehavior CreateAccumulator()
-    {
-        return new CustomerPurchaseBehavior(
+    public override CustomerPurchaseBehavior CreateAccumulator() =>
+        new(
             0,
             string.Empty,
             string.Empty,
@@ -50,7 +49,6 @@ public class CustomerBehaviorAggregator : AggregateNode<OrderCustomerJoin, int, 
             DateTime.MinValue,
             new List<string>()
         );
-    }
 
     /// <summary>
     ///     Accumulates an order-customer join into customer behavior aggregator.

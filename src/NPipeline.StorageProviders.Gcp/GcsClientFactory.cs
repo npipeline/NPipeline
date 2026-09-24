@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 using System.Text.Json;
 using Google.Apis.Auth.OAuth2;
 using Google.Cloud.Storage.V1;
+using NPipeline.StorageProviders.Gcp.Reliability;
 using NPipeline.StorageProviders.Models;
 
 namespace NPipeline.StorageProviders.Gcp;
@@ -108,7 +109,10 @@ public class GcsClientFactory
             {
                 builder.Credential = GoogleCredential.GetApplicationDefault();
             }
-            catch (InvalidOperationException) when (ShouldUseEmulatorFallback(serviceUrl))
+
+            // Google.Apis.Auth reports missing credentials as an AggregateException around InvalidOperationException.
+            catch (Exception ex) when (ex is InvalidOperationException or AggregateException { InnerException: InvalidOperationException } &&
+                                       ShouldUseEmulatorFallback(serviceUrl))
             {
                 builder.Credential = GoogleCredential.FromAccessToken("owner");
             }
@@ -125,6 +129,14 @@ public class GcsClientFactory
             builder.BaseUri = serviceUrl.ToString();
 
         var newClient = builder.Build();
+
+        // GcsStorageProviderOptions.Resilience is the only retry layer. One try per HTTP request turns off the SDK's
+        // retry of metadata calls and its in-session resume of resumable uploads. The handler records Retry-After for
+        // the classifier; it never retries.
+        var messageHandler = newClient.Service.HttpClient.MessageHandler;
+        messageHandler.NumTries = 1;
+        messageHandler.AddUnsuccessfulResponseHandler(GcsRetryAfter.Handler);
+
         OnClientCreated(cacheKey);
         return newClient;
     }

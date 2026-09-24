@@ -378,34 +378,22 @@ public class DiLineageFactoryTests
     // Test implementations
     private sealed class TestLineageSink : ILineageSink
     {
-        public Task RecordAsync(LineageRecord record, CancellationToken cancellationToken)
-        {
-            return Task.CompletedTask;
-        }
+        public Task RecordAsync(LineageRecord record, CancellationToken cancellationToken) => Task.CompletedTask;
     }
 
     private sealed class TestLineageSink2 : ILineageSink
     {
-        public Task RecordAsync(LineageRecord record, CancellationToken cancellationToken)
-        {
-            return Task.CompletedTask;
-        }
+        public Task RecordAsync(LineageRecord record, CancellationToken cancellationToken) => Task.CompletedTask;
     }
 
     private sealed class TestPipelineLineageSink : IPipelineLineageSink
     {
-        public Task RecordAsync(PipelineLineageReport report, CancellationToken cancellationToken)
-        {
-            return Task.CompletedTask;
-        }
+        public Task RecordAsync(PipelineLineageReport report, CancellationToken cancellationToken) => Task.CompletedTask;
     }
 
     private sealed class TestPipelineLineageSink2 : IPipelineLineageSink
     {
-        public Task RecordAsync(PipelineLineageReport report, CancellationToken cancellationToken)
-        {
-            return Task.CompletedTask;
-        }
+        public Task RecordAsync(PipelineLineageReport report, CancellationToken cancellationToken) => Task.CompletedTask;
     }
 
     private interface ITestDependency
@@ -425,10 +413,7 @@ public class DiLineageFactoryTests
 
         public ITestDependency Dependency { get; }
 
-        public Task RecordAsync(LineageRecord record, CancellationToken cancellationToken)
-        {
-            return Task.CompletedTask;
-        }
+        public Task RecordAsync(LineageRecord record, CancellationToken cancellationToken) => Task.CompletedTask;
     }
 
     private sealed class DependentPipelineLineageSink : IPipelineLineageSink
@@ -440,38 +425,26 @@ public class DiLineageFactoryTests
 
         public ITestDependency Dependency { get; }
 
-        public Task RecordAsync(PipelineLineageReport report, CancellationToken cancellationToken)
-        {
-            return Task.CompletedTask;
-        }
+        public Task RecordAsync(PipelineLineageReport report, CancellationToken cancellationToken) => Task.CompletedTask;
     }
 
     private sealed class TestPipelineLineageSinkProvider : IPipelineLineageSinkProvider
     {
-        public IPipelineLineageSink? Create(PipelineContext context)
-        {
-            return new TestPipelineLineageSink();
-        }
+        public IPipelineLineageSink? Create(PipelineContext context) => new TestPipelineLineageSink();
     }
 
     private sealed class TestLineageCollector : ILineageCollector
     {
         private readonly List<LineageRecord> _records = [];
 
-        public LineagePacket<T> CreateLineagePacket<T>(T item, string sourceNodeId)
-        {
-            return new LineagePacket<T>(item, Guid.NewGuid(), ImmutableArray.Create(sourceNodeId));
-        }
+        public LineagePacket<T> CreateLineagePacket<T>(T item, string sourceNodeId) => new(item, Guid.NewGuid(), ImmutableArray.Create(sourceNodeId));
 
         public void Record(LineageRecord record)
         {
             _records.Add(record);
         }
 
-        public bool ShouldCollectLineage(Guid correlationId, LineageOptions? options)
-        {
-            return true;
-        }
+        public bool ShouldCollectLineage(Guid correlationId, LineageOptions? options) => true;
 
         public IReadOnlyList<LineageRecord> GetCorrelationHistory(Guid correlationId)
         {
@@ -488,14 +461,12 @@ public class DiLineageFactoryTests
                 .LastOrDefault();
         }
 
-        public IReadOnlyList<LineageRecord> GetAllRecords()
-        {
-            return _records;
-        }
+        public IReadOnlyList<LineageRecord> GetAllRecords() => _records;
 
         public IReadOnlyList<Guid> GetUnresolvedCorrelations()
         {
             var grouped = _records.GroupBy(record => record.CorrelationId);
+
             return grouped
                 .Where(group => group.Key != Guid.Empty && !group.Any(record => record.IsTerminal))
                 .Select(group => group.Key)
@@ -514,10 +485,7 @@ public class DiLineageFactoryTests
             throw new InvalidOperationException("Constructor throws");
         }
 
-        public Task RecordAsync(LineageRecord record, CancellationToken cancellationToken)
-        {
-            return Task.CompletedTask;
-        }
+        public Task RecordAsync(LineageRecord record, CancellationToken cancellationToken) => Task.CompletedTask;
     }
 
     private sealed class ThrowingPipelineLineageSink : IPipelineLineageSink
@@ -527,9 +495,6 @@ public class DiLineageFactoryTests
             throw new InvalidOperationException("Constructor throws");
         }
 
-        public Task RecordAsync(PipelineLineageReport report, CancellationToken cancellationToken)
-        {
-            return Task.CompletedTask;
-        }
+        public Task RecordAsync(PipelineLineageReport report, CancellationToken cancellationToken) => Task.CompletedTask;
     }
 }

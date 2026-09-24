@@ -7,7 +7,7 @@ using NPipeline.Nodes;
 using NPipeline.Observability;
 using NPipeline.Observability.Logging;
 using NPipeline.Pipeline;
-using NPipeline.Resilience;
+using NPipeline.Reliability;
 
 namespace NPipeline.Execution.Orchestration;
 
@@ -168,11 +168,9 @@ internal sealed class PipelineNodeExecutionStage(
     ///     A node is terminal when nothing downstream consumes it, which makes it safe to defer and drain alongside
     ///     its siblings.
     /// </summary>
-    private static bool IsTerminal(GraphTopology topology, NodeDefinition nodeDef)
-    {
-        return nodeDef.Kind is NodeKind.Sink or NodeKind.CompositeOutput
-               && !topology.OutgoingEdges.ContainsKey(nodeDef.Id);
-    }
+    private static bool IsTerminal(GraphTopology topology, NodeDefinition nodeDef) =>
+        nodeDef.Kind is NodeKind.Sink or NodeKind.CompositeOutput
+        && !topology.OutgoingEdges.ContainsKey(nodeDef.Id);
 
     /// <summary>
     ///     Reports whether any node feeds more than one downstream node, which is what puts a multicast pump in play.
@@ -204,7 +202,8 @@ internal sealed class PipelineNodeExecutionStage(
             _ = context.NodeEnvironment.NodeExecutionScopeRegistry.RemoveNodeExecutionAnnotation(nodeId);
 
         if (graph.ExecutionOptions.NodeExecutionAnnotations != null &&
-            graph.ExecutionOptions.NodeExecutionAnnotations.TryGetValue(ExecutionAnnotationKeys.NodeResiliencePolicyForNode(nodeId), out var policyAnnotation) &&
+            graph.ExecutionOptions.NodeExecutionAnnotations.TryGetValue(ExecutionAnnotationKeys.NodeResiliencePolicyForNode(nodeId),
+                out var policyAnnotation) &&
             policyAnnotation is IResiliencePolicy nodePolicy)
             context.NodeEnvironment.NodeExecutionScopeRegistry.SetRuntimeAnnotation(ExecutionAnnotationKeys.NodeResiliencePolicyForNode(nodeId), nodePolicy);
     }
@@ -247,18 +246,6 @@ internal sealed class PipelineNodeExecutionStage(
     {
         var logger = context.Observability.LoggerFactory.CreateLogger(nameof(PipelineRunner));
         PipelineRunnerLogMessages.NodeFailed(logger, nodeDef.Id, ex.GetType().Name, ex.Message);
-
-        if (context.ExecutionConfiguration.ResiliencePolicy is not DefaultResiliencePolicy &&
-            nodeDef.ExecutionStrategy?.GetType().Name == "ResilientExecutionStrategy")
-        {
-            var effectiveRetries = RetryOptionsResolver.Resolve(context, nodeDef.Id);
-
-            if (effectiveRetries.MaxNodeRestartAttempts <= 0)
-                PipelineRunnerLogMessages.ResilientStrategyWithoutRestartAttempts(logger, nodeDef.Id, effectiveRetries.MaxNodeRestartAttempts);
-
-            if (effectiveRetries.MaxMaterializedItems == null)
-                PipelineRunnerLogMessages.ResilientStrategyWithoutMaterializedItems(logger, nodeDef.Id);
-        }
 
         if (context.ExecutionConfiguration.IsParallelExecution)
         {

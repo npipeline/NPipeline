@@ -41,28 +41,19 @@ public sealed class DiObservabilityFactoryTests
             // Custom implementation
         }
 
-        public IReadOnlyList<INodeMetrics> GetNodeMetrics()
-        {
-            return [];
-        }
+        public IReadOnlyList<INodeMetrics> GetNodeMetrics() => [];
 
-        public INodeMetrics? GetNodeMetrics(string _, Guid pipelineId)
-        {
-            return null;
-        }
+        public INodeMetrics? GetNodeMetrics(string _, Guid pipelineId) => null;
 
         public IPipelineMetrics CreatePipelineMetrics(string pipelineName, Guid pipelineId, Guid runId, DateTimeOffset startTime,
-            DateTimeOffset? endTime, bool success, Exception? exception = null)
-        {
+            DateTimeOffset? endTime, bool success, Exception? exception = null) =>
             throw new NotImplementedException();
-        }
 
         public Task EmitMetricsAsync(string pipelineName, Guid pipelineId, Guid runId, DateTimeOffset startTime, DateTimeOffset? endTime,
-            bool success, Exception? exception = null, CancellationToken cancellationToken = default)
-        {
+            bool success, Exception? exception = null, CancellationToken cancellationToken = default) =>
+
             // Custom implementation - no-op for test
-            return Task.CompletedTask;
-        }
+            Task.CompletedTask;
     }
 
     #endregion

@@ -148,7 +148,7 @@ public static class ParallelNodeConfigurationExtensions
             maxQueueLength,
             BoundedQueuePolicy.Block,
             outputBufferCapacity,
-            PreserveOrdering: false);
+            false);
 
         builder.SetNodeExecutionOption(handle.Id, options);
         builder.WithExecutionStrategy(handle, new BlockingParallelStrategy());

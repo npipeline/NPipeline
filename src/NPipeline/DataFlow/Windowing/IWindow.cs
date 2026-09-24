@@ -40,10 +40,7 @@ public sealed record TimeWindow(DateTimeOffset Start, TimeSpan Duration) : IWind
     public DateTimeOffset End => Start + Duration;
 
     /// <inheritdoc />
-    public bool Contains(DateTimeOffset timestamp)
-    {
-        return timestamp >= Start && timestamp < End;
-    }
+    public bool Contains(DateTimeOffset timestamp) => timestamp >= Start && timestamp < End;
 
     /// <summary>
     ///     Creates a new time window that starts at the specified time and has the given duration.
@@ -51,10 +48,7 @@ public sealed record TimeWindow(DateTimeOffset Start, TimeSpan Duration) : IWind
     /// <param name="start">The start time of the window.</param>
     /// <param name="duration">The duration of the window.</param>
     /// <returns>A new <see cref="TimeWindow" /> instance.</returns>
-    public static TimeWindow Create(DateTimeOffset start, TimeSpan duration)
-    {
-        return new TimeWindow(start, duration);
-    }
+    public static TimeWindow Create(DateTimeOffset start, TimeSpan duration) => new(start, duration);
 
     /// <summary>
     ///     Creates a time window that contains the specified timestamp.

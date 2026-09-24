@@ -15,7 +15,7 @@ order: 15
 | | Default | HighThroughput |
 |--|---------|----------------|
 | **Target use case** | Prototyping, low-to-medium throughput, developer velocity | Production pipelines processing millions of items/second |
-| **Retry behavior** | Auto-configured: 3 retries, exponential backoff with jitter, 10K materialization cap | No retries unless explicitly configured |
+| **Retry behavior** | Transient item failures retried 3 times, with exponential backoff and jitter | No retries unless explicitly configured |
 | **Context dictionaries** | `ConcurrentDictionary` (thread-safe) | `Dictionary` (zero locking overhead) |
 | **Performance analyzers** | NP9103–NP9107 suppressed | All analyzers active |
 | **Memory model** | Slightly higher per-context allocation (concurrent collections) | Pooled dictionaries, minimal GC pressure |
@@ -57,23 +57,22 @@ The `Default` profile is designed for the 90% case: developers who want a workin
 
 ### Automatic Retry Configuration
 
-When no explicit retry options are configured, the `Default` profile applies:
+Unless you configure otherwise, the `Default` profile retries transient item failures (`ItemRetryOptions.Default`):
 
 | Setting | Value | Effect |
 |---------|-------|--------|
-| `MaxItemRetries` | 3 | Each failed item is retried up to 3 times before failing |
-| `MaxMaterializedItems` | 10,000 | Buffers up to 10K items for node restart replay |
-| `DelayStrategy` | Exponential backoff + full jitter | 1s base, 2× multiplier, 1min cap |
-| `MaxNodeRestartAttempts` | 3 | Nodes can restart up to 3 times |
-| `MaxSequentialNodeAttempts` | 5 | Sequential execution attempts capped at 5 |
+| `ItemRetry.MaxRetries` | 3 | A failed item is attempted up to 4 times in all |
+| `ItemRetry.Backoff` | Exponential, full jitter | 200 ms base, 2× multiplier, 30 s cap |
+| `ItemRetry.Classifier` | `RetryClassifier.Default` | Only transient failures are retried: timeouts, I/O and socket errors, HTTP 408/429/5xx, transient database errors, and client-side cancellations. A programming error fails at once |
+| `NodeRestart`, `NodeRetry` | Off | Configure them per pipeline or per node |
+| `OnItemFailure` | `Fail` | An item that is not retried fails the node |
 
-These defaults activate automatically - no configuration needed:
+No policy or configuration is needed for this:
 
 ```csharp
 public void Define(PipelineBuilder builder, PipelineContext context)
 {
-    // Retry is already configured with sensible defaults.
-    // Just define your pipeline graph:
+    // A TimeoutException thrown by ProcessOrder is retried up to 3 times with backoff.
     var source = builder.AddSource<OrderSource, Order>("orders");
     var transform = builder.AddTransform<ProcessOrder, Order, Result>("process");
     var sink = builder.AddSink<ResultSink, Result>("save");
@@ -83,12 +82,12 @@ public void Define(PipelineBuilder builder, PipelineContext context)
 }
 ```
 
-Override any individual setting without losing the rest:
+Override any setting without losing the rest. `WithResilience` starts from the profile's options:
 
 ```csharp
-builder.WithRetryOptions(options => options with
+builder.WithResilience(options => options with
 {
-    MaxItemRetries = 5  // Override just this; backoff and materialization cap remain
+    ItemRetry = options.ItemRetry with { MaxRetries = 5 },  // backoff and classifier remain
 });
 ```
 
@@ -131,34 +130,31 @@ The `HighThroughput` profile is for pipelines where every allocation counts - pr
 
 ### Explicit Configuration Required
 
-No automatic retry defaults are applied. You must configure every aspect of error handling explicitly:
+Nothing is retried (`PipelineResilienceOptions.None`). Configure what you need explicitly:
 
 ```csharp
 public void Define(PipelineBuilder builder, PipelineContext context)
 {
     builder.WithOptimizationProfile(PipelineOptimizationProfile.HighThroughput);
 
-    // Must explicitly configure retry if you want it
-    builder.WithRetryOptions(options => options with
+    builder.WithResilience(options => options with
     {
-        MaxItemRetries = 3,
-        MaxMaterializedItems = 5000,
-        MaxNodeRestartAttempts = 2
+        ItemRetry = new ItemRetryOptions
+        {
+            MaxRetries = 3,
+            Backoff = RetryBackoff.Exponential(TimeSpan.FromMilliseconds(100), maxDelay: TimeSpan.FromSeconds(10)),
+        },
     });
-
-    // Must explicitly add delay strategy
-    builder.WithRetryOptions(options => options
-        .WithExponentialBackoffAndFullJitter());
 
     // ... add nodes and connections ...
 }
 ```
 
-Or explicitly apply `Default` profile retry defaults while staying in `HighThroughput` runtime mode:
+To use the `Default` profile's item retry while staying in `HighThroughput` mode:
 
 ```csharp
 builder.WithOptimizationProfile(PipelineOptimizationProfile.HighThroughput);
-builder.WithRetry(PipelineOptimizationProfile.Default);
+builder.WithResilience(options => options with { ItemRetry = ItemRetryOptions.Default });
 ```
 
 ### Zero-Overhead Context Dictionaries
@@ -190,56 +186,22 @@ This produces a stricter build experience that surfaces every potential allocati
 | Context dictionary access | ~0 overhead (no locks, no memory barriers) |
 | Dictionary lifecycle | Pooled - no GC pressure from context creation/disposal |
 | Per-item allocations | Analyzer-enforced: flagged at build time |
-| Retry configuration | No hidden buffering or materialization unless explicitly configured |
+| Retry configuration | No retries, buffering, or materialization unless explicitly configured |
 
-## Retry Shorthand APIs
+## Per-Node Resilience
 
-`WithRetry()` applies retry defaults for the currently selected runtime profile:
-
-- `Default` runtime profile: 3 retries, exponential backoff + full jitter, 10,000-item materialization cap.
-- `HighThroughput` runtime profile: strict baseline defaults (no retries unless explicitly configured).
-
-```csharp
-builder.WithRetry();
-```
-
-To apply retry defaults from a specific profile regardless of runtime profile, use `WithRetry(profile)`:
-
-```csharp
-builder.WithOptimizationProfile(PipelineOptimizationProfile.HighThroughput);
-builder.WithRetry(PipelineOptimizationProfile.Default); // explicit, profile-specific convenience
-```
-
-The pipeline-level `Default` profile shorthand is equivalent to:
-
-### Pipeline-Level
-
-```csharp
-builder.WithRetry(PipelineOptimizationProfile.Default);
-// Equivalent to:
-// builder.WithRetryOptions(options => options with
-// {
-//     MaxItemRetries = 3,
-//     MaxMaterializedItems = 10_000,
-//     MaxNodeRestartAttempts = 3,
-//     MaxSequentialNodeAttempts = 5,
-//     DelayStrategyConfiguration = /* exponential backoff + full jitter */
-// });
-```
-
-### Node-Level
-
-Apply retries to specific nodes while leaving others with pipeline-level defaults:
+Give one node different options with `WithResilience(handle, ...)`. The node's options derive from the pipeline's, so it keeps everything it does not change:
 
 ```csharp
 var transform = builder.AddTransform<CallApi, Request, Response>("api-call");
-transform.WithRetry(builder);  // Applies builder profile defaults
 
-// Explicitly apply Default-profile retry defaults to this node
-transform.WithRetry(builder, PipelineOptimizationProfile.Default);
+builder.WithResilience(transform, options => options with
+{
+    ItemRetry = options.ItemRetry with { MaxRetries = 10 },
+});
 ```
 
-Available on all node handle types: `SourceNodeHandle<T>`, `TransformNodeHandle<TIn, TOut>`, `SinkNodeHandle<TIn>`, and `AggregateNodeHandle<TIn, TOut>`.
+Item retry and node restart apply only to transform nodes. Configuring these for a source, sink, or aggregate causes a build error. Use `NodeRetry` to execute a whole node again.
 
 ## Choosing a Profile
 
@@ -264,15 +226,17 @@ flowchart TD
 
 ## Interaction with Other Configuration
 
-### Explicit Retry Always Wins
+### Explicit Resilience Options Build on the Profile
 
-If you call `WithRetryOptions()` explicitly, your configuration is preserved regardless of profile:
+`WithResilience()` receives the profile's options and returns yours, so it changes only what you set. It runs when the pipeline is built, so it can come before or after `WithOptimizationProfile()`:
 
 ```csharp
+builder.WithResilience(options => options with { ItemRetry = options.ItemRetry with { MaxRetries = 10 } });
 builder.WithOptimizationProfile(PipelineOptimizationProfile.Default);
-builder.WithRetryOptions(options => options with { MaxItemRetries = 10 });
-// Result: MaxItemRetries = 10, no automatic defaults applied
+// Result: 10 retries of transient failures, with the Default profile's backoff and classifier
 ```
+
+To opt out of the profile's retries entirely, return `PipelineResilienceOptions.None`.
 
 ### .editorconfig Overrides
 

@@ -9,7 +9,7 @@ using NPipeline.Lineage;
 using NPipeline.Nodes;
 using NPipeline.Observability;
 using NPipeline.Pipeline;
-using NPipeline.Resilience;
+using NPipeline.Reliability;
 
 namespace NPipeline.Extensions.DependencyInjection;
 
@@ -131,10 +131,8 @@ public static class ServiceCollectionExtensions
     /// <param name="serviceProvider">The service provider to resolve the runner from.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     public static Task RunPipelineAsync<TDefinition>(this IServiceProvider serviceProvider, CancellationToken cancellationToken = default)
-        where TDefinition : IPipelineDefinition, new()
-    {
-        return serviceProvider.RunPipelineAsync<TDefinition>(null, cancellationToken);
-    }
+        where TDefinition : IPipelineDefinition, new() =>
+        serviceProvider.RunPipelineAsync<TDefinition>(null, cancellationToken);
 
     /// <summary>
     ///     Runs the specified pipeline definition with the given parameters.
@@ -169,6 +167,7 @@ public static class ServiceCollectionExtensions
         // registered by AddNPipelineObservability). Without this, context.Observability.ExecutionObserver defaults to
         // NullExecutionObserver and no metrics are collected.
         var executionObserver = sp.GetService<IExecutionObserver>();
+
         if (executionObserver is not null)
             context.Observability.ExecutionObserver = executionObserver;
 

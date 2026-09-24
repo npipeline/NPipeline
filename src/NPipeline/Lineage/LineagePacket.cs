@@ -23,7 +23,10 @@ public sealed record LineagePacket<T>(
     : ILineageEnvelope
 {
     private readonly ImmutableArray<LineageRecord> _lineageRecords = [];
-    private readonly ImmutableArray<string> _traversalPath = TraversalPath.IsDefault ? [] : TraversalPath;
+
+    private readonly ImmutableArray<string> _traversalPath = TraversalPath.IsDefault
+        ? []
+        : TraversalPath;
 
     /// <summary>
     ///     Node IDs this item has passed through.
@@ -31,7 +34,9 @@ public sealed record LineagePacket<T>(
     public ImmutableArray<string> TraversalPath
     {
         get => _traversalPath;
-        init => _traversalPath = value.IsDefault ? [] : value;
+        init => _traversalPath = value.IsDefault
+            ? []
+            : value;
     }
 
     /// <summary>
@@ -40,7 +45,9 @@ public sealed record LineagePacket<T>(
     public ImmutableArray<LineageRecord> LineageRecords
     {
         get => _lineageRecords;
-        init => _lineageRecords = value.IsDefault ? [] : value;
+        init => _lineageRecords = value.IsDefault
+            ? []
+            : value;
     }
 
     /// <summary>

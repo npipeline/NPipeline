@@ -12,7 +12,7 @@ public sealed class PipelineContextDictionaryTests
     {
         await using var context = new PipelineContext(new PipelineContextConfiguration
         {
-            OptimizationProfile = PipelineOptimizationProfile.Default
+            OptimizationProfile = PipelineOptimizationProfile.Default,
         });
 
         context.Items.Should().BeOfType<ConcurrentDictionary<string, object>>();
@@ -23,7 +23,7 @@ public sealed class PipelineContextDictionaryTests
     {
         await using var context = new PipelineContext(new PipelineContextConfiguration
         {
-            OptimizationProfile = PipelineOptimizationProfile.Default
+            OptimizationProfile = PipelineOptimizationProfile.Default,
         });
 
         context.Parameters.Should().BeOfType<ConcurrentDictionary<string, object>>();
@@ -34,7 +34,7 @@ public sealed class PipelineContextDictionaryTests
     {
         await using var context = new PipelineContext(new PipelineContextConfiguration
         {
-            OptimizationProfile = PipelineOptimizationProfile.Default
+            OptimizationProfile = PipelineOptimizationProfile.Default,
         });
 
         context.Properties.Should().BeOfType<ConcurrentDictionary<string, object>>();
@@ -45,7 +45,7 @@ public sealed class PipelineContextDictionaryTests
     {
         await using var context = new PipelineContext(new PipelineContextConfiguration
         {
-            OptimizationProfile = PipelineOptimizationProfile.HighThroughput
+            OptimizationProfile = PipelineOptimizationProfile.HighThroughput,
         });
 
         context.Items.Should().BeOfType<Dictionary<string, object>>();
@@ -56,7 +56,7 @@ public sealed class PipelineContextDictionaryTests
     {
         await using var context = new PipelineContext(new PipelineContextConfiguration
         {
-            OptimizationProfile = PipelineOptimizationProfile.HighThroughput
+            OptimizationProfile = PipelineOptimizationProfile.HighThroughput,
         });
 
         context.Parameters.Should().BeOfType<Dictionary<string, object>>();
@@ -67,7 +67,7 @@ public sealed class PipelineContextDictionaryTests
     {
         await using var context = new PipelineContext(new PipelineContextConfiguration
         {
-            OptimizationProfile = PipelineOptimizationProfile.HighThroughput
+            OptimizationProfile = PipelineOptimizationProfile.HighThroughput,
         });
 
         context.Properties.Should().BeOfType<Dictionary<string, object>>();
@@ -78,7 +78,7 @@ public sealed class PipelineContextDictionaryTests
     {
         await using var context = new PipelineContext(new PipelineContextConfiguration
         {
-            OptimizationProfile = PipelineOptimizationProfile.Default
+            OptimizationProfile = PipelineOptimizationProfile.Default,
         });
 
         var exceptions = new List<Exception>();
@@ -93,7 +93,10 @@ public sealed class PipelineContextDictionaryTests
                 }
                 catch (Exception ex)
                 {
-                    lock (exceptions) exceptions.Add(ex);
+                    lock (exceptions)
+                    {
+                        exceptions.Add(ex);
+                    }
                 }
             }))
             .ToArray();
@@ -108,7 +111,7 @@ public sealed class PipelineContextDictionaryTests
     {
         var context = new PipelineContext(new PipelineContextConfiguration
         {
-            OptimizationProfile = PipelineOptimizationProfile.Default
+            OptimizationProfile = PipelineOptimizationProfile.Default,
         });
 
         var parameters = context.Parameters;
@@ -131,7 +134,7 @@ public sealed class PipelineContextDictionaryTests
     {
         await using var context = new PipelineContext(new PipelineContextConfiguration
         {
-            OptimizationProfile = PipelineOptimizationProfile.Default
+            OptimizationProfile = PipelineOptimizationProfile.Default,
         });
 
         context.ExecutionConfiguration.OptimizationProfile.Should().Be(PipelineOptimizationProfile.Default);
@@ -142,7 +145,7 @@ public sealed class PipelineContextDictionaryTests
     {
         await using var context = new PipelineContext(new PipelineContextConfiguration
         {
-            OptimizationProfile = PipelineOptimizationProfile.HighThroughput
+            OptimizationProfile = PipelineOptimizationProfile.HighThroughput,
         });
 
         context.ExecutionConfiguration.OptimizationProfile.Should().Be(PipelineOptimizationProfile.HighThroughput);

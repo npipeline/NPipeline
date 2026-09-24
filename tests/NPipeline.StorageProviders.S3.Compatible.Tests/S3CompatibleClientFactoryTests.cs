@@ -12,9 +12,8 @@ public class S3CompatibleClientFactoryTests
         string accessKey = "test-access",
         string secretKey = "test-secret",
         string signingRegion = "us-east-1",
-        bool forcePathStyle = true)
-    {
-        return new S3CompatibleStorageProviderOptions
+        bool forcePathStyle = true) =>
+        new()
         {
             ServiceUrl = new Uri(url),
             AccessKey = accessKey,
@@ -22,7 +21,6 @@ public class S3CompatibleClientFactoryTests
             SigningRegion = signingRegion,
             ForcePathStyle = forcePathStyle,
         };
-    }
 
     // ── Constructor ───────────────────────────────────────────────────────
 

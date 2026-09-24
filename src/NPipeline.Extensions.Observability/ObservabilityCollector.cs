@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using NPipeline.Execution;
 using NPipeline.Observability.Metrics;
 
 namespace NPipeline.Observability;
@@ -63,6 +64,26 @@ public sealed class ObservabilityCollector : IObservabilityCollector
     }
 
     /// <inheritdoc />
+    public void RecordRetryExhausted(string nodeId, Guid pipelineId, string? pipelineName = null)
+    {
+        ArgumentNullException.ThrowIfNull(nodeId);
+
+        var builder = GetOrCreateBuilder(nodeId, pipelineId, pipelineName);
+        builder.TrySetPipelineName(pipelineName);
+        builder.RecordRetryExhausted();
+    }
+
+    /// <inheritdoc />
+    public void RecordCircuitStateChanged(string nodeId, CircuitState state, Guid pipelineId, string? pipelineName = null)
+    {
+        ArgumentNullException.ThrowIfNull(nodeId);
+
+        var builder = GetOrCreateBuilder(nodeId, pipelineId, pipelineName);
+        builder.TrySetPipelineName(pipelineName);
+        builder.RecordCircuitStateChanged(state);
+    }
+
+    /// <inheritdoc />
     public void RecordPerformanceMetrics(string nodeId, double throughputItemsPerSec, double averageItemProcessingMs, Guid pipelineId,
         string? pipelineName = null)
     {
@@ -107,7 +128,7 @@ public sealed class ObservabilityCollector : IObservabilityCollector
             return false;
 
         return _nodeMetrics.TryGetValue(BuildMetricKey(nodeId, pipelineId), out var qualified)
-            && qualified.HasTimingBreakdown();
+               && qualified.HasTimingBreakdown();
     }
 
     /// <inheritdoc />
@@ -184,33 +205,33 @@ public sealed class ObservabilityCollector : IObservabilityCollector
         return _nodeMetrics.GetOrAdd(qualifiedKey, _ => new NodeMetricsBuilder(nodeId, pipelineId, pipelineName));
     }
 
-    private static string BuildMetricKey(string nodeId, Guid pipelineId)
-    {
-        return string.Concat(pipelineId.ToString("N"), "::", nodeId);
-    }
+    private static string BuildMetricKey(string nodeId, Guid pipelineId) => string.Concat(pipelineId.ToString("N"), "::", nodeId);
 
     private sealed class NodeMetricsBuilder(string nodeId, Guid pipelineId, string? pipelineName = null)
     {
         private readonly object _identityLock = new();
         private readonly object _performanceMetricsLock = new();
         private double? _averageItemProcessingMs;
+        private long _circuitBreakerTrips;
         private double? _durationMs;
         private DateTimeOffset? _endTime;
         private Exception? _exception;
+        private bool _hasTimingBreakdown;
         private double? _inputWaitDurationMs;
         private long _itemsEmitted;
         private long _itemsProcessed;
         private double? _outputBlockDurationMs;
         private double? _peakMemoryUsageMb;
         private double? _processorTimeMs;
+        private long _retriesExhausted;
         private int _retryCount;
+        private long _retryEvents;
         private DateTimeOffset? _startTime;
         private bool _success = true;
         private int? _threadId;
         private double? _throughputItemsPerSec;
         private double? _wallDurationMs;
         private double? _workDurationMs;
-        private bool _hasTimingBreakdown;
 
         public string NodeId { get; } = nodeId;
 
@@ -261,6 +282,7 @@ public sealed class ObservabilityCollector : IObservabilityCollector
                 if (_startTime.HasValue)
                 {
                     var wallDurationMs = (timestamp - _startTime.Value).TotalMilliseconds;
+
                     if (!_wallDurationMs.HasValue || wallDurationMs > _wallDurationMs.Value)
                         _wallDurationMs = wallDurationMs;
 
@@ -293,6 +315,8 @@ public sealed class ObservabilityCollector : IObservabilityCollector
 
         public void RecordRetry(int retryCount)
         {
+            _ = Interlocked.Increment(ref _retryEvents);
+
             int initial, computed;
 
             do
@@ -300,6 +324,17 @@ public sealed class ObservabilityCollector : IObservabilityCollector
                 initial = _retryCount;
                 computed = Math.Max(initial, retryCount);
             } while (Interlocked.CompareExchange(ref _retryCount, computed, initial) != initial);
+        }
+
+        public void RecordRetryExhausted()
+        {
+            _ = Interlocked.Increment(ref _retriesExhausted);
+        }
+
+        public void RecordCircuitStateChanged(CircuitState state)
+        {
+            if (state == CircuitState.Open)
+                _ = Interlocked.Increment(ref _circuitBreakerTrips);
         }
 
         public void RecordPerformanceMetrics(double throughputItemsPerSec, double averageItemProcessingMs)
@@ -310,6 +345,7 @@ public sealed class ObservabilityCollector : IObservabilityCollector
                 _averageItemProcessingMs = averageItemProcessingMs;
 
                 var itemsProcessed = Interlocked.Read(ref _itemsProcessed);
+
                 if (!_durationMs.HasValue && itemsProcessed > 0 && averageItemProcessingMs > 0)
                 {
                     var derivedDurationMs = itemsProcessed * averageItemProcessingMs;
@@ -336,6 +372,7 @@ public sealed class ObservabilityCollector : IObservabilityCollector
                 if (_startTime.HasValue)
                 {
                     var wallEnd = _startTime.Value.AddMilliseconds(_wallDurationMs.Value);
+
                     if (!_endTime.HasValue || wallEnd > _endTime.Value)
                         _endTime = wallEnd;
                 }
@@ -390,7 +427,10 @@ public sealed class ObservabilityCollector : IObservabilityCollector
                     durationMs,
                     inputWaitDurationMs,
                     outputBlockDurationMs,
-                    wallDurationMs);
+                    wallDurationMs,
+                    Interlocked.Read(ref _retryEvents),
+                    Interlocked.Read(ref _retriesExhausted),
+                    Interlocked.Read(ref _circuitBreakerTrips));
             }
         }
     }

@@ -323,9 +323,8 @@ public sealed class RiskAssessmentTransform : TransformNode<ValidatedTransaction
     /// <param name="riskScore">Risk score to use.</param>
     /// <param name="notes">Processing notes.</param>
     /// <returns>A processed transaction with error information.</returns>
-    private ProcessedTransaction CreateProcessedTransaction(ValidatedTransaction validatedTransaction, DateTimeOffset startTime, int riskScore, string notes)
-    {
-        return new ProcessedTransaction
+    private ProcessedTransaction CreateProcessedTransaction(ValidatedTransaction validatedTransaction, DateTimeOffset startTime, int riskScore, string notes) =>
+        new()
         {
             OriginalTransaction = validatedTransaction.OriginalTransaction,
             Status = ProcessingStatus.Failed,
@@ -334,7 +333,6 @@ public sealed class RiskAssessmentTransform : TransformNode<ValidatedTransaction
             ProcessingNotes = notes,
             FinalRiskScore = riskScore,
         };
-    }
 
     /// <summary>
     ///     Represents a risk assessment result.

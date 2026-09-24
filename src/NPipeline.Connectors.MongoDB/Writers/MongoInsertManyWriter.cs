@@ -11,7 +11,7 @@ namespace NPipeline.Connectors.MongoDB.Writers;
 ///     Fastest for new documents but fails on duplicate keys unless configured to ignore.
 /// </summary>
 /// <typeparam name="T">The type of objects to write.</typeparam>
-public class MongoInsertManyWriter<T> : IMongoWriter<T>
+public class MongoInsertManyWriter<T> : IMongoWriter<T>, IPreparedMongoWriter<T>
 {
     private readonly Func<T, BsonDocument>? _documentMapper;
 
@@ -41,20 +41,35 @@ public class MongoInsertManyWriter<T> : IMongoWriter<T>
         ArgumentNullException.ThrowIfNull(collection);
         ArgumentNullException.ThrowIfNull(configuration);
 
+        var models = Prepare(items, configuration);
+
+        if (models.Count > 0)
+            await SendAsync(collection, models, configuration, cancellationToken).ConfigureAwait(false);
+    }
+
+    IReadOnlyList<WriteModel<BsonDocument>> IPreparedMongoWriter<T>.Prepare(IEnumerable<T> items, MongoConfiguration configuration) =>
+        Prepare(items, configuration);
+
+    Task IPreparedMongoWriter<T>.SendAsync(
+        IMongoCollection<BsonDocument> collection,
+        IReadOnlyList<WriteModel<BsonDocument>> models,
+        MongoConfiguration configuration,
+        CancellationToken cancellationToken) =>
+        SendAsync(collection, models, configuration, cancellationToken);
+
+    private List<WriteModel<BsonDocument>> Prepare(IEnumerable<T> items, MongoConfiguration configuration)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+
         var itemList = items.ToList();
-
-        if (itemList.Count == 0)
-            return;
-
         var mapper = _documentMapper ?? MongoWriteDocumentMapper.GetOrCreateMapper<T>();
-        var documents = new List<BsonDocument>(itemList.Count);
+        var models = new List<WriteModel<BsonDocument>>(itemList.Count);
 
         foreach (var item in itemList)
         {
             try
             {
-                var document = mapper(item);
-                documents.Add(document);
+                models.Add(new InsertOneModel<BsonDocument>(MongoWriteModels.WithId(mapper(item))));
             }
             catch (Exception ex)
             {
@@ -72,8 +87,16 @@ public class MongoInsertManyWriter<T> : IMongoWriter<T>
             }
         }
 
-        if (documents.Count == 0)
-            return;
+        return models;
+    }
+
+    private static async Task SendAsync(
+        IMongoCollection<BsonDocument> collection,
+        IReadOnlyList<WriteModel<BsonDocument>> models,
+        MongoConfiguration configuration,
+        CancellationToken cancellationToken)
+    {
+        var documents = models.Select(static m => ((InsertOneModel<BsonDocument>)m).Document).ToList();
 
         var options = new InsertManyOptions
         {

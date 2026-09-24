@@ -14,10 +14,8 @@ namespace NPipeline.Connectors.Azure.CosmosDb.Nodes;
 public sealed class CosmosCassandraChangeFeedSourceNode<T> : SourceNode<T>
 {
     /// <inheritdoc />
-    public override IDataStream<T> OpenStream(PipelineContext context, CancellationToken cancellationToken)
-    {
+    public override IDataStream<T> OpenStream(PipelineContext context, CancellationToken cancellationToken) =>
         throw new NotSupportedException(
             "Cassandra change feed is not supported by Azure Cosmos DB Cassandra API in this connector. " +
             "Use query-based polling with CosmosCassandraSourceNode or integrate external CDC tooling.");
-    }
 }

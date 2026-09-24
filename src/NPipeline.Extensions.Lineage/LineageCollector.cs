@@ -87,24 +87,20 @@ public sealed class LineageCollector : ILineageCollector
     /// </summary>
     /// <param name="correlationId">The unique ID of the item.</param>
     /// <returns>Ordered records for the correlation.</returns>
-    public IReadOnlyList<LineageRecord> GetCorrelationHistory(Guid correlationId)
-    {
-        return _lineageTrails.TryGetValue(correlationId, out var trail)
+    public IReadOnlyList<LineageRecord> GetCorrelationHistory(Guid correlationId) =>
+        _lineageTrails.TryGetValue(correlationId, out var trail)
             ? trail.GetOrderedRecords()
             : [];
-    }
 
     /// <summary>
     ///     Gets final terminal reason for a correlation, when available.
     /// </summary>
     /// <param name="correlationId">The unique ID of the item.</param>
     /// <returns>Terminal reason or null when unresolved.</returns>
-    public LineageOutcomeReason? GetTerminalReason(Guid correlationId)
-    {
-        return _lineageTrails.TryGetValue(correlationId, out var trail)
+    public LineageOutcomeReason? GetTerminalReason(Guid correlationId) =>
+        _lineageTrails.TryGetValue(correlationId, out var trail)
             ? trail.GetTerminalReason()
             : null;
-    }
 
     /// <summary>
     ///     Gets all collected lineage records.
@@ -112,10 +108,13 @@ public sealed class LineageCollector : ILineageCollector
     /// <returns>All lineage records in deterministic order.</returns>
     public IReadOnlyList<LineageRecord> GetAllRecords()
     {
-        return [.. _lineageTrails.Values
-            .SelectMany(static trail => trail.GetOrderedEntries())
-            .OrderBy(static entry => entry.Sequence)
-            .Select(static entry => entry.Record)];
+        return
+        [
+            .. _lineageTrails.Values
+                .SelectMany(static trail => trail.GetOrderedEntries())
+                .OrderBy(static entry => entry.Sequence)
+                .Select(static entry => entry.Record),
+        ];
     }
 
     /// <summary>
@@ -124,10 +123,13 @@ public sealed class LineageCollector : ILineageCollector
     /// <returns>Unresolved correlation ids.</returns>
     public IReadOnlyList<Guid> GetUnresolvedCorrelations()
     {
-        return [.. _lineageTrails.Values
-            .Where(static trail => !trail.HasTerminalRecord)
-            .Select(static trail => trail.CorrelationId)
-            .OrderBy(static id => id)];
+        return
+        [
+            .. _lineageTrails.Values
+                .Where(static trail => !trail.HasTerminalRecord)
+                .Select(static trail => trail.CorrelationId)
+                .OrderBy(static id => id),
+        ];
     }
 
     /// <summary>
@@ -143,21 +145,20 @@ public sealed class LineageCollector : ILineageCollector
     /// </summary>
     private sealed class CorrelationTrail
     {
-        private readonly Guid _correlationId;
-        private readonly List<LineageRecordEntry> _records = [];
         private readonly object _lock = new();
+        private readonly List<LineageRecordEntry> _records = [];
         private readonly List<string> _traversalPath;
         private readonly HashSet<string> _traversalPathSegments;
         private LineageOutcomeReason? _terminalReason;
 
         public CorrelationTrail(Guid correlationId, ImmutableArray<string> initialPath)
         {
-            _correlationId = correlationId;
+            CorrelationId = correlationId;
             _traversalPath = [.. initialPath];
             _traversalPathSegments = new HashSet<string>(initialPath, StringComparer.Ordinal);
         }
 
-        public Guid CorrelationId => _correlationId;
+        public Guid CorrelationId { get; }
 
         public bool HasTerminalRecord
         {
@@ -195,9 +196,12 @@ public sealed class LineageCollector : ILineageCollector
         {
             lock (_lock)
             {
-                return [.. _records
-                    .OrderBy(static record => record.Sequence)
-                    .Select(static record => record.Record)];
+                return
+                [
+                    .. _records
+                        .OrderBy(static record => record.Sequence)
+                        .Select(static record => record.Record),
+                ];
             }
         }
 

@@ -3,13 +3,18 @@ using AwesomeAssertions;
 using FakeItEasy;
 using Google;
 using Google.Cloud.Storage.V1;
+using NPipeline.StorageProviders.Gcp.Reliability;
 using NPipeline.StorageProviders.Models;
+using NResilience;
 using Object = Google.Apis.Storage.v1.Data.Object;
 
 namespace NPipeline.StorageProviders.Gcp.Tests;
 
 public class GcsStorageProviderTests
 {
+    // The default preset with no delay between attempts, so tests of transient failures stay fast.
+    private static readonly Resilience FastRetry = GcsStorageResilience.Default with { Backoff = Backoff.None };
+
     private readonly GcsClientFactory _fakeClientFactory;
     private readonly StorageClient _fakeStorageClient;
     private readonly GcsStorageProviderOptions _options;
@@ -22,7 +27,7 @@ public class GcsStorageProviderTests
             .CallsBaseMethods());
 
         _fakeStorageClient = A.Fake<StorageClient>();
-        _options = new GcsStorageProviderOptions();
+        _options = new GcsStorageProviderOptions { Resilience = FastRetry };
         _provider = new GcsStorageProvider(_fakeClientFactory, _options);
     }
 
@@ -370,14 +375,7 @@ public class GcsStorageProviderTests
         // Arrange
         var options = new GcsStorageProviderOptions
         {
-            RetrySettings = new GcsRetrySettings
-            {
-                InitialDelay = TimeSpan.Zero,
-                MaxDelay = TimeSpan.Zero,
-                DelayMultiplier = 1.0,
-                MaxAttempts = 2,
-                RetryOnServerErrors = true,
-            },
+            Resilience = FastRetry,
         };
 
         var clientFactory = A.Fake<GcsClientFactory>(c => c
@@ -428,14 +426,7 @@ public class GcsStorageProviderTests
         // Arrange
         var options = new GcsStorageProviderOptions
         {
-            RetrySettings = new GcsRetrySettings
-            {
-                InitialDelay = TimeSpan.Zero,
-                MaxDelay = TimeSpan.Zero,
-                DelayMultiplier = 1.0,
-                MaxAttempts = 2,
-                RetryOnServerErrors = true,
-            },
+            Resilience = FastRetry,
         };
 
         var clientFactory = A.Fake<GcsClientFactory>(c => c
@@ -570,15 +561,7 @@ public class GcsStorageProviderTests
         // Arrange
         var options = new GcsStorageProviderOptions
         {
-            RetrySettings = new GcsRetrySettings
-            {
-                InitialDelay = TimeSpan.Zero,
-                MaxDelay = TimeSpan.Zero,
-                DelayMultiplier = 1.0,
-                MaxAttempts = 2,
-                RetryOnRateLimit = true,
-                RetryOnServerErrors = false,
-            },
+            Resilience = FastRetry,
         };
 
         var clientFactory = A.Fake<GcsClientFactory>(c => c

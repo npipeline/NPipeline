@@ -2,7 +2,7 @@ using AwesomeAssertions;
 using NPipeline.ErrorHandling;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
-using NPipeline.Resilience;
+using NPipeline.Reliability;
 
 namespace NPipeline.Tests.ErrorHandling;
 
@@ -34,11 +34,11 @@ public sealed class FluentErrorHandlerTests
     {
         // Arrange
         var policy = ResiliencePolicyBuilder.RetryOn<TestTransformNode, string, TimeoutException>(
-            maxRetries: 2,
-            exhaustedDecision: ResilienceDecision.Skip);
+            2,
+            ResilienceDecision.Skip);
 
         // Act & Assert - matching exception retries then transitions to configured exhaustion decision
-        (await DecideAsync(policy, new TimeoutException(), 0)).Should().Be(ResilienceDecision.Retry);
+        (await DecideAsync(policy, new TimeoutException())).Should().Be(ResilienceDecision.Retry);
         (await DecideAsync(policy, new TimeoutException(), 1)).Should().Be(ResilienceDecision.Retry);
         (await DecideAsync(policy, new TimeoutException(), 2)).Should().Be(ResilienceDecision.Skip);
 
@@ -138,7 +138,7 @@ public sealed class FluentErrorHandlerTests
             .Build();
 
         // Act & Assert - typed shortcut retries once then returns custom exhaustion decision
-        (await DecideAsync(policy, new TimeoutException(), 0)).Should().Be(ResilienceDecision.Retry);
+        (await DecideAsync(policy, new TimeoutException())).Should().Be(ResilienceDecision.Retry);
         (await DecideAsync(policy, new TimeoutException(), 1)).Should().Be(ResilienceDecision.Skip);
 
         // Catch-all remains available for other exceptions
@@ -151,13 +151,12 @@ public sealed class FluentErrorHandlerTests
         // Arrange
         var policy = ResiliencePolicyBuilder.ForNode<TestTransformNode, string>()
             .RetryWhen(ex => ex.Message.Contains("transient", StringComparison.OrdinalIgnoreCase),
-                maxRetries: 1,
-                exhaustedDecision: ResilienceDecision.DeadLetter)
+                1)
             .Otherwise(ResilienceDecision.Fail)
             .Build();
 
         // Act & Assert - predicate match retries then dead-letters
-        (await DecideAsync(policy, new Exception("transient network"), 0)).Should().Be(ResilienceDecision.Retry);
+        (await DecideAsync(policy, new Exception("transient network"))).Should().Be(ResilienceDecision.Retry);
         (await DecideAsync(policy, new Exception("transient network"), 1)).Should().Be(ResilienceDecision.DeadLetter);
 
         // Predicate miss follows otherwise decision
@@ -195,7 +194,7 @@ public sealed class FluentErrorHandlerTests
         var exception = new Exception();
 
         // Act & Assert - First 2 attempts should retry
-        (await DecideAsync(policy, exception, 0)).Should().Be(ResilienceDecision.Retry);
+        (await DecideAsync(policy, exception)).Should().Be(ResilienceDecision.Retry);
         (await DecideAsync(policy, exception, 1)).Should().Be(ResilienceDecision.Retry);
 
         // 3rd attempt should dead-letter
@@ -333,14 +332,15 @@ public sealed class FluentErrorHandlerTests
     {
         var context = PipelineContext.CreateDefault();
 
-        return policy.DecideItemFailureAsync<string, string>(
-            new TestTransformNode(),
-            item,
-            exception,
-            context,
-            "test-node",
-            retryAttempt,
-            CancellationToken.None);
+        return policy.DecideItemFailureAsync(new ItemFailure<string>
+        {
+            Item = item,
+            Node = new TestTransformNode(),
+            NodeId = "test-node",
+            Exception = exception,
+            Attempt = retryAttempt + 1,
+            Context = context,
+        }, CancellationToken.None).AsTask();
     }
 
     /// <summary>
@@ -348,9 +348,7 @@ public sealed class FluentErrorHandlerTests
     /// </summary>
     private sealed class TestTransformNode : TransformNode<string, string>
     {
-        public override ValueTask<string> TransformAsync(string input, PipelineContext context, CancellationToken cancellationToken)
-        {
-            return ValueTask.FromResult<string>(input);
-        }
+        public override ValueTask<string> TransformAsync(string input, PipelineContext context, CancellationToken cancellationToken) =>
+            ValueTask.FromResult<string>(input);
     }
 }

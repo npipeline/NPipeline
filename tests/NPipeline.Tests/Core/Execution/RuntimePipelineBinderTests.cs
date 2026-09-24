@@ -11,7 +11,7 @@ using NPipeline.Graph;
 using NPipeline.Lineage;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
-using NPipeline.Resilience;
+using NPipeline.Reliability;
 
 namespace NPipeline.Tests.Core.Execution;
 
@@ -44,6 +44,7 @@ public sealed class RuntimePipelineBinderTests
         var graph = CreateGraph();
         var context = new PipelineContext();
         context.Properties[PipelineContextKeys.ItemLevelLineageEnabledOverride] = true;
+
         context.Properties[PipelineContextKeys.LineageOptionsOverride] =
             (Func<LineageOptions?, LineageOptions?>)(options =>
                 options is null
@@ -97,7 +98,7 @@ public sealed class RuntimePipelineBinderTests
     {
         // Arrange
         var graph = CreateGraph(
-            itemLevelLineageEnabled: true,
+            true,
             lineageSinkType: typeof(TestLineageSink));
 
         var lineageFactory = A.Fake<ILineageFactory>();
@@ -122,6 +123,7 @@ public sealed class RuntimePipelineBinderTests
         // Assert
         _ = result.LineageSink.Should().BeSameAs(decoratedLineageSink);
         _ = result.LineageCollector.Should().BeNull();
+
         _ = A.CallTo(() => lineageFactory.CreateLineageSink(typeof(TestLineageSink)))
             .MustHaveHappenedOnceExactly();
     }
@@ -131,7 +133,7 @@ public sealed class RuntimePipelineBinderTests
     {
         // Arrange
         var graph = CreateGraph(
-            itemLevelLineageEnabled: true,
+            true,
             lineageSinkType: typeof(TestLineageSink));
 
         var lineageFactory = A.Fake<ILineageFactory>();
@@ -167,7 +169,7 @@ public sealed class RuntimePipelineBinderTests
     public async Task BindAsync_ItemLevelLineageDisabled_DoesNotResolveCollector()
     {
         // Arrange
-        var graph = CreateGraph(itemLevelLineageEnabled: false);
+        var graph = CreateGraph(false);
 
         var lineageFactory = A.Fake<ILineageFactory>();
         var collector = A.Fake<ILineageCollector>();
@@ -190,10 +192,11 @@ public sealed class RuntimePipelineBinderTests
     {
         // Arrange
         var graph = CreateGraph(
-            itemLevelLineageEnabled: false,
+            false,
             lineageSinkType: typeof(TestLineageSink));
 
         var lineageFactory = A.Fake<ILineageFactory>();
+
         var context = new PipelineContext(new PipelineContextConfiguration(
             LineageFactory: lineageFactory));
 
@@ -202,6 +205,7 @@ public sealed class RuntimePipelineBinderTests
 
         // Assert
         _ = result.LineageSink.Should().BeNull();
+
         A.CallTo(() => lineageFactory.CreateLineageSink(A<Type>._))
             .MustNotHaveHappened();
     }
@@ -210,7 +214,7 @@ public sealed class RuntimePipelineBinderTests
     public async Task BindAsync_NoExplicitPipelineLineageSink_UsesProviderFallbackWhenEnabled()
     {
         // Arrange
-        var graph = CreateGraph(itemLevelLineageEnabled: true);
+        var graph = CreateGraph(true);
 
         var lineageFactory = A.Fake<ILineageFactory>();
         var provider = A.Fake<IPipelineLineageSinkProvider>();
@@ -230,6 +234,7 @@ public sealed class RuntimePipelineBinderTests
 
         // Assert
         _ = result.PipelineLineageSink.Should().BeSameAs(providedSink);
+
         _ = A.CallTo(() => lineageFactory.ResolvePipelineLineageSinkProvider())
             .MustHaveHappenedOnceExactly();
     }
@@ -239,7 +244,7 @@ public sealed class RuntimePipelineBinderTests
     {
         // Arrange
         var graph = CreateGraph(
-            itemLevelLineageEnabled: true,
+            true,
             pipelineLineageSinkType: typeof(TestPipelineLineageSink));
 
         var lineageFactory = A.Fake<ILineageFactory>();
@@ -260,6 +265,7 @@ public sealed class RuntimePipelineBinderTests
 
         // Assert
         _ = result.PipelineLineageSink.Should().BeSameAs(explicitSink);
+
         _ = A.CallTo(() => lineageFactory.CreatePipelineLineageSink(typeof(TestPipelineLineageSink)))
             .MustHaveHappenedOnceExactly();
 
@@ -272,13 +278,14 @@ public sealed class RuntimePipelineBinderTests
     {
         // Arrange
         const string nodeId = "route";
+
         var routeNode = new NodeDefinition(
-            Id: nodeId,
-            Name: nodeId,
-            NodeType: typeof(object),
-            Kind: NodeKind.Route,
-            InputType: typeof(int),
-            OutputType: typeof(int));
+            nodeId,
+            nodeId,
+            typeof(object),
+            NodeKind.Route,
+            typeof(int),
+            typeof(int));
 
         var graph = PipelineGraphBuilder.Create()
             .WithNodes([routeNode])
@@ -321,12 +328,13 @@ public sealed class RuntimePipelineBinderTests
     public async Task BindAsync_RouteWithoutOutputType_ThrowsActionableError()
     {
         const string nodeId = "route-without-output";
+
         var routeNode = new NodeDefinition(
-            Id: nodeId,
-            Name: nodeId,
-            NodeType: typeof(object),
-            Kind: NodeKind.Route,
-            InputType: typeof(int));
+            nodeId,
+            nodeId,
+            typeof(object),
+            NodeKind.Route,
+            typeof(int));
 
         var graph = PipelineGraphBuilder.Create()
             .WithNodes([routeNode])
@@ -351,13 +359,14 @@ public sealed class RuntimePipelineBinderTests
     {
         // Arrange
         const string nodeId = "join";
+
         var joinNode = new NodeDefinition(
-            Id: nodeId,
-            Name: nodeId,
-            NodeType: typeof(object),
-            Kind: NodeKind.Join,
-            InputType: typeof(int),
-            OutputType: typeof(int));
+            nodeId,
+            nodeId,
+            typeof(object),
+            NodeKind.Join,
+            typeof(int),
+            typeof(int));
 
         var graph = PipelineGraphBuilder.Create()
             .WithNodes([joinNode])
@@ -386,9 +395,8 @@ public sealed class RuntimePipelineBinderTests
         Type? resiliencePolicyType = null,
         Type? deadLetterSinkType = null,
         Type? lineageSinkType = null,
-        Type? pipelineLineageSinkType = null)
-    {
-        return PipelineGraphBuilder.Create()
+        Type? pipelineLineageSinkType = null) =>
+        PipelineGraphBuilder.Create()
             .WithNodes(ImmutableArray<NodeDefinition>.Empty)
             .WithEdges(ImmutableArray<Edge>.Empty)
             .WithPreconfiguredNodeInstances(ImmutableDictionary<string, INode>.Empty)
@@ -399,70 +407,31 @@ public sealed class RuntimePipelineBinderTests
             .WithPipelineLineageSinkType(pipelineLineageSinkType)
             .WithLineageOptions(lineageOptions)
             .Build();
-    }
 
     private sealed class TestPipelineErrorHandler : IResiliencePolicy
     {
-        public Task<ResilienceDecision> DecideNodeFailureAsync(
-            NodeDefinition nodeDefinition,
-            INode node,
-            Exception exception,
-            PipelineContext context,
-            CancellationToken cancellationToken)
-        {
-            return Task.FromResult(ResilienceDecision.Fail);
-        }
+        public ValueTask<ResilienceDecision> DecideNodeFailureAsync(NodeFailure failure, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(ResilienceDecision.Fail);
 
-        public Task<ResilienceDecision> DecidePipelineFailureAsync(string nodeId, Exception error, PipelineContext context,
-            CancellationToken cancellationToken)
-        {
-            return Task.FromResult(ResilienceDecision.Fail);
-        }
+        public ValueTask<ResilienceDecision> DecideRestartAsync(StreamFailure failure, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(ResilienceDecision.Fail);
 
-        public Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
-            ITransformNode<TIn, TOut> node,
-            TIn failedItem,
-            Exception exception,
-            PipelineContext context,
-            string nodeId,
-            int retryAttempt,
-            CancellationToken cancellationToken)
-        {
-            return Task.FromResult(ResilienceDecision.Fail);
-        }
-
-        public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, RetryKind retryKind, int attemptNumber, CancellationToken cancellationToken)
-        {
-            return context.GetRetryDelayStrategy().GetDelayAsync(attemptNumber, cancellationToken);
-        }
-
-        public IResilienceCircuitBreaker? GetCircuitBreaker(PipelineContext context, string nodeId)
-        {
-            return DefaultResiliencePolicy.Instance.GetCircuitBreaker(context, nodeId);
-        }
+        public ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(ResilienceDecision.Fail);
     }
 
     private sealed class TestDeadLetterSink : IDeadLetterSink
     {
-        public Task HandleAsync(DeadLetterEnvelope envelope, PipelineContext context, CancellationToken cancellationToken)
-        {
-            return Task.CompletedTask;
-        }
+        public Task HandleAsync(DeadLetterEnvelope envelope, PipelineContext context, CancellationToken cancellationToken) => Task.CompletedTask;
     }
 
     private sealed class TestLineageSink : ILineageSink
     {
-        public Task RecordAsync(LineageRecord record, CancellationToken cancellationToken)
-        {
-            return Task.CompletedTask;
-        }
+        public Task RecordAsync(LineageRecord record, CancellationToken cancellationToken) => Task.CompletedTask;
     }
 
     private sealed class TestPipelineLineageSink : IPipelineLineageSink
     {
-        public Task RecordAsync(PipelineLineageReport report, CancellationToken cancellationToken)
-        {
-            return Task.CompletedTask;
-        }
+        public Task RecordAsync(PipelineLineageReport report, CancellationToken cancellationToken) => Task.CompletedTask;
     }
 }

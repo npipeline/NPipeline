@@ -29,23 +29,21 @@ public sealed class GithubToSlackPipeline : IPipelineDefinition
         builder.Connect(format, sink);
     }
 
-    public static string GetDescription()
-    {
-        return """
-               GitHub Releases → Slack Webhook
+    public static string GetDescription() =>
+        """
+        GitHub Releases → Slack Webhook
 
-               Fetches the latest releases from a GitHub repository using link-header pagination
-               and posts a formatted summary to a Slack incoming webhook.
+        Fetches the latest releases from a GitHub repository using link-header pagination
+        and posts a formatted summary to a Slack incoming webhook.
 
-               Required environment variables:
-                 GITHUB_TOKEN  - personal access token (or fine-grained PAT) with repo read access
-                 SLACK_WEBHOOK - Slack incoming webhook URL
+        Required environment variables:
+          GITHUB_TOKEN  - personal access token (or fine-grained PAT) with repo read access
+          SLACK_WEBHOOK - Slack incoming webhook URL
 
-               Optional:
-                 GITHUB_OWNER  - repository owner    (default: dotnet)
-                 GITHUB_REPO   - repository name     (default: runtime)
-               """;
-    }
+        Optional:
+          GITHUB_OWNER  - repository owner    (default: dotnet)
+          GITHUB_REPO   - repository name     (default: runtime)
+        """;
 
     /// <summary>Registers the DI services needed by this pipeline.</summary>
     public static void RegisterServices(IServiceCollection services)

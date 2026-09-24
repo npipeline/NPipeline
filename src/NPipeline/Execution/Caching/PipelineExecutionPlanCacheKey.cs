@@ -46,6 +46,18 @@ internal sealed class PipelineExecutionPlanCacheKey : IEquatable<PipelineExecuti
         _hashCode = hash.ToHashCode();
     }
 
+    /// <inheritdoc />
+    public bool Equals(PipelineExecutionPlanCacheKey? other)
+    {
+        if (ReferenceEquals(this, other))
+            return true;
+
+        if (other is null || _hashCode != other._hashCode || _definitionType != other._definitionType)
+            return false;
+
+        return _nodes.AsSpan().SequenceEqual(other._nodes.AsSpan());
+    }
+
     /// <summary>
     ///     Builds the key for a pipeline definition and the graph it produced.
     /// </summary>
@@ -78,28 +90,10 @@ internal sealed class PipelineExecutionPlanCacheKey : IEquatable<PipelineExecuti
     }
 
     /// <inheritdoc />
-    public bool Equals(PipelineExecutionPlanCacheKey? other)
-    {
-        if (ReferenceEquals(this, other))
-            return true;
-
-        if (other is null || _hashCode != other._hashCode || _definitionType != other._definitionType)
-            return false;
-
-        return _nodes.AsSpan().SequenceEqual(other._nodes.AsSpan());
-    }
+    public override bool Equals(object? obj) => Equals(obj as PipelineExecutionPlanCacheKey);
 
     /// <inheritdoc />
-    public override bool Equals(object? obj)
-    {
-        return Equals(obj as PipelineExecutionPlanCacheKey);
-    }
-
-    /// <inheritdoc />
-    public override int GetHashCode()
-    {
-        return _hashCode;
-    }
+    public override int GetHashCode() => _hashCode;
 
     /// <summary>
     ///     The per-node properties a compiled execution plan is built from.

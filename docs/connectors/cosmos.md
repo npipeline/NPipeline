@@ -227,6 +227,22 @@ var config = new CosmosConfiguration
 
 Enable `AllowBulkExecution = true` for high-throughput writes. The Cosmos SDK automatically batches operations by partition key and parallelizes across partitions.
 
+## Resilience
+
+The Cosmos DB SDK retries rate-limited (429) requests natively, honoring the service's retry-after hints, and
+NPipeline adds no retry layer on top. Configure the SDK's limits on `CosmosConfiguration` (SQL API):
+
+```csharp
+var config = new CosmosConfiguration
+{
+    MaxRetryAttempts = 9,                          // CosmosClientOptions.MaxRetryAttemptsOnRateLimitedRequests
+    MaxRetryWaitTime = TimeSpan.FromSeconds(30)    // CosmosClientOptions.MaxRetryWaitTimeOnRateLimitedRequests
+};
+```
+
+Or set `RetryConfiguration` to a shared `AzureRetryConfiguration`, which takes precedence over the two properties.
+Failures the SDK doesn't retry surface to the pipeline, where node-level resilience applies.
+
 ## Change Feed
 
 Read the Cosmos DB change feed for CDC-style processing:

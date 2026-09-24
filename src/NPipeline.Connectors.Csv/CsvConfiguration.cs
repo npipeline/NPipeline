@@ -86,8 +86,5 @@ public class CsvConfiguration
     /// </summary>
     /// <param name="config">The NPipeline CSV configuration.</param>
     /// <returns>The CsvHelper configuration.</returns>
-    public static implicit operator CsvHelper.Configuration.CsvConfiguration(CsvConfiguration config)
-    {
-        return config.HelperConfiguration;
-    }
+    public static implicit operator CsvHelper.Configuration.CsvConfiguration(CsvConfiguration config) => config.HelperConfiguration;
 }

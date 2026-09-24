@@ -7,8 +7,8 @@ using NpgsqlTypes;
 using NPipeline.Connectors.Attributes;
 using NPipeline.Connectors.Postgres.Configuration;
 using NPipeline.Connectors.Postgres.Connection;
-using NPipeline.Connectors.Postgres.Exceptions;
 using NPipeline.Connectors.Postgres.Mapping;
+using NPipeline.Connectors.Postgres.Reliability;
 using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Models;
 using NPipeline.StorageProviders.Utilities;
@@ -29,6 +29,7 @@ internal sealed class PostgresCopyWriter<T> : IDatabaseWriter<T>
     private readonly PropertyMapping[] _mappings;
     private readonly Func<T, IEnumerable<DatabaseParameter>>? _parameterMapper;
     private readonly List<T> _pendingRows;
+    private readonly ConnectionResilience _resilience;
     private readonly string _schema;
     private readonly string _tableName;
     private readonly Func<T, object?[]> _valueFactory;
@@ -58,6 +59,7 @@ internal sealed class PostgresCopyWriter<T> : IDatabaseWriter<T>
         _valueFactory = BuildValueFactory(_mappings);
         _flushThreshold = Math.Clamp(_configuration.BatchSize, 1, _configuration.MaxBatchSize);
         _pendingRows = new List<T>(_flushThreshold);
+        _resilience = new ConnectionResilience(_configuration.Resilience, _connection);
     }
 
     /// <summary>
@@ -104,40 +106,17 @@ internal sealed class PostgresCopyWriter<T> : IDatabaseWriter<T>
         if (_pendingRows.Count == 0)
             return;
 
-        var attempt = 0;
-        var maxAttempts = _configuration.MaxRetryAttempts + 1;
-
-        while (attempt < maxAttempts)
+        try
         {
-            try
-            {
-                var npgsqlConnection = GetNpgsqlConnection();
-
-                if (_configuration.UseBinaryCopy)
-                    await ExecuteBinaryCopyAsync(npgsqlConnection, cancellationToken).ConfigureAwait(false);
-                else
-                    await ExecuteTextCopyAsync(npgsqlConnection, cancellationToken).ConfigureAwait(false);
-
-                _pendingRows.Clear();
-                return;
-            }
-            catch (Exception ex) when (attempt < maxAttempts - 1 && PostgresExceptionHandler.IsTransient(ex))
-            {
-                attempt++;
-                var delay = CalculateRetryDelay(attempt);
-                await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
-            }
+            // COPY FROM STDIN is one statement, which commits every row or none, so it is safe to retry.
+            await _resilience.RunAsync(ExecuteCopyAsync, cancellationToken).ConfigureAwait(false);
         }
-
-        // If we get here, all retries failed - execute one final time to throw the exception
-        var finalConnection = GetNpgsqlConnection();
-
-        if (_configuration.UseBinaryCopy)
-            await ExecuteBinaryCopyAsync(finalConnection, cancellationToken).ConfigureAwait(false);
-        else
-            await ExecuteTextCopyAsync(finalConnection, cancellationToken).ConfigureAwait(false);
-
-        _pendingRows.Clear();
+        finally
+        {
+            // Written, or reported to the caller as failed: either way the rows must not ride along in the next flush
+            // or be sent again when the writer is disposed.
+            _pendingRows.Clear();
+        }
     }
 
     /// <summary>
@@ -159,20 +138,14 @@ internal sealed class PostgresCopyWriter<T> : IDatabaseWriter<T>
         }
     }
 
-    /// <summary>
-    ///     Calculates the retry delay using exponential backoff with jitter.
-    /// </summary>
-    /// <param name="attempt">The current attempt number (1-based).</param>
-    /// <returns>The delay duration.</returns>
-    private TimeSpan CalculateRetryDelay(int attempt)
+    private async Task ExecuteCopyAsync(CancellationToken cancellationToken)
     {
-        var baseDelay = _configuration.RetryDelay;
-        var exponentialDelay = TimeSpan.FromMilliseconds(baseDelay.TotalMilliseconds * Math.Pow(2, attempt - 1));
+        var npgsqlConnection = GetNpgsqlConnection();
 
-        // Add jitter (10-20% of the delay)
-        var jitter = TimeSpan.FromMilliseconds(exponentialDelay.TotalMilliseconds * (0.1 + Random.Shared.NextDouble() * 0.1));
-
-        return exponentialDelay + jitter;
+        if (_configuration.UseBinaryCopy)
+            await ExecuteBinaryCopyAsync(npgsqlConnection, cancellationToken).ConfigureAwait(false);
+        else
+            await ExecuteTextCopyAsync(npgsqlConnection, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -209,6 +182,7 @@ internal sealed class PostgresCopyWriter<T> : IDatabaseWriter<T>
 
         var importer = await connection.BeginBinaryImportAsync(copyCommand, cancellationToken).ConfigureAwait(false);
         await using var importerScope = importer.ConfigureAwait(false);
+        importer.Timeout = TimeSpan.FromSeconds(_configuration.CopyTimeout);
 
         foreach (var item in _pendingRows)
         {
@@ -243,6 +217,9 @@ internal sealed class PostgresCopyWriter<T> : IDatabaseWriter<T>
         var writer = await connection.BeginTextImportAsync(copyCommand, cancellationToken).ConfigureAwait(false);
         await using var writerScope = writer.ConfigureAwait(false);
 
+        if (writer is NpgsqlCopyTextWriter copyWriter)
+            copyWriter.Timeout = (int)TimeSpan.FromSeconds(_configuration.CopyTimeout).TotalMilliseconds;
+
         foreach (var line in copyData)
         {
             await writer.WriteLineAsync(line).ConfigureAwait(false);
@@ -257,7 +234,8 @@ internal sealed class PostgresCopyWriter<T> : IDatabaseWriter<T>
         if (_mappings.Length == 0)
             throw new InvalidOperationException($"Type '{typeof(T).Name}' does not expose any writable properties to persist.");
 
-        var quotedTableName = DatabaseIdentifierValidator.QuoteIdentifier($"{_schema}.{_tableName}");
+        // Schema and table are quoted separately; one quoted "schema.table" would name a table with a dot in it.
+        var quotedTableName = $"{DatabaseIdentifierValidator.QuoteIdentifier(_schema)}.{DatabaseIdentifierValidator.QuoteIdentifier(_tableName)}";
 
         var quotedColumns = _mappings
             .Select(m => ValidateAndQuoteIdentifier(m.ColumnName, nameof(m.ColumnName)))
@@ -265,8 +243,10 @@ internal sealed class PostgresCopyWriter<T> : IDatabaseWriter<T>
 
         var columnList = string.Join(", ", quotedColumns);
 
-        return
-            $"COPY {quotedTableName} ({columnList}) FROM STDIN (FORMAT {_configuration.UseBinaryCopy switch { true => "BINARY", _ => "CSV" }}, DELIMITER '\t', NULL '\\N')";
+        // DELIMITER and NULL are text-format options; PostgreSQL rejects them in BINARY mode.
+        return _configuration.UseBinaryCopy
+            ? $"COPY {quotedTableName} ({columnList}) FROM STDIN (FORMAT BINARY)"
+            : $"COPY {quotedTableName} ({columnList}) FROM STDIN (FORMAT CSV, DELIMITER '\t', NULL '\\N')";
     }
 
     /// <summary>
@@ -298,14 +278,12 @@ internal sealed class PostgresCopyWriter<T> : IDatabaseWriter<T>
     /// <summary>
     ///     Escapes a value for text COPY format.
     /// </summary>
-    private static string EscapeCopyValue(string value)
-    {
-        return value
+    private static string EscapeCopyValue(string value) =>
+        value
             .Replace("\\", "\\\\")
             .Replace("\t", "\\t")
             .Replace("\n", "\\n")
             .Replace("\r", "\\r");
-    }
 
     /// <summary>
     ///     Gets values from an item using convention-based mapping.

@@ -8,7 +8,6 @@ using NPipeline.Connectors.Kafka.Metrics;
 using NPipeline.Connectors.Kafka.Models;
 using NPipeline.Connectors.Kafka.Nodes;
 using NPipeline.Connectors.Kafka.Partitioning;
-using NPipeline.Connectors.Kafka.Retry;
 using NPipeline.Connectors.Kafka.Tests.Fixtures;
 using NPipeline.Pipeline;
 using KafkaDeliverySemantic = NPipeline.Connectors.Kafka.Configuration.DeliverySemantic;
@@ -93,9 +92,8 @@ public sealed class KafkaConnectorIntegrationTests : IAsyncLifetime
         }
     }
 
-    private KafkaConfiguration CreateSourceConfig(string topic, string consumerGroup)
-    {
-        return new KafkaConfiguration
+    private KafkaConfiguration CreateSourceConfig(string topic, string consumerGroup) =>
+        new()
         {
             BootstrapServers = _fixture.BootstrapServers,
             ClientId = $"test-consumer-{Guid.NewGuid():N}",
@@ -107,11 +105,9 @@ public sealed class KafkaConnectorIntegrationTests : IAsyncLifetime
             AcknowledgmentStrategy = AcknowledgmentStrategy.AutoOnSinkSuccess,
             MaxPollRecords = 100,
         };
-    }
 
-    private KafkaConfiguration CreateSinkConfig(string topic)
-    {
-        return new KafkaConfiguration
+    private KafkaConfiguration CreateSinkConfig(string topic) =>
+        new()
         {
             BootstrapServers = _fixture.BootstrapServers,
             ClientId = $"test-producer-{Guid.NewGuid():N}",
@@ -123,7 +119,6 @@ public sealed class KafkaConnectorIntegrationTests : IAsyncLifetime
             DeliverySemantic = KafkaDeliverySemantic.AtLeastOnce,
             AcknowledgmentStrategy = AcknowledgmentStrategy.AutoOnSinkSuccess,
         };
-    }
 
     [Fact]
     public async Task EndToEnd_SourceToSink_TransfersMessagesCorrectly()
@@ -140,18 +135,12 @@ public sealed class KafkaConnectorIntegrationTests : IAsyncLifetime
         // Create source and sink nodes
         var metrics = new TestKafkaMetrics();
 
-        var retryStrategy = new ExponentialBackoffRetryStrategy
-        {
-            MaxRetries = 3,
-            BaseDelayMs = 100,
-        };
-
         var sourceConfig = CreateSourceConfig(sourceTopic, consumerGroup);
         var sinkConfig = CreateSinkConfig(sinkTopic);
 
-        var sourceNode = new KafkaSourceNode<TestMessage>(sourceConfig, metrics, retryStrategy);
+        var sourceNode = new KafkaSourceNode<TestMessage>(sourceConfig, metrics);
         var partitionKeyProvider = PartitionKeyProvider.FromProperty<TestMessage, Guid>(m => m.Id);
-        var sinkNode = new KafkaSinkNode<TestMessage>(sinkConfig, metrics, retryStrategy, partitionKeyProvider);
+        var sinkNode = new KafkaSinkNode<TestMessage>(sinkConfig, metrics, partitionKeyProvider);
 
         // Act - Consume from source and produce to sink
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
@@ -185,7 +174,6 @@ public sealed class KafkaConnectorIntegrationTests : IAsyncLifetime
         config.SerializationFormat = SerializationFormat.Json;
 
         var metrics = new TestKafkaMetrics();
-        var retryStrategy = new ExponentialBackoffRetryStrategy();
         var partitionKeyProvider = PartitionKeyProvider.FromProperty<TestMessage, Guid>(m => m.Id);
 
         var message = new TestMessage
@@ -197,7 +185,7 @@ public sealed class KafkaConnectorIntegrationTests : IAsyncLifetime
         };
 
         // Act - Produce and consume
-        var sinkNode = new KafkaSinkNode<TestMessage>(config, metrics, retryStrategy, partitionKeyProvider);
+        var sinkNode = new KafkaSinkNode<TestMessage>(config, metrics, partitionKeyProvider);
 
         // Create a simple pipe with the message
         var context = new PipelineContext();
@@ -233,7 +221,6 @@ public sealed class KafkaConnectorIntegrationTests : IAsyncLifetime
 
         // Create two consumers in the same group
         var metrics = new TestKafkaMetrics();
-        var retryStrategy = new ExponentialBackoffRetryStrategy();
 
         var config1 = CreateSourceConfig(topic, consumerGroup);
         config1.ClientId = $"consumer-1-{Guid.NewGuid():N}";
@@ -241,8 +228,8 @@ public sealed class KafkaConnectorIntegrationTests : IAsyncLifetime
         var config2 = CreateSourceConfig(topic, consumerGroup);
         config2.ClientId = $"consumer-2-{Guid.NewGuid():N}";
 
-        var consumer1 = new KafkaSourceNode<TestMessage>(config1, metrics, retryStrategy);
-        var consumer2 = new KafkaSourceNode<TestMessage>(config2, metrics, retryStrategy);
+        var consumer1 = new KafkaSourceNode<TestMessage>(config1, metrics);
+        var consumer2 = new KafkaSourceNode<TestMessage>(config2, metrics);
 
         // Assert - Both consumers should be created
         consumer1.Should().NotBeNull();
@@ -265,9 +252,8 @@ public sealed class KafkaConnectorIntegrationTests : IAsyncLifetime
         config.EnableAutoCommit = false;
 
         var metrics = new TestKafkaMetrics();
-        var retryStrategy = new ExponentialBackoffRetryStrategy();
 
-        var sourceNode = new KafkaSourceNode<TestMessage>(config, metrics, retryStrategy);
+        var sourceNode = new KafkaSourceNode<TestMessage>(config, metrics);
 
         // Act - Consume and acknowledge messages
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
@@ -299,12 +285,11 @@ public sealed class KafkaConnectorIntegrationTests : IAsyncLifetime
 
         var config = CreateSinkConfig(topic);
         var metrics = new TestKafkaMetrics();
-        var retryStrategy = new ExponentialBackoffRetryStrategy();
 
         // Use message ID as partition key
         var partitionKeyProvider = PartitionKeyProvider.FromProperty<TestMessage, Guid>(m => m.Id);
 
-        var sinkNode = new KafkaSinkNode<TestMessage>(config, metrics, retryStrategy, partitionKeyProvider);
+        var sinkNode = new KafkaSinkNode<TestMessage>(config, metrics, partitionKeyProvider);
 
         // Assert - Node should be created successfully
         sinkNode.Should().NotBeNull();
@@ -325,9 +310,8 @@ public sealed class KafkaConnectorIntegrationTests : IAsyncLifetime
         config.MaxPollRecords = 50; // Process in batches
 
         var metrics = new TestKafkaMetrics();
-        var retryStrategy = new ExponentialBackoffRetryStrategy();
 
-        var sourceNode = new KafkaSourceNode<TestMessage>(config, metrics, retryStrategy);
+        var sourceNode = new KafkaSourceNode<TestMessage>(config, metrics);
 
         // Act - Consume in batches
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
@@ -441,6 +425,11 @@ public sealed class TestKafkaMetrics : IKafkaMetrics
 
     public void RecordPollLatency(string topic, TimeSpan latency)
     {
+    }
+
+    public void RecordConsumeError(string topic, Exception ex)
+    {
+        ErrorCount++;
     }
 
     public void RecordCommitLatency(string topic, TimeSpan latency)

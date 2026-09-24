@@ -130,8 +130,5 @@ public class InMemoryCheckpointStorage : ICheckpointStorage, IDisposable
         }
     }
 
-    private static string GetKey(string pipelineId, string nodeId)
-    {
-        return $"{pipelineId}:{nodeId}";
-    }
+    private static string GetKey(string pipelineId, string nodeId) => $"{pipelineId}:{nodeId}";
 }

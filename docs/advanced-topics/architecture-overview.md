@@ -109,7 +109,6 @@ Key types:
 - `IForwardOnlyDataStream` - marker for streams that cannot be replayed
 - `InMemoryDataStream<T>` - buffered collection
 - `DataStream<T>` - wraps `IAsyncEnumerable<T>`
-- `CappedReplayableDataStream<T>` - bounded replay buffer for materialization
 
 ### Nodes (`NPipeline.Nodes`)
 
@@ -121,13 +120,19 @@ All nodes implement `INode` (marker interface extending `IAsyncDisposable`). The
 
 Additional interfaces: `IStreamTransformNode<TIn, TOut>`, `IAggregateNode`, `IJoinNode`, `IBranchNode`, `ILookupNode`, `IBatchNode`, `ICompositeNode`.
 
-### Resilience (`NPipeline.Resilience`, `NPipeline.ErrorHandling`)
+### Resilience (`NPipeline.Reliability`, `NPipeline.ErrorHandling`)
 
-`IResiliencePolicy` makes all failure decisions. `ResilientExecutionStrategy` wraps a base strategy with retry, circuit breaker, and dead-letter support. `ResiliencePolicyBuilder` provides the fluent API.
+`PipelineResilienceOptions` describes three layers that can repeat work, plus what happens to an item that isn't retried:
+
+- **Item retry (L1):** The per-item executor retries one item's transform in a transform node, waiting on the node's `ItemRetry.Backoff`. An optional circuit breaker guards each attempt.
+- **Node restart (L2):** When a transform's `NodeRestart.MaxRestarts` is above zero, `Build()` wraps its strategy in the internal node restart strategy. A failed stream resumes from its checkpoint, the first input item whose outcome wasn't delivered. The wrapped strategy must implement `IResumableExecutionStrategy`.
+- **Node retry (L3):** The error handling service executes a failed node again, but only before the node reads any input.
+
+`IResiliencePolicy` makes every decision in all three layers. The options are advice that the policy receives with each failure. When you don't register a policy, `DefaultResiliencePolicy` follows the options exactly. `ResiliencePolicyBuilder` provides the fluent API. Every retry delay waits on `PipelineResilienceOptions.Time`, and the pipeline's cancellation token cancels it at once. For more information, see [The three resilience layers](../error-handling/three-layers.md).
 
 ### Configuration (`NPipeline.Configuration`)
 
-Immutable record types: `PipelineRetryOptions`, `PipelineCircuitBreakerOptions`, `ErrorHandlingConfiguration`, `LineageOptions`, `AggregateNodeConfiguration<T>`. All use `with` expressions for modification.
+Immutable record types: `ErrorHandlingConfiguration`, `LineageOptions`, `AggregateNodeConfiguration<T>`. The resilience option records (`PipelineResilienceOptions`, `ItemRetryOptions`, `NodeRestartOptions`, `NodeRetryOptions`, and `CircuitBreakerOptions`) live in `NPipeline.Reliability`. All use `with` expressions for modification.
 
 ### Observability (`NPipeline.Observability`)
 

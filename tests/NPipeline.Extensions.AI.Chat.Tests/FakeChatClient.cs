@@ -19,27 +19,20 @@ public sealed class FakeChatClient : IChatClient
     public Task<ChatResponse> GetResponseAsync(
         IEnumerable<ChatMessage> messages,
         ChatOptions? options = null,
-        CancellationToken cancellationToken = default)
-    {
-        return _handler(messages, options, cancellationToken);
-    }
+        CancellationToken cancellationToken = default) =>
+        _handler(messages, options, cancellationToken);
 
     public IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
         IEnumerable<ChatMessage> messages,
         ChatOptions? options = null,
-        CancellationToken cancellationToken = default)
-    {
+        CancellationToken cancellationToken = default) =>
         throw new NotSupportedException("Streaming not used by NPipeline.Extensions.AI.Chat.");
-    }
 
     void IDisposable.Dispose()
     {
     }
 
-    object? IChatClient.GetService(Type serviceType, object? serviceKey)
-    {
-        return null;
-    }
+    object? IChatClient.GetService(Type serviceType, object? serviceKey) => null;
 
     public static FakeChatClient ThatThrows(Exception exception)
     {

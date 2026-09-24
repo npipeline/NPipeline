@@ -47,7 +47,7 @@ public sealed class DataStreamWrapperService
         if (!useConditionalRouting && branchCount <= 1)
         {
             // No branching needed - use simple counting passthrough
-            return wrapper.WrapPassthrough(pipe, counter, context);
+            return wrapper.WrapPassthrough(pipe, counter);
         }
 
         // Branching or conditional routing needed - use combined counting + multicast wrappers
@@ -61,29 +61,26 @@ public sealed class DataStreamWrapperService
         return wrapper.WrapMulticast(pipe, counter, branchCount, options, metrics);
     }
 
-    private static BranchOptions? GetBranchOptions(PipelineGraph graph, string nodeId)
-    {
-        return graph.ExecutionOptions.NodeExecutionAnnotations?.TryGetValue(ExecutionAnnotationKeys.BranchOptionsForNode(nodeId), out var fo) == true &&
-               fo is BranchOptions f
+    private static BranchOptions? GetBranchOptions(PipelineGraph graph, string nodeId) =>
+        graph.ExecutionOptions.NodeExecutionAnnotations?.TryGetValue(ExecutionAnnotationKeys.BranchOptionsForNode(nodeId), out var fo) == true &&
+        fo is BranchOptions f
             ? f
             : graph.ExecutionOptions.NodeExecutionAnnotations?.TryGetValue(ExecutionAnnotationKeys.GlobalBranchingCapacity, out var gcap) == true &&
               gcap is int gc and > 0
                 ? new BranchOptions(gc)
                 : null;
-    }
 
-    private static object? GetRouteOptions(PipelineGraph graph, string nodeId)
-    {
-        return graph.ExecutionOptions.NodeExecutionAnnotations?.TryGetValue(ExecutionAnnotationKeys.RouteOptionsForNode(nodeId), out var routeOptions) == true
+    private static object? GetRouteOptions(PipelineGraph graph, string nodeId) =>
+        graph.ExecutionOptions.NodeExecutionAnnotations?.TryGetValue(ExecutionAnnotationKeys.RouteOptionsForNode(nodeId), out var routeOptions) == true
             ? routeOptions
             : null;
-    }
 
     // Internal wrapper abstraction avoids per-call reflection.
     private interface IOptimizedWrapper
     {
-        IDataStream WrapPassthrough(IDataStream pipe, StatsCounter counter, PipelineContext? context);
+        IDataStream WrapPassthrough(IDataStream pipe, StatsCounter counter);
         IDataStream WrapMulticast(IDataStream pipe, StatsCounter counter, int subscribers, BranchOptions? options, BranchMetrics metrics);
+
         IDataStream WrapConditionalMulticast(
             IDataStream pipe,
             StatsCounter counter,
@@ -101,10 +98,10 @@ public sealed class DataStreamWrapperService
 
     private sealed class OptimizedWrapper<T> : IOptimizedWrapper
     {
-        public IDataStream WrapPassthrough(IDataStream pipe, StatsCounter counter, PipelineContext? context)
+        public IDataStream WrapPassthrough(IDataStream pipe, StatsCounter counter)
         {
             var typed = (IDataStream<T>)pipe;
-            return new CountingPassthroughDataStream<T>(typed, counter, context);
+            return new CountingPassthroughDataStream<T>(typed, counter);
         }
 
         public IDataStream WrapMulticast(IDataStream pipe, StatsCounter counter, int subscribers, BranchOptions? options, BranchMetrics metrics)

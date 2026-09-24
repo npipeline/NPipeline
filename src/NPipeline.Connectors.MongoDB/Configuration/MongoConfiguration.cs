@@ -2,6 +2,8 @@ using MongoDB.Bson;
 using MongoDB.Driver;
 using NPipeline.Connectors.Checkpointing;
 using NPipeline.Connectors.Configuration;
+using NPipeline.Connectors.MongoDB.Reliability;
+using NResilience;
 
 namespace NPipeline.Connectors.MongoDB.Configuration;
 
@@ -88,11 +90,8 @@ public class MongoConfiguration
     /// </summary>
     internal void ValidateResilienceSettings()
     {
-        if (MaxRetryAttempts < 0)
-            throw new ArgumentException("MaxRetryAttempts cannot be negative.", nameof(MaxRetryAttempts));
-
-        if (RetryDelay < TimeSpan.Zero)
-            throw new ArgumentException("RetryDelay cannot be negative.", nameof(RetryDelay));
+        ArgumentNullException.ThrowIfNull(Resilience);
+        Resilience.Validate();
     }
 
     /// <summary>
@@ -199,16 +198,18 @@ public class MongoConfiguration
     #region Resilience Properties
 
     /// <summary>
-    ///     Gets or sets the maximum number of retry attempts for transient errors.
-    ///     Default is 3.
+    ///     Gets or sets how the sink retries a batch write. Defaults to <see cref="MongoConnectorResilience.Default" />:
+    ///     four attempts with jittered exponential backoff from one second up to 30 seconds, retrying connection
+    ///     failures, server selection timeouts, and retryable server errors. Use
+    ///     <see cref="NResilience.Resilience.None" /> to turn retries off.
     /// </summary>
-    public int MaxRetryAttempts { get; set; } = 3;
-
-    /// <summary>
-    ///     Gets or sets the delay between retry attempts.
-    ///     Default is 1 second.
-    /// </summary>
-    public TimeSpan RetryDelay { get; set; } = TimeSpan.FromSeconds(1);
+    /// <remarks>
+    ///     The sink maps each batch once and gives every inserted document an <c>_id</c> before the first attempt, so a
+    ///     retry re-sends the same documents: a document an earlier attempt already wrote is reported as a duplicate key
+    ///     (and skipped when <see cref="OnDuplicate" /> is <see cref="OnDuplicateAction.Ignore" />) rather than
+    ///     inserted twice. A bulk write that reported write errors is never retried.
+    /// </remarks>
+    public Resilience Resilience { get; set; } = MongoConnectorResilience.Default;
 
     /// <summary>
     ///     Gets or sets whether to continue when a document-level error occurs.

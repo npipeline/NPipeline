@@ -172,6 +172,7 @@ public sealed class DuckDBSourceNode<T> : SourceNode<T>
                     ? CommandBehavior.SequentialAccess
                     : CommandBehavior.Default,
                 ct).ConfigureAwait(false);
+
             await using var readerScope = reader.ConfigureAwait(false);
 
             var mapper = _rowMapper ?? DuckDBMapperBuilder.Build<T>(reader, _configuration);

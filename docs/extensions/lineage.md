@@ -73,6 +73,18 @@ Source → wraps items in LineagePacket<T> (assigns CorrelationId)
 | `Joined` | Item was part of a join operation |
 | `Aggregated` | Item was part of an aggregation |
 
+### How outputs are matched to inputs
+
+Each output of a transform continues the lineage of the input item that produced it. Built-in execution strategies—including sequential, parallel, and node restart strategies (which wrap the others)—report which input produced each output. The `AddFilter` and `AddSelectMany` nodes also report this information. This reporting ensures lineage remains correct when a node:
+
+- skips, dead-letters, or drops an item under backpressure, emitting fewer outputs than it reads
+- emits multiple outputs for one input, as `AddSelectMany` does
+- emits outputs out of order, as an unordered parallel strategy does
+
+If an item ends without an output, it does not reach a sink node. The node where the item ended writes a terminal record to the lineage sink with an outcome of `FilteredOut`, `DeadLettered`, `DroppedByBackpressure`, or `ConsumedWithoutEmission`. Set `EmitBackpressureDropRecords = false` to exclude backpressure drops.
+
+Custom execution strategies and custom stream transform nodes do not report provenance. For these nodes, NPipeline pairs outputs with inputs by position or uses the node's `[LineageMapper]` if one is declared. Consequently, a node that drops or expands items may misattribute lineage.
+
 ## Configuration
 
 ### LineageOptions Presets

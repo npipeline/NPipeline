@@ -34,6 +34,12 @@ public sealed class LoggingMetricsSink : IMetricsSink
             new EventId(4, nameof(LoggingMetricsSink)),
             "Node {NodeId} required {RetryCount} retry attempts");
 
+    private static readonly Action<ILogger, string, long, long, long, Exception?> s_logResilience =
+        LoggerMessage.Define<string, long, long, long>(
+            LogLevel.Information,
+            new EventId(8, nameof(LoggingMetricsSink)),
+            "Node {NodeId} retried {RetryEvents} times, gave up retrying {RetriesExhausted} times, and its circuit breaker opened {CircuitBreakerTrips} times");
+
     private static readonly Action<ILogger, string, double, Exception?> s_logPeakMemory =
         LoggerMessage.Define<string, double>(
             LogLevel.Debug,
@@ -81,6 +87,9 @@ public sealed class LoggingMetricsSink : IMetricsSink
                    ["ItemsEmitted"] = nodeMetrics.ItemsEmitted,
                    ["DurationMs"] = nodeMetrics.DurationMs,
                    ["RetryCount"] = nodeMetrics.RetryCount,
+                   ["RetryEvents"] = nodeMetrics.RetryEvents,
+                   ["RetriesExhausted"] = nodeMetrics.RetriesExhausted,
+                   ["CircuitBreakerTrips"] = nodeMetrics.CircuitBreakerTrips,
                    ["ThreadId"] = nodeMetrics.ThreadId,
                    ["AverageItemProcessingMs"] = nodeMetrics.AverageItemProcessingMs,
                }))
@@ -123,6 +132,9 @@ public sealed class LoggingMetricsSink : IMetricsSink
 
             if (nodeMetrics.RetryCount > 0)
                 s_logRetryCount(_logger, nodeMetrics.NodeId, nodeMetrics.RetryCount, null);
+
+            if (nodeMetrics.RetriesExhausted > 0 || nodeMetrics.CircuitBreakerTrips > 0)
+                s_logResilience(_logger, nodeMetrics.NodeId, nodeMetrics.RetryEvents, nodeMetrics.RetriesExhausted, nodeMetrics.CircuitBreakerTrips, null);
 
             if (nodeMetrics.PeakMemoryUsageMb.HasValue)
                 s_logPeakMemory(_logger, nodeMetrics.NodeId, nodeMetrics.PeakMemoryUsageMb.Value, null);

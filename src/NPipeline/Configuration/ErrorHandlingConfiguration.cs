@@ -1,6 +1,6 @@
 using System.Collections.Immutable;
 using NPipeline.ErrorHandling;
-using NPipeline.Resilience;
+using NPipeline.Reliability;
 
 namespace NPipeline.Configuration;
 
@@ -30,24 +30,14 @@ public sealed record ErrorHandlingConfiguration
     public Type? DeadLetterSinkType { get; init; }
 
     /// <summary>
-    ///     The retry options.
+    ///     The pipeline's resilience options, with the optimization profile's defaults already applied.
     /// </summary>
-    public PipelineRetryOptions? RetryOptions { get; init; }
+    public PipelineResilienceOptions? Resilience { get; init; }
 
     /// <summary>
-    ///     The node retry overrides.
+    ///     Per-node resilience options, each derived from <see cref="Resilience" />, keyed by node id.
     /// </summary>
-    public ImmutableDictionary<string, PipelineRetryOptions>? NodeRetryOverrides { get; init; }
-
-    /// <summary>
-    ///     The circuit breaker options.
-    /// </summary>
-    public PipelineCircuitBreakerOptions? CircuitBreakerOptions { get; init; }
-
-    /// <summary>
-    ///     The circuit breaker memory management options.
-    /// </summary>
-    public CircuitBreakerMemoryManagementOptions? CircuitBreakerMemoryOptions { get; init; }
+    public ImmutableDictionary<string, PipelineResilienceOptions>? NodeResilience { get; init; }
 
     /// <summary>
     ///     Creates a new ErrorHandlingConfiguration with default values.

@@ -30,7 +30,7 @@ The token enters through `PipelineRunner.RunAsync()`:
 await runner.RunAsync<MyPipeline>(context, cancellationToken);
 ```
 
-If no token is provided, `CancellationToken.None` is used. The token is also stored on `PipelineContext` via `PipelineContextConfiguration.WithCancellation(token)`.
+If no token is provided, `CancellationToken.None` is used. A context can also carry its own token, set with `PipelineContextConfiguration.WithCancellation(token)`. Cancelling either token stops the run: for the duration of the run, `context.CancellationToken` is linked to both, so nodes that read the context's token observe the runner's token too. When the run ends, `context.CancellationToken` is the context's own token again.
 
 ### Distribution
 
@@ -168,14 +168,19 @@ public async Task<IDataStream<TOut>> ExecuteAsync<TIn, TOut>(
 
 ## Cancellation and Resilience
 
-The `ResilientExecutionStrategy` checks the cancellation token between retry attempts. If cancellation is requested during a retry delay (`GetRetryDelayAsync`), the strategy throws `OperationCanceledException` immediately - it does not wait for the delay to complete.
+Cancelling the pipeline's token is never a failure. None of the resilience layers retries, restarts, skips, or dead-letters work because of it:
 
-The `CompositeRetryDelayStrategy` also checks:
+- **Item retry (L1):** An `OperationCanceledException` raised while the pipeline's token is cancelled propagates at once. It doesn't count against the circuit breaker, and `RetryClassifier` never classifies it as transient.
+- **Node restart (L2):** The restart strategy checks the token before each run of the stream and before each item. A cancellation throws `OperationCanceledException` and never uses a restart, so a cancelled run can't report success with a truncated result set.
+- **Node retry (L3):** A cancellation propagates, and the node doesn't execute again.
+
+Every retry and restart delay waits on `PipelineResilienceOptions.Time` with the pipeline's token:
 
 ```csharp
-if (cancellationToken.IsCancellationRequested)
-    return ValueTask.FromCanceled<TimeSpan>(cancellationToken);
+await Task.Delay(delay, options.Time, cancellationToken).ConfigureAwait(false);
 ```
+
+If you cancel during a delay, the wait ends immediately with `OperationCanceledException`. It doesn't wait for the delay to finish. A circuit breaker configured with `BreakerOpenBehavior.Pause` waits the same way, so cancellation also ends a pause at once. For more information, see [The three resilience layers](../error-handling/three-layers.md).
 
 ## Next Steps
 

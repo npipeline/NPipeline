@@ -89,9 +89,8 @@ public class BranchNodePipeline : IPipelineDefinition
     ///     Gets a description of what this pipeline demonstrates.
     /// </summary>
     /// <returns>A detailed description of the pipeline's purpose and flow.</returns>
-    public static string GetDescription()
-    {
-        return @"BranchNode Pipeline Sample:
+    public static string GetDescription() =>
+        @"BranchNode Pipeline Sample:
 
 This sample demonstrates e-commerce order processing scenarios using NPipeline's BranchNode for parallel data flow:
 
@@ -151,7 +150,6 @@ BranchNode Concepts Demonstrated:
 This implementation provides a foundation for building complex e-commerce systems
 with NPipeline, demonstrating how BranchNode enables parallel processing while
 maintaining data consistency and error isolation across different business domains.";
-    }
 }
 
 /// <summary>

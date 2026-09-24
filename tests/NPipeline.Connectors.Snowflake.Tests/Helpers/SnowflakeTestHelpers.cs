@@ -4,8 +4,5 @@ namespace NPipeline.Connectors.Snowflake.Tests.Helpers;
 
 internal static class SnowflakeTestHelpers
 {
-    public static bool HasConnectionString(SnowflakeTestFixture fixture)
-    {
-        return !string.IsNullOrWhiteSpace(fixture.ConnectionString);
-    }
+    public static bool HasConnectionString(SnowflakeTestFixture fixture) => !string.IsNullOrWhiteSpace(fixture.ConnectionString);
 }

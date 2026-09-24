@@ -152,10 +152,7 @@ public sealed class PipelineTests
 
     private sealed class DummyAsyncDisposable : IAsyncDisposable
     {
-        public ValueTask DisposeAsync()
-        {
-            return ValueTask.CompletedTask;
-        }
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 
     private sealed class DummySource : ISourceNode<int>
@@ -172,10 +169,7 @@ public sealed class PipelineTests
             }
         }
 
-        public ValueTask DisposeAsync()
-        {
-            return ValueTask.CompletedTask;
-        }
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 
     #endregion

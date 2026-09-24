@@ -35,6 +35,7 @@
 
     <ItemGroup>
         <PackageReference Include="AwesomeAssertions"/>
+        <PackageReference Include="FakeItEasy"/>
         <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing"/>
         <PackageReference Include="Testcontainers.Kafka"/>
     </ItemGroup>

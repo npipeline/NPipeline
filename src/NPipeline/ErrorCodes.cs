@@ -29,11 +29,10 @@ public static class ErrorCodes
 {
     #region Configuration & Setup Analyzers (NP90XX)
 
-    /// <summary>Detects missing resilience configuration that can cause runtime failures when RestartNode is returned.</summary>
+    /// <summary>Detects RestartNode returned where it cannot restart a node, or where NodeRestart is never enabled.</summary>
     public const string IncompleteResilientConfiguration = "NP9001";
 
-    /// <summary>Prevents unbounded memory growth in retry options.</summary>
-    public const string UnboundedMaterializationConfiguration = "NP9002";
+    // NP9002 (unbounded materialization) is retired: node restart no longer materializes its input. Do not reuse it.
 
     /// <summary>Detects inappropriate parallelism configuration.</summary>
     public const string InappropriateParallelismConfiguration = "NP9003";
@@ -41,7 +40,7 @@ public static class ErrorCodes
     /// <summary>Detects batching configuration mismatches.</summary>
     public const string BatchingConfigurationMismatch = "NP9004";
 
-    /// <summary>Detects timeout configuration issues.</summary>
+    /// <summary>Detects circuit breaker timings that cannot work.</summary>
     public const string TimeoutConfiguration = "NP9005";
 
     #endregion
@@ -81,6 +80,12 @@ public static class ErrorCodes
 
     /// <summary>Detects when methods don't properly respect cancellation tokens.</summary>
     public const string NodeNotRespectingCancellationToken = "NP9203";
+
+    /// <summary>Detects ItemRetry, NodeRestart, or CircuitBreaker configured for a node that is not a transform.</summary>
+    public const string NodeKindResilienceMisuse = "NP9204";
+
+    /// <summary>Detects a resilience policy that returns Retry without consulting the failure's retry budget.</summary>
+    public const string UnconditionalRetryDecision = "NP9205";
 
     #endregion
 
@@ -186,11 +191,8 @@ public static class ErrorCodes
     /// <summary>Pipeline execution failed overall.</summary>
     public const string PipelineExecutionFailed = "NP0304";
 
-    /// <summary>An item failed to process after maximum retries.</summary>
-    public const string ItemFailedAfterMaxRetries = "NP0305";
-
-    /// <summary>Error handling itself failed.</summary>
-    public const string ErrorHandlingFailed = "NP0306";
+    // NP0305 and NP0306 are retired: nothing raised them. An item that runs out of retries raises NP0311
+    // (RetryExhaustedException), and a policy that throws surfaces its own exception. Don't reuse them.
 
     /// <summary>Lineage cardinality mismatch (inputs/outputs count mismatch).</summary>
     public const string LineageCardinalityMismatch = "NP0307";
@@ -198,10 +200,9 @@ public static class ErrorCodes
     /// <summary>Failed to extract items from InMemoryDataStream.</summary>
     public const string FailedToExtractItemsFromInMemoryDataStream = "NP0308";
 
-    /// <summary>Circuit breaker tripped after threshold of consecutive failures.</summary>
-    public const string CircuitBreakerTripped = "NP0310";
+    // NP0310 is retired: it belonged to CircuitBreakerTrippedException, which was never thrown. Don't reuse it.
 
-    /// <summary>Retry limit exhausted after maximum attempts.</summary>
+    /// <summary>Retry limit exhausted after maximum attempts (<c>RetryExhaustedException</c>).</summary>
     public const string RetryLimitExhausted = "NP0311";
 
     #endregion
@@ -214,8 +215,8 @@ public static class ErrorCodes
     /// <summary>Node not found in builder for the requested operation.</summary>
     public const string NodeNotFoundInBuilder = "NP0402";
 
-    /// <summary>Resilience can only be applied to transform nodes.</summary>
-    public const string ResilienceCannotBeAppliedToNonTransformNode = "NP0403";
+    // NP0403 is retired: it belonged to PipelineBuilder.WithResilience(NodeHandle), which node restart options
+    // replaced. Don't reuse it.
 
     /// <summary>Invalid error handler type (doesn't implement required interface).</summary>
     public const string InvalidErrorHandlerType = "NP0404";
@@ -244,8 +245,7 @@ public static class ErrorCodes
     /// <summary>Custom merge node missing required interface implementation.</summary>
     public const string CustomMergeNodeMissingInterface = "NP0414";
 
-    /// <summary>Unbatching execution strategy missing dead letter handler.</summary>
-    public const string UnbatchingExecutionStrategyMissingDeadLetterHandler = "NP0415";
+    // NP0415 is retired: nothing raised it. A dead-lettered item with no sink raises NP0424. Don't reuse it.
 
     /// <summary>Lineage adapter missing (internal framework error).</summary>
     public const string LineageAdapterMissing = "NP0416";
@@ -271,6 +271,12 @@ public static class ErrorCodes
     /// <summary>A node asked for its own id but is not resolvable in the current run.</summary>
     public const string NodeIdNotResolvable = "NP0423";
 
+    /// <summary>A resilience policy dead-lettered an item but the pipeline has no dead-letter sink.</summary>
+    public const string DeadLetterSinkNotConfigured = "NP0424";
+
+    /// <summary>Node restart is configured for a transform whose execution strategy cannot resume.</summary>
+    public const string NodeRestartRequiresResumableStrategy = "NP0425";
+
     #endregion
 
     #region Resource Management Errors (NP05xx)
@@ -281,8 +287,7 @@ public static class ErrorCodes
     /// <summary>Dead letter queue has exceeded capacity.</summary>
     public const string DeadLetterQueueCapacityExceeded = "NP0502";
 
-    /// <summary>Materialization cap exceeded for node.</summary>
-    public const string MaterializationCapExceeded = "NP0503";
+    // NP0503 is retired: node restart no longer materializes its input. Don't reuse it.
 
     /// <summary>Batch size must be greater than zero.</summary>
     public const string BatchSizeMustBeGreaterThanZero = "NP0504";

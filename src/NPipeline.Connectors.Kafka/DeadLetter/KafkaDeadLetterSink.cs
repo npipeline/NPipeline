@@ -4,6 +4,7 @@ using Confluent.Kafka;
 using NPipeline.Connectors.Kafka.Models;
 using NPipeline.ErrorHandling;
 using NPipeline.Pipeline;
+using DeadLetterEnvelope = NPipeline.ErrorHandling.DeadLetterEnvelope;
 
 namespace NPipeline.Connectors.Kafka.DeadLetter;
 
@@ -38,7 +39,7 @@ public sealed class KafkaDeadLetterSink : IDeadLetterSink
 
     /// <inheritdoc />
     public async Task HandleAsync(
-        NPipeline.ErrorHandling.DeadLetterEnvelope envelope,
+        DeadLetterEnvelope envelope,
         PipelineContext context,
         CancellationToken cancellationToken)
     {

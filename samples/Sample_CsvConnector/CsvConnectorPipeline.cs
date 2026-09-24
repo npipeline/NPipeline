@@ -123,9 +123,8 @@ public class CsvConnectorPipeline : IPipelineDefinition
     /// <summary>
     ///     Gets a description of what this pipeline demonstrates.
     /// </summary>
-    public static string GetDescription()
-    {
-        return @"CSV Connector Pipeline Sample:
+    public static string GetDescription() =>
+        @"CSV Connector Pipeline Sample:
 
 This sample demonstrates CSV data processing with NPipeline:
 
@@ -154,5 +153,4 @@ add them to the builder, and connect them. The CsvSourceNode and
 CsvSinkNode automatically handle the file system interactions.
 
 This is one of the simplest ways to process CSV files in NPipeline!";
-    }
 }

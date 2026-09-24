@@ -30,10 +30,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IClassFixture<Azu
     /// <summary>
     ///     Generates a unique container name for each test.
     /// </summary>
-    private string GetUniqueContainerName()
-    {
-        return $"test-container-{Guid.NewGuid():N}";
-    }
+    private string GetUniqueContainerName() => $"test-container-{Guid.NewGuid():N}";
 
     /// <summary>
     ///     Creates a test blob with the specified content.

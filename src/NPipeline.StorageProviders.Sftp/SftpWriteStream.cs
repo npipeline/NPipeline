@@ -102,40 +102,27 @@ public sealed class SftpWriteStream : Stream
     }
 
     /// <inheritdoc />
-    public override int Read(byte[] buffer, int offset, int count)
-    {
-        throw new NotSupportedException();
-    }
+    public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
 
     /// <inheritdoc />
-    public override int Read(Span<byte> buffer)
-    {
-        throw new NotSupportedException();
-    }
+    public override int Read(Span<byte> buffer) => throw new NotSupportedException();
 
     /// <inheritdoc />
     public override Task<int> ReadAsync(
         byte[] buffer,
         int offset,
         int count,
-        CancellationToken cancellationToken)
-    {
+        CancellationToken cancellationToken) =>
         throw new NotSupportedException();
-    }
 
     /// <inheritdoc />
     public override ValueTask<int> ReadAsync(
         Memory<byte> buffer,
-        CancellationToken cancellationToken = default)
-    {
+        CancellationToken cancellationToken = default) =>
         throw new NotSupportedException();
-    }
 
     /// <inheritdoc />
-    public override long Seek(long offset, SeekOrigin origin)
-    {
-        throw new NotSupportedException();
-    }
+    public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
 
     /// <inheritdoc />
     public override void SetLength(long value)

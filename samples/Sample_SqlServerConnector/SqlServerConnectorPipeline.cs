@@ -1,6 +1,7 @@
 using Microsoft.Data.SqlClient;
 using NPipeline.Connectors.SqlServer.Configuration;
 using NPipeline.Connectors.SqlServer.Nodes;
+using NPipeline.Connectors.SqlServer.Reliability;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.Pipeline;
 using NPipeline.StorageProviders.Models;
@@ -31,45 +32,43 @@ public sealed class SqlServerConnectorPipeline
     /// <summary>
     ///     Gets a description of the pipeline and its features.
     /// </summary>
-    public static string GetDescription()
-    {
-        return """
-               SQL Server Connector Sample Pipeline
-               ====================================
+    public static string GetDescription() =>
+        """
+        SQL Server Connector Sample Pipeline
+        ====================================
 
-               This pipeline demonstrates the following features:
+        This pipeline demonstrates the following features:
 
-               1. Reading from SQL Server
-                  - SqlServerSourceNode for data retrieval
-                  - Parameterized queries
-                  - Streaming results
+        1. Reading from SQL Server
+           - SqlServerSourceNode for data retrieval
+           - Parameterized queries
+           - Streaming results
 
-               2. Writing to SQL Server
-                  - SqlServerSinkNode for data insertion
-                  - PerRow write strategy (row-by-row)
-                  - Batch write strategy (batched inserts)
+        2. Writing to SQL Server
+           - SqlServerSinkNode for data insertion
+           - PerRow write strategy (row-by-row)
+           - Batch write strategy (batched inserts)
 
-               3. Mapping Strategies
-                  - Attribute-based mapping (SqlServerTable, SqlServerColumn, Column, IgnoreColumn)
-                  - Convention-based mapping (PascalCase to PascalCase)
-                  - Custom mappers (Func<T, IEnumerable<DatabaseParameter>>)
+        3. Mapping Strategies
+           - Attribute-based mapping (SqlServerTable, SqlServerColumn, Column, IgnoreColumn)
+           - Convention-based mapping (PascalCase to PascalCase)
+           - Custom mappers (Func<T, IEnumerable<DatabaseParameter>>)
 
-               4. Connection Management
-                  - Connection pooling
-                  - Named connections
-                  - Connection lifecycle management
+        4. Connection Management
+           - Connection pooling
+           - Named connections
+           - Connection lifecycle management
 
-               5. Error Handling
-                  - Retry logic for transient errors
-                  - Row-level error handling
-                  - Transaction support
+        5. Error Handling
+           - Retry logic for transient errors
+           - Row-level error handling
+           - Transaction support
 
-               6. Transformations
-                  - Data enrichment
-                  - Aggregation
-                  - Multiple table processing
-               """;
-    }
+        6. Transformations
+           - Data enrichment
+           - Aggregation
+           - Multiple table processing
+        """;
 
     /// <summary>
     ///     Executes the pipeline with the given context and cancellation token.
@@ -679,8 +678,7 @@ public sealed class SqlServerConnectorPipeline
         {
             WriteStrategy = SqlServerWriteStrategy.PerRow,
             UseTransaction = false, // Disable transaction to allow partial success
-            MaxRetryAttempts = 3,
-            RetryDelay = TimeSpan.FromSeconds(1),
+            Resilience = SqlServerConnectorResilience.Default, // Four attempts for transient errors; a foreign key violation is not retried
             ContinueOnError = false, // Stop on first error
             Schema = "Sales",
         };
@@ -695,7 +693,7 @@ public sealed class SqlServerConnectorPipeline
         Console.WriteLine("  - Order 2: Invalid customer ID (999) - will fail");
         Console.WriteLine("  - Order 3: Valid customer ID (2)");
         Console.WriteLine("  - ContinueOnError: false (stop on first error)");
-        Console.WriteLine("  - MaxRetryAttempts: 3");
+        Console.WriteLine("  - Resilience: SqlServerConnectorResilience.Default (four attempts, transient errors only)");
 
         try
         {

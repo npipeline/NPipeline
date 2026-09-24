@@ -11,8 +11,5 @@ public sealed class NullAuthProvider : IHttpAuthProvider
     }
 
     /// <inheritdoc />
-    public ValueTask ApplyAsync(HttpRequestMessage request, CancellationToken cancellationToken = default)
-    {
-        return ValueTask.CompletedTask;
-    }
+    public ValueTask ApplyAsync(HttpRequestMessage request, CancellationToken cancellationToken = default) => ValueTask.CompletedTask;
 }

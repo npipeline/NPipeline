@@ -26,12 +26,10 @@ internal sealed class CosmosApiAdapterResolver : ICosmosApiAdapterResolver
     }
 
     /// <inheritdoc />
-    public ICosmosApiAdapter GetAdapter(CosmosApiType apiType)
-    {
-        return _byApiType.TryGetValue(apiType, out var adapter)
+    public ICosmosApiAdapter GetAdapter(CosmosApiType apiType) =>
+        _byApiType.TryGetValue(apiType, out var adapter)
             ? adapter
             : throw new InvalidOperationException($"No adapter registered for API type '{apiType}'.");
-    }
 
     /// <inheritdoc />
     public ICosmosApiAdapter GetAdapter(string scheme)

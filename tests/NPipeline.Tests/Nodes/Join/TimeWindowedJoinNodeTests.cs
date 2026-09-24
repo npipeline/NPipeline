@@ -88,20 +88,11 @@ public sealed class TimeWindowedJoinNodeTests
     private sealed class EventEnrichmentNode()
         : TimeWindowedJoinNode<int, Event, EventMetadata, EnrichedEvent>(new TumblingWindowAssigner(TimeSpan.FromMinutes(1)))
     {
-        public override EnrichedEvent CreateOutput(Event item1, EventMetadata item2)
-        {
-            return new EnrichedEvent(item1.Id, item1.Name, item2.Metadata, item1.EventTimestamp);
-        }
+        public override EnrichedEvent CreateOutput(Event item1, EventMetadata item2) => new(item1.Id, item1.Name, item2.Metadata, item1.EventTimestamp);
 
-        public override EnrichedEvent CreateOutputFromLeft(Event item1)
-        {
-            return new EnrichedEvent(item1.Id, item1.Name, null, item1.EventTimestamp);
-        }
+        public override EnrichedEvent CreateOutputFromLeft(Event item1) => new(item1.Id, item1.Name, null, item1.EventTimestamp);
 
-        public override EnrichedEvent CreateOutputFromRight(EventMetadata item2)
-        {
-            return new EnrichedEvent(item2.Id, null, item2.Metadata, item2.MetadataTimestamp);
-        }
+        public override EnrichedEvent CreateOutputFromRight(EventMetadata item2) => new(item2.Id, null, item2.Metadata, item2.MetadataTimestamp);
     }
 
     private sealed class EnrichedEventSink(ConcurrentQueue<EnrichedEvent> store) : SinkNode<EnrichedEvent>

@@ -177,9 +177,8 @@ public sealed class RabbitMqMessage<T> : IAcknowledgableMessage<T>, IRabbitMqMes
     }
 
     /// <inheritdoc />
-    public IAcknowledgableMessage<TNew> WithBody<TNew>(TNew body)
-    {
-        return new RabbitMqMessage<TNew>(
+    public IAcknowledgableMessage<TNew> WithBody<TNew>(TNew body) =>
+        new RabbitMqMessage<TNew>(
             body,
             MessageId,
             Exchange,
@@ -198,7 +197,6 @@ public sealed class RabbitMqMessage<T> : IAcknowledgableMessage<T>, IRabbitMqMes
             _nackCallback,
             _metadata,
             Volatile.Read(ref _ackState));
-    }
 
     // IRabbitMqMessageMetadata
 

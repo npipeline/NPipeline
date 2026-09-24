@@ -7,68 +7,6 @@ namespace NPipeline.Tests.ErrorHandling;
 
 public sealed class ExceptionPropertiesTests
 {
-    #region CircuitBreakerTrippedException Tests
-
-    [Fact]
-    public void CircuitBreakerTrippedException_DefaultConstructor_HasErrorCode()
-    {
-        // Act
-        var exception = new CircuitBreakerTrippedException();
-
-        // Assert
-        _ = exception.ErrorCode.Should().Be("CIRCUIT_BREAKER_TRIPPED");
-    }
-
-    [Fact]
-    public void CircuitBreakerTrippedException_MessageConstructor_PreservesMessage()
-    {
-        // Arrange
-        var message = "Custom message";
-
-        // Act
-        var exception = new CircuitBreakerTrippedException(message);
-
-        // Assert
-        _ = exception.Message.Should().Be(message);
-        _ = exception.ErrorCode.Should().Be("CIRCUIT_BREAKER_TRIPPED");
-    }
-
-    [Fact]
-    public void CircuitBreakerTrippedException_WithInnerException_PreservesIt()
-    {
-        // Arrange
-        var inner = new InvalidOperationException("inner");
-
-        // Act
-        var exception = new CircuitBreakerTrippedException("message", inner);
-
-        // Assert
-        _ = exception.InnerException.Should().Be(inner);
-    }
-
-    [Fact]
-    public void CircuitBreakerTrippedException_ThresholdConstructor_SetsThreshold()
-    {
-        // Act
-        var exception = new CircuitBreakerTrippedException(5);
-
-        // Assert
-        _ = exception.FailureThreshold.Should().Be(5);
-    }
-
-    [Fact]
-    public void CircuitBreakerTrippedException_ThresholdAndNodeIdConstructor_SetsBoth()
-    {
-        // Act
-        var exception = new CircuitBreakerTrippedException(3, "MyNode");
-
-        // Assert
-        _ = exception.FailureThreshold.Should().Be(3);
-        _ = exception.NodeId.Should().Be("MyNode");
-    }
-
-    #endregion
-
     #region RetryExhaustedException Tests
 
     [Fact]
@@ -78,7 +16,7 @@ public sealed class ExceptionPropertiesTests
         var exception = new RetryExhaustedException();
 
         // Assert
-        _ = exception.ErrorCode.Should().Be("RETRY_EXHAUSTED");
+        _ = exception.ErrorCode.Should().Be(ErrorCodes.RetryLimitExhausted);
         _ = exception.NodeId.Should().Be(string.Empty);
     }
 
@@ -121,6 +59,8 @@ public sealed class ExceptionPropertiesTests
         _ = exception.NodeId.Should().Be("NodeX");
         _ = exception.AttemptCount.Should().Be(10);
         _ = exception.InnerException.Should().Be(inner);
+        _ = exception.ErrorCode.Should().Be("NP0311");
+        _ = exception.Message.Should().StartWith("[NP0311] Retry attempts exhausted for node 'NodeX' after 10 attempts.");
     }
 
     #endregion
@@ -213,7 +153,7 @@ public sealed class ExceptionPropertiesTests
         // Arrange & Act
         PipelineException ex1 = new NodeExecutionException("node", "error");
         PipelineException ex2 = new PipelineExecutionException("error");
-        PipelineException ex3 = new CircuitBreakerTrippedException();
+        PipelineException ex3 = new CircuitBreakerOpenException();
         PipelineException ex4 = new RetryExhaustedException();
 
         // Assert
@@ -229,7 +169,7 @@ public sealed class ExceptionPropertiesTests
         // Arrange & Act
         Exception ex1 = new NodeExecutionException("node", "error");
         Exception ex2 = new PipelineExecutionException("error");
-        Exception ex3 = new CircuitBreakerTrippedException();
+        Exception ex3 = new CircuitBreakerOpenException();
         Exception ex4 = new RetryExhaustedException();
 
         // Assert
@@ -251,16 +191,6 @@ public sealed class ExceptionPropertiesTests
 
         // Assert
         _ = exception.Message.Should().Contain("TestNode");
-    }
-
-    [Fact]
-    public void CircuitBreakerTrippedException_WithThreshold_MessageContainsThreshold()
-    {
-        // Act
-        var exception = new CircuitBreakerTrippedException(5);
-
-        // Assert
-        _ = exception.Message.Should().Contain("5");
     }
 
     [Fact]

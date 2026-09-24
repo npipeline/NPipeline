@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using AwesomeAssertions;
 using NPipeline.Configuration;
 using NPipeline.DataFlow;
@@ -119,16 +120,13 @@ public sealed class BranchingTerminalDrainTests
         private int _producedWhenFirstItemObserved = -1;
         private int _secondSinkCount;
 
-        public static DrainRecorder For(PipelineContext context)
-        {
-            return (DrainRecorder)context.Items[ContextKey];
-        }
-
         public int FirstSinkCount => Volatile.Read(ref _firstSinkCount);
 
         public int SecondSinkCount => Volatile.Read(ref _secondSinkCount);
 
         public int ProducedWhenFirstItemObserved => Volatile.Read(ref _producedWhenFirstItemObserved);
+
+        public static DrainRecorder For(PipelineContext context) => (DrainRecorder)context.Items[ContextKey];
 
         public void RecordProduced()
         {
@@ -149,14 +147,12 @@ public sealed class BranchingTerminalDrainTests
 
     private sealed class YieldingSource : SourceNode<int>
     {
-        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
-        {
-            return new DataStream<int>(Produce(DrainRecorder.For(context), cancellationToken), "yielding-source");
-        }
+        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken) =>
+            new DataStream<int>(Produce(DrainRecorder.For(context), cancellationToken), "yielding-source");
 
         private static async IAsyncEnumerable<int> Produce(
             DrainRecorder recorder,
-            [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
+            [EnumeratorCancellation] CancellationToken cancellationToken)
         {
             for (var i = 0; i < SourceItemCount; i++)
             {
@@ -194,10 +190,8 @@ public sealed class BranchingTerminalDrainTests
 
     private sealed class ThrowingSink : SinkNode<int>
     {
-        public override Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken cancellationToken)
-        {
+        public override Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken cancellationToken) =>
             throw new InvalidOperationException("sink failed");
-        }
     }
 
     private sealed class BoundedBranchPipeline : IPipelineDefinition

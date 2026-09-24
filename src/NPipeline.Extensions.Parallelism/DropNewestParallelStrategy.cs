@@ -2,7 +2,6 @@ using System.Threading.Channels;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.Execution;
-using NPipeline.Execution.Lineage;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 
@@ -29,6 +28,38 @@ public sealed class DropNewestParallelStrategy : ParallelExecutionStrategyBase
         ITransformNode<TIn, TOut> node,
         PipelineContext context,
         string nodeId,
+        CancellationToken cancellationToken) =>
+        Execute(input, 0, null, node, context, nodeId, cancellationToken);
+
+    /// <inheritdoc />
+    /// <remarks>
+    ///     Output is in completion order, so the checkpoint is the oldest item not yet delivered, and outputs delivered
+    ///     ahead of it are delivered again after a restart. A dropped item counts as delivered.
+    /// </remarks>
+    public override Task<IDataStream<TOut>> ExecuteFromAsync<TIn, TOut>(
+        IDataStream<TIn> input,
+        long offset,
+        RestartCheckpoint checkpoint,
+        ITransformNode<TIn, TOut> node,
+        PipelineContext context,
+        string nodeId,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(checkpoint);
+        return Execute(input, offset, checkpoint, node, context, nodeId, cancellationToken);
+    }
+
+    /// <summary>
+    ///     Executes the node over an input whose first item has index <c>offset</c>, reporting delivered items to
+    ///     <c>checkpoint</c> when the node is restartable (otherwise it is <see langword="null" />).
+    /// </summary>
+    private Task<IDataStream<TOut>> Execute<TIn, TOut>(
+        IDataStream<TIn> input,
+        long offset,
+        RestartCheckpoint? checkpoint,
+        ITransformNode<TIn, TOut> node,
+        PipelineContext context,
+        string nodeId,
         CancellationToken cancellationToken)
     {
         // Set the parallel execution flag to help ErrorHandlingService preserve original exception types
@@ -36,10 +67,10 @@ public sealed class DropNewestParallelStrategy : ParallelExecutionStrategyBase
 
         var observabilityScope = BeginNodeObservabilityScope(context, nodeId);
         var currentActivity = context.Observability.Tracer.CurrentActivity;
-        var effectiveRetries = GetRetryOptions(nodeId, context);
-        var cachedContext = CachedNodeExecutionContext.CreateWithRetryOptions(context, nodeId, effectiveRetries);
+        var cachedContext = CachedNodeExecutionContext.Create(context, nodeId);
+        var trackLineage = cachedContext.LineageOutcomeWriter.IsActive;
         var logger = context.Observability.LoggerFactory.CreateLogger(nameof(DropNewestParallelStrategy));
-        ParallelExecutionStrategyLogMessages.FinalMaxRetries(logger, nodeId, effectiveRetries.MaxItemRetries);
+        ParallelExecutionStrategyLogMessages.FinalMaxRetries(logger, nodeId, cachedContext.Resilience.ItemRetry.MaxRetries);
 
         ParallelOptions? parallelOptions = null;
 
@@ -81,30 +112,41 @@ public sealed class DropNewestParallelStrategy : ParallelExecutionStrategyBase
         else
             metrics = cachedMetrics;
 
-        _ = Task.Run(async () =>
+        // Cooperative fault propagation: the first failure, of the feeder or of a worker, stops the others and becomes
+        // the stream's failure. Without it a failed worker went unnoticed until the input drained, which for a
+        // never-ending input (or a restart's replay window, held open by the failed item) is never.
+        var faultCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        Exception? firstFault = null;
+
+        void RecordFault(Exception ex)
         {
-            var lastMetricsEmit = DateTimeOffset.UtcNow;
-            var itemsSeen = 0;
+            _ = Interlocked.CompareExchange(ref firstFault, ex, null);
 
             try
             {
-                await foreach (var item in timedInput.WithCancellation(cancellationToken).ConfigureAwait(false))
-                {
-                    itemsSeen++;
+                faultCts.Cancel();
+            }
+            catch (ObjectDisposedException)
+            {
+                // The stream has already completed.
+            }
+        }
 
-                    var lineageInputIndex = LineageExecutionItemContext.TryGetCurrentInputIndex(out var currentInputIndex)
-                        ? currentInputIndex
+        _ = Task.Run(async () =>
+        {
+            var lastMetricsEmit = DateTimeOffset.UtcNow;
+            var sequence = offset;
+
+            try
+            {
+                await foreach (var item in timedInput.WithCancellation(faultCts.Token).ConfigureAwait(false))
+                {
+                    // Lineage is keyed by the item's index in the node's input, which a restart preserves.
+                    var lineageInputIndex = trackLineage
+                        ? sequence
                         : (long?)null;
 
-                    var hasMetadata = LineageExecutionItemContext.TryGetCurrentItemMetadata(out var currentMetadata);
-                    var correlationId = hasMetadata
-                        ? currentMetadata.CorrelationId
-                        : (Guid?)null;
-                    var ancestryInputIndices = hasMetadata
-                        ? currentMetadata.AncestryInputIndices
-                        : null;
-
-                    var indexedItem = new IndexedWorkItem<TIn>(item, lineageInputIndex, correlationId, ancestryInputIndices);
+                    var indexedItem = new IndexedWorkItem<TIn>(item, lineageInputIndex, sequence++);
 
                     if (queue.Writer.TryWrite(indexedItem))
                     {
@@ -113,8 +155,10 @@ public sealed class DropNewestParallelStrategy : ParallelExecutionStrategyBase
                     }
                     else
                     {
-                        // Drop the incoming item (newest)
+                        // Drop the incoming item (newest). It will never produce output, so its outcome is delivered.
                         metrics.IncrementDroppedNewest();
+                        ReportDropped(cachedContext.LineageOutcomeWriter, indexedItem.Sequence);
+                        checkpoint?.Complete(indexedItem.Sequence);
 
                         observer?.OnDrop(new QueueDropEvent(nodeId, nameof(BoundedQueuePolicy.DropNewest),
                             QueueDropKind.Newest, boundedCapacity, queue.Reader.Count,
@@ -129,12 +173,16 @@ public sealed class DropNewestParallelStrategy : ParallelExecutionStrategyBase
                             queue.Reader.Count, (int)metrics.DroppedNewest, (int)metrics.DroppedOldest, (int)metrics.Enqueued, lastMetricsEmit));
                     }
                 }
+
+                _ = writer.TryComplete();
             }
-            finally
+            catch (Exception ex)
             {
-                writer.Complete();
+                // A failed input fails the stream; completing normally would end it as if the input had drained.
+                RecordFault(ex);
+                _ = writer.TryComplete(ex);
             }
-        }, cancellationToken);
+        }, CancellationToken.None);
 
         // Worker tasks: drain queue until completion and empty.
         var (outChannel, workers) = CreateWorkerTasks(
@@ -143,13 +191,19 @@ public sealed class DropNewestParallelStrategy : ParallelExecutionStrategyBase
             context,
             cachedContext,
             metrics,
-            observer,
             effectiveDop,
-            cancellationToken);
+            checkpoint,
+            faultCts.Token,
+            RecordFault);
 
-        _ = Task.WhenAll(workers).ContinueWith(t => { outChannel.Writer.TryComplete(t.Exception); }, cancellationToken);
+        _ = Task.WhenAll(workers).ContinueWith(completed =>
+        {
+            _ = outChannel.Writer.TryComplete(Volatile.Read(ref firstFault));
+            faultCts.Dispose();
+        }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
 
         return Task.FromResult<IDataStream<TOut>>(
-            new DataStream<TOut>(CreateOutputEnumerable(outChannel, nodeId, context, metrics, currentActivity, observabilityScope, cancellationToken)));
+            new DataStream<TOut>(CreateOutputEnumerable(outChannel, nodeId, context, metrics, currentActivity, observabilityScope, checkpoint,
+                cachedContext.LineageOutcomeWriter, cancellationToken)));
     }
 }

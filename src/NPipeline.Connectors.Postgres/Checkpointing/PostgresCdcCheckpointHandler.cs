@@ -135,10 +135,7 @@ public class PostgresCdcCheckpointHandler
     /// <summary>
     ///     Serializes a CDC position to a string.
     /// </summary>
-    private static string SerializePosition(PostgresCdcPosition position)
-    {
-        return JsonSerializer.Serialize(position, JsonOptions);
-    }
+    private static string SerializePosition(PostgresCdcPosition position) => JsonSerializer.Serialize(position, JsonOptions);
 
     /// <summary>
     ///     Deserializes a CDC position from a string.
@@ -201,10 +198,7 @@ public sealed record PostgresCdcPosition
     /// </summary>
     /// <param name="walLsn">The WAL LSN.</param>
     /// <returns>A new CDC position.</returns>
-    public static PostgresCdcPosition FromWalLsn(string walLsn)
-    {
-        return new PostgresCdcPosition { WalLsn = walLsn };
-    }
+    public static PostgresCdcPosition FromWalLsn(string walLsn) => new() { WalLsn = walLsn };
 
     /// <summary>
     ///     Parses the WAL LSN to a 64-bit integer.

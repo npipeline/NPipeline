@@ -91,8 +91,5 @@ public class Customer
         _ => CultureInfo.CurrentCulture.TextInfo.ToTitleCase(Country.ToLowerInvariant()),
     };
 
-    public override string ToString()
-    {
-        return $"Customer {Id}: {FullName} ({Age}, {NormalizedCountry})";
-    }
+    public override string ToString() => $"Customer {Id}: {FullName} ({Age}, {NormalizedCountry})";
 }

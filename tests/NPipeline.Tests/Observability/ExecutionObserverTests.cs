@@ -12,7 +12,7 @@ using NPipeline.Extensions.Testing;
 using NPipeline.Nodes;
 using NPipeline.Observability.Tracing;
 using NPipeline.Pipeline;
-using NPipeline.Resilience;
+using NPipeline.Reliability;
 
 namespace NPipeline.Tests.Observability;
 
@@ -167,6 +167,8 @@ public sealed class ExecutionObserverTests
 
     private sealed class TestSource : ISourceNode<int>, IAsyncDisposable
     {
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+
         public IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
             return new DataStream<int>(Stream(cancellationToken));
@@ -181,16 +183,13 @@ public sealed class ExecutionObserverTests
                 }
             }
         }
-
-        public ValueTask DisposeAsync()
-        {
-            return ValueTask.CompletedTask;
-        }
     }
 
     private sealed class FlakyTransform : ITransformNode<int, int>, IExecutionStrategyProvider, IAsyncDisposable
     {
         private int _count;
+
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
         public IExecutionStrategy DefaultExecutionStrategy { get; } = new ParallelExecutionStrategy(1);
 
@@ -201,12 +200,7 @@ public sealed class ExecutionObserverTests
             if (_count == 1)
                 throw new InvalidOperationException("boom");
 
-            return ValueTask.FromResult<int>(item);
-        }
-
-        public ValueTask DisposeAsync()
-        {
-            return ValueTask.CompletedTask;
+            return ValueTask.FromResult(item);
         }
 
         public Task<IDataStream<int>> ExecuteAsync(IDataStream<int> input, PipelineContext context, IPipelineActivity parentActivity,
@@ -224,54 +218,20 @@ public sealed class ExecutionObserverTests
         }
 
         public async Task<IDataStream> ExecuteUntypedAsync(IDataStream input, PipelineContext context, IPipelineActivity parentActivity,
-            CancellationToken cancellationToken)
-        {
-            return await ExecuteAsync((IDataStream<int>)input, context, parentActivity, cancellationToken);
-        }
+            CancellationToken cancellationToken) =>
+            await ExecuteAsync((IDataStream<int>)input, context, parentActivity, cancellationToken);
     }
 
     private sealed class RetryOnItemFailurePolicy : IResiliencePolicy
     {
-        public Task<ResilienceDecision> DecideNodeFailureAsync(
-            NPipeline.Graph.NodeDefinition nodeDefinition,
-            INode node,
-            Exception exception,
-            PipelineContext context,
-            CancellationToken cancellationToken)
-        {
-            return Task.FromResult(ResilienceDecision.Fail);
-        }
+        public ValueTask<ResilienceDecision> DecideNodeFailureAsync(NodeFailure failure, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(ResilienceDecision.Fail);
 
-        public Task<ResilienceDecision> DecidePipelineFailureAsync(
-            string nodeId,
-            Exception exception,
-            PipelineContext context,
-            CancellationToken cancellationToken)
-        {
-            return Task.FromResult(ResilienceDecision.Fail);
-        }
+        public ValueTask<ResilienceDecision> DecideRestartAsync(StreamFailure failure, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(ResilienceDecision.Fail);
 
-        public Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
-            ITransformNode<TIn, TOut> node,
-            TIn failedItem,
-            Exception exception,
-            PipelineContext context,
-            string nodeId,
-            int retryAttempt,
-            CancellationToken cancellationToken)
-        {
-            return Task.FromResult(ResilienceDecision.Retry);
-        }
-
-        public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, RetryKind retryKind, int attemptNumber, CancellationToken cancellationToken)
-        {
-            return context.GetRetryDelayStrategy().GetDelayAsync(attemptNumber, cancellationToken);
-        }
-
-        public IResilienceCircuitBreaker? GetCircuitBreaker(PipelineContext context, string nodeId)
-        {
-            return DefaultResiliencePolicy.Instance.GetCircuitBreaker(context, nodeId);
-        }
+        public ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(ResilienceDecision.Retry);
     }
 
     private sealed class CollectObserver : IExecutionObserver
@@ -314,7 +274,7 @@ public sealed class ExecutionObserverTests
             var sink = b.AddSink<InMemorySinkNode<int>, int>("k");
             b.Connect(t, sink);
             b.AddResiliencePolicy<RetryOnItemFailurePolicy>();
-            b.WithRetryOptions(o => o with { MaxItemRetries = 1 });
+            b.WithResilience(o => o with { ItemRetry = new ItemRetryOptions { MaxRetries = 1 } });
         }
     }
 

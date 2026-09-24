@@ -127,20 +127,11 @@ public sealed class EnhancedJoinNodeTests
             JoinType = JoinType.Inner; // Default, will be overridden by test pipelines
         }
 
-        public override EnrichedUser CreateOutput(User item1, UserProfile item2)
-        {
-            return new EnrichedUser(item1.Id, item1.Name, item2.ProfileInfo);
-        }
+        public override EnrichedUser CreateOutput(User item1, UserProfile item2) => new(item1.Id, item1.Name, item2.ProfileInfo);
 
-        public override EnrichedUser CreateOutputFromLeft(User item1)
-        {
-            return new EnrichedUser(item1.Id, item1.Name, null);
-        }
+        public override EnrichedUser CreateOutputFromLeft(User item1) => new(item1.Id, item1.Name, null);
 
-        public override EnrichedUser CreateOutputFromRight(UserProfile item2)
-        {
-            return new EnrichedUser(item2.Id, null, item2.ProfileInfo);
-        }
+        public override EnrichedUser CreateOutputFromRight(UserProfile item2) => new(item2.Id, null, item2.ProfileInfo);
     }
 
     private sealed class EnrichedUserSink(ConcurrentQueue<EnrichedUser> store) : SinkNode<EnrichedUser>

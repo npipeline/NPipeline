@@ -87,12 +87,10 @@ public static class PropertyAccessor
         return new Accessor<T, TProp>(memberName, getter, setter);
     }
 
-    private static Expression RemoveUnary(Expression expr)
-    {
-        return expr is UnaryExpression { NodeType: ExpressionType.Convert or ExpressionType.ConvertChecked } u
+    private static Expression RemoveUnary(Expression expr) =>
+        expr is UnaryExpression { NodeType: ExpressionType.Convert or ExpressionType.ConvertChecked } u
             ? u.Operand
             : expr;
-    }
 
     private static string GetMemberPath(MemberExpression memberExpression)
     {
@@ -116,11 +114,9 @@ public static class PropertyAccessor
 
     private sealed class ReplaceParameterVisitor(ParameterExpression from, Expression to) : ExpressionVisitor
     {
-        protected override Expression VisitParameter(ParameterExpression node)
-        {
-            return node == from
+        protected override Expression VisitParameter(ParameterExpression node) =>
+            node == from
                 ? to
                 : base.VisitParameter(node);
-        }
     }
 }

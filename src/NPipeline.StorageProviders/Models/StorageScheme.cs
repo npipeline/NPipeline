@@ -174,27 +174,18 @@ public readonly record struct StorageScheme
     /// </summary>
     /// <param name="value">The string to convert.</param>
     /// <returns>A new <see cref="StorageScheme" /> instance representing the specified string.</returns>
-    public static implicit operator StorageScheme(string value)
-    {
-        return new StorageScheme(value);
-    }
+    public static implicit operator StorageScheme(string value) => new(value);
 
     /// <summary>
     ///     Implicitly converts a <see cref="StorageScheme" /> instance to a string.
     /// </summary>
     /// <param name="scheme">The <see cref="StorageScheme" /> to convert.</param>
     /// <returns>The string representation of the <see cref="StorageScheme" />.</returns>
-    public static implicit operator string(StorageScheme scheme)
-    {
-        return scheme.Value;
-    }
+    public static implicit operator string(StorageScheme scheme) => scheme.Value;
 
     /// <summary>
     ///     Returns the string representation of the <see cref="StorageScheme" />.
     /// </summary>
     /// <returns>The normalized scheme value, or an empty string if the value is null.</returns>
-    public override string ToString()
-    {
-        return Value ?? string.Empty;
-    }
+    public override string ToString() => Value ?? string.Empty;
 }

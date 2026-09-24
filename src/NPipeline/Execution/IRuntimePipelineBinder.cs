@@ -2,7 +2,7 @@ using NPipeline.ErrorHandling;
 using NPipeline.Graph;
 using NPipeline.Lineage;
 using NPipeline.Pipeline;
-using NPipeline.Resilience;
+using NPipeline.Reliability;
 
 namespace NPipeline.Execution;
 

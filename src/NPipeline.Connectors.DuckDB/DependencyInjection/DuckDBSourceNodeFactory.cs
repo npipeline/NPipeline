@@ -58,10 +58,8 @@ public class DuckDBSourceNodeFactory
     public DuckDBSourceNode<T> CreateSource<T>(
         string query,
         Func<DuckDBRow, T>? rowMapper = null,
-        DuckDBConfiguration? configuration = null) where T : class
-    {
-        return CreateSource<T>(null, query, rowMapper, configuration);
-    }
+        DuckDBConfiguration? configuration = null) where T : class =>
+        CreateSource<T>(null, query, rowMapper, configuration);
 
     private DuckDBConfiguration ResolveConfiguration(string? databaseName, DuckDBConfiguration? overrides)
     {

@@ -241,9 +241,8 @@ public sealed class FileSystemStorageProvider : IStorageProvider, IStorageProvid
     /// <returns>
     ///     A <see cref="StorageProviderMetadata" /> object containing information about the provider's supported features.
     /// </returns>
-    public StorageProviderMetadata GetMetadata()
-    {
-        return new StorageProviderMetadata
+    public StorageProviderMetadata GetMetadata() =>
+        new()
         {
             Name = "File System",
             SupportedSchemes = [StorageScheme.File.ToString()],
@@ -254,7 +253,6 @@ public sealed class FileSystemStorageProvider : IStorageProvider, IStorageProvid
             SupportsHierarchy = true,
             Capabilities = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase),
         };
-    }
 
     private static IAsyncEnumerable<StorageItem> ListAsyncCore(
         StorageUri prefix,

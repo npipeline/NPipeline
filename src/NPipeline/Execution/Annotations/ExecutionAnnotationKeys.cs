@@ -95,51 +95,33 @@ public static class ExecutionAnnotationKeys
     ///     Node-scoped annotation key for branching options (value: BranchingOptions),
     ///     stored as "branch::{nodeId}".
     /// </summary>
-    public static string BranchOptionsForNode(string nodeId)
-    {
-        return $"branch::{nodeId}";
-    }
+    public static string BranchOptionsForNode(string nodeId) => $"branch::{nodeId}";
 
     /// <summary>
     ///     Node-scoped annotation key for route options (value: RouteOptions&lt;T&gt;),
     ///     stored as "route::{nodeId}".
     /// </summary>
-    public static string RouteOptionsForNode(string nodeId)
-    {
-        return $"route::{nodeId}";
-    }
+    public static string RouteOptionsForNode(string nodeId) => $"route::{nodeId}";
 
     /// <summary>
     ///     Node-scoped annotation key for join/merge interleave capacity (value: int),
     ///     stored as "merge.capacity::{nodeId}".
     /// </summary>
-    public static string MergeCapacityForNode(string nodeId)
-    {
-        return $"merge.capacity::{nodeId}";
-    }
+    public static string MergeCapacityForNode(string nodeId) => $"merge.capacity::{nodeId}";
 
     /// <summary>
     ///     Builds the branching metrics key used with <c>PipelineContext.NodeExecutionScopeRegistry</c> runtime annotations
     ///     for a given <paramref name="nodeId" />.
     /// </summary>
-    public static string BranchMetricsForNode(string nodeId)
-    {
-        return BranchMetricsPrefix + nodeId;
-    }
+    public static string BranchMetricsForNode(string nodeId) => BranchMetricsPrefix + nodeId;
 
     /// <summary>
     ///     Builds the node-scoped resilience policy key for a given <paramref name="nodeId" />.
     /// </summary>
-    public static string NodeResiliencePolicyForNode(string nodeId)
-    {
-        return NodeResiliencePolicyPrefix + nodeId;
-    }
+    public static string NodeResiliencePolicyForNode(string nodeId) => NodeResiliencePolicyPrefix + nodeId;
 
     /// <summary>
     ///     Builds the runtime stream contract key for a given <paramref name="nodeId" />.
     /// </summary>
-    public static string RuntimeStreamContractForNode(string nodeId)
-    {
-        return RuntimeStreamContractPrefix + nodeId;
-    }
+    public static string RuntimeStreamContractForNode(string nodeId) => RuntimeStreamContractPrefix + nodeId;
 }

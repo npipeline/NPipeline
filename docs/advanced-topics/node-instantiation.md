@@ -95,8 +95,10 @@ Key properties for instantiation:
 
 How a node runs is a property of the graph, not of the node. The strategy is defined in the `NodeDefinition` and is configured in two ways:
 
-1. **Builder methods:** `handle.WithExecutionStrategy(builder, strategy)` sets it; `handle.WithResilience(builder)` wraps the current strategy in `ResilientExecutionStrategy`.
+1. **Builder methods:** `handle.WithExecutionStrategy(builder, strategy)` sets it.
 2. **Extension methods:** The parallelism extension adds `.WithParallelExecution()`, which replaces the strategy.
+
+Node restart has no builder method of its own. When a transform's resilience options set `NodeRestart.MaxRestarts` above zero, `Build()` wraps the node's strategy in the internal node restart strategy. The wrapped strategy must implement `IResumableExecutionStrategy`, or the build fails with [NP0425](../reference/error-codes.md). For more information, see [Node restart and the replay window](../error-handling/materialization.md).
 
 A node type that only makes sense under a particular strategy — the batching and unbatching nodes, for example — declares that default by implementing `IExecutionStrategyProvider`, whose `DefaultExecutionStrategy` is read-only. The framework does not modify node instances, making them safe to share.
 

@@ -23,6 +23,7 @@ internal static class AnalyzerProfileHelper
         foreach (var tree in compilation.SyntaxTrees)
         {
             var configOptions = options.AnalyzerConfigOptionsProvider.GetOptions(tree);
+
             if (configOptions.TryGetValue(PropertyName, out var treeProfile))
                 return IsHighThroughputProfile(treeProfile);
         }
@@ -30,8 +31,5 @@ internal static class AnalyzerProfileHelper
         return false;
     }
 
-    private static bool IsHighThroughputProfile(string? profile)
-    {
-        return string.Equals(profile?.Trim(), "HighThroughput", System.StringComparison.OrdinalIgnoreCase);
-    }
+    private static bool IsHighThroughputProfile(string? profile) => string.Equals(profile?.Trim(), "HighThroughput", StringComparison.OrdinalIgnoreCase);
 }

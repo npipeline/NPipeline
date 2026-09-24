@@ -85,11 +85,8 @@ public sealed class AzuriteFixture : IAsyncLifetime
         }
     }
 
-    public string GetConnectionString()
-    {
-        return
-            $"DefaultEndpointsProtocol=http;AccountName={AccountName};AccountKey={AccountKey};BlobEndpoint=http://127.0.0.1:{_blobHostPort}/{AccountName}/;";
-    }
+    public string GetConnectionString() =>
+        $"DefaultEndpointsProtocol=http;AccountName={AccountName};AccountKey={AccountKey};BlobEndpoint=http://127.0.0.1:{_blobHostPort}/{AccountName}/;";
 
     private static async Task WaitForAzuriteReadyAsync(
         BlobServiceClient blobServiceClient,

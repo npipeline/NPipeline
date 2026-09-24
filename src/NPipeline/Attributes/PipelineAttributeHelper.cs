@@ -1,3 +1,5 @@
+using NPipeline.Attributes.Documentation;
+
 namespace NPipeline.Attributes;
 
 /// <summary>
@@ -6,7 +8,7 @@ namespace NPipeline.Attributes;
 public static class PipelineAttributeHelper
 {
     /// <summary>
-    ///     Gets the pipeline name from <see cref="Documentation.PipelineNameAttribute"/> if present,
+    ///     Gets the pipeline name from <see cref="Documentation.PipelineNameAttribute" /> if present,
     ///     otherwise returns the type's name.
     /// </summary>
     /// <param name="definitionType">The pipeline definition type.</param>
@@ -17,8 +19,8 @@ public static class PipelineAttributeHelper
 
         var attr = Attribute.GetCustomAttribute(
             definitionType,
-            typeof(Documentation.PipelineNameAttribute),
-            false) as Documentation.PipelineNameAttribute;
+            typeof(PipelineNameAttribute),
+            false) as PipelineNameAttribute;
 
         return attr?.Name ?? definitionType.Name;
     }

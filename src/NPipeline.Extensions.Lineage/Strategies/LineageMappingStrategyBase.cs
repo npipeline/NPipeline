@@ -6,7 +6,6 @@ using System.Text.Json.Serialization;
 using NPipeline.Attributes.Lineage;
 using NPipeline.Configuration;
 using NPipeline.Execution.Lineage;
-using NPipeline.Lineage;
 
 namespace NPipeline.Lineage;
 
@@ -37,10 +36,7 @@ internal abstract class LineageMappingStrategyBase
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    protected static string QualifyNodeId(string nodeId, Guid pipelineId)
-    {
-        return $"{pipelineId:N}::{nodeId}";
-    }
+    protected static string QualifyNodeId(string nodeId, Guid pipelineId) => $"{pipelineId:N}::{nodeId}";
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static int OutcomePriority(LineageOutcomeReason reason)
@@ -59,12 +55,10 @@ internal abstract class LineageMappingStrategyBase
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static LineageOutcomeReason MergeOutcomeReason(LineageOutcomeReason current, LineageOutcomeReason candidate)
-    {
-        return OutcomePriority(candidate) >= OutcomePriority(current)
+    private static LineageOutcomeReason MergeOutcomeReason(LineageOutcomeReason current, LineageOutcomeReason candidate) =>
+        OutcomePriority(candidate) >= OutcomePriority(current)
             ? candidate
             : current;
-    }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static ImmutableArray<LineageRecord> AppendRecord(
@@ -139,9 +133,8 @@ internal abstract class LineageMappingStrategyBase
         object? inputSnapshot,
         object? outputSnapshot,
         LineageOutcomeReason outcomeReason = LineageOutcomeReason.Emitted,
-        int? retryCount = null)
-    {
-        return AppendRecord(
+        int? retryCount = null) =>
+        AppendRecord(
             existing,
             correlationId,
             traversalPath,
@@ -159,6 +152,56 @@ internal abstract class LineageMappingStrategyBase
             inputSnapshot,
             outputSnapshot,
             retryCount);
+
+    /// <summary>
+    ///     Appends the terminal hop of an item that ends in this node without an output.
+    /// </summary>
+    protected static ImmutableArray<LineageRecord> AppendTerminalHop(
+        ImmutableArray<LineageRecord> existing,
+        Guid correlationId,
+        IReadOnlyList<string> traversalPath,
+        string nodeId,
+        Guid pipelineId,
+        string? pipelineName,
+        LineageOptions? opts,
+        LineageOutcomeReason outcomeReason,
+        object? inputSnapshot,
+        int? retryCount) =>
+        AppendRecord(
+            existing,
+            correlationId,
+            traversalPath,
+            nodeId,
+            pipelineId,
+            pipelineName,
+            opts,
+            outcomeReason,
+            true,
+            ObservedCardinality.Zero,
+            null,
+            null,
+            null,
+            0,
+            inputSnapshot,
+            null,
+            retryCount);
+
+    /// <summary>
+    ///     Wraps an output whose input is unknown in a packet with fresh lineage, starting at this node.
+    /// </summary>
+    protected static LineagePacket<TOut> MintPacket<TOut>(TOut outputData, string nodeId, Guid pipelineId, string? pipelineName, LineageOptions? opts)
+    {
+        var correlationId = Guid.NewGuid();
+        var traversalPath = ImmutableArray.Create(QualifyNodeId(nodeId, pipelineId));
+        var records = ImmutableArray<LineageRecord>.Empty;
+
+        if (opts?.EmitIntermediateNodeRecords != false)
+        {
+            records = AppendHop(records, correlationId, traversalPath, nodeId, pipelineId, pipelineName, opts, LineageOutcomeReason.Emitted,
+                ObservedCardinality.Zero, null, null, null, null, outputData);
+        }
+
+        return new LineagePacket<TOut>(outputData, correlationId, traversalPath) { Collect = true, LineageRecords = records };
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -177,9 +220,8 @@ internal abstract class LineageMappingStrategyBase
         int? outputEmissionCount,
         object? inputSnapshot,
         object? outputSnapshot,
-        int? retryCount = null)
-    {
-        return AppendRecord(
+        int? retryCount = null) =>
+        AppendRecord(
             existing,
             correlationId,
             traversalPath,
@@ -197,13 +239,12 @@ internal abstract class LineageMappingStrategyBase
             inputSnapshot,
             outputSnapshot,
             retryCount);
-    }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     protected static (LineageOutcomeReason Outcome, int? RetryCount) ResolveRecordedOutcome(
         Guid pipelineId,
         string nodeId,
-        int inputIndex,
+        long inputIndex,
         LineageOutcomeReason baseOutcome)
     {
         if (!LineageNodeOutcomeRegistry.TryGet(pipelineId, nodeId, inputIndex, out var recorded))
@@ -484,7 +525,7 @@ internal abstract class LineageMappingStrategyBase
                 }
 
                 yield return new LineagePacket<TOut>(outputData, inputPacket.CorrelationId, traversalPath)
-                { Collect = inputPacket.Collect, LineageRecords = lineageRecords };
+                    { Collect = inputPacket.Collect, LineageRecords = lineageRecords };
             }
             else
             {
@@ -508,8 +549,7 @@ internal abstract class LineageMappingStrategyBase
                         null,
                         null,
                         null,
-                        outputData,
-                        null);
+                        outputData);
                 }
 
                 yield return new LineagePacket<TOut>(outputData, correlationId, traversalPath)
@@ -569,7 +609,7 @@ internal abstract class LineageMappingStrategyBase
                 }
 
                 yield return new LineagePacket<TOut>(outputData, inputPacket.CorrelationId, traversalPath)
-                { Collect = inputPacket.Collect, LineageRecords = lineageRecords };
+                    { Collect = inputPacket.Collect, LineageRecords = lineageRecords };
 
                 matchedInputCount++;
                 matchedOutputCount++;

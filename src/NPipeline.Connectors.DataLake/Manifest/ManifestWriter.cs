@@ -2,23 +2,38 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using NPipeline.Connectors.DataLake.Reliability;
 using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Models;
+using NResilience;
 
 namespace NPipeline.Connectors.DataLake.Manifest;
 
 /// <summary>
 ///     Appends manifest entries to the table's manifest file.
-///     Uses append-only writes to avoid full-file rewrites.
 ///     Manifest is stored at <c>_manifest/manifest.ndjson</c> relative to the table base path.
-///     Implements retry logic for concurrent write safety.
+///     Retries the main-manifest append on transient storage errors through
+///     <see cref="DataLakeConnectorResilience.ManifestWrite" />.
 /// </summary>
+/// <remarks>
+///     <para>
+///         Each flush writes two files: the per-snapshot manifest <c>_manifest/snapshots/{snapshotId}.ndjson</c>, which
+///         holds every entry this writer has flushed and is written only by this writer, and then the main manifest,
+///         which it appends to by reading the file, adding the new entries, and replacing it (by an atomic rename when the
+///         provider implements <see cref="IMoveableStorageProvider" />, otherwise by overwriting it in place).
+///     </para>
+///     <para>
+///         The main manifest is last-writer-wins: there is no conditional write, so when two writers append at the same
+///         time, one writer's entries can be missing from it. <see cref="ManifestReader" /> recovers them by merging every
+///         per-snapshot manifest into what it reads from the main manifest, so readers see all flushed entries. Tools that
+///         read <c>manifest.ndjson</c> directly, without the snapshot files, can miss entries. Use a distinct snapshot ID
+///         per writer (<see cref="GenerateSnapshotId" />): two writers sharing one overwrite each other's snapshot file.
+///     </para>
+/// </remarks>
 public sealed class ManifestWriter : IAsyncDisposable
 {
     private const string ManifestDirectoryName = "_manifest";
     private const string ManifestFileName = "manifest.ndjson";
-    private const int MaxRetryAttempts = 3;
-    private static readonly TimeSpan RetryDelay = TimeSpan.FromMilliseconds(100);
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -26,10 +41,14 @@ public sealed class ManifestWriter : IAsyncDisposable
         WriteIndented = false,
     };
 
+    // Entries already written by earlier flushes; the snapshot file is rewritten with these plus the pending ones
+    private readonly List<ManifestEntry> _flushedEntries = [];
+
     private readonly StorageUri _manifestUri;
     private readonly List<ManifestEntry> _pendingEntries = [];
 
     private readonly IStorageProvider _provider;
+    private readonly Resilience _resilience;
     private readonly StorageUri _snapshotManifestUri;
     private readonly SemaphoreSlim _writeLock = new(1, 1);
     private bool _disposed;
@@ -40,7 +59,14 @@ public sealed class ManifestWriter : IAsyncDisposable
     /// <param name="provider">The storage provider to use for writing.</param>
     /// <param name="tableBasePath">The base path of the table.</param>
     /// <param name="snapshotId">The snapshot ID for this write session.</param>
-    public ManifestWriter(IStorageProvider provider, StorageUri tableBasePath, string snapshotId)
+    /// <param name="resilience">
+    ///     The policy for appending to the main manifest. Defaults to <see cref="DataLakeConnectorResilience.ManifestWrite" />.
+    /// </param>
+    public ManifestWriter(
+        IStorageProvider provider,
+        StorageUri tableBasePath,
+        string snapshotId,
+        Resilience? resilience = null)
     {
         ArgumentNullException.ThrowIfNull(provider);
         ArgumentNullException.ThrowIfNull(tableBasePath);
@@ -48,6 +74,8 @@ public sealed class ManifestWriter : IAsyncDisposable
 
         _provider = provider;
         SnapshotId = snapshotId;
+        _resilience = resilience ?? DataLakeConnectorResilience.ManifestWrite;
+        _resilience.Validate();
 
         // Build manifest URIs
         var manifestPath = BuildManifestPath(tableBasePath);
@@ -133,7 +161,7 @@ public sealed class ManifestWriter : IAsyncDisposable
     /// <summary>
     ///     Flushes all pending entries to storage.
     ///     Writes to both the per-snapshot manifest and appends to the main manifest.
-    ///     Implements retry logic to handle concurrent write conflicts.
+    ///     Retries the main-manifest append on transient storage errors.
     /// </summary>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
@@ -151,9 +179,10 @@ public sealed class ManifestWriter : IAsyncDisposable
             // Write to per-snapshot manifest
             await WriteSnapshotManifestAsync(cancellationToken).ConfigureAwait(false);
 
-            // Append to main manifest with retry logic for concurrent write safety
+            // Append to main manifest, retrying transient storage errors
             await AppendToMainManifestWithRetryAsync(cancellationToken).ConfigureAwait(false);
 
+            _flushedEntries.AddRange(_pendingEntries);
             _pendingEntries.Clear();
         }
         finally
@@ -164,11 +193,13 @@ public sealed class ManifestWriter : IAsyncDisposable
 
     private async Task WriteSnapshotManifestAsync(CancellationToken cancellationToken)
     {
-        // Write all pending entries to a dedicated snapshot file
-        var content = BuildNdJsonContent(_pendingEntries);
+        // Rewrite this writer's snapshot file with everything it has flushed, so it stays complete across flushes: it is
+        // what readers use to recover entries a concurrent writer overwrote in the main manifest
+        var content = BuildNdJsonContent([.. _flushedEntries, .. _pendingEntries]);
 
         var stream = await _provider.OpenWriteAsync(_snapshotManifestUri, cancellationToken)
             .ConfigureAwait(false);
+
         await using var streamScope = stream.ConfigureAwait(false);
 
         var writer = new StreamWriter(stream, Encoding.UTF8, leaveOpen: false);
@@ -181,30 +212,10 @@ public sealed class ManifestWriter : IAsyncDisposable
     {
         var newContent = BuildNdJsonContent(_pendingEntries);
 
-        for (var attempt = 0; attempt < MaxRetryAttempts; attempt++)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            try
-            {
-                await AppendToMainManifestAtomicAsync(newContent, cancellationToken).ConfigureAwait(false);
-                return; // Success
-            }
-            catch (Exception ex) when (IsRetryableException(ex) && attempt < MaxRetryAttempts - 1)
-            {
-                // Concurrent modification or transient error detected, retry after delay
-                await Task.Delay(RetryDelay, cancellationToken).ConfigureAwait(false);
-            }
-        }
-    }
-
-    private static bool IsRetryableException(Exception ex)
-    {
-        // IOException covers file locking and concurrent access scenarios
-        // Include other transient storage errors that may occur with different providers
-        return ex is IOException ||
-               ex is UnauthorizedAccessException || // Can occur during brief locking windows
-               (ex is AggregateException ae && ae.InnerExceptions.Any(IsRetryableException));
+        await _resilience.RunAsync(
+                (Func<CancellationToken, Task>)(ct => AppendToMainManifestAtomicAsync(newContent, ct)),
+                cancellationToken)
+            .ConfigureAwait(false);
     }
 
     private async Task AppendToMainManifestAtomicAsync(string newContent, CancellationToken cancellationToken)
@@ -212,12 +223,14 @@ public sealed class ManifestWriter : IAsyncDisposable
         // Check if main manifest exists
         bool manifestExists;
 
+        // Providers return null for a missing file. Any other failure must propagate: treating it as "missing" would
+        // overwrite the manifest with only the new entries.
         try
         {
             var metadata = await _provider.GetMetadataAsync(_manifestUri, cancellationToken).ConfigureAwait(false);
             manifestExists = metadata is not null;
         }
-        catch
+        catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
         {
             manifestExists = false;
         }
@@ -241,6 +254,7 @@ public sealed class ManifestWriter : IAsyncDisposable
             // Create new manifest
             var writeStream = await _provider.OpenWriteAsync(_manifestUri, cancellationToken)
                 .ConfigureAwait(false);
+
             await using var writeStreamScope = writeStream.ConfigureAwait(false);
 
             var writer = new StreamWriter(writeStream, Encoding.UTF8, leaveOpen: false);
@@ -265,6 +279,10 @@ public sealed class ManifestWriter : IAsyncDisposable
             using var reader = new StreamReader(readStream, Encoding.UTF8);
             existingContent = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
         }
+
+        // An earlier attempt may have committed before it failed; don't append the same entries twice
+        if (ContainsEntries(existingContent, newContent))
+            return;
 
         // Build combined content
         var combinedContent = existingContent;
@@ -304,6 +322,10 @@ public sealed class ManifestWriter : IAsyncDisposable
             existingContent = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
         }
 
+        // An earlier attempt may have committed before it failed; don't append the same entries twice
+        if (ContainsEntries(existingContent, newContent))
+            return;
+
         var combinedContent = existingContent;
 
         if (!existingContent.EndsWith('\n') && !string.IsNullOrEmpty(existingContent))
@@ -313,6 +335,7 @@ public sealed class ManifestWriter : IAsyncDisposable
 
         var writeStream = await _provider.OpenWriteAsync(_manifestUri, cancellationToken)
             .ConfigureAwait(false);
+
         await using var writeStreamScope = writeStream.ConfigureAwait(false);
 
         var writer = new StreamWriter(writeStream, Encoding.UTF8, leaveOpen: false);
@@ -320,6 +343,11 @@ public sealed class ManifestWriter : IAsyncDisposable
         await writer.WriteAsync(combinedContent).ConfigureAwait(false);
         await writer.FlushAsync(cancellationToken).ConfigureAwait(false);
     }
+
+    private static bool ContainsEntries(string existingContent, string newContent) =>
+
+        // Every entry carries this flush's snapshot ID and write timestamps, so the serialized block is unique to it
+        newContent.Length > 0 && existingContent.Contains(newContent, StringComparison.Ordinal);
 
     private StorageUri CreateTempManifestUri()
     {

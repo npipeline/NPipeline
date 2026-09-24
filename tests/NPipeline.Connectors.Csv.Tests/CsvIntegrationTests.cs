@@ -53,8 +53,5 @@ public sealed class CsvIntegrationTests
         }
     }
 
-    private static int MapIntRow(CsvRow row)
-    {
-        return row.GetByIndex(0, 0);
-    }
+    private static int MapIntRow(CsvRow row) => row.GetByIndex(0, 0);
 }

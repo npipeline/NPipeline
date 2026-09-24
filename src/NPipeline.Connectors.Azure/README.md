@@ -9,7 +9,7 @@ Shared Azure authentication, connection management, and retry abstractions for N
 - **`AzureAuthenticationMode`** - Three authentication modes: `ConnectionString`, `EndpointWithKey`, and `AzureAdCredential`
 - **`AzureConnectionOptions`** - Thread-safe registry of named connection strings and named `AzureEndpointOptions` instances
 - **`AzureEndpointOptions`** - Pairs an Azure service `Uri` with an Azure.Identity `TokenCredential`
-- **`AzureRetryConfiguration`** - Configurable exponential-backoff retry policy with jitter
+- **`AzureRetryConfiguration`** - Retry limits passed to Azure SDKs that retry natively (Cosmos DB's rate-limited retry)
 - **`ITransientErrorDetector`** / **`AzureTransientErrorDetector`** - Classifies HTTP responses as transient (408, 410, 429, 449, 503) so retry logic knows when to retry
 
 ## Authentication Modes
@@ -47,23 +47,20 @@ var ep = connectionOptions.GetEndpoint("primary");
 
 ## AzureRetryConfiguration
 
-Exponential backoff with optional jitter, used by Azure connector packages when configuring the Azure SDK retry policy.
+Retry limits handed to the Azure SDK. The SDK owns the retry: for Cosmos DB these map to
+`CosmosClientOptions.MaxRetryAttemptsOnRateLimitedRequests` and `MaxRetryWaitTimeOnRateLimitedRequests`, and the SDK
+chooses the delays from the service's retry-after hints. NPipeline adds no retry layer on top.
 
 | Property | Default | Description |
 |----------|---------|-------------|
-| `MaxRetryAttempts` | `9` | Maximum retry attempts for transient errors |
+| `MaxRetryAttempts` | `9` | Maximum retry attempts for rate-limited (429) requests |
 | `MaxRetryWaitTime` | `30s` | Maximum total wait time across all retries |
-| `InitialRetryDelay` | `100ms` | Base delay for first retry |
-| `RetryBackoffFactor` | `2.0` | Multiplier applied to delay on each retry |
-| `UseJitter` | `true` | Adds random jitter to prevent thundering herd |
 
 ```csharp
 var retryConfig = new AzureRetryConfiguration
 {
     MaxRetryAttempts = 5,
-    MaxRetryWaitTime = TimeSpan.FromSeconds(15),
-    InitialRetryDelay = TimeSpan.FromMilliseconds(200),
-    UseJitter = true
+    MaxRetryWaitTime = TimeSpan.FromSeconds(15)
 };
 ```
 

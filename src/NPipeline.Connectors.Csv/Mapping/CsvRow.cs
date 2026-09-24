@@ -53,10 +53,7 @@ public readonly struct CsvRow(
     /// </summary>
     /// <param name="name">Header name.</param>
     /// <returns><c>true</c> when column exists; otherwise <c>false</c>.</returns>
-    public bool HasColumn(string name)
-    {
-        return _hasHeaders && _headers.ContainsKey(name);
-    }
+    public bool HasColumn(string name) => _hasHeaders && _headers.ContainsKey(name);
 
     /// <summary>
     ///     Read a field by header name and return a converted value or <paramref name="defaultValue" />.
@@ -65,12 +62,10 @@ public readonly struct CsvRow(
     /// <param name="defaultValue">Value used when field is missing or conversion fails.</param>
     /// <typeparam name="T">Target type.</typeparam>
     /// <returns>Converted value or <paramref name="defaultValue" />.</returns>
-    public T Get<T>(string name, T defaultValue = default!)
-    {
-        return TryGet(name, out var value, defaultValue)
+    public T Get<T>(string name, T defaultValue = default!) =>
+        TryGet(name, out var value, defaultValue)
             ? value
             : defaultValue;
-    }
 
     /// <summary>
     ///     Read a field by index and return a converted value or <paramref name="defaultValue" />.

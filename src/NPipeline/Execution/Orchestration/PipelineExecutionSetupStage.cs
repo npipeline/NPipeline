@@ -1,11 +1,12 @@
+using NPipeline.ErrorHandling;
 using NPipeline.Execution.Annotations;
 using NPipeline.Execution.Caching;
-using NPipeline.Execution.CircuitBreaking;
 using NPipeline.Execution.Plans;
 using NPipeline.Graph;
 using NPipeline.Nodes;
 using NPipeline.Observability.Logging;
 using NPipeline.Pipeline;
+using NPipeline.Reliability;
 using NPipeline.State;
 
 namespace NPipeline.Execution.Orchestration;
@@ -31,8 +32,8 @@ internal sealed class PipelineExecutionSetupStage(
         ApplyRuntimeBindings(context, runtimeBinding);
 
         await VisualizeIfConfiguredAsync(graph, cancellationToken).ConfigureAwait(false);
-        ApplyRetryOptions(graph, context);
-        ConfigureCircuitBreaker(graph, context);
+        ApplyResilienceOptions(graph, context);
+        EnsureDeadLetterSinkIfNeeded(graph, context);
 
         var nodeInstances = nodeInstantiationService.InstantiateNodes(graph, nodeFactory);
         context.NodeEnvironment.RegisterNodes(nodeInstances);
@@ -58,58 +59,42 @@ internal sealed class PipelineExecutionSetupStage(
             await graph.ExecutionOptions.Visualizer.VisualizeAsync(graph, cancellationToken).ConfigureAwait(false);
     }
 
-    private static void ApplyRetryOptions(PipelineGraph graph, PipelineContext context)
+    private static void ApplyResilienceOptions(PipelineGraph graph, PipelineContext context)
     {
-        var logger = context.Observability.LoggerFactory.CreateLogger(nameof(PipelineRunner));
         var execution = context.ExecutionConfiguration;
+        execution.ResetResilienceOptions();
+        execution.Resilience = graph.ErrorHandling.Resilience ?? PipelineResilienceOptions.None;
 
-        if (graph.ErrorHandling.RetryOptions is not null)
+        if (graph.ErrorHandling.NodeResilience is { Count: > 0 } nodeResilience)
         {
-            PipelineRunnerLogMessages.StoringRetryOptions(logger, graph.ErrorHandling.RetryOptions.MaxItemRetries);
-            execution.GlobalRetryOptions = graph.ErrorHandling.RetryOptions;
-        }
-        else
-        {
-            PipelineRunnerLogMessages.RetryOptionsNull(logger);
-            execution.GlobalRetryOptions = execution.RetryOptions;
+            foreach (var (nodeId, options) in nodeResilience)
+            {
+                execution.SetNodeResilienceOptions(nodeId, options);
+            }
         }
 
-        if (graph.ErrorHandling.NodeRetryOverrides is not { Count: > 0 })
-            return;
-
-        foreach (var kvp in graph.ErrorHandling.NodeRetryOverrides)
-        {
-            execution.NodeRetryOverrides[kvp.Key] = kvp.Value;
-        }
+        PipelineRunnerLogMessages.StoringResilienceOptions(context.Observability.LoggerFactory.CreateLogger(nameof(PipelineRunner)),
+            execution.Resilience.ItemRetry.MaxRetries);
     }
 
-    private static void ConfigureCircuitBreaker(PipelineGraph graph, PipelineContext context)
+    /// <summary>
+    ///     Fails the run before any node starts when a transform would dead-letter with nowhere to send the item.
+    /// </summary>
+    /// <remarks>
+    ///     This runs after the runtime bindings, because the dead-letter sink can come from the context or from DI as
+    ///     well as from the builder.
+    /// </remarks>
+    private static void EnsureDeadLetterSinkIfNeeded(PipelineGraph graph, PipelineContext context)
     {
-        var execution = context.ExecutionConfiguration;
-
-        if (graph.ErrorHandling.CircuitBreakerOptions is null)
-        {
-            execution.CircuitBreakerOptions = null;
-            execution.CircuitBreakerManager = null;
-            execution.CircuitBreakerMemoryOptions = null;
+        if (context.DeadLetterSink is not null)
             return;
-        }
 
-        execution.CircuitBreakerOptions = graph.ErrorHandling.CircuitBreakerOptions;
-        var memoryOptions = graph.ErrorHandling.CircuitBreakerMemoryOptions;
-        execution.CircuitBreakerMemoryOptions = memoryOptions;
-
-        if (!graph.ErrorHandling.CircuitBreakerOptions.Enabled)
+        foreach (var node in graph.Nodes)
         {
-            execution.CircuitBreakerManager = null;
-            execution.CircuitBreakerMemoryOptions = null;
-            return;
+            if (node.Kind == NodeKind.Transform &&
+                context.ExecutionConfiguration.GetResilienceOptions(node.Id).OnItemFailure == ItemFailureAction.DeadLetter)
+                throw new DeadLetterSinkNotConfiguredException(node.Id);
         }
-
-        var managerLogger = context.Observability.LoggerFactory.CreateLogger(nameof(CircuitBreakerManager));
-        var circuitBreakerManager = context.CreateAndRegister(new CircuitBreakerManager(managerLogger, memoryOptions));
-        execution.CircuitBreakerManager = circuitBreakerManager;
-        PipelineRunnerLogMessages.CircuitBreakerManagerCreated(managerLogger);
     }
 
     private static void ApplyRuntimeBindings(PipelineContext context, RuntimePipelineBindingResult runtimeBinding)
@@ -155,12 +140,10 @@ internal sealed class PipelineExecutionSetupStage(
     private Dictionary<string, NodeExecutionPlan> BuildExecutionPlans(
         Type definitionType,
         PipelineGraph graph,
-        Dictionary<string, INode> nodeInstances)
-    {
-        return ShouldUseCache(graph)
+        Dictionary<string, INode> nodeInstances) =>
+        ShouldUseCache(graph)
             ? BuildPlansWithCache(definitionType, graph, nodeInstances)
             : nodeInstantiationService.BuildPlans(graph, nodeInstances);
-    }
 
     private Dictionary<string, NodeExecutionPlan> BuildPlansWithCache(
         Type pipelineDefinitionType,

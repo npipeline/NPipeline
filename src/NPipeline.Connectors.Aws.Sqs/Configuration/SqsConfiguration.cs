@@ -1,3 +1,4 @@
+using Amazon.Runtime;
 using Amazon.SQS.Model;
 using NPipeline.Connectors.Aws.Sqs.Models;
 using NPipeline.Connectors.Configuration;
@@ -100,16 +101,30 @@ public class SqsConfiguration
 
     // Error Handling
     /// <summary>
-    ///     Gets or sets the maximum number of retry attempts for transient errors.
-    ///     Default is 3.
+    ///     Gets or sets the AWS SDK retry mode for the SQS client the nodes create. Default is
+    ///     <see cref="RequestRetryMode.Standard" />: exponential backoff with jitter, a retry quota, and retries of
+    ///     throttling, 5xx, and network errors. <see cref="RequestRetryMode.Adaptive" /> also rate-limits the client when
+    ///     SQS throttles it. Set to <c>null</c> to let the SDK resolve it (<c>AWS_RETRY_MODE</c> or the shared config
+    ///     file).
     /// </summary>
-    public int MaxRetries { get; set; } = 3;
+    /// <remarks>
+    ///     The SDK is the only layer that retries SQS calls; the nodes don't retry on top of it. This setting applies
+    ///     only to clients the nodes create. A client you pass to a node's constructor keeps its own configuration: set
+    ///     <see cref="Amazon.Runtime.ClientConfig.RetryMode" /> on its <see cref="Amazon.SQS.AmazonSQSConfig" />.
+    /// </remarks>
+    public RequestRetryMode? RetryMode { get; set; } = RequestRetryMode.Standard;
 
     /// <summary>
-    ///     Gets or sets the base delay for retry backoff, in milliseconds.
-    ///     Default is 1000.
+    ///     Gets or sets how many times the AWS SDK retries a failed SQS call (retries, not total attempts) for the client
+    ///     the nodes create. Default is 3: up to four attempts per call, the same count as the removed
+    ///     <c>MaxRetries = 3</c>. Set to 0 to turn retries off, or to <c>null</c> to let the SDK resolve it
+    ///     (<c>AWS_MAX_ATTEMPTS</c>, the shared config file, or the SDK default of 2).
     /// </summary>
-    public int RetryBaseDelayMs { get; set; } = 1000;
+    /// <remarks>
+    ///     Applies only to clients the nodes create. A client you pass to a node's constructor keeps its own
+    ///     <see cref="Amazon.Runtime.ClientConfig.MaxErrorRetry" />.
+    /// </remarks>
+    public int? MaxErrorRetry { get; set; } = 3;
 
     /// <summary>
     ///     Gets or sets a value indicating whether to continue processing on message errors.
@@ -214,6 +229,9 @@ public class SqsConfiguration
 
         if (DelaySeconds is < 0 or > 900)
             throw new InvalidOperationException("DelaySeconds must be between 0 and 900 (15 minutes).");
+
+        if (MaxErrorRetry < 0)
+            throw new InvalidOperationException("MaxErrorRetry must be non-negative.");
 
         // Validate AWS credentials (at least one method must be provided)
         if (string.IsNullOrWhiteSpace(AccessKeyId) &&

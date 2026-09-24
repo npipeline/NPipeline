@@ -47,9 +47,8 @@ public class S3CompatibleClientFactory : S3ClientFactoryBase
     /// </summary>
     /// <param name="uri">The storage URI.</param>
     /// <returns>A cache key string.</returns>
-    protected override string BuildCacheKey(StorageUri uri)
-    {
+    protected override string BuildCacheKey(StorageUri uri) =>
+
         // All clients use the same configuration, so return a constant key
-        return $"compatible|{_options.ServiceUrl}|{_options.ForcePathStyle}";
-    }
+        $"compatible|{_options.ServiceUrl}|{_options.ForcePathStyle}";
 }

@@ -48,9 +48,8 @@ public class GcsPipeline : IPipelineDefinition
     ///     Gets a description of what this pipeline demonstrates.
     /// </summary>
     /// <returns>A detailed description of the pipeline's purpose and flow.</returns>
-    public static string GetDescription()
-    {
-        return @"GCS Storage Provider Pipeline Sample:
+    public static string GetDescription() =>
+        @"GCS Storage Provider Pipeline Sample:
 
 This sample demonstrates how to use Google Cloud Storage with NPipeline:
 - Reading documents from GCS using GcsDocumentSource
@@ -67,5 +66,4 @@ To use the emulator:
 3. Set NP_GCS_BUCKET=sample-bucket
 
 The emulator allows full testing without real GCS credentials.";
-    }
 }

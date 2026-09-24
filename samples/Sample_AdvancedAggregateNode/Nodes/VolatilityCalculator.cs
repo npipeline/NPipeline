@@ -53,9 +53,8 @@ public class VolatilityCalculator : AdvancedAggregateNode<ValidatedTrade, string
     ///     This creates a default VolatilityAccumulator that will be updated as trades are accumulated.
     /// </summary>
     /// <returns>The initial accumulator with default values.</returns>
-    public override VolatilityAccumulator CreateAccumulator()
-    {
-        return new VolatilityAccumulator(
+    public override VolatilityAccumulator CreateAccumulator() =>
+        new(
             string.Empty, // Will be set when first trade is processed
             0,
             0m,
@@ -65,7 +64,6 @@ public class VolatilityCalculator : AdvancedAggregateNode<ValidatedTrade, string
             DateTime.MinValue, // Will be set when first trade is processed
             DateTime.MinValue // Will be updated as trades are processed
         );
-    }
 
     /// <summary>
     ///     Accumulates a validated trade into the volatility accumulator.

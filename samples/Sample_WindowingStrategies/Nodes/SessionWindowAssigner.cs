@@ -77,10 +77,10 @@ public class SessionWindowAssigner : TransformNode<UserEvent, UserSession>
                 _logger.Log(LogLevel.Debug, "SessionWindowAssigner: Returning completed session {SessionId} with {EventCount} events",
                     session.SessionId, session.Events.Count);
 
-                return ValueTask.FromResult<UserSession>(session);
+                return ValueTask.FromResult(session);
             }
 
-            return ValueTask.FromResult<UserSession>(CreateDummySession()); // Return dummy session to maintain flow
+            return ValueTask.FromResult(CreateDummySession()); // Return dummy session to maintain flow
         }
 
         var sessionKey = $"{userEvent.UserId}_{userEvent.SessionId}";
@@ -122,7 +122,7 @@ public class SessionWindowAssigner : TransformNode<UserEvent, UserSession>
                 _logger.Log(LogLevel.Debug, "SessionWindowAssigner: Created session {SessionId} with {EventCount} events",
                     completedSession.SessionId, completedSession.Events.Count);
 
-                return ValueTask.FromResult<UserSession>(completedSession);
+                return ValueTask.FromResult(completedSession);
             }
             else
             {
@@ -134,7 +134,7 @@ public class SessionWindowAssigner : TransformNode<UserEvent, UserSession>
                 if (decimal.TryParse(userEvent.PropertyValue, out var value))
                     existingSession.ConversionValue += value;
 
-                return ValueTask.FromResult<UserSession>(CreateDummySession()); // Return dummy session to maintain flow
+                return ValueTask.FromResult(CreateDummySession()); // Return dummy session to maintain flow
             }
         }
 
@@ -162,7 +162,7 @@ public class SessionWindowAssigner : TransformNode<UserEvent, UserSession>
 
             _sessionStates[sessionKey] = newSession;
 
-            return ValueTask.FromResult<UserSession>(CreateDummySession()); // Return dummy session to maintain flow
+            return ValueTask.FromResult(CreateDummySession()); // Return dummy session to maintain flow
         }
     }
 
@@ -185,9 +185,8 @@ public class SessionWindowAssigner : TransformNode<UserEvent, UserSession>
             _emittedSessions.Count);
     }
 
-    private UserSession CreateDummySession()
-    {
-        return new UserSession(
+    private UserSession CreateDummySession() =>
+        new(
             "dummy-session",
             "dummy-user",
             DateTime.UtcNow,
@@ -209,7 +208,6 @@ public class SessionWindowAssigner : TransformNode<UserEvent, UserSession>
             0m,
             false
         );
-    }
 
     private UserSession CreateSession(SessionState sessionState)
     {

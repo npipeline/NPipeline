@@ -188,19 +188,13 @@ public class MarketDataSink : SinkNode<MarketDataTick>
     ///     Gets the processed ticks
     /// </summary>
     /// <returns>A dictionary of processed ticks by symbol</returns>
-    public ConcurrentDictionary<string, List<MarketDataTick>> GetProcessedTicks()
-    {
-        return _processedTicks;
-    }
+    public ConcurrentDictionary<string, List<MarketDataTick>> GetProcessedTicks() => _processedTicks;
 
     /// <summary>
     ///     Gets the symbol statistics
     /// </summary>
     /// <returns>A dictionary of symbol statistics</returns>
-    public ConcurrentDictionary<string, MarketDataStats> GetSymbolStats()
-    {
-        return _symbolStats;
-    }
+    public ConcurrentDictionary<string, MarketDataStats> GetSymbolStats() => _symbolStats;
 }
 
 /// <summary>

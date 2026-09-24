@@ -53,6 +53,38 @@ public sealed class RabbitMqSourceNode<T> : SourceNode<RabbitMqMessage<T>>, IAsy
     }
 
     /// <inheritdoc />
+    public async ValueTask DisposeAsync()
+    {
+        if (_channel is not null)
+        {
+            // Cancel the consumer
+            if (_activeConsumerTag is not null)
+            {
+                try
+                {
+                    await _channel.BasicCancelAsync(_activeConsumerTag).ConfigureAwait(false);
+                }
+                catch
+                {
+                    // Best-effort cancellation
+                }
+            }
+
+            try
+            {
+                await _channel.CloseAsync().ConfigureAwait(false);
+                _channel.Dispose();
+            }
+            catch
+            {
+                // Best-effort cleanup
+            }
+
+            _channel = null;
+        }
+    }
+
+    /// <inheritdoc />
     public override IDataStream<RabbitMqMessage<T>> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         var stream = ConsumeMessagesAsync(cancellationToken);
@@ -203,38 +235,6 @@ public sealed class RabbitMqSourceNode<T> : SourceNode<RabbitMqMessage<T>>, IAsy
         await foreach (var message in bufferChannel.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
         {
             yield return message;
-        }
-    }
-
-    /// <inheritdoc />
-    public async ValueTask DisposeAsync()
-    {
-        if (_channel is not null)
-        {
-            // Cancel the consumer
-            if (_activeConsumerTag is not null)
-            {
-                try
-                {
-                    await _channel.BasicCancelAsync(_activeConsumerTag).ConfigureAwait(false);
-                }
-                catch
-                {
-                    // Best-effort cancellation
-                }
-            }
-
-            try
-            {
-                await _channel.CloseAsync().ConfigureAwait(false);
-                _channel.Dispose();
-            }
-            catch
-            {
-                // Best-effort cleanup
-            }
-
-            _channel = null;
         }
     }
 

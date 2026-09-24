@@ -158,8 +158,5 @@ public class SensorSource : SourceNode<SensorReading>
     /// <summary>
     ///     Generates a default reading for unknown device types.
     /// </summary>
-    private (string Type, double Value, string Unit) GenerateDefaultReading()
-    {
-        return ("Generic", _random.NextDouble() * 100, "units");
-    }
+    private (string Type, double Value, string Unit) GenerateDefaultReading() => ("Generic", _random.NextDouble() * 100, "units");
 }

@@ -149,8 +149,10 @@ public class RealWorldWorkloadBenchmarks
             var src = b.AddSource<CsvDataSource, CsvRecord>("src");
             var parser = b.AddTransform<CsvParser, CsvRecord, CsvRecord>("parser");
             var validator = b.AddTransform<CsvValidator, CsvRecord, CsvRecord>("validator");
+
             var enricher = b.AddTransform<CsvEnricher, CsvRecord, ProcessedCsvRecord>("enricher")
                 .WithBlockingParallelism(b, ParallelDegree);
+
             var sink = b.AddSink<CsvDataSink, ProcessedCsvRecord>("sink");
 
             b.Connect(src, parser).Connect(parser, validator).Connect(validator, enricher).Connect(enricher, sink);
@@ -164,8 +166,10 @@ public class RealWorldWorkloadBenchmarks
             var src = b.AddSource<JsonDataSource, JsonRecord>("src");
             var parser = b.AddTransform<JsonParser, JsonRecord, JsonRecord>("parser");
             var validator = b.AddTransform<JsonValidator, JsonRecord, JsonRecord>("validator");
+
             var transformer = b.AddTransform<JsonTransformer, JsonRecord, ProcessedJsonRecord>("transformer")
                 .WithBlockingParallelism(b, ParallelDegree);
+
             var sink = b.AddSink<JsonDataSink, ProcessedJsonRecord>("sink");
 
             b.Connect(src, parser).Connect(parser, validator).Connect(validator, transformer).Connect(transformer, sink);

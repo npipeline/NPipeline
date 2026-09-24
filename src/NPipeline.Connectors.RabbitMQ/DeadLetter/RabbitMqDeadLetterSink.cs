@@ -50,11 +50,10 @@ public sealed class RabbitMqDeadLetterSink : IDeadLetterSink, IAsyncDisposable
     }
 
     /// <inheritdoc />
-    public ValueTask DisposeAsync()
-    {
+    public ValueTask DisposeAsync() =>
+
         // Connection manager disposal handles channel cleanup
-        return ValueTask.CompletedTask;
-    }
+        ValueTask.CompletedTask;
 
     /// <inheritdoc />
     public async Task HandleAsync(

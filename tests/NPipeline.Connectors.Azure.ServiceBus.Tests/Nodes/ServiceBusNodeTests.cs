@@ -8,14 +8,12 @@ namespace NPipeline.Connectors.Azure.ServiceBus.Tests.Nodes;
 
 public class ServiceBusQueueSourceNodeTests
 {
-    private static ServiceBusConfiguration CreateValidConfig()
-    {
-        return new ServiceBusConfiguration
+    private static ServiceBusConfiguration CreateValidConfig() =>
+        new()
         {
             ConnectionString = "Endpoint=sb://test.servicebus.windows.net/;SharedAccessKeyName=k;SharedAccessKey=abc=",
             QueueName = "test-queue",
         };
-    }
 
     public class Constructor_WithConfiguration
     {
@@ -78,15 +76,13 @@ public class ServiceBusQueueSourceNodeTests
 
 public class ServiceBusSubscriptionSourceNodeTests
 {
-    private static ServiceBusConfiguration CreateValidConfig()
-    {
-        return new ServiceBusConfiguration
+    private static ServiceBusConfiguration CreateValidConfig() =>
+        new()
         {
             ConnectionString = "Endpoint=sb://test.servicebus.windows.net/;SharedAccessKeyName=k;SharedAccessKey=abc=",
             TopicName = "test-topic",
             SubscriptionName = "test-subscription",
         };
-    }
 
     public class Constructor
     {
@@ -128,14 +124,12 @@ public class ServiceBusSubscriptionSourceNodeTests
 
 public class ServiceBusQueueSinkNodeTests
 {
-    private static ServiceBusConfiguration CreateValidConfig()
-    {
-        return new ServiceBusConfiguration
+    private static ServiceBusConfiguration CreateValidConfig() =>
+        new()
         {
             ConnectionString = "Endpoint=sb://test.servicebus.windows.net/;SharedAccessKeyName=k;SharedAccessKey=abc=",
             QueueName = "test-queue",
         };
-    }
 
     public class Constructor_WithConfiguration
     {
@@ -206,14 +200,12 @@ public class ServiceBusQueueSinkNodeTests
 
 public class ServiceBusTopicSinkNodeTests
 {
-    private static ServiceBusConfiguration CreateValidConfig()
-    {
-        return new ServiceBusConfiguration
+    private static ServiceBusConfiguration CreateValidConfig() =>
+        new()
         {
             ConnectionString = "Endpoint=sb://test.servicebus.windows.net/;SharedAccessKeyName=k;SharedAccessKey=abc=",
             TopicName = "test-topic",
         };
-    }
 
     public class Constructor_WithSender
     {

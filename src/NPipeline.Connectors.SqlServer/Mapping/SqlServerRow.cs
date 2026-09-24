@@ -57,36 +57,25 @@ public sealed class SqlServerRow
     /// <summary>
     ///     Gets the name of the column at the specified ordinal.
     /// </summary>
-    public string GetName(int ordinal)
-    {
-        return _reader.GetName(ordinal);
-    }
+    public string GetName(int ordinal) => _reader.GetName(ordinal);
 
     /// <summary>
     ///     Gets the data type of the column at the specified ordinal.
     /// </summary>
-    public Type GetFieldType(int ordinal)
-    {
-        return _reader.GetFieldType(ordinal);
-    }
+    public Type GetFieldType(int ordinal) => _reader.GetFieldType(ordinal);
 
     /// <summary>
     ///     Checks whether the row contains the specified column.
     /// </summary>
-    public bool HasColumn(string name)
-    {
-        return TryGetOrdinal(name, out _);
-    }
+    public bool HasColumn(string name) => TryGetOrdinal(name, out _);
 
     /// <summary>
     ///     Gets the value of the specified column as type <typeparamref name="T" />.
     /// </summary>
-    public T Get<T>(string name, T defaultValue = default!)
-    {
-        return TryGet(name, out var value, defaultValue)
+    public T Get<T>(string name, T defaultValue = default!) =>
+        TryGet(name, out var value, defaultValue)
             ? value!
             : defaultValue;
-    }
 
     /// <summary>
     ///     Gets the value of the specified column ordinal as type <typeparamref name="T" />.
@@ -132,12 +121,10 @@ public sealed class SqlServerRow
     /// <summary>
     ///     Gets a column value as an object by name.
     /// </summary>
-    public object? GetValue(string name)
-    {
-        return TryGetOrdinal(name, out var ordinal)
+    public object? GetValue(string name) =>
+        TryGetOrdinal(name, out var ordinal)
             ? GetValue(ordinal)
             : null;
-    }
 
     /// <summary>
     ///     Gets a column value as an object by ordinal.
@@ -153,18 +140,12 @@ public sealed class SqlServerRow
     /// <summary>
     ///     Determines whether the specified column value is null.
     /// </summary>
-    public bool IsDBNull(string name)
-    {
-        return TryGetOrdinal(name, out var ordinal) && _reader.IsDBNull(ordinal);
-    }
+    public bool IsDBNull(string name) => TryGetOrdinal(name, out var ordinal) && _reader.IsDBNull(ordinal);
 
     /// <summary>
     ///     Determines whether the specified column ordinal is null.
     /// </summary>
-    public bool IsDBNull(int ordinal)
-    {
-        return _reader.IsDBNull(ordinal);
-    }
+    public bool IsDBNull(int ordinal) => _reader.IsDBNull(ordinal);
 
     private bool TryGetOrdinal(string name, out int ordinal)
     {

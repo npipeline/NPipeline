@@ -69,29 +69,27 @@ public sealed class RuntimeLineageCompositeFallbackTests
         GetReceivedItems(context).Should().Equal(2, 4, 6);
     }
 
-    private static IReadOnlyList<int> GetReceivedItems(PipelineContext context)
-    {
-        return context.Items.TryGetValue(CollectingSink.ReceivedItemsKey, out var value) && value is IReadOnlyList<int> items
+    private static IReadOnlyList<int> GetReceivedItems(PipelineContext context) =>
+        context.Items.TryGetValue(CollectingSink.ReceivedItemsKey, out var value) && value is IReadOnlyList<int> items
             ? items
             : throw new InvalidOperationException("Expected collected output items in pipeline context.");
-    }
 
     private sealed class IntSource : ISourceNode<int>, IAsyncDisposable
     {
-        public IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
-            => new InMemoryDataStream<int>([1, 2, 3], nameof(IntSource));
-
         public ValueTask DisposeAsync()
         {
             GC.SuppressFinalize(this);
             return ValueTask.CompletedTask;
         }
+
+        public IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
+            => new InMemoryDataStream<int>([1, 2, 3], nameof(IntSource));
     }
 
     private sealed class DoubleTransform : TransformNode<int, int>
     {
         public override ValueTask<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
-            => ValueTask.FromResult<int>(input * 2);
+            => ValueTask.FromResult(input * 2);
     }
 
     private sealed class InspectOverrideTransform : TransformNode<int, int>
@@ -101,7 +99,7 @@ public sealed class RuntimeLineageCompositeFallbackTests
         public override ValueTask<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
         {
             SawRuntimeLineageOverrideProperty = context.Properties.ContainsKey(PipelineContextKeys.ItemLevelLineageEnabledOverride);
-            return ValueTask.FromResult<int>(input * 2);
+            return ValueTask.FromResult(input * 2);
         }
     }
 
@@ -109,20 +107,22 @@ public sealed class RuntimeLineageCompositeFallbackTests
     {
         public const string ReceivedItemsKey = "RuntimeLineageCompositeFallbackTests.CollectingSink.ReceivedItems";
 
+        public ValueTask DisposeAsync()
+        {
+            GC.SuppressFinalize(this);
+            return ValueTask.CompletedTask;
+        }
+
         public async Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken cancellationToken)
         {
             var receivedItems = new List<int>();
 
             await foreach (var item in input.WithCancellation(cancellationToken))
+            {
                 receivedItems.Add(item);
+            }
 
             context.Items[ReceivedItemsKey] = receivedItems;
-        }
-
-        public ValueTask DisposeAsync()
-        {
-            GC.SuppressFinalize(this);
-            return ValueTask.CompletedTask;
         }
     }
 
@@ -157,9 +157,11 @@ public sealed class RuntimeLineageCompositeFallbackTests
         public void Define(PipelineBuilder builder, PipelineContext context)
         {
             var source = builder.AddSource<IntSource, int>("source");
+
             var composite = builder.AddComposite<int, int, ChildDoublePipeline>(
-                name: "composite",
-                contextConfiguration: CompositeContextConfiguration.InheritAll);
+                "composite",
+                CompositeContextConfiguration.InheritAll);
+
             var sink = builder.AddSink<CollectingSink, int>("sink");
 
             builder.Connect(source, composite);
@@ -173,10 +175,12 @@ public sealed class RuntimeLineageCompositeFallbackTests
         public void Define(PipelineBuilder builder, PipelineContext context)
         {
             var source = builder.AddSource<IntSource, int>("source");
+
             var composite = builder.AddComposite<int, int, ChildDoublePipeline>(
-                name: "composite",
-                contextConfiguration: CompositeContextConfiguration.InheritAll,
-                serviceProvider: serviceProvider);
+                "composite",
+                CompositeContextConfiguration.InheritAll,
+                serviceProvider);
+
             var sink = builder.AddSink<CollectingSink, int>("sink");
 
             builder.Connect(source, composite);
@@ -189,9 +193,11 @@ public sealed class RuntimeLineageCompositeFallbackTests
         public void Define(PipelineBuilder builder, PipelineContext context)
         {
             var source = builder.AddSource<IntSource, int>("source");
+
             var composite = builder.AddComposite<int, int, ChildInspectOverridePipeline>(
-                name: "composite",
-                contextConfiguration: CompositeContextConfiguration.Default);
+                "composite",
+                CompositeContextConfiguration.Default);
+
             var sink = builder.AddSink<CollectingSink, int>("sink");
 
             builder.Connect(source, composite);
@@ -204,7 +210,9 @@ public sealed class RuntimeLineageCompositeFallbackTests
         private readonly Dictionary<Type, object> _services = [];
 
         public object? GetService(Type serviceType)
-            => _services.TryGetValue(serviceType, out var service) ? service : null;
+            => _services.TryGetValue(serviceType, out var service)
+                ? service
+                : null;
 
         public DictionaryServiceProvider Add(Type serviceType, object service)
         {

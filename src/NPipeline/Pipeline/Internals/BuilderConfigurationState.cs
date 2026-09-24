@@ -1,6 +1,6 @@
 using NPipeline.ErrorHandling;
 using NPipeline.Lineage;
-using NPipeline.Resilience;
+using NPipeline.Reliability;
 using NPipeline.Visualization;
 
 namespace NPipeline.Pipeline.Internals;

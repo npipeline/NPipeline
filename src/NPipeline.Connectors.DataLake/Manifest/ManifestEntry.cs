@@ -78,9 +78,8 @@ public sealed record ManifestEntry
     ///     Creates a deep copy of this manifest entry.
     /// </summary>
     /// <returns>A new <see cref="ManifestEntry" /> with the same values.</returns>
-    public ManifestEntry Copy()
-    {
-        return new ManifestEntry
+    public ManifestEntry Copy() =>
+        new()
         {
             Path = Path,
             RowCount = RowCount,
@@ -95,5 +94,4 @@ public sealed record ManifestEntry
             FileFormat = FileFormat,
             Compression = Compression,
         };
-    }
 }

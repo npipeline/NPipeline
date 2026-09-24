@@ -15,10 +15,7 @@ public sealed class NullPipelineTracer : IPipelineTracer
     public static NullPipelineTracer Instance { get; } = new();
 
     /// <inheritdoc />
-    public IPipelineActivity StartActivity(string name)
-    {
-        return NullPipelineActivity.Instance;
-    }
+    public IPipelineActivity StartActivity(string name) => NullPipelineActivity.Instance;
 
     /// <inheritdoc />
     public IPipelineActivity CurrentActivity => NullPipelineActivity.Instance;

@@ -66,8 +66,6 @@ public class PostgresSourceNodeFactory
         string query,
         PostgresConfiguration? configuration = null,
         CancellationToken cancellationToken = default)
-        where T : class
-    {
-        return CreateSourceAsync<T>(connectionName, query, null, configuration, cancellationToken);
-    }
+        where T : class =>
+        CreateSourceAsync<T>(connectionName, query, null, configuration, cancellationToken);
 }

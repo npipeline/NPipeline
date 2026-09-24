@@ -1,3 +1,6 @@
+using NPipeline.Connectors.RabbitMQ.Reliability;
+using NResilience;
+
 namespace NPipeline.Connectors.RabbitMQ.Configuration;
 
 /// <summary>
@@ -26,8 +29,14 @@ public sealed record RabbitMqSinkOptions
     public bool Mandatory { get; init; }
 
     /// <summary>
-    ///     Gets or sets whether publisher confirms are enabled. Default is true.
+    ///     Gets or sets whether each publish waits for the broker's publisher confirm. Default is true.
     /// </summary>
+    /// <remarks>
+    ///     With confirms off, a publish completes once the message is written to the connection, and
+    ///     <see cref="ConfirmTimeout" /> does not apply. A message lost after that (the connection drops, or the broker
+    ///     fails before routing it) is not detected, so the source message is still acknowledged: delivery becomes
+    ///     at-most-once. Leave confirms on unless losing messages is acceptable.
+    /// </remarks>
     public bool EnablePublisherConfirms { get; init; } = true;
 
     /// <summary>
@@ -56,14 +65,11 @@ public sealed record RabbitMqSinkOptions
     public RabbitMqTopologyOptions? Topology { get; init; }
 
     /// <summary>
-    ///     Gets or sets the maximum number of retries for transient errors. Default is 3.
+    ///     Gets or sets how each publish is retried. Defaults to <see cref="RabbitMqConnectorResilience.Default" />: four
+    ///     attempts with exponential backoff from 100 milliseconds, retrying lost connections and closed channels but
+    ///     not access, routing, or precondition failures. Use <see cref="NResilience.Resilience.None" /> to publish once.
     /// </summary>
-    public int MaxRetries { get; init; } = 3;
-
-    /// <summary>
-    ///     Gets or sets the base delay for retry backoff in milliseconds. Default is 100.
-    /// </summary>
-    public int RetryBaseDelayMs { get; init; } = 100;
+    public Resilience Resilience { get; init; } = RabbitMqConnectorResilience.Default;
 
     /// <summary>
     ///     Gets or sets whether to continue past publish errors. Default is false.
@@ -71,13 +77,18 @@ public sealed record RabbitMqSinkOptions
     public bool ContinueOnError { get; init; }
 
     /// <summary>
-    ///     Gets or sets the timeout for waiting for publisher confirms. Default is 5 seconds.
+    ///     Gets or sets how long one publish attempt waits for the broker's publisher confirm. Default is 5 seconds.
+    ///     A confirm that does not arrive in time fails the attempt with a <see cref="TimeoutException" />, which
+    ///     <see cref="Resilience" /> retries. The unconfirmed message may still have reached the broker, so the retry can
+    ///     publish it twice; both copies carry the same message ID.
     /// </summary>
     public TimeSpan ConfirmTimeout { get; init; } = TimeSpan.FromSeconds(5);
 
     /// <summary>
-    ///     Gets or sets the timeout for flushing remaining messages during shutdown.
-    ///     Default is 30 seconds.
+    ///     Gets or sets how long the batched sink keeps publishing after the pipeline is cancelled. Default is 30 seconds.
+    ///     Messages already taken from the input are published and acknowledged within this time; any left unpublished
+    ///     stay unacknowledged, so the broker redelivers them. Applies only with <see cref="Batching" />, since the
+    ///     sequential sink holds no messages.
     /// </summary>
     public TimeSpan ShutdownFlushTimeout { get; init; } = TimeSpan.FromSeconds(30);
 
@@ -92,11 +103,11 @@ public sealed record RabbitMqSinkOptions
         if (ConfirmTimeout <= TimeSpan.Zero)
             throw new InvalidOperationException("ConfirmTimeout must be positive.");
 
-        if (MaxRetries < 0)
-            throw new InvalidOperationException("MaxRetries must be non-negative.");
+        if (ShutdownFlushTimeout < TimeSpan.Zero)
+            throw new InvalidOperationException("ShutdownFlushTimeout must be non-negative.");
 
-        if (RetryBaseDelayMs < 0)
-            throw new InvalidOperationException("RetryBaseDelayMs must be non-negative.");
+        ArgumentNullException.ThrowIfNull(Resilience);
+        Resilience.Validate();
 
         Batching?.Validate();
     }

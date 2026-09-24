@@ -154,10 +154,41 @@ var config = new SqsConfiguration
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
-| `MaxRetries` | `int` | `3` | Retry attempts |
-| `RetryBaseDelayMs` | `int` | `1000` | Base retry delay (ms) |
+| `RetryMode` | `RequestRetryMode?` | `Standard` | AWS SDK retry mode. See [Retries](#retries) |
+| `MaxErrorRetry` | `int?` | `3` | AWS SDK retries per call. See [Retries](#retries) |
 | `ContinueOnError` | `bool` | `true` | Continue on errors |
 | `MessageErrorHandler` | `Func<...>?` | `null` | Custom error handler |
+
+## Retries
+
+The connector leaves retries to the AWS SDK. The SDK identifies throttling and transient SQS errors, applies jittered backoff, and uses a retry quota to prevent flooding failing endpoints. The nodes don't
+retry on top of it: an exception that reaches a node has already used up the SDK's retries, and it fails the node.
+
+Two settings configure the SDK client that the nodes create:
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `RetryMode` | `RequestRetryMode?` | `Standard` | `Standard` retries throttling, 5xx, and network errors with jittered exponential backoff. `Adaptive` also slows the client down when SQS throttles it. `null` lets the SDK decide (`AWS_RETRY_MODE` or the shared config file) |
+| `MaxErrorRetry` | `int?` | `3` | Retries per call, not total attempts. The default makes up to four attempts. `0` turns retries off. `null` lets the SDK decide (`AWS_MAX_ATTEMPTS`, the shared config file, or the SDK default of 2) |
+
+If you pass your own `IAmazonSQS` to a node's constructor, the connector can't reconfigure it, and these two settings
+are ignored. Set the retry behavior on the client's own configuration:
+
+```csharp
+var client = new AmazonSQSClient(new AmazonSQSConfig
+{
+    RegionEndpoint = RegionEndpoint.USEast1,
+    RetryMode = RequestRetryMode.Standard,
+    MaxErrorRetry = 3,
+});
+
+var source = new SqsSourceNode<Order>(client, configuration);
+```
+
+`AcknowledgmentDelayMs` and `PollingIntervalMs` are pacing, not retry settings, and are unaffected.
+
+SQS standard queues deliver at least once, and a retried `SendMessage` whose first attempt reached SQS can enqueue the
+message twice. Use a FIFO queue with a deduplication ID, or make consumers idempotent, if duplicates matter.
 
 ## Next Steps
 

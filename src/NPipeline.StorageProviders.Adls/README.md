@@ -188,6 +188,32 @@ public async Task MoveFileAsync(string filesystem, string sourcePath, string des
 | `UploadMaximumConcurrency`       | `int?`                                  | `null`             | Max concurrent upload operations                                  |
 | `UploadMaximumTransferSizeBytes` | `int?`                                  | `null`             | Max bytes per transfer chunk                                      |
 | `ClientCacheSizeLimit`           | `int`                                   | `100`              | Max cached service clients                                        |
+| `Retry`                          | `AdlsGen2RetryOptions`                  | see below          | Azure SDK retry settings                                          |
+
+### Resilience
+
+The Azure SDK retries each request natively (429, 5xx, request timeouts, and network failures, honoring
+`Retry-After`), and NPipeline adds no retry layer on top. `Retry` configures the SDK's `RetryOptions` on both the
+Data Lake and Blob clients the provider creates:
+
+| Property | Default | Description |
+|----------|---------|-------------|
+| `Mode` | `RetryMode.Exponential` | Delay growth (`Exponential` or `Fixed`) |
+| `MaxRetries` | `5` | Retries after the first attempt; `0` disables retries |
+| `Delay` | `800 ms` | First retry delay (exponential base) |
+| `MaxDelay` | `8 s` | Longest delay between retries |
+| `NetworkTimeout` | `100 s` | Timeout for each network operation |
+
+```csharp
+services.AddAdlsGen2StorageProvider(options =>
+{
+    options.Retry = new AdlsGen2RetryOptions
+    {
+        MaxRetries = 3,
+        NetworkTimeout = TimeSpan.FromSeconds(30)
+    };
+});
+```
 
 ## ADLS Gen2 vs Azure Blob Storage
 

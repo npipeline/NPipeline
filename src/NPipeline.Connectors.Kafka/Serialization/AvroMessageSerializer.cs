@@ -40,7 +40,14 @@ public sealed class AvroMessageSerializer : ISerializerProvider, IDisposable
 
         var schemaRegistryConfigDict = BuildSchemaRegistryConfig(schemaRegistryConfig);
         _schemaRegistryClient = new CachedSchemaRegistryClient(schemaRegistryConfigDict);
-        _serializerConfig = serializerConfig;
+
+        // The serializer, not the registry client, reads these settings; the client ignores them.
+        _serializerConfig = serializerConfig ?? new AvroSerializerConfig
+        {
+            AutoRegisterSchemas = schemaRegistryConfig.AutoRegisterSchemas,
+            SubjectNameStrategy = schemaRegistryConfig.SubjectNameStrategy,
+        };
+
         _deserializerConfig = deserializerConfig;
     }
 
@@ -90,7 +97,20 @@ public sealed class AvroMessageSerializer : ISerializerProvider, IDisposable
     }
 
     /// <inheritdoc />
-    public byte[] Serialize<T>(T value)
+    public byte[] Serialize<T>(T value) =>
+
+        // No topic: the subject becomes "-value". The sink calls the overload below with the real topic.
+        Serialize(value, new SerializationContext(MessageComponentType.Value, string.Empty));
+
+    /// <summary>
+    ///     Serializes a value for the topic and component in <paramref name="context" />. The Schema Registry subject
+    ///     follows the configured subject name strategy, so under the default it is <c>&lt;topic&gt;-value</c>.
+    /// </summary>
+    /// <typeparam name="T">The value type; it chooses the schema.</typeparam>
+    /// <param name="value">The value to serialize.</param>
+    /// <param name="context">The topic and component (key or value) being written.</param>
+    /// <returns>The serialized bytes.</returns>
+    public byte[] Serialize<T>(T value, SerializationContext context)
     {
         if (value is null)
             return [];
@@ -100,9 +120,6 @@ public sealed class AvroMessageSerializer : ISerializerProvider, IDisposable
         try
         {
             var serializer = GetOrCreateSerializer<T>();
-
-            // Use a dummy SerializationContext - the topic is not used by the serializer for the actual serialization
-            var context = new SerializationContext(MessageComponentType.Value, string.Empty);
 
             // Confluent serializers are async-only; Kafka expects sync serializers, so we block here.
             return serializer.SerializeAsync(value, context).GetAwaiter().GetResult();
@@ -119,7 +136,16 @@ public sealed class AvroMessageSerializer : ISerializerProvider, IDisposable
     }
 
     /// <inheritdoc />
-    public T Deserialize<T>(byte[] data)
+    public T Deserialize<T>(byte[] data) => Deserialize<T>(data, new SerializationContext(MessageComponentType.Value, string.Empty));
+
+    /// <summary>
+    ///     Deserializes a value read from the topic and component in <paramref name="context" />.
+    /// </summary>
+    /// <typeparam name="T">The target type.</typeparam>
+    /// <param name="data">The bytes to deserialize.</param>
+    /// <param name="context">The topic and component (key or value) being read.</param>
+    /// <returns>The deserialized value.</returns>
+    public T Deserialize<T>(byte[] data, SerializationContext context)
     {
         if (data is null || data.Length == 0)
             return default!;
@@ -129,9 +155,6 @@ public sealed class AvroMessageSerializer : ISerializerProvider, IDisposable
         try
         {
             var deserializer = GetOrCreateDeserializer<T>();
-
-            // Use a dummy SerializationContext - the topic is not used by the deserializer for the actual deserialization
-            var context = new SerializationContext(MessageComponentType.Value, string.Empty);
 
             // Confluent deserializers are async-only; Kafka expects sync deserializers, so we block here.
             return deserializer.DeserializeAsync(data, data == null, context).GetAwaiter().GetResult();
@@ -186,12 +209,6 @@ public sealed class AvroMessageSerializer : ISerializerProvider, IDisposable
 
         // Note: schema.registry.cache.capacity is not a valid CachedSchemaRegistryClient config
         // The cache capacity is managed internally by the client
-
-        if (config.AutoRegisterSchemas)
-            dict["auto.register.schemas"] = "true";
-
-        if (config.SubjectNameStrategy.HasValue)
-            dict["subject.name.strategy"] = config.SubjectNameStrategy.Value.ToString().ToLowerInvariant();
 
         return dict;
     }

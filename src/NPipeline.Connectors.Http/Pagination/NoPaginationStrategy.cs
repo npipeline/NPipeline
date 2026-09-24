@@ -6,17 +6,12 @@ namespace NPipeline.Connectors.Http.Pagination;
 public sealed class NoPaginationStrategy : IPaginationStrategy
 {
     /// <inheritdoc />
-    public Uri BuildFirstPageUri(Uri baseUri)
-    {
-        return baseUri;
-    }
+    public Uri BuildFirstPageUri(Uri baseUri) => baseUri;
 
     /// <inheritdoc />
     public ValueTask<Uri?> GetNextPageUriAsync(
         Uri currentUri,
         HttpResponseMessage response,
-        CancellationToken cancellationToken = default)
-    {
-        return ValueTask.FromResult<Uri?>(null);
-    }
+        CancellationToken cancellationToken = default) =>
+        ValueTask.FromResult<Uri?>(null);
 }

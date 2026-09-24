@@ -124,18 +124,14 @@ public sealed class SftpReadStream : Stream
         byte[] buffer,
         int offset,
         int count,
-        CancellationToken cancellationToken)
-    {
+        CancellationToken cancellationToken) =>
         throw new NotSupportedException();
-    }
 
     /// <inheritdoc />
     public override ValueTask WriteAsync(
         ReadOnlyMemory<byte> buffer,
-        CancellationToken cancellationToken = default)
-    {
+        CancellationToken cancellationToken = default) =>
         throw new NotSupportedException();
-    }
 
     /// <inheritdoc />
     public override void Flush()
@@ -144,10 +140,7 @@ public sealed class SftpReadStream : Stream
     }
 
     /// <inheritdoc />
-    public override Task FlushAsync(CancellationToken cancellationToken)
-    {
-        return Task.CompletedTask;
-    }
+    public override Task FlushAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
     /// <inheritdoc />
     protected override void Dispose(bool disposing)

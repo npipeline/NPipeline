@@ -18,34 +18,28 @@ internal static class ErrorMessages
 
     #region Analyzer Diagnostics (NP90xx-NP94xx)
 
-    public static string UnsafePipelineContextAccess(string accessPattern, string recommendedPattern)
-    {
-        return $"[{ErrorCodes.UnsafePipelineContextAccess}] Unsafe access pattern detected on PipelineContext. " +
-               $"Access pattern: {accessPattern}. " +
-               $"This can lead to NullReferenceException at runtime. " +
-               $"Recommended pattern: {recommendedPattern}. " +
-               $"Use null-conditional operators (?.) or check for null before accessing these properties. " +
-               $"See: {DocsBaseUrl}#{ErrorCodes.UnsafePipelineContextAccess}";
-    }
+    public static string UnsafePipelineContextAccess(string accessPattern, string recommendedPattern) =>
+        $"[{ErrorCodes.UnsafePipelineContextAccess}] Unsafe access pattern detected on PipelineContext. " +
+        $"Access pattern: {accessPattern}. " +
+        $"This can lead to NullReferenceException at runtime. " +
+        $"Recommended pattern: {recommendedPattern}. " +
+        $"Use null-conditional operators (?.) or check for null before accessing these properties. " +
+        $"See: {DocsBaseUrl}#{ErrorCodes.UnsafePipelineContextAccess}";
 
     #endregion
 
     #region Graph Validation Errors (NP01xx)
 
-    public static string PipelineRequiresAtLeastOneNode()
-    {
-        return $"[{ErrorCodes.PipelineRequiresAtLeastOneNode}] A pipeline must have at least one node. " +
-               $"Add at least one node (source, transform, or sink) before building. " +
-               $"See: {DocsBaseUrl}#{ErrorCodes.PipelineRequiresAtLeastOneNode}";
-    }
+    public static string PipelineRequiresAtLeastOneNode() =>
+        $"[{ErrorCodes.PipelineRequiresAtLeastOneNode}] A pipeline must have at least one node. " +
+        $"Add at least one node (source, transform, or sink) before building. " +
+        $"See: {DocsBaseUrl}#{ErrorCodes.PipelineRequiresAtLeastOneNode}";
 
-    public static string NodeMissingInputConnection(string nodeId, string nodeName, string nodeKind)
-    {
-        return $"[{ErrorCodes.NodeMissingInputConnection}] Node '{nodeId}' ({nodeName}, {nodeKind}) is missing a required input connection. " +
-               $"Every non-source node must have at least one incoming connection from another node. " +
-               $"Connect an upstream node before running the pipeline. " +
-               $"See: {DocsBaseUrl}#{ErrorCodes.NodeMissingInputConnection}";
-    }
+    public static string NodeMissingInputConnection(string nodeId, string nodeName, string nodeKind) =>
+        $"[{ErrorCodes.NodeMissingInputConnection}] Node '{nodeId}' ({nodeName}, {nodeKind}) is missing a required input connection. " +
+        $"Every non-source node must have at least one incoming connection from another node. " +
+        $"Connect an upstream node before running the pipeline. " +
+        $"See: {DocsBaseUrl}#{ErrorCodes.NodeMissingInputConnection}";
 
     public static string CyclicDependencyDetected(IReadOnlyCollection<string> nodesInCycle, IReadOnlyCollection<string> cyclePath)
     {
@@ -60,339 +54,225 @@ internal static class ErrorMessages
         return $"[{ErrorCodes.CyclicDependencyDetected}] Cyclic dependency detected in pipeline graph. " +
                participants +
                path +
-               $"Pipelines must be directed acyclic graphs (DAGs) without cycles. " +
-               $"Remove one of the connections in the cycle above. " +
+               "Pipelines must be directed acyclic graphs (DAGs) without cycles. " +
+               "Remove one of the connections in the cycle above. " +
                $"See: {DocsBaseUrl}#{ErrorCodes.CyclicDependencyDetected}";
     }
 
-    public static string NodeAlreadyAdded(string nodeId)
-    {
-        return $"[{ErrorCodes.NodeAlreadyAdded}] A node with ID '{nodeId}' has already been added to the pipeline. " +
-               $"Each node ID must be unique within a pipeline. " +
-               $"Use a different ID or check your builder configuration. " +
-               $"See: {DocsBaseUrl}#{ErrorCodes.NodeAlreadyAdded}";
-    }
+    public static string NodeAlreadyAdded(string nodeId) =>
+        $"[{ErrorCodes.NodeAlreadyAdded}] A node with ID '{nodeId}' has already been added to the pipeline. " +
+        $"Each node ID must be unique within a pipeline. " +
+        $"Use a different ID or check your builder configuration. " +
+        $"See: {DocsBaseUrl}#{ErrorCodes.NodeAlreadyAdded}";
 
-    public static string NodeNameNotUnique(string name)
-    {
-        return $"[{ErrorCodes.NodeNameNotUnique}] A node with name '{name}' has already been added to the pipeline. " +
-               $"Node names must be unique within a pipeline. " +
-               $"Either provide a different name or let the framework auto-generate one. " +
-               $"See: {DocsBaseUrl}#{ErrorCodes.NodeNameNotUnique}";
-    }
+    public static string NodeNameNotUnique(string name) =>
+        $"[{ErrorCodes.NodeNameNotUnique}] A node with name '{name}' has already been added to the pipeline. " +
+        $"Node names must be unique within a pipeline. " +
+        $"Either provide a different name or let the framework auto-generate one. " +
+        $"See: {DocsBaseUrl}#{ErrorCodes.NodeNameNotUnique}";
 
     #endregion
 
     #region Type Mismatch and Conversion Errors (NP02xx)
 
-    public static string TypeMismatchInConnection(string sourceNodeId, Type sourceType, string targetNodeId, Type targetType)
-    {
-        return $"[{ErrorCodes.TypeMismatchInConnection}] Type mismatch in connection between nodes '{sourceNodeId}' and '{targetNodeId}'. " +
-               $"Output type '{sourceType.Name}' is not compatible with input type '{targetType.Name}'. " +
-               $"Consider adding a transformation node between them. " +
-               $"See: {DocsBaseUrl}#{ErrorCodes.TypeMismatchInConnection}";
-    }
+    public static string TypeMismatchInConnection(string sourceNodeId, Type sourceType, string targetNodeId, Type targetType) =>
+        $"[{ErrorCodes.TypeMismatchInConnection}] Type mismatch in connection between nodes '{sourceNodeId}' and '{targetNodeId}'. " +
+        $"Output type '{sourceType.Name}' is not compatible with input type '{targetType.Name}'. " +
+        $"Consider adding a transformation node between them. " +
+        $"See: {DocsBaseUrl}#{ErrorCodes.TypeMismatchInConnection}";
 
-    public static string InputDataStreamWrongType(string expectedType, string actualType, string nodeName)
-    {
-        return $"[{ErrorCodes.InputDataStreamWrongType}] Input data pipe is not of the expected type for node '{nodeName}'. " +
-               $"Expected '{expectedType}' but found '{actualType}'. " +
-               $"This usually indicates a graph construction error. " +
-               $"See: {DocsBaseUrl}#{ErrorCodes.InputDataStreamWrongType}";
-    }
+    public static string InputDataStreamWrongType(string expectedType, string actualType, string nodeName) =>
+        $"[{ErrorCodes.InputDataStreamWrongType}] Input data pipe is not of the expected type for node '{nodeName}'. " +
+        $"Expected '{expectedType}' but found '{actualType}'. " +
+        $"This usually indicates a graph construction error. " +
+        $"See: {DocsBaseUrl}#{ErrorCodes.InputDataStreamWrongType}";
 
-    public static string NodeOutputTypeMismatch(string nodeId, string nodeKind, Type expectedType, Type actualType)
-    {
-        return $"[{ErrorCodes.NodeOutputTypeMismatch}] {nodeKind} node '{nodeId}' produced items of type '{actualType}' but its declared output type is '{expectedType}'. " +
-               $"The framework could not adapt one to the other. " +
-               $"Make the node's result type argument match the type it actually yields, or insert a transform that converts between them. " +
-               $"See: {DocsBaseUrl}#{ErrorCodes.NodeOutputTypeMismatch}";
-    }
+    public static string NodeOutputTypeMismatch(string nodeId, string nodeKind, Type expectedType, Type actualType) =>
+        $"[{ErrorCodes.NodeOutputTypeMismatch}] {nodeKind} node '{nodeId}' produced items of type '{actualType}' but its declared output type is '{expectedType}'. " +
+        $"The framework could not adapt one to the other. " +
+        $"Make the node's result type argument match the type it actually yields, or insert a transform that converts between them. " +
+        $"See: {DocsBaseUrl}#{ErrorCodes.NodeOutputTypeMismatch}";
 
-    public static string OutputAdaptationUnavailable(string nodeId, Type expectedType, Type actualType)
-    {
-        return $"[{ErrorCodes.OutputAdaptationUnavailable}] Node '{nodeId}' produced items of type '{actualType}' but its declared output type is '{expectedType}', " +
-               $"and no conversion is available for this node kind. " +
-               $"Make the node's result type argument match the type it actually yields. " +
-               $"See: {DocsBaseUrl}#{ErrorCodes.OutputAdaptationUnavailable}";
-    }
+    public static string OutputAdaptationUnavailable(string nodeId, Type expectedType, Type actualType) =>
+        $"[{ErrorCodes.OutputAdaptationUnavailable}] Node '{nodeId}' produced items of type '{actualType}' but its declared output type is '{expectedType}', " +
+        $"and no conversion is available for this node kind. " +
+        $"Make the node's result type argument match the type it actually yields. " +
+        $"See: {DocsBaseUrl}#{ErrorCodes.OutputAdaptationUnavailable}";
 
-    public static string InputStreamContractMismatch(string nodeId, Type expectedType, Type actualType)
-    {
-        return $"[{ErrorCodes.InputStreamContractMismatch}] Node '{nodeId}' expects input items of type '{expectedType}' but an upstream node supplied '{actualType}'. " +
-               $"Connect it to a node whose output type is '{expectedType}' (or a subtype), or insert a transform that converts between them. " +
-               $"See: {DocsBaseUrl}#{ErrorCodes.InputStreamContractMismatch}";
-    }
+    public static string InputStreamContractMismatch(string nodeId, Type expectedType, Type actualType) =>
+        $"[{ErrorCodes.InputStreamContractMismatch}] Node '{nodeId}' expects input items of type '{expectedType}' but an upstream node supplied '{actualType}'. " +
+        $"Connect it to a node whose output type is '{expectedType}' (or a subtype), or insert a transform that converts between them. " +
+        $"See: {DocsBaseUrl}#{ErrorCodes.InputStreamContractMismatch}";
 
-    public static string RouteNodeMissingOutputType(string nodeId)
-    {
-        return $"[{ErrorCodes.RouteNodeMissingOutputType}] Route node '{nodeId}' has no output item type, so its runtime route contract cannot be created. " +
-               $"Add the route with PipelineBuilder.AddRoute<T>(), or ensure a custom route definition sets OutputType. " +
-               $"See: {DocsBaseUrl}#{ErrorCodes.RouteNodeMissingOutputType}";
-    }
+    public static string RouteNodeMissingOutputType(string nodeId) =>
+        $"[{ErrorCodes.RouteNodeMissingOutputType}] Route node '{nodeId}' has no output item type, so its runtime route contract cannot be created. " +
+        $"Add the route with PipelineBuilder.AddRoute<T>(), or ensure a custom route definition sets OutputType. " +
+        $"See: {DocsBaseUrl}#{ErrorCodes.RouteNodeMissingOutputType}";
 
-    public static string CannotRegisterMappingsAfterExecution(string nodeName)
-    {
-        return $"[{ErrorCodes.CannotRegisterMappingsAfterExecution}] Cannot register type mappings after execution has begun for node '{nodeName}'. " +
-               $"All type mappings and conversions must be configured before the node starts executing. " +
-               $"Configure mappings in the builder or before the first item arrives. " +
-               $"See: {DocsBaseUrl}#{ErrorCodes.CannotRegisterMappingsAfterExecution}";
-    }
+    public static string CannotRegisterMappingsAfterExecution(string nodeName) =>
+        $"[{ErrorCodes.CannotRegisterMappingsAfterExecution}] Cannot register type mappings after execution has begun for node '{nodeName}'. " +
+        $"All type mappings and conversions must be configured before the node starts executing. " +
+        $"Configure mappings in the builder or before the first item arrives. " +
+        $"See: {DocsBaseUrl}#{ErrorCodes.CannotRegisterMappingsAfterExecution}";
 
-    public static string RecordTypeHasNoPublicConstructor(string recordTypeName)
-    {
-        return $"[{ErrorCodes.RecordTypeHasNoPublicConstructor}] Record type '{recordTypeName}' has no public constructors. " +
-               $"Cannot construct records without public constructors. " +
-               $"Either add a public constructor or use a different conversion method. " +
-               $"See: {DocsBaseUrl}#{ErrorCodes.RecordTypeHasNoPublicConstructor}";
-    }
+    public static string RecordTypeHasNoPublicConstructor(string recordTypeName) =>
+        $"[{ErrorCodes.RecordTypeHasNoPublicConstructor}] Record type '{recordTypeName}' has no public constructors. " +
+        $"Cannot construct records without public constructors. " +
+        $"Either add a public constructor or use a different conversion method. " +
+        $"See: {DocsBaseUrl}#{ErrorCodes.RecordTypeHasNoPublicConstructor}";
 
-    public static string InvalidMemberAccessExpression(string selector)
-    {
-        return $"[{ErrorCodes.InvalidMemberAccessExpression}] Member selector must be a member access expression. " +
-               $"Received: {selector}. " +
-               $"Use expressions like 'x => x.Property' or 'x => x.Field'. " +
-               $"See: {DocsBaseUrl}#{ErrorCodes.InvalidMemberAccessExpression}";
-    }
+    public static string InvalidMemberAccessExpression(string selector) =>
+        $"[{ErrorCodes.InvalidMemberAccessExpression}] Member selector must be a member access expression. " +
+        $"Received: {selector}. " +
+        $"Use expressions like 'x => x.Property' or 'x => x.Field'. " +
+        $"See: {DocsBaseUrl}#{ErrorCodes.InvalidMemberAccessExpression}";
 
-    public static string MemberNotWritable(string memberPath)
-    {
-        return $"[{ErrorCodes.MemberNotWritable}] Member '{memberPath}' cannot be written to (no public setter or readonly). " +
-               $"Ensure the target member is a writable property or field. " +
-               $"Check field initializers and property definitions. " +
-               $"See: {DocsBaseUrl}#{ErrorCodes.MemberNotWritable}";
-    }
+    public static string MemberNotWritable(string memberPath) =>
+        $"[{ErrorCodes.MemberNotWritable}] Member '{memberPath}' cannot be written to (no public setter or readonly). " +
+        $"Ensure the target member is a writable property or field. " +
+        $"Check field initializers and property definitions. " +
+        $"See: {DocsBaseUrl}#{ErrorCodes.MemberNotWritable}";
 
-    public static string SetterCreationFailed(string memberPath, string details)
-    {
-        return $"[{ErrorCodes.SetterCreationFailed}] Failed to create setter for '{memberPath}'. " +
-               $"Details: {details}. " +
-               $"This may indicate a reflection limitation with the target member type. " +
-               $"See: {DocsBaseUrl}#{ErrorCodes.SetterCreationFailed}";
-    }
+    public static string SetterCreationFailed(string memberPath, string details) =>
+        $"[{ErrorCodes.SetterCreationFailed}] Failed to create setter for '{memberPath}'. " +
+        $"Details: {details}. " +
+        $"This may indicate a reflection limitation with the target member type. " +
+        $"See: {DocsBaseUrl}#{ErrorCodes.SetterCreationFailed}";
 
-    public static string ValueTupleConstructorNotFound(string keyTypeName)
-    {
-        return $"[{ErrorCodes.ValueTupleConstructorNotFound}] Could not find a public constructor for ValueTuple key type '{keyTypeName}'. " +
-               $"ValueTuple types require accessible constructors. " +
-               $"Ensure all component types in the tuple are properly supported. " +
-               $"See: {DocsBaseUrl}#{ErrorCodes.ValueTupleConstructorNotFound}";
-    }
+    public static string ValueTupleConstructorNotFound(string keyTypeName) =>
+        $"[{ErrorCodes.ValueTupleConstructorNotFound}] Could not find a public constructor for ValueTuple key type '{keyTypeName}'. " +
+        $"ValueTuple types require accessible constructors. " +
+        $"Ensure all component types in the tuple are properly supported. " +
+        $"See: {DocsBaseUrl}#{ErrorCodes.ValueTupleConstructorNotFound}";
 
-    public static string CannotConcatenateStreamsTypeMismatch(string expectedType, string foundType)
-    {
-        return $"[{ErrorCodes.CannotConcatenateStreamsTypeMismatch}] Cannot concatenate streams due to type mismatch. " +
-               $"Expected pipe of '{expectedType}', but found '{foundType}'. " +
-               $"All inputs to a merge point must have compatible types. " +
-               $"See: {DocsBaseUrl}#{ErrorCodes.CannotConcatenateStreamsTypeMismatch}";
-    }
+    public static string CannotConcatenateStreamsTypeMismatch(string expectedType, string foundType) =>
+        $"[{ErrorCodes.CannotConcatenateStreamsTypeMismatch}] Cannot concatenate streams due to type mismatch. " +
+        $"Expected pipe of '{expectedType}', but found '{foundType}'. " +
+        $"All inputs to a merge point must have compatible types. " +
+        $"See: {DocsBaseUrl}#{ErrorCodes.CannotConcatenateStreamsTypeMismatch}";
 
     #endregion
 
     #region Execution Errors (NP03xx)
 
-    public static string NodeKindNotSupported(string nodeKind)
-    {
-        return $"[{ErrorCodes.NodeKindNotSupported}] Node kind '{nodeKind}' is not supported or its execution delegate is missing. " +
-               $"This typically indicates an incomplete node registration in the framework. " +
-               $"Ensure all node types are properly registered. " +
-               $"See: {DocsBaseUrl}#{ErrorCodes.NodeKindNotSupported}";
-    }
+    public static string NodeKindNotSupported(string nodeKind) =>
+        $"[{ErrorCodes.NodeKindNotSupported}] Node kind '{nodeKind}' is not supported or its execution delegate is missing. " +
+        $"This typically indicates an incomplete node registration in the framework. " +
+        $"Ensure all node types are properly registered. " +
+        $"See: {DocsBaseUrl}#{ErrorCodes.NodeKindNotSupported}";
 
-    public static string OutputNotFoundForSourceNode(string sourceNodeId)
-    {
-        return $"[{ErrorCodes.OutputNotFoundForSourceNode}] Could not find output for source node '{sourceNodeId}'. " +
-               $"The source node may not have executed or data may not be available. " +
-               $"Check that the source node executed successfully before consuming its output. " +
-               $"See: {DocsBaseUrl}#{ErrorCodes.OutputNotFoundForSourceNode}";
-    }
+    public static string OutputNotFoundForSourceNode(string sourceNodeId) =>
+        $"[{ErrorCodes.OutputNotFoundForSourceNode}] Could not find output for source node '{sourceNodeId}'. " +
+        $"The source node may not have executed or data may not be available. " +
+        $"Check that the source node executed successfully before consuming its output. " +
+        $"See: {DocsBaseUrl}#{ErrorCodes.OutputNotFoundForSourceNode}";
 
-    public static string PipelineExecutionFailedAtNode(string nodeId, Exception innerException)
-    {
-        return $"[{ErrorCodes.PipelineExecutionFailedAtNode}] Pipeline execution failed at node '{nodeId}'. " +
-               $"Inner error: {innerException.Message}. " +
-               $"Check the node's logic and the error context for details. " +
-               $"See: {DocsBaseUrl}#{ErrorCodes.PipelineExecutionFailedAtNode}";
-    }
+    public static string PipelineExecutionFailedAtNode(string nodeId, Exception innerException) =>
+        $"[{ErrorCodes.PipelineExecutionFailedAtNode}] Pipeline execution failed at node '{nodeId}'. " +
+        $"Inner error: {innerException.Message}. " +
+        $"Check the node's logic and the error context for details. " +
+        $"See: {DocsBaseUrl}#{ErrorCodes.PipelineExecutionFailedAtNode}";
 
-    public static string PipelineExecutionFailed(string pipelineTypeName, Exception innerException)
-    {
-        return $"[{ErrorCodes.PipelineExecutionFailed}] Pipeline execution failed for '{pipelineTypeName}'. " +
-               $"Inner error: {innerException.Message}. " +
-               $"Review the error trace and check your pipeline definition. " +
-               $"See: {DocsBaseUrl}#{ErrorCodes.PipelineExecutionFailed}";
-    }
+    public static string PipelineExecutionFailed(string pipelineTypeName, Exception innerException) =>
+        $"[{ErrorCodes.PipelineExecutionFailed}] Pipeline execution failed for '{pipelineTypeName}'. " +
+        $"Inner error: {innerException.Message}. " +
+        $"Review the error trace and check your pipeline definition. " +
+        $"See: {DocsBaseUrl}#{ErrorCodes.PipelineExecutionFailed}";
 
-    public static string ItemFailedAfterMaxRetries(int attempts, Exception originalException)
-    {
-        return $"[{ErrorCodes.ItemFailedAfterMaxRetries}] An item failed to process after {attempts} attempts. " +
-               $"Original error: {originalException.Message}. " +
-               $"Item retry limit exhausted. Check error handling or increase retry limits. " +
-               $"See: {DocsBaseUrl}#{ErrorCodes.ItemFailedAfterMaxRetries}";
-    }
+    public static string LineageCardinalityMismatch(string nodeId, int inputCount, int outputCount) =>
+        $"[{ErrorCodes.LineageCardinalityMismatch}] Lineage cardinality mismatch in node '{nodeId}'. " +
+        $"Inputs: {inputCount}, Outputs: {outputCount}. " +
+        $"The number of lineage mappings doesn't match inputs/outputs. " +
+        $"Check the node's lineage configuration. " +
+        $"See: {DocsBaseUrl}#{ErrorCodes.LineageCardinalityMismatch}";
 
-    public static string ErrorHandlingFailed(string nodeId, Exception handlerException)
-    {
-        return $"[{ErrorCodes.ErrorHandlingFailed}] Error handling failed for node '{nodeId}'. " +
-               $"Handler error: {handlerException.Message}. " +
-               $"The error handler itself threw an exception. Review your error handler implementation. " +
-               $"See: {DocsBaseUrl}#{ErrorCodes.ErrorHandlingFailed}";
-    }
+    public static string FailedToExtractItemsFromInMemoryDataStream(Exception innerException) =>
+        $"[{ErrorCodes.FailedToExtractItemsFromInMemoryDataStream}] Failed to extract items from InMemoryDataStream. " +
+        $"Inner error: {innerException.Message}. " +
+        $"The pipe may be corrupted or disposed. " +
+        $"See: {DocsBaseUrl}#{ErrorCodes.FailedToExtractItemsFromInMemoryDataStream}";
 
-    public static string LineageCardinalityMismatch(string nodeId, int inputCount, int outputCount)
-    {
-        return $"[{ErrorCodes.LineageCardinalityMismatch}] Lineage cardinality mismatch in node '{nodeId}'. " +
-               $"Inputs: {inputCount}, Outputs: {outputCount}. " +
-               $"The number of lineage mappings doesn't match inputs/outputs. " +
-               $"Check the node's lineage configuration. " +
-               $"See: {DocsBaseUrl}#{ErrorCodes.LineageCardinalityMismatch}";
-    }
-
-    public static string FailedToExtractItemsFromInMemoryDataStream(Exception innerException)
-    {
-        return $"[{ErrorCodes.FailedToExtractItemsFromInMemoryDataStream}] Failed to extract items from InMemoryDataStream. " +
-               $"Inner error: {innerException.Message}. " +
-               $"The pipe may be corrupted or disposed. " +
-               $"See: {DocsBaseUrl}#{ErrorCodes.FailedToExtractItemsFromInMemoryDataStream}";
-    }
-
-    public static string CircuitBreakerTripped(int failureThreshold, string nodeId)
-    {
-        return $"[{ErrorCodes.CircuitBreakerTripped}] Circuit breaker tripped for node '{nodeId}' after {failureThreshold} consecutive failures. " +
-               $"The node has been temporarily disabled to prevent cascading failures. " +
-               $"Either fix the underlying issue or increase the failure threshold. " +
-               $"See: {DocsBaseUrl}#{ErrorCodes.CircuitBreakerTripped}";
-    }
-
-    public static string RetryLimitExhausted(string nodeId, int maxAttempts, int consecutiveFailures)
-    {
-        return $"[{ErrorCodes.RetryLimitExhausted}] Retry limit exhausted for node '{nodeId}'. " +
-               $"Attempted {maxAttempts} times with {consecutiveFailures} consecutive failures. " +
-               $"The node cannot recover. Review error logs and the node implementation. " +
-               $"See: {DocsBaseUrl}#{ErrorCodes.RetryLimitExhausted}";
-    }
+    public static string RetryLimitExhausted(string nodeId, int attemptCount) =>
+        $"[{ErrorCodes.RetryLimitExhausted}] Retry attempts exhausted for node '{nodeId}' after {attemptCount} attempts. " +
+        $"The inner exception is the last failure. Raise the retry limit, dead-letter the item, or fix the cause. " +
+        $"See: {DocsBaseUrl}#{ErrorCodes.RetryLimitExhausted}";
 
     #endregion
 
     #region Configuration Errors (NP04xx)
 
-    public static string ExecutionStrategyCannotBeSetForNonTransformNode(string nodeName, string nodeKind)
-    {
-        return $"[{ErrorCodes.ExecutionStrategyCannotBeSetForNonTransformNode}] Execution strategy can only be set for transform nodes. " +
-               $"Node '{nodeName}' is a {nodeKind} node. " +
-               $"Remove the execution strategy configuration or change the node type. " +
-               $"See: {DocsBaseUrl}#{ErrorCodes.ExecutionStrategyCannotBeSetForNonTransformNode}";
-    }
+    public static string ExecutionStrategyCannotBeSetForNonTransformNode(string nodeName, string nodeKind) =>
+        $"[{ErrorCodes.ExecutionStrategyCannotBeSetForNonTransformNode}] Execution strategy can only be set for transform nodes. " +
+        $"Node '{nodeName}' is a {nodeKind} node. " +
+        $"Remove the execution strategy configuration or change the node type. " +
+        $"See: {DocsBaseUrl}#{ErrorCodes.ExecutionStrategyCannotBeSetForNonTransformNode}";
 
-    public static string NodeNotFoundInBuilder(string nodeId, string operation)
-    {
-        return
-            $"[{ErrorCodes.NodeNotFoundInBuilder}] Cannot perform operation '{operation}' on node '{nodeId}' because it has not been added to the builder. " +
-            $"Ensure the node is registered before configuring it. " +
-            $"See: {DocsBaseUrl}#{ErrorCodes.NodeNotFoundInBuilder}";
-    }
+    public static string NodeNotFoundInBuilder(string nodeId, string operation) =>
+        $"[{ErrorCodes.NodeNotFoundInBuilder}] Cannot perform operation '{operation}' on node '{nodeId}' because it has not been added to the builder. " +
+        $"Ensure the node is registered before configuring it. " +
+        $"See: {DocsBaseUrl}#{ErrorCodes.NodeNotFoundInBuilder}";
 
-    public static string ResilienceCannotBeAppliedToNonTransformNode(string nodeName, string nodeKind)
-    {
-        return $"[{ErrorCodes.ResilienceCannotBeAppliedToNonTransformNode}] Resilience can only be applied to transform nodes. " +
-               $"Node '{nodeName}' is a {nodeKind} node. " +
-               $"Remove resilience configuration or change the node type. " +
-               $"See: {DocsBaseUrl}#{ErrorCodes.ResilienceCannotBeAppliedToNonTransformNode}";
-    }
+    public static string InvalidErrorHandlerType(string typeName) =>
+        $"[{ErrorCodes.InvalidErrorHandlerType}] The provided type '{typeName}' does not implement INodeErrorHandler<,>. " +
+        $"Custom error handlers must implement the INodeErrorHandler interface with correct type parameters. " +
+        $"Review your error handler class definition. " +
+        $"See: {DocsBaseUrl}#{ErrorCodes.InvalidErrorHandlerType}";
 
-    public static string InvalidErrorHandlerType(string typeName)
-    {
-        return $"[{ErrorCodes.InvalidErrorHandlerType}] The provided type '{typeName}' does not implement INodeErrorHandler<,>. " +
-               $"Custom error handlers must implement the INodeErrorHandler interface with correct type parameters. " +
-               $"Review your error handler class definition. " +
-               $"See: {DocsBaseUrl}#{ErrorCodes.InvalidErrorHandlerType}";
-    }
+    public static string PreConfiguredInstanceAlreadyAdded(string nodeId) =>
+        $"[{ErrorCodes.PreConfiguredInstanceAlreadyAdded}] A pre-configured instance for node '{nodeId}' has already been added. " +
+        $"Each node can have only one pre-configured instance. " +
+        $"Either reuse the existing instance or register a new node. " +
+        $"See: {DocsBaseUrl}#{ErrorCodes.PreConfiguredInstanceAlreadyAdded}";
 
-    public static string PreConfiguredInstanceAlreadyAdded(string nodeId)
-    {
-        return $"[{ErrorCodes.PreConfiguredInstanceAlreadyAdded}] A pre-configured instance for node '{nodeId}' has already been added. " +
-               $"Each node can have only one pre-configured instance. " +
-               $"Either reuse the existing instance or register a new node. " +
-               $"See: {DocsBaseUrl}#{ErrorCodes.PreConfiguredInstanceAlreadyAdded}";
-    }
+    public static string PreConfiguredInstanceNodeNotFound(string nodeId) =>
+        $"[{ErrorCodes.PreConfiguredInstanceNodeNotFound}] Cannot add pre-configured instance for node '{nodeId}' because it has not been added to the builder. " +
+        $"Register the node first, then add its pre-configured instance. " +
+        $"See: {DocsBaseUrl}#{ErrorCodes.PreConfiguredInstanceNodeNotFound}";
 
-    public static string PreConfiguredInstanceNodeNotFound(string nodeId)
-    {
-        return
-            $"[{ErrorCodes.PreConfiguredInstanceNodeNotFound}] Cannot add pre-configured instance for node '{nodeId}' because it has not been added to the builder. " +
-            $"Register the node first, then add its pre-configured instance. " +
-            $"See: {DocsBaseUrl}#{ErrorCodes.PreConfiguredInstanceNodeNotFound}";
-    }
+    public static string MergeStrategyNotSupported(string mergeStrategyName) =>
+        $"[{ErrorCodes.MergeStrategyNotSupported}] Merge strategy '{mergeStrategyName}' is not supported. " +
+        $"Use a supported merge strategy or implement a custom one. " +
+        $"See: {DocsBaseUrl}#{ErrorCodes.MergeStrategyNotSupported}";
 
-    public static string MergeStrategyNotSupported(string mergeStrategyName)
-    {
-        return $"[{ErrorCodes.MergeStrategyNotSupported}] Merge strategy '{mergeStrategyName}' is not supported. " +
-               $"Use a supported merge strategy or implement a custom one. " +
-               $"See: {DocsBaseUrl}#{ErrorCodes.MergeStrategyNotSupported}";
-    }
+    public static string NodeActivationFailed(string nodeTypeName, string reason) =>
+        $"[{ErrorCodes.NodeActivationFailed}] Cannot instantiate node of type '{nodeTypeName}'. " +
+        $"Reason: {reason}. " +
+        $"Ensure the node type has a public parameterless constructor or is registered with DI. " +
+        $"See: {DocsBaseUrl}#{ErrorCodes.NodeActivationFailed}";
 
-    public static string NodeActivationFailed(string nodeTypeName, string reason)
-    {
-        return $"[{ErrorCodes.NodeActivationFailed}] Cannot instantiate node of type '{nodeTypeName}'. " +
-               $"Reason: {reason}. " +
-               $"Ensure the node type has a public parameterless constructor or is registered with DI. " +
-               $"See: {DocsBaseUrl}#{ErrorCodes.NodeActivationFailed}";
-    }
+    public static string JoinNodeRequiresTwoKeySelectorAttributes() =>
+        $"[{ErrorCodes.JoinNodeRequiresTwoKeySelectorAttributes}] Join node requires exactly two KeySelectorAttribute declarations, one for each input type. " +
+        $"Ensure your join node class has decorators for both input types. " +
+        $"See: {DocsBaseUrl}#{ErrorCodes.JoinNodeRequiresTwoKeySelectorAttributes}";
 
-    public static string JoinNodeRequiresTwoKeySelectorAttributes()
-    {
-        return
-            $"[{ErrorCodes.JoinNodeRequiresTwoKeySelectorAttributes}] Join node requires exactly two KeySelectorAttribute declarations, one for each input type. " +
-            $"Ensure your join node class has decorators for both input types. " +
-            $"See: {DocsBaseUrl}#{ErrorCodes.JoinNodeRequiresTwoKeySelectorAttributes}";
-    }
+    public static string UnbatchingNodeNotSupported() =>
+        $"[{ErrorCodes.UnbatchingNodeNotSupported}] UnbatchingNode should not be executed directly via ExecuteAsync. " +
+        $"UnbatchingNode is designed to be used internally through the pipeline framework. " +
+        $"Use PipelineBuilder.AddUnbatching<T>() to integrate it properly. " +
+        $"See: {DocsBaseUrl}#{ErrorCodes.UnbatchingNodeNotSupported}";
 
-    public static string UnbatchingNodeNotSupported()
-    {
-        return $"[{ErrorCodes.UnbatchingNodeNotSupported}] UnbatchingNode should not be executed directly via ExecuteAsync. " +
-               $"UnbatchingNode is designed to be used internally through the pipeline framework. " +
-               $"Use PipelineBuilder.AddUnbatching<T>() to integrate it properly. " +
-               $"See: {DocsBaseUrl}#{ErrorCodes.UnbatchingNodeNotSupported}";
-    }
+    public static string BatchingNodeNotSupported() =>
+        $"[{ErrorCodes.BatchingNodeNotSupported}] BatchingNode doesn't support item-by-item transformation. " +
+        $"BatchingNode accumulates items and processes them in batches. " +
+        $"Use PipelineBuilder.AddBatching<T>() with appropriate configuration. " +
+        $"See: {DocsBaseUrl}#{ErrorCodes.BatchingNodeNotSupported}";
 
-    public static string BatchingNodeNotSupported()
-    {
-        return $"[{ErrorCodes.BatchingNodeNotSupported}] BatchingNode doesn't support item-by-item transformation. " +
-               $"BatchingNode accumulates items and processes them in batches. " +
-               $"Use PipelineBuilder.AddBatching<T>() with appropriate configuration. " +
-               $"See: {DocsBaseUrl}#{ErrorCodes.BatchingNodeNotSupported}";
-    }
+    public static string CustomMergeNodeMissingInterface(string nodeTypeName) =>
+        $"[{ErrorCodes.CustomMergeNodeMissingInterface}] Custom merge node '{nodeTypeName}' does not implement the expected generic interface. " +
+        $"Custom merge nodes must implement ICusMergeNode<T1, T2, TOut>. " +
+        $"Review your merge node implementation. " +
+        $"See: {DocsBaseUrl}#{ErrorCodes.CustomMergeNodeMissingInterface}";
 
-    public static string CustomMergeNodeMissingInterface(string nodeTypeName)
-    {
-        return $"[{ErrorCodes.CustomMergeNodeMissingInterface}] Custom merge node '{nodeTypeName}' does not implement the expected generic interface. " +
-               $"Custom merge nodes must implement ICusMergeNode<T1, T2, TOut>. " +
-               $"Review your merge node implementation. " +
-               $"See: {DocsBaseUrl}#{ErrorCodes.CustomMergeNodeMissingInterface}";
-    }
+    public static string StreamTransformNodeRequiresStreamStrategy(string nodeId, string nodeTypeName, string strategyTypeName) =>
+        $"[{ErrorCodes.StreamTransformNodeRequiresStreamStrategy}] Stream transform node '{nodeId}' ({nodeTypeName}) would run under execution strategy '{strategyTypeName}', " +
+        $"which processes items one at a time and cannot run a stream transform. " +
+        $"Configure a stream-capable strategy (one implementing IStreamExecutionStrategy) with WithExecutionStrategy, or have the node supply one through IExecutionStrategyProvider. " +
+        $"See: {DocsBaseUrl}#{ErrorCodes.StreamTransformNodeRequiresStreamStrategy}";
 
-    public static string UnbatchingExecutionStrategyMissingDeadLetterHandler()
-    {
-        return $"[{ErrorCodes.UnbatchingExecutionStrategyMissingDeadLetterHandler}] Unbatching execution strategy could not find dead letter handler. " +
-               $"Items that fail unbatching need a dead letter sink for error handling. " +
-               $"Ensure a dead letter handler is configured in the pipeline context. " +
-               $"See: {DocsBaseUrl}#{ErrorCodes.UnbatchingExecutionStrategyMissingDeadLetterHandler}";
-    }
-
-    public static string StreamTransformNodeRequiresStreamStrategy(string nodeId, string nodeTypeName, string strategyTypeName)
-    {
-        return $"[{ErrorCodes.StreamTransformNodeRequiresStreamStrategy}] Stream transform node '{nodeId}' ({nodeTypeName}) would run under execution strategy '{strategyTypeName}', " +
-               $"which processes items one at a time and cannot run a stream transform. " +
-               $"Configure a stream-capable strategy (one implementing IStreamExecutionStrategy) with WithExecutionStrategy, or have the node supply one through IExecutionStrategyProvider. " +
-               $"See: {DocsBaseUrl}#{ErrorCodes.StreamTransformNodeRequiresStreamStrategy}";
-    }
-
-    public static string NodeCannotSupplyExecutionStrategy(string nodeId, string nodeTypeName, string expectedInterfaceName)
-    {
-        return $"[{ErrorCodes.NodeCannotSupplyExecutionStrategy}] Node '{nodeId}' ({nodeTypeName}) is scheduled as a transform but does not implement {expectedInterfaceName}. " +
-               $"Implement {expectedInterfaceName} on the node, or add it to the pipeline with the builder method that matches its kind. " +
-               $"See: {DocsBaseUrl}#{ErrorCodes.NodeCannotSupplyExecutionStrategy}";
-    }
+    public static string NodeCannotSupplyExecutionStrategy(string nodeId, string nodeTypeName, string expectedInterfaceName) =>
+        $"[{ErrorCodes.NodeCannotSupplyExecutionStrategy}] Node '{nodeId}' ({nodeTypeName}) is scheduled as a transform but does not implement {expectedInterfaceName}. " +
+        $"Implement {expectedInterfaceName} on the node, or add it to the pipeline with the builder method that matches its kind. " +
+        $"See: {DocsBaseUrl}#{ErrorCodes.NodeCannotSupplyExecutionStrategy}";
 
     public static string NodeIdNotResolvable(string nodeTypeName, bool noRunInProgress)
     {
@@ -406,80 +286,75 @@ internal static class ErrorMessages
                $"See: {DocsBaseUrl}#{ErrorCodes.NodeIdNotResolvable}";
     }
 
-    public static string LineageAdapterMissing(string nodeId)
-    {
-        return $"[{ErrorCodes.LineageAdapterMissing}] Lineage adapter missing for node '{nodeId}'. " +
-               $"This is an internal framework error - the node wasn't properly registered. " +
-               $"Please report this to the NPipeline project. " +
-               $"See: {DocsBaseUrl}#{ErrorCodes.LineageAdapterMissing}";
-    }
+    public static string LineageAdapterMissing(string nodeId) =>
+        $"[{ErrorCodes.LineageAdapterMissing}] Lineage adapter missing for node '{nodeId}'. " +
+        $"This is an internal framework error - the node wasn't properly registered. " +
+        $"Please report this to the NPipeline project. " +
+        $"See: {DocsBaseUrl}#{ErrorCodes.LineageAdapterMissing}";
 
-    public static string SourceNodeLineageUnwrapMissing(string nodeId)
-    {
-        return $"[{ErrorCodes.SourceNodeLineageUnwrapMissing}] Source node lineage unwrap delegate missing for node '{nodeId}'. " +
-               $"This is an internal framework error. " +
-               $"Please report this to the NPipeline project. " +
-               $"See: {DocsBaseUrl}#{ErrorCodes.SourceNodeLineageUnwrapMissing}";
-    }
+    public static string SourceNodeLineageUnwrapMissing(string nodeId) =>
+        $"[{ErrorCodes.SourceNodeLineageUnwrapMissing}] Source node lineage unwrap delegate missing for node '{nodeId}'. " +
+        $"This is an internal framework error. " +
+        $"Please report this to the NPipeline project. " +
+        $"See: {DocsBaseUrl}#{ErrorCodes.SourceNodeLineageUnwrapMissing}";
 
-    public static string SinkNodeLineageUnwrapMissing(string nodeId)
-    {
-        return $"[{ErrorCodes.SinkNodeLineageUnwrapMissing}] Sink node lineage unwrap delegate missing for node '{nodeId}'. " +
-               $"This is an internal framework error. " +
-               $"Please report this to the NPipeline project. " +
-               $"See: {DocsBaseUrl}#{ErrorCodes.SinkNodeLineageUnwrapMissing}";
-    }
+    public static string SinkNodeLineageUnwrapMissing(string nodeId) =>
+        $"[{ErrorCodes.SinkNodeLineageUnwrapMissing}] Sink node lineage unwrap delegate missing for node '{nodeId}'. " +
+        $"This is an internal framework error. " +
+        $"Please report this to the NPipeline project. " +
+        $"See: {DocsBaseUrl}#{ErrorCodes.SinkNodeLineageUnwrapMissing}";
 
-    public static string MissingTypeMetadata(string nodeId, string metadataName)
-    {
-        return $"[{ErrorCodes.MissingTypeMetadata}] Node '{nodeId}' missing {metadataName} metadata. " +
-               $"This is an internal framework error during graph construction. " +
-               $"Please report this to the NPipeline project. " +
-               $"See: {DocsBaseUrl}#{ErrorCodes.MissingTypeMetadata}";
-    }
+    public static string MissingTypeMetadata(string nodeId, string metadataName) =>
+        $"[{ErrorCodes.MissingTypeMetadata}] Node '{nodeId}' missing {metadataName} metadata. " +
+        $"This is an internal framework error during graph construction. " +
+        $"Please report this to the NPipeline project. " +
+        $"See: {DocsBaseUrl}#{ErrorCodes.MissingTypeMetadata}";
 
-    public static string TimeWindowAssignerCannotBeNull()
-    {
-        return $"[{ErrorCodes.TimeWindowAssignerCannotBeNull}] Time window assigner cannot be null. " +
-               $"Windowed nodes require a window assignment strategy. " +
-               $"Provide a non-null window assigner in the constructor. " +
-               $"See: {DocsBaseUrl}#{ErrorCodes.TimeWindowAssignerCannotBeNull}";
-    }
+    public static string TimeWindowAssignerCannotBeNull() =>
+        $"[{ErrorCodes.TimeWindowAssignerCannotBeNull}] Time window assigner cannot be null. " +
+        $"Windowed nodes require a window assignment strategy. " +
+        $"Provide a non-null window assigner in the constructor. " +
+        $"See: {DocsBaseUrl}#{ErrorCodes.TimeWindowAssignerCannotBeNull}";
+
+    public static string DeadLetterSinkNotConfigured(string nodeId) =>
+        $"[{ErrorCodes.DeadLetterSinkNotConfigured}] Node '{nodeId}': the resilience policy dead-lettered an item, but no dead-letter sink is configured. " +
+        $"The item cannot be dropped silently, so the node fails instead. " +
+        $"Configure one with builder.AddDeadLetterSink(...), or have the policy return Skip or Fail. " +
+        $"See: {DocsBaseUrl}#{ErrorCodes.DeadLetterSinkNotConfigured}";
+
+    public static string DeadLetterSinkNotConfiguredForOptions(string nodeId) =>
+        $"[{ErrorCodes.DeadLetterSinkNotConfigured}] Node '{nodeId}': its resilience options dead-letter failed items (OnItemFailure = DeadLetter), " +
+        $"but no dead-letter sink is configured, so the pipeline was not started. " +
+        $"Configure one with builder.AddDeadLetterSink(...), or set OnItemFailure to Skip or Fail. " +
+        $"See: {DocsBaseUrl}#{ErrorCodes.DeadLetterSinkNotConfigured}";
+
+    public static string NodeRestartRequiresResumableStrategy(string nodeName, string strategyType) =>
+        $"[{ErrorCodes.NodeRestartRequiresResumableStrategy}] Node '{nodeName}' has NodeRestart.MaxRestarts above zero, " +
+        $"but its execution strategy {strategyType} does not implement IResumableExecutionStrategy, so it cannot resume after a restart. " +
+        $"Use a resumable strategy (SequentialExecutionStrategy or a parallel strategy), implement IResumableExecutionStrategy, " +
+        $"or set NodeRestart.MaxRestarts to 0 for this node. " +
+        $"See: {DocsBaseUrl}#{ErrorCodes.NodeRestartRequiresResumableStrategy}";
 
     #endregion
 
     #region Resource and Capacity Errors (NP05xx)
 
-    public static string ContextDisposalFailed(int errorCount)
-    {
-        return $"[{ErrorCodes.ContextDisposalFailed}] One or more errors occurred disposing pipeline context resources ({errorCount} errors). " +
-               $"Check the inner exceptions for details on resource disposal failures. " +
-               $"Some resources may not have been properly cleaned up. " +
-               $"See: {DocsBaseUrl}#{ErrorCodes.ContextDisposalFailed}";
-    }
+    public static string ContextDisposalFailed(int errorCount) =>
+        $"[{ErrorCodes.ContextDisposalFailed}] One or more errors occurred disposing pipeline context resources ({errorCount} errors). " +
+        $"Check the inner exceptions for details on resource disposal failures. " +
+        $"Some resources may not have been properly cleaned up. " +
+        $"See: {DocsBaseUrl}#{ErrorCodes.ContextDisposalFailed}";
 
-    public static string DeadLetterQueueCapacityExceeded(int capacity)
-    {
-        return $"[{ErrorCodes.DeadLetterQueueCapacityExceeded}] Dead Letter Queue has exceeded its capacity of {capacity}. " +
-               $"Too many failed items have been queued for the dead letter sink. " +
-               $"Failing the pipeline to prevent memory overflow. Increase capacity or fix upstream errors. " +
-               $"See: {DocsBaseUrl}#{ErrorCodes.DeadLetterQueueCapacityExceeded}";
-    }
+    public static string DeadLetterQueueCapacityExceeded(int capacity) =>
+        $"[{ErrorCodes.DeadLetterQueueCapacityExceeded}] Dead Letter Queue has exceeded its capacity of {capacity}. " +
+        $"Too many failed items have been queued for the dead letter sink. " +
+        $"Failing the pipeline to prevent memory overflow. Increase capacity or fix upstream errors. " +
+        $"See: {DocsBaseUrl}#{ErrorCodes.DeadLetterQueueCapacityExceeded}";
 
-    public static string MaterializationCapExceeded(string nodeId, int cap)
-    {
-        return $"[{ErrorCodes.MaterializationCapExceeded}] Materialization cap exceeded for node '{nodeId}' (cap={cap}). " +
-               $"Too many items are being buffered in memory. " +
-               $"Reduce the volume of items or increase the materialization cap. " +
-               $"See: {DocsBaseUrl}#{ErrorCodes.MaterializationCapExceeded}";
-    }
-
-    public static string BatchSizeMustBeGreaterThanZero()
-    {
-        return $"[{ErrorCodes.BatchSizeMustBeGreaterThanZero}] Batch size must be greater than zero. " +
-               $"Provide a positive integer for the batch size parameter. " +
-               $"See: {DocsBaseUrl}#{ErrorCodes.BatchSizeMustBeGreaterThanZero}";
-    }
+    public static string BatchSizeMustBeGreaterThanZero() =>
+        $"[{ErrorCodes.BatchSizeMustBeGreaterThanZero}] Batch size must be greater than zero. " +
+        $"Provide a positive integer for the batch size parameter. " +
+        $"See: {DocsBaseUrl}#{ErrorCodes.BatchSizeMustBeGreaterThanZero}";
 
     #endregion
 }

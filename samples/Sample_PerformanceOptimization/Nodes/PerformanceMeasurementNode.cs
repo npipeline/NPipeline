@@ -242,9 +242,8 @@ public class PerformanceMeasurementNode : SinkNode<ProcessedPerformanceItem>
     /// <summary>
     ///     Creates performance metrics from a processed item.
     /// </summary>
-    private PerformanceMetrics CreatePerformanceMetrics(ProcessedPerformanceItem item, string approachName)
-    {
-        return new PerformanceMetrics
+    private PerformanceMetrics CreatePerformanceMetrics(ProcessedPerformanceItem item, string approachName) =>
+        new()
         {
             OperationName = approachName,
             ElapsedMilliseconds = (long)item.ProcessingTime.TotalMilliseconds,
@@ -255,7 +254,6 @@ public class PerformanceMeasurementNode : SinkNode<ProcessedPerformanceItem>
             IsSynchronousPath = item.UsedSynchronousPath,
             UsesValueTask = item.UsedValueTask,
         };
-    }
 
     /// <summary>
     ///     Resets all collected metrics for fresh benchmarking.

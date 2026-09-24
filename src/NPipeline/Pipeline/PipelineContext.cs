@@ -1,17 +1,11 @@
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
-using Microsoft.Extensions.Logging;
 using NPipeline.Configuration;
-using NPipeline.DataFlow.DataStreams;
 using NPipeline.ErrorHandling;
-using NPipeline.Execution;
-using NPipeline.Execution.CircuitBreaking;
 using NPipeline.Lineage;
-using NPipeline.Nodes;
 using NPipeline.Observability;
 using NPipeline.Observability.Logging;
 using NPipeline.Observability.Tracing;
-using NPipeline.Resilience;
 using NPipeline.State;
 
 namespace NPipeline.Pipeline;
@@ -78,22 +72,25 @@ namespace NPipeline.Pipeline;
 /// </remarks>
 public sealed class PipelineContext : IAsyncDisposable
 {
-    private readonly bool _ownsItemsDictionary;
-    private readonly bool _ownsParametersDictionary;
-    private readonly bool _ownsPropertiesDictionary;
-
     // Composite disposal registry for lifecycle-managed IAsyncDisposable resources (lazy initialized).
     // Guarded by _disposalGate: terminal nodes below a fan-out drain concurrently and may each register a resource.
     // Typical pipeline runs put a handful of entries in each context dictionary.
     private const int DefaultContextDictionaryCapacity = 10;
 
+    // The token the context was created with, and the token linked to the runner's token for the run in progress.
+    private readonly CancellationToken _configuredCancellationToken;
+
     private readonly object _disposalGate = new();
+    private readonly bool _ownsItemsDictionary;
+    private readonly bool _ownsParametersDictionary;
+    private readonly bool _ownsPropertiesDictionary;
     private List<IAsyncDisposable>? _disposables;
+    private volatile bool _disposed;
 
     // Background disposals started for resources registered after disposal completed. Tracked rather than
     // fire-and-forget so a subsequent DisposeAsync can await them instead of leaving unobserved work behind.
     private List<Task>? _lateDisposals;
-    private volatile bool _disposed;
+    private volatile RunCancellation? _runCancellation;
 
     /// <summary>
     ///     Creates a new <see cref="PipelineContext" /> with the specified configuration.
@@ -143,9 +140,7 @@ public sealed class PipelineContext : IAsyncDisposable
         var profileBehavior = OptimizationProfileBehaviorRegistry.For(config.OptimizationProfile);
 
         if (config.Parameters is not null)
-        {
             Parameters = config.Parameters;
-        }
         else
         {
             Parameters = CreateOwnedDictionary(profileBehavior);
@@ -153,9 +148,7 @@ public sealed class PipelineContext : IAsyncDisposable
         }
 
         if (config.Items is not null)
-        {
             Items = config.Items;
-        }
         else
         {
             Items = CreateOwnedDictionary(profileBehavior);
@@ -163,9 +156,7 @@ public sealed class PipelineContext : IAsyncDisposable
         }
 
         if (config.Properties is not null)
-        {
             Properties = config.Properties;
-        }
         else
         {
             Properties = CreateOwnedDictionary(profileBehavior);
@@ -175,27 +166,21 @@ public sealed class PipelineContext : IAsyncDisposable
         var loggerFactory = config.LoggerFactory ?? NullLoggerFactory.Instance;
         var tracer = config.Tracer ?? NullPipelineTracer.Instance;
         var observabilityFactory = config.ObservabilityFactory ?? new DefaultObservabilityFactory();
-        var retryOptions = config.RetryOptions ?? PipelineRetryOptions.Default;
         var lineageFactory = config.LineageFactory ?? new DefaultLineageFactory(loggerFactory);
 
-        CancellationToken = config.CancellationToken;
+        _configuredCancellationToken = config.CancellationToken;
         DeadLetterSink = config.DeadLetterSink;
         ErrorHandlerFactory = config.ErrorHandlerFactory ?? new DefaultErrorHandlerFactory(loggerFactory);
 
         RunIdentity = new PipelineRunIdentityContext(DateTime.UtcNow);
-        ExecutionConfiguration = new PipelineExecutionConfigurationContext(retryOptions, config.OptimizationProfile);
+        ExecutionConfiguration = new PipelineExecutionConfigurationContext(config.OptimizationProfile);
+
         if (config.ResiliencePolicy is not null)
             ExecutionConfiguration.ResiliencePolicy = config.ResiliencePolicy;
+
         Observability = new PipelineObservabilityContext(loggerFactory, tracer, observabilityFactory);
         NodeEnvironment = new PipelineNodeEnvironmentContext();
         Lineage = new PipelineLineageContext(lineageFactory);
-    }
-
-    private static IDictionary<string, object> CreateOwnedDictionary(IOptimizationProfileBehavior profileBehavior)
-    {
-        return profileBehavior.UsesThreadSafeContextDictionaries
-            ? new ConcurrentDictionary<string, object>()
-            : new Dictionary<string, object>(DefaultContextDictionaryCapacity);
     }
 
     /// <summary>
@@ -274,7 +259,12 @@ public sealed class PipelineContext : IAsyncDisposable
     /// <summary>
     ///     A cancellation token to monitor for pipeline cancellation requests.
     /// </summary>
-    public CancellationToken CancellationToken { get; }
+    /// <remarks>
+    ///     While a run is in progress this token is cancelled when either the token this context was created with, or
+    ///     the token passed to <see cref="IPipelineRunner.RunAsync(IPipelineDefinition, PipelineContext, CancellationToken)" />,
+    ///     is cancelled. Outside a run it is the token the context was created with.
+    /// </remarks>
+    public CancellationToken CancellationToken => _runCancellation?.Token ?? _configuredCancellationToken;
 
     /// <summary>
     ///     The sink for items that have failed processing and have been redirected.
@@ -285,18 +275,6 @@ public sealed class PipelineContext : IAsyncDisposable
     ///     The factory for creating dead-letter sinks.
     /// </summary>
     public IErrorHandlerFactory ErrorHandlerFactory { get; }
-
-    /// <summary>
-    ///     Creates a new pipeline context with all default values.
-    /// </summary>
-    /// <remarks>
-    ///     A method, not a property: every call allocates a fresh context. As a property it read like a shared
-    ///     singleton, and callers that mutated what they got back were relying on each access being new.
-    /// </remarks>
-    public static PipelineContext CreateDefault()
-    {
-        return new PipelineContext(PipelineContextConfiguration.Default);
-    }
 
     /// <summary>
     ///     The state manager for this pipeline run, if any.
@@ -316,6 +294,94 @@ public sealed class PipelineContext : IAsyncDisposable
     ///     property.
     /// </remarks>
     public IStatefulRegistry? StatefulRegistry { get; set; }
+
+    /// <summary>
+    ///     Disposes all registered async disposables. Safe to call multiple times.
+    /// </summary>
+    public async ValueTask DisposeAsync()
+    {
+        List<IAsyncDisposable>? disposables;
+        bool alreadyDisposed;
+
+        lock (_disposalGate)
+        {
+            alreadyDisposed = _disposed;
+            _disposed = true;
+            disposables = _disposables;
+            _disposables = null;
+        }
+
+        if (alreadyDisposed)
+        {
+            // Await anything a late registration started, so a caller who disposes again has a way to observe that
+            // work rather than leaving it running unwatched.
+            await DrainLateDisposalsAsync().ConfigureAwait(false);
+            return;
+        }
+
+        List<Exception>? errors = null;
+
+        if (disposables is not null)
+        {
+            // Dispose in reverse registration order: decorators are registered after the streams they wrap, so
+            // LIFO tears the outer layer down before the inner one it depends on.
+            for (var i = disposables.Count - 1; i >= 0; i--)
+            {
+                try
+                {
+                    await disposables[i].DisposeAsync().ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    errors ??= new List<Exception>();
+                    errors.Add(ex);
+                }
+            }
+
+            disposables.Clear();
+        }
+
+        ClearOwnedDictionaries();
+
+        if (errors is { Count: > 0 })
+            throw new AggregateException("One or more errors occurred disposing pipeline context resources.", errors);
+    }
+
+    /// <summary>
+    ///     Makes <see cref="CancellationToken" /> also observe <paramref name="runCancellationToken" /> until the returned
+    ///     scope is disposed at the end of the run.
+    /// </summary>
+    /// <remarks>
+    ///     Node execution observes the context's token. Without this link, cancelling the token passed to the runner
+    ///     would reach only the setup stage and never stop a running pipeline.
+    /// </remarks>
+    internal IDisposable LinkRunCancellation(CancellationToken runCancellationToken)
+    {
+        if (!runCancellationToken.CanBeCanceled || runCancellationToken == _configuredCancellationToken)
+            return NoOpDisposable.Instance;
+
+        if (_runCancellation is not null)
+            throw new InvalidOperationException("A PipelineContext can only be used by one pipeline run at a time.");
+
+        var linked = CancellationTokenSource.CreateLinkedTokenSource(_configuredCancellationToken, runCancellationToken);
+        var runCancellation = new RunCancellation(this, linked);
+        _runCancellation = runCancellation;
+        return runCancellation;
+    }
+
+    private static IDictionary<string, object> CreateOwnedDictionary(IOptimizationProfileBehavior profileBehavior) =>
+        profileBehavior.UsesThreadSafeContextDictionaries
+            ? new ConcurrentDictionary<string, object>()
+            : new Dictionary<string, object>(DefaultContextDictionaryCapacity);
+
+    /// <summary>
+    ///     Creates a new pipeline context with all default values.
+    /// </summary>
+    /// <remarks>
+    ///     A method, not a property: every call allocates a fresh context. As a property it read like a shared
+    ///     singleton, and callers that mutated what they got back were relying on each access being new.
+    /// </remarks>
+    public static PipelineContext CreateDefault() => new(PipelineContextConfiguration.Default);
 
     /// <summary>
     ///     Registers an <see cref="IAsyncDisposable" /> resource to be disposed when the pipeline context is disposed.
@@ -389,58 +455,6 @@ public sealed class PipelineContext : IAsyncDisposable
         PipelineContextLogMessages.LateRegistrationDisposalFailed(logger, ex.Message);
     }
 
-    /// <summary>
-    ///     Disposes all registered async disposables. Safe to call multiple times.
-    /// </summary>
-    public async ValueTask DisposeAsync()
-    {
-        List<IAsyncDisposable>? disposables;
-        bool alreadyDisposed;
-
-        lock (_disposalGate)
-        {
-            alreadyDisposed = _disposed;
-            _disposed = true;
-            disposables = _disposables;
-            _disposables = null;
-        }
-
-        if (alreadyDisposed)
-        {
-            // Await anything a late registration started, so a caller who disposes again has a way to observe that
-            // work rather than leaving it running unwatched.
-            await DrainLateDisposalsAsync().ConfigureAwait(false);
-            return;
-        }
-
-        List<Exception>? errors = null;
-
-        if (disposables is not null)
-        {
-            // Dispose in reverse registration order: decorators are registered after the streams they wrap, so
-            // LIFO tears the outer layer down before the inner one it depends on.
-            for (var i = disposables.Count - 1; i >= 0; i--)
-            {
-                try
-                {
-                    await disposables[i].DisposeAsync().ConfigureAwait(false);
-                }
-                catch (Exception ex)
-                {
-                    errors ??= new List<Exception>();
-                    errors.Add(ex);
-                }
-            }
-
-            disposables.Clear();
-        }
-
-        ClearOwnedDictionaries();
-
-        if (errors is { Count: > 0 })
-            throw new AggregateException("One or more errors occurred disposing pipeline context resources.", errors);
-    }
-
     private async ValueTask DrainLateDisposalsAsync()
     {
         List<Task>? pending;
@@ -468,7 +482,7 @@ public sealed class PipelineContext : IAsyncDisposable
 
     private void ClearOwnedDictionaries()
     {
-        ExecutionConfiguration.NodeRetryOverrides.Clear();
+        ExecutionConfiguration.ResetResilienceOptions();
         NodeEnvironment.NodeExecutionScopeRegistry.Clear();
 
         if (_ownsParametersDictionary)
@@ -479,5 +493,30 @@ public sealed class PipelineContext : IAsyncDisposable
 
         if (_ownsPropertiesDictionary)
             Properties.Clear();
+    }
+
+    /// <summary>
+    ///     The linked token for one run. The token is captured up front so that code still reading it after the run has
+    ///     ended gets a valid token rather than an <see cref="ObjectDisposedException" />.
+    /// </summary>
+    private sealed class RunCancellation(PipelineContext owner, CancellationTokenSource source) : IDisposable
+    {
+        public CancellationToken Token { get; } = source.Token;
+
+        public void Dispose()
+        {
+            // Unlink first, so readers fall back to the context's own token before the linked source is disposed.
+            owner._runCancellation = null;
+            source.Dispose();
+        }
+    }
+
+    private sealed class NoOpDisposable : IDisposable
+    {
+        public static NoOpDisposable Instance { get; } = new();
+
+        public void Dispose()
+        {
+        }
     }
 }

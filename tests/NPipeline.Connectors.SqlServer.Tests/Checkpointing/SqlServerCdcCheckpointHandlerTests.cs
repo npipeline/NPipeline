@@ -691,19 +691,14 @@ public sealed class SqlServerCdcCheckpointHandlerTests
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     };
 
-    private CheckpointManager CreateCheckpointManager(ICheckpointStorage storage)
-    {
-        return new CheckpointManager(
+    private CheckpointManager CreateCheckpointManager(ICheckpointStorage storage) =>
+        new(
             storage,
             TestPipelineId,
             TestNodeId,
             CheckpointStrategy.CDC);
-    }
 
-    private static string SerializePosition(SqlServerCdcPosition position)
-    {
-        return JsonSerializer.Serialize(position, JsonOptions);
-    }
+    private static string SerializePosition(SqlServerCdcPosition position) => JsonSerializer.Serialize(position, JsonOptions);
 
     private static SqlServerCdcPosition? DeserializePosition(string value)
     {

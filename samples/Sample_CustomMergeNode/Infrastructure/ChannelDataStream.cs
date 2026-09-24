@@ -44,10 +44,7 @@ public sealed class ChannelDataStream<T> : IDataStream<T>, IAsyncDisposable
 
     public string StreamName { get; }
 
-    public Type GetDataType()
-    {
-        return typeof(T);
-    }
+    public Type GetDataType() => typeof(T);
 
     /// <summary>
     ///     Converts the pipe to a non-generic async enumerable for framework compatibility.
@@ -82,10 +79,8 @@ public sealed class ChannelDataStream<T> : IDataStream<T>, IAsyncDisposable
     /// <summary>
     ///     Gets the async enumerator for the channel.
     /// </summary>
-    public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
-    {
-        return GetAsyncEnumerable(cancellationToken).GetAsyncEnumerator(cancellationToken);
-    }
+    public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default) =>
+        GetAsyncEnumerable(cancellationToken).GetAsyncEnumerator(cancellationToken);
 
     /// <summary>
     ///     Provides async enumeration of items from the channel.

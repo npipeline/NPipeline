@@ -128,9 +128,13 @@ var connection = new RabbitMqConnectionOptions
 | `ExchangeName` | `string` | (required) | Exchange to publish to |
 | `RoutingKey` | `string` | `""` | Default routing key |
 | `RoutingKeySelector` | `Func<object, string>?` | `null` | Per-message routing key |
-| `EnablePublisherConfirms` | `bool` | `true` | Wait for broker confirmation |
+| `EnablePublisherConfirms` | `bool` | `true` | Wait for broker confirmation (off: at-most-once, see [Resilience](#resilience)) |
 | `Persistent` | `bool` | `true` | Mark messages as persistent |
 | `Mandatory` | `bool` | `false` | Require at least one queue binding |
+| `ContinueOnError` | `bool` | `false` | Skip a message whose publish fails instead of failing the node |
+| `ConfirmTimeout` | `TimeSpan` | `5s` | How long one publish attempt waits for the broker's confirm |
+| `ShutdownFlushTimeout` | `TimeSpan` | `30s` | How long the batched sink keeps publishing after the pipeline is cancelled |
+| `Resilience` | `Resilience` | `RabbitMqConnectorResilience.Default` | How each publish is retried (see [Resilience](#resilience)) |
 
 ### Batch Publishing - `BatchPublishOptions`
 
@@ -214,6 +218,67 @@ var sink = new RabbitMqSinkNode<Order>(new RabbitMqSinkOptions("order-exchange")
     RoutingKeySelector = order => $"orders.{order.Region.ToLower()}"
 });
 ```
+
+## Resilience
+
+The sink retries each publish through [NResilience](https://github.com/nresilience/NResilience). The
+`Resilience` property on `RabbitMqSinkOptions` configures it. The default, `RabbitMqConnectorResilience.Default`,
+does the following:
+
+- Makes up to four attempts (three retries).
+- Waits with exponential backoff and full jitter, from 100 milliseconds up to 30 seconds.
+- Retries a lost connection, a closed channel, an unreachable broker, a forced close (320), a broker internal error
+  (541), and a publish the broker nacked.
+- Does not retry access refused (403), not found (404), resource locked (405), precondition failed (406), a message
+  returned as unroutable (312, with `Mandatory`), failed authentication, or a close the application asked for.
+- Has no attempt timeout and no overall deadline, so the attempt count bounds the call.
+
+A closed channel never reopens, so a retry that finds its channel closed takes a fresh one from the pool. Every
+attempt carries the same `MessageId`, so a consumer can discard a duplicate.
+
+Each attempt waits up to `ConfirmTimeout` (5 seconds) for the broker's publisher confirm. A confirm that doesn't
+arrive in time fails the attempt with a `TimeoutException` and the policy retries it. The
+unconfirmed message may still have reached the broker, so the retry can publish it twice.
+
+With `EnablePublisherConfirms = false`, the sink publishes on channels that don't track confirms, and a publish
+completes once the message is written to the connection; `ConfirmTimeout` doesn't apply. A message lost after that
+(the connection drops, or the broker fails before routing it) goes undetected, and the source message is still
+acknowledged, so delivery is **at-most-once**. Channels with and without confirms are pooled apart, so sinks with
+either setting can share one `IRabbitMqConnectionManager`.
+
+With batching on, messages are published in order and each one is retried on its own; the messages published
+before it are not published again. If a message still fails, the source messages published before it are
+acknowledged, and the failed message and those after it are not. The node then fails, or, with
+`ContinueOnError`, drops the rest of the batch and carries on. Only one flush runs at a time: the linger timer and
+a full batch never publish together.
+
+When the pipeline is cancelled, the batched sink publishes and acknowledges the messages it has already taken from
+the input, for up to `ShutdownFlushTimeout` (30 seconds), and then reports the cancellation. Messages it can't publish
+in that time stay unacknowledged, so the broker redelivers them. A message already published is never published again
+by the shutdown flush.
+
+To change a setting, derive a policy with a `with` expression:
+
+```csharp
+var options = new RabbitMqSinkOptions
+{
+    ExchangeName = "orders",
+    Resilience = RabbitMqConnectorResilience.Default with
+    {
+        Attempts = 6,
+        AttemptTimeout = TimeSpan.FromSeconds(10),
+    },
+};
+```
+
+A publish that times out while it waits for a publisher confirm may still have reached the broker, so its retry can
+publish the message twice. To publish once, use `Resilience.None`.
+
+The sink is the only layer that retries a publish. The client's automatic connection recovery
+(`AutomaticRecoveryEnabled`) still reconnects in the background, but it does not replay a failed publish.
+
+The source message is acknowledged after its publish succeeds, outside the retried call. A failed acknowledgement
+never publishes the message again, and a failed publish never acknowledges it.
 
 ## Connection Management
 

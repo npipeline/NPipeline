@@ -16,46 +16,31 @@ public sealed record Watermark(DateTimeOffset Timestamp)
     ///     Creates a watermark with the current timestamp.
     /// </summary>
     /// <returns>A new <see cref="Watermark" /> instance.</returns>
-    public static Watermark Now()
-    {
-        return new Watermark(DateTimeOffset.UtcNow);
-    }
+    public static Watermark Now() => new(DateTimeOffset.UtcNow);
 
     /// <summary>
     ///     Creates a watermark with the specified timestamp.
     /// </summary>
     /// <param name="timestamp">The timestamp for the watermark.</param>
     /// <returns>A new <see cref="Watermark" /> instance.</returns>
-    public static Watermark Create(DateTimeOffset timestamp)
-    {
-        return new Watermark(timestamp);
-    }
+    public static Watermark Create(DateTimeOffset timestamp) => new(timestamp);
 
     /// <summary>
     ///     Determines whether the specified timestamp is earlier than this watermark.
     /// </summary>
     /// <param name="timestamp">The timestamp to check.</param>
     /// <returns><c>true</c> if the timestamp is earlier than the watermark; otherwise, <c>false</c>.</returns>
-    public bool IsEarlierThan(DateTimeOffset timestamp)
-    {
-        return timestamp < Timestamp;
-    }
+    public bool IsEarlierThan(DateTimeOffset timestamp) => timestamp < Timestamp;
 
     /// <summary>
     ///     Determines whether the specified timestamp is later than or equal to this watermark.
     /// </summary>
     /// <param name="timestamp">The timestamp to check.</param>
     /// <returns><c>true</c> if the timestamp is later than or equal to the watermark; otherwise, <c>false</c>.</returns>
-    public bool IsLaterThanOrEqual(DateTimeOffset timestamp)
-    {
-        return timestamp >= Timestamp;
-    }
+    public bool IsLaterThanOrEqual(DateTimeOffset timestamp) => timestamp >= Timestamp;
 
     /// <inheritdoc />
-    public override string ToString()
-    {
-        return $"Watermark({Timestamp:O})";
-    }
+    public override string ToString() => $"Watermark({Timestamp:O})";
 }
 
 /// <summary>
@@ -87,10 +72,7 @@ public static class WatermarkGenerators
     /// </summary>
     /// <param name="maxOutOfOrderness">The maximum allowed out-of-orderness.</param>
     /// <returns>A new <see cref="BoundedOutOfOrdernessWatermarkGenerator{T}" /> instance.</returns>
-    public static BoundedOutOfOrdernessWatermarkGenerator<T> BoundedOutOfOrderness<T>(TimeSpan maxOutOfOrderness)
-    {
-        return new BoundedOutOfOrdernessWatermarkGenerator<T>(maxOutOfOrderness);
-    }
+    public static BoundedOutOfOrdernessWatermarkGenerator<T> BoundedOutOfOrderness<T>(TimeSpan maxOutOfOrderness) => new(maxOutOfOrderness);
 
     /// <summary>
     ///     Creates a periodic watermark generator.
@@ -98,10 +80,7 @@ public static class WatermarkGenerators
     /// <param name="interval">The interval at which to emit watermarks.</param>
     /// <param name="maxOutOfOrderness">The maximum allowed out-of-orderness.</param>
     /// <returns>A new <see cref="PeriodicWatermarkGenerator{T}" /> instance.</returns>
-    public static PeriodicWatermarkGenerator<T> Periodic<T>(TimeSpan interval, TimeSpan maxOutOfOrderness)
-    {
-        return new PeriodicWatermarkGenerator<T>(interval, maxOutOfOrderness);
-    }
+    public static PeriodicWatermarkGenerator<T> Periodic<T>(TimeSpan interval, TimeSpan maxOutOfOrderness) => new(interval, maxOutOfOrderness);
 }
 
 /// <summary>
@@ -121,13 +100,12 @@ public sealed class BoundedOutOfOrdernessWatermarkGenerator<T>(TimeSpan maxOutOf
     }
 
     /// <inheritdoc />
-    public override Watermark GetCurrentWatermark()
-    {
+    public override Watermark GetCurrentWatermark() =>
+
         // Prevent underflow when _maxTimestamp is DateTimeOffset.MinValue (no events yet)
-        return _maxTimestamp == DateTimeOffset.MinValue
+        _maxTimestamp == DateTimeOffset.MinValue
             ? new Watermark(DateTimeOffset.MinValue)
             : new Watermark(SafeSubtract(_maxTimestamp, maxOutOfOrderness));
-    }
 
     /// <summary>
     ///     Safely subtracts a TimeSpan from a DateTimeOffset, preventing underflow to DateTimeOffset.MinValue.

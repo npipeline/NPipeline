@@ -41,10 +41,7 @@ public sealed class TokenBucketRateLimiter : IRateLimiter, IAsyncDisposable
     }
 
     /// <inheritdoc />
-    public ValueTask DisposeAsync()
-    {
-        return _inner.DisposeAsync();
-    }
+    public ValueTask DisposeAsync() => _inner.DisposeAsync();
 
     /// <inheritdoc />
     public async ValueTask WaitAsync(CancellationToken cancellationToken = default)

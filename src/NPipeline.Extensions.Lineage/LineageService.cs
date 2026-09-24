@@ -10,7 +10,6 @@ using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.Graph;
 using NPipeline.Graph.PipelineDelegates;
-using NPipeline.Lineage;
 using NPipeline.Pipeline;
 
 namespace NPipeline.Lineage;
@@ -24,12 +23,17 @@ public sealed class LineageService : ILineage
     private static readonly DefaultLineageAdapterBuilder AdapterBuilder = new();
 
     private static readonly MethodInfo BuildAdapterGenericMethodDefinition = typeof(DefaultLineageAdapterBuilder)
-        .GetMethod(nameof(DefaultLineageAdapterBuilder.BuildLineageAdapter), BindingFlags.Public | BindingFlags.Instance)
-        ?? throw new InvalidOperationException("Method 'BuildLineageAdapter' not found on DefaultLineageAdapterBuilder.");
+                                                                                 .GetMethod(nameof(DefaultLineageAdapterBuilder.BuildLineageAdapter),
+                                                                                     BindingFlags.Public | BindingFlags.Instance)
+                                                                             ?? throw new InvalidOperationException(
+                                                                                 "Method 'BuildLineageAdapter' not found on DefaultLineageAdapterBuilder.");
 
     private static readonly MethodInfo BuildSinkUnwrapGenericMethodDefinition = typeof(DefaultLineageAdapterBuilder)
-        .GetMethod(nameof(DefaultLineageAdapterBuilder.BuildSinkLineageUnwrapDelegate), BindingFlags.Public | BindingFlags.Instance)
-        ?? throw new InvalidOperationException("Method 'BuildSinkLineageUnwrapDelegate' not found on DefaultLineageAdapterBuilder.");
+                                                                                    .GetMethod(
+                                                                                        nameof(DefaultLineageAdapterBuilder.BuildSinkLineageUnwrapDelegate),
+                                                                                        BindingFlags.Public | BindingFlags.Instance)
+                                                                                ?? throw new InvalidOperationException(
+                                                                                    "Method 'BuildSinkLineageUnwrapDelegate' not found on DefaultLineageAdapterBuilder.");
 
     private static readonly ConcurrentDictionary<Type, Func<IDataStream, string, Guid, string?, LineageOptions?, IDataStream>> WrapSourceDelegates = new();
 
@@ -249,12 +253,10 @@ public sealed class LineageService : ILineage
         }
     }
 
-    private static object UnwrapIfLineage(object item)
-    {
-        return item is ILineageEnvelope env
+    private static object UnwrapIfLineage(object item) =>
+        item is ILineageEnvelope env
             ? env.Data!
             : item;
-    }
 
     private static Func<IDataStream, string, Guid, string?, LineageOptions?, IDataStream> BuildWrapSourceDelegate(Type dataType)
     {
@@ -788,10 +790,7 @@ public sealed class LineageService : ILineage
         return merged.DrainToImmutable();
     }
 
-    private static string QualifyNodeId(string nodeId, Guid pipelineId)
-    {
-        return $"{pipelineId:N}::{nodeId}";
-    }
+    private static string QualifyNodeId(string nodeId, Guid pipelineId) => $"{pipelineId:N}::{nodeId}";
 
     private static InputLineageEntry ToInputLineageEntry(object? context)
     {
@@ -878,10 +877,7 @@ public sealed class LineageService : ILineage
         }
     }
 
-    private static object? SnapshotValue(object? value, LineageOptions? options)
-    {
-        return LineageMappingStrategyBase.SnapshotValue(value, options);
-    }
+    private static object? SnapshotValue(object? value, LineageOptions? options) => LineageMappingStrategyBase.SnapshotValue(value, options);
 
     private static IEnumerable ExtractDataFromPipe(IDataStream pipe)
     {

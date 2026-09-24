@@ -17,8 +17,5 @@ public sealed class SnowflakeTestFixture : IAsyncLifetime
         await connection.OpenAsync();
     }
 
-    public Task DisposeAsync()
-    {
-        return Task.CompletedTask;
-    }
+    public Task DisposeAsync() => Task.CompletedTask;
 }

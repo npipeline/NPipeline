@@ -1,4 +1,7 @@
+using System.Globalization;
 using NPipeline.Connectors.MongoDB.Configuration;
+using NPipeline.Connectors.MongoDB.Reliability;
+using NResilience;
 
 namespace NPipeline.Connectors.MongoDB.Tests.Configuration;
 
@@ -18,8 +21,7 @@ public sealed class MongoConfigurationTests
         config.WriteStrategy.Should().Be(MongoWriteStrategy.BulkWrite); // plan default
         config.OnDuplicate.Should().Be(OnDuplicateAction.Fail);
         config.UpsertKeyFields.Should().BeEquivalentTo("_id");
-        config.MaxRetryAttempts.Should().Be(3);
-        config.RetryDelay.TotalSeconds.Should().Be(1);
+        config.Resilience.Should().BeSameAs(MongoConnectorResilience.Default);
         config.ContinueOnError.Should().BeFalse();
         config.NoCursorTimeout.Should().BeFalse();
         config.CommandTimeoutSeconds.Should().Be(30);
@@ -60,21 +62,22 @@ public sealed class MongoConfigurationTests
     }
 
     [Fact]
-    public void Validate_ThrowsWhenRetryAttemptsIsNegative()
+    public void Validate_ThrowsWhenResilienceIsNull()
     {
         var config = ValidConfig();
-        config.MaxRetryAttempts = -1;
+        config.Resilience = null!;
         var act = () => config.Validate();
-        act.Should().Throw<ArgumentException>().WithMessage("*MaxRetryAttempts*");
+        act.Should().Throw<ArgumentNullException>();
     }
 
     [Fact]
-    public void Validate_ThrowsWhenRetryDelayIsNegative()
+    public void Validate_ThrowsWhenResilienceIsImpossible()
     {
         var config = ValidConfig();
-        config.RetryDelay = TimeSpan.FromSeconds(-1);
+        var attempts = int.Parse("0", CultureInfo.InvariantCulture); // not a constant, which the analyzer would reject
+        config.Resilience = MongoConnectorResilience.Default with { Attempts = attempts };
         var act = () => config.Validate();
-        act.Should().Throw<ArgumentException>().WithMessage("*RetryDelay*");
+        act.Should().Throw<ResilienceConfigurationException>();
     }
 
     [Fact]
@@ -105,8 +108,5 @@ public sealed class MongoConfigurationTests
         act.Should().NotThrow();
     }
 
-    private static MongoConfiguration ValidConfig()
-    {
-        return new MongoConfiguration { DatabaseName = "testdb", CollectionName = "testcol" };
-    }
+    private static MongoConfiguration ValidConfig() => new() { DatabaseName = "testdb", CollectionName = "testcol" };
 }
