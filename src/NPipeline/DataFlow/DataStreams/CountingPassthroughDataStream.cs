@@ -22,10 +22,7 @@ internal sealed class CountingPassthroughDataStream<T> : IForwardOnlyDataStream<
 
     public string StreamName => $"Counted_{_inner.StreamName}";
 
-    public Type GetDataType()
-    {
-        return typeof(T);
-    }
+    public Type GetDataType() => typeof(T);
 
     public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
     {
@@ -54,12 +51,13 @@ internal sealed class CountingPassthroughDataStream<T> : IForwardOnlyDataStream<
 
     private async IAsyncEnumerable<T> EnumerateWithCounting([EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        #pragma warning disable CA2007
+#pragma warning disable CA2007
+
         // CA2007 false positive: the enumerator comes from a ConfigureAwait(false) sequence, so its
         // MoveNextAsync and DisposeAsync already return configured awaitables - the analyzer only
         // recognises ConfigureAwait applied directly to the await using expression.
         await using var enumerator = _inner.WithCancellation(cancellationToken).ConfigureAwait(false).GetAsyncEnumerator();
-        #pragma warning restore CA2007
+#pragma warning restore CA2007
 
         // Counted locally and folded into the shared counter once, so the per-item path carries no
         // atomic and parallel nodes do not contend for the counter's cache line.

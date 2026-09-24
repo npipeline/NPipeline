@@ -31,15 +31,15 @@ internal sealed class ResumableInput<T> : IAsyncDisposable
 
     // Serializes reads from the source enumerator, which supports only one MoveNextAsync at a time.
     private readonly SemaphoreSlim _readLock = new(1, 1);
-    private readonly IDataStream<T> _source;
-    private readonly CancellationToken _sourceToken;
 
     // Items from _released to _readHead - 1; the item at index i is _retained[_head + (i - _released)].
     private readonly List<T> _retained = [];
-    private TaskCompletionSource _changed = NewSignal();
+    private readonly IDataStream<T> _source;
+    private readonly CancellationToken _sourceToken;
 
     // Whether a reader is waiting on _changed. Signalling is needed only then, so the common path allocates nothing.
     private bool _changeAwaited;
+    private TaskCompletionSource _changed = NewSignal();
     private bool _closed;
     private bool _drained;
     private Exception? _fault;
@@ -81,28 +81,6 @@ internal sealed class ResumableInput<T> : IAsyncDisposable
     }
 
     /// <summary>
-    ///     Opens the input at the current checkpoint, ending every earlier enumeration.
-    /// </summary>
-    /// <param name="offset">The index of the first item the returned input yields.</param>
-    /// <returns>The input from the checkpoint, and the checkpoint to report delivered items to.</returns>
-    public (IDataStream<T> Input, RestartCheckpoint Checkpoint) Open(out long offset)
-    {
-        int generation;
-
-        lock (_gate)
-        {
-            ObjectDisposedException.ThrowIf(_closed, this);
-
-            generation = ++_generation;
-            offset = _released;
-            Signal();
-        }
-
-        var checkpoint = new RestartCheckpoint(offset, watermark => Release(generation, watermark));
-        return (new DataStream<T>(ReadAsync(generation, offset), _source.StreamName), checkpoint);
-    }
-
-    /// <summary>
     ///     Ends every enumeration and disposes the input's enumerator.
     /// </summary>
     public async ValueTask DisposeAsync()
@@ -129,6 +107,28 @@ internal sealed class ResumableInput<T> : IAsyncDisposable
         {
             _ = _readLock.Release();
         }
+    }
+
+    /// <summary>
+    ///     Opens the input at the current checkpoint, ending every earlier enumeration.
+    /// </summary>
+    /// <param name="offset">The index of the first item the returned input yields.</param>
+    /// <returns>The input from the checkpoint, and the checkpoint to report delivered items to.</returns>
+    public (IDataStream<T> Input, RestartCheckpoint Checkpoint) Open(out long offset)
+    {
+        int generation;
+
+        lock (_gate)
+        {
+            ObjectDisposedException.ThrowIf(_closed, this);
+
+            generation = ++_generation;
+            offset = _released;
+            Signal();
+        }
+
+        var checkpoint = new RestartCheckpoint(offset, watermark => Release(generation, watermark));
+        return (new DataStream<T>(ReadAsync(generation, offset), _source.StreamName), checkpoint);
     }
 
     private async IAsyncEnumerable<T> ReadAsync(int generation, long position, [EnumeratorCancellation] CancellationToken cancellationToken = default)
@@ -167,6 +167,7 @@ internal sealed class ResumableInput<T> : IAsyncDisposable
             {
                 position++;
                 yield return item;
+
                 continue;
             }
 
@@ -299,8 +300,5 @@ internal sealed class ResumableInput<T> : IAsyncDisposable
         _ = previous.TrySetResult();
     }
 
-    private static TaskCompletionSource NewSignal()
-    {
-        return new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-    }
+    private static TaskCompletionSource NewSignal() => new(TaskCreationOptions.RunContinuationsAsynchronously);
 }

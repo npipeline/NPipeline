@@ -61,29 +61,26 @@ public sealed class DataStreamWrapperService
         return wrapper.WrapMulticast(pipe, counter, branchCount, options, metrics);
     }
 
-    private static BranchOptions? GetBranchOptions(PipelineGraph graph, string nodeId)
-    {
-        return graph.ExecutionOptions.NodeExecutionAnnotations?.TryGetValue(ExecutionAnnotationKeys.BranchOptionsForNode(nodeId), out var fo) == true &&
-               fo is BranchOptions f
+    private static BranchOptions? GetBranchOptions(PipelineGraph graph, string nodeId) =>
+        graph.ExecutionOptions.NodeExecutionAnnotations?.TryGetValue(ExecutionAnnotationKeys.BranchOptionsForNode(nodeId), out var fo) == true &&
+        fo is BranchOptions f
             ? f
             : graph.ExecutionOptions.NodeExecutionAnnotations?.TryGetValue(ExecutionAnnotationKeys.GlobalBranchingCapacity, out var gcap) == true &&
               gcap is int gc and > 0
                 ? new BranchOptions(gc)
                 : null;
-    }
 
-    private static object? GetRouteOptions(PipelineGraph graph, string nodeId)
-    {
-        return graph.ExecutionOptions.NodeExecutionAnnotations?.TryGetValue(ExecutionAnnotationKeys.RouteOptionsForNode(nodeId), out var routeOptions) == true
+    private static object? GetRouteOptions(PipelineGraph graph, string nodeId) =>
+        graph.ExecutionOptions.NodeExecutionAnnotations?.TryGetValue(ExecutionAnnotationKeys.RouteOptionsForNode(nodeId), out var routeOptions) == true
             ? routeOptions
             : null;
-    }
 
     // Internal wrapper abstraction avoids per-call reflection.
     private interface IOptimizedWrapper
     {
         IDataStream WrapPassthrough(IDataStream pipe, StatsCounter counter);
         IDataStream WrapMulticast(IDataStream pipe, StatsCounter counter, int subscribers, BranchOptions? options, BranchMetrics metrics);
+
         IDataStream WrapConditionalMulticast(
             IDataStream pipe,
             StatsCounter counter,

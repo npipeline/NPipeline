@@ -17,22 +17,6 @@ internal sealed class SynchronizedNodeOutputs(IDictionary<string, IDataStream?> 
 {
     private Dictionary<string, IDataStream?>? _detachedSnapshot;
 
-    /// <summary>
-    ///     Hands the underlying map back to the caller and serves everything from a snapshot afterwards.
-    /// </summary>
-    /// <remarks>
-    ///     Used when the drain gives up on terminals that a stalled pump may never release: the run is already failing
-    ///     and cleanup is about to iterate and dispose the map, so a straggler must not still be writing into it. After
-    ///     this call the stragglers read a frozen copy and their writes are discarded.
-    /// </remarks>
-    public void DetachFromInner()
-    {
-        lock (gate)
-        {
-            _detachedSnapshot ??= new Dictionary<string, IDataStream?>(inner, StringComparer.Ordinal);
-        }
-    }
-
     private IDictionary<string, IDataStream?> Target => _detachedSnapshot ?? inner;
 
     public IDataStream? this[string key]
@@ -175,8 +159,21 @@ internal sealed class SynchronizedNodeOutputs(IDictionary<string, IDataStream?> 
         return snapshot.GetEnumerator();
     }
 
-    IEnumerator IEnumerable.GetEnumerator()
+    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+    /// <summary>
+    ///     Hands the underlying map back to the caller and serves everything from a snapshot afterwards.
+    /// </summary>
+    /// <remarks>
+    ///     Used when the drain gives up on terminals that a stalled pump may never release: the run is already failing
+    ///     and cleanup is about to iterate and dispose the map, so a straggler must not still be writing into it. After
+    ///     this call the stragglers read a frozen copy and their writes are discarded.
+    /// </remarks>
+    public void DetachFromInner()
     {
-        return GetEnumerator();
+        lock (gate)
+        {
+            _detachedSnapshot ??= new Dictionary<string, IDataStream?>(inner, StringComparer.Ordinal);
+        }
     }
 }

@@ -21,20 +21,11 @@ internal readonly record struct ItemExecutionResult<TOut>(
 {
     public bool Produced => Outcome == ItemExecutionOutcome.Emitted;
 
-    public static ItemExecutionResult<TOut> Emitted(TOut output, int retryCount)
-    {
-        return new ItemExecutionResult<TOut>(ItemExecutionOutcome.Emitted, output, retryCount);
-    }
+    public static ItemExecutionResult<TOut> Emitted(TOut output, int retryCount) => new(ItemExecutionOutcome.Emitted, output, retryCount);
 
-    public static ItemExecutionResult<TOut> Skipped(int retryCount)
-    {
-        return new ItemExecutionResult<TOut>(ItemExecutionOutcome.Skipped, default, retryCount);
-    }
+    public static ItemExecutionResult<TOut> Skipped(int retryCount) => new(ItemExecutionOutcome.Skipped, default, retryCount);
 
-    public static ItemExecutionResult<TOut> DeadLettered(int retryCount)
-    {
-        return new ItemExecutionResult<TOut>(ItemExecutionOutcome.DeadLettered, default, retryCount);
-    }
+    public static ItemExecutionResult<TOut> DeadLettered(int retryCount) => new(ItemExecutionOutcome.DeadLettered, default, retryCount);
 }
 
 internal interface IPerItemRetryExecutor

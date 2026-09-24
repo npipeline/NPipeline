@@ -28,5 +28,5 @@ public enum PipelineOptimizationProfile
     ///     Zero-allocation, explicit-everything model. Users must configure retry,
     ///     materialization caps, and delay strategies explicitly.
     /// </summary>
-    HighThroughput = 1
+    HighThroughput = 1,
 }

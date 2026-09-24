@@ -10,10 +10,10 @@ namespace NPipeline.DataFlow.DataStreams;
 /// </summary>
 internal sealed class CountingMulticastDataStream<T> : IForwardOnlyDataStream<T>, IHasBranchMetrics
 {
+    private readonly int[] _abandonedChannels;
     private readonly Channel<T>[] _channels;
     private readonly StatsCounter _counter;
     private readonly CancellationTokenSource _cts = new();
-    private readonly int[] _abandonedChannels;
     private readonly int[] _pendingPerChannel;
     private readonly Task _pumpTask;
     private readonly IDataStream<T> _source;
@@ -65,10 +65,7 @@ internal sealed class CountingMulticastDataStream<T> : IForwardOnlyDataStream<T>
 
     public string StreamName => $"CountedMulticast_{_source.StreamName}";
 
-    public Type GetDataType()
-    {
-        return typeof(T);
-    }
+    public Type GetDataType() => typeof(T);
 
     public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
     {
@@ -89,6 +86,7 @@ internal sealed class CountingMulticastDataStream<T> : IForwardOnlyDataStream<T>
     public async IAsyncEnumerable<object?> ToAsyncEnumerable([EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
+
         await foreach (var item in this.WithCancellation(cancellationToken).ConfigureAwait(false))
         {
             yield return item;

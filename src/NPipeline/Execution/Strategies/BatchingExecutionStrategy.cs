@@ -105,7 +105,7 @@ public sealed class BatchingExecutionStrategy : IExecutionStrategy, IStreamExecu
         }
 
         var observabilityScope = context.NodeEnvironment.NodeExecutionScopeRegistry.BeginNodeScope(nodeId);
-        var timedInput = NPipeline.Execution.NodeTimingDataStreamWrapper.WrapInputWait(input, observabilityScope);
+        var timedInput = NodeTimingDataStreamWrapper.WrapInputWait(input, observabilityScope);
 
         var batchedStream = BatchWithObservabilityAsync(timedInput, BatchSize, Timespan, observabilityScope, cancellationToken);
 
@@ -136,7 +136,7 @@ public sealed class BatchingExecutionStrategy : IExecutionStrategy, IStreamExecu
         }
 
         var observabilityScope = context.NodeEnvironment.NodeExecutionScopeRegistry.BeginNodeScope(nodeId);
-        var timedInput = NPipeline.Execution.NodeTimingDataStreamWrapper.WrapInputWait(input, observabilityScope);
+        var timedInput = NodeTimingDataStreamWrapper.WrapInputWait(input, observabilityScope);
 
         var batchedStream = BatchWithObservabilityAsync(timedInput, BatchSize, Timespan, observabilityScope, cancellationToken);
 
@@ -163,7 +163,7 @@ public sealed class BatchingExecutionStrategy : IExecutionStrategy, IStreamExecu
         var batch = new List<T>(batchSize);
         var lastYieldTime = DateTime.UtcNow;
 
-        #pragma warning disable CA2007
+#pragma warning disable CA2007
 
         // CA2007 false positive: the enumerator comes from a ConfigureAwait(false) sequence, so its
 
@@ -173,7 +173,7 @@ public sealed class BatchingExecutionStrategy : IExecutionStrategy, IStreamExecu
 
         await using var inputEnumerator = input.WithCancellation(cancellationToken).ConfigureAwait(false).GetAsyncEnumerator();
 
-        #pragma warning restore CA2007
+#pragma warning restore CA2007
 
         while (true)
         {

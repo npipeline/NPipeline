@@ -12,7 +12,7 @@ public sealed class ConcatenateMergeStrategy<T> : IMergeStrategy<T>
     /// <inheritdoc />
     public IDataStream<T> Merge(IEnumerable<IDataStream<T>> pipes, CancellationToken cancellationToken)
     {
-        List<IDataStream<T>> typedPipes = [..pipes];
+        List<IDataStream<T>> typedPipes = [.. pipes];
         var concatenatedStream = ConcatenateStreams(typedPipes, cancellationToken);
         return new DataStream<T>(concatenatedStream, "ConcatenatedStream");
     }

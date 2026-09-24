@@ -29,7 +29,8 @@ internal static class CircuitBreakerGate
 
         return breaker.Options.WhenOpen == BreakerOpenBehavior.Pause
             ? PauseAsync(breaker, context, cancellationToken)
-            : ValueTask.FromException<BreakerPermit>(Refused(breaker, $"Circuit breaker for node '{breaker.NodeId}' is {Describe(breaker)}; the attempt was not made."));
+            : ValueTask.FromException<BreakerPermit>(Refused(breaker,
+                $"Circuit breaker for node '{breaker.NodeId}' is {Describe(breaker)}; the attempt was not made."));
     }
 
     public static void RecordSuccess(CircuitBreaker breaker, BreakerPermit permit, PipelineContext context)
@@ -78,7 +79,9 @@ internal static class CircuitBreakerGate
             Report(context, breaker, transition);
 
             // An open breaker admits a probe once its open period has passed; a half-open one when a probe finishes.
-            var wait = breaker.TimeUntilHalfOpen() is { } untilHalfOpen && untilHalfOpen < remaining ? untilHalfOpen : remaining;
+            var wait = breaker.TimeUntilHalfOpen() is { } untilHalfOpen && untilHalfOpen < remaining
+                ? untilHalfOpen
+                : remaining;
 
             try
             {
@@ -91,15 +94,11 @@ internal static class CircuitBreakerGate
         }
     }
 
-    private static CircuitBreakerOpenException Refused(CircuitBreaker breaker, string message)
-    {
-        return new CircuitBreakerOpenException(breaker.NodeId, breaker.State, message);
-    }
+    private static CircuitBreakerOpenException Refused(CircuitBreaker breaker, string message) => new(breaker.NodeId, breaker.State, message);
 
-    private static string Describe(CircuitBreaker breaker)
-    {
-        return breaker.State == CircuitState.HalfOpen ? "half-open with every probe slot in use" : "open";
-    }
+    private static string Describe(CircuitBreaker breaker) => breaker.State == CircuitState.HalfOpen
+        ? "half-open with every probe slot in use"
+        : "open";
 
     private static void Report(PipelineContext context, CircuitBreaker breaker, BreakerTransition transition)
     {
@@ -135,8 +134,5 @@ internal static class CircuitBreakerGate
         }
     }
 
-    private static ILogger CreateLogger(PipelineContext context)
-    {
-        return context.Observability.LoggerFactory.CreateLogger(nameof(CircuitBreaker));
-    }
+    private static ILogger CreateLogger(PipelineContext context) => context.Observability.LoggerFactory.CreateLogger(nameof(CircuitBreaker));
 }

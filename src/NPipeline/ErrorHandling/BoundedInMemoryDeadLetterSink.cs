@@ -77,9 +77,7 @@ public class BoundedInMemoryDeadLetterSink : IDeadLetterSink
         lock (_lock)
         {
             if (_queue.Count >= _capacity)
-            {
                 throw new InvalidOperationException(ErrorMessages.DeadLetterQueueCapacityExceeded(_capacity));
-            }
 
             _queue.Enqueue(envelope);
         }

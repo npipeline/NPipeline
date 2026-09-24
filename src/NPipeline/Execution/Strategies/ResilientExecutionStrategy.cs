@@ -96,6 +96,7 @@ internal sealed class ResilientExecutionStrategy(IExecutionStrategy? innerStrate
                 var stream = await inner.ExecuteFromAsync(runInput, offset, checkpoint, node, context, nodeId, cancellationToken).ConfigureAwait(false);
 
 #pragma warning disable CA2007
+
                 // CA2007 false positive: the enumerator comes from a ConfigureAwait(false) sequence, so its
                 // MoveNextAsync and DisposeAsync already return configured awaitables - the analyzer only
                 // recognises ConfigureAwait applied directly to the await using expression.

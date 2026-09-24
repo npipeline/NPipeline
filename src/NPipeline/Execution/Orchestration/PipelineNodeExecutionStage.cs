@@ -168,11 +168,9 @@ internal sealed class PipelineNodeExecutionStage(
     ///     A node is terminal when nothing downstream consumes it, which makes it safe to defer and drain alongside
     ///     its siblings.
     /// </summary>
-    private static bool IsTerminal(GraphTopology topology, NodeDefinition nodeDef)
-    {
-        return nodeDef.Kind is NodeKind.Sink or NodeKind.CompositeOutput
-               && !topology.OutgoingEdges.ContainsKey(nodeDef.Id);
-    }
+    private static bool IsTerminal(GraphTopology topology, NodeDefinition nodeDef) =>
+        nodeDef.Kind is NodeKind.Sink or NodeKind.CompositeOutput
+        && !topology.OutgoingEdges.ContainsKey(nodeDef.Id);
 
     /// <summary>
     ///     Reports whether any node feeds more than one downstream node, which is what puts a multicast pump in play.
@@ -204,7 +202,8 @@ internal sealed class PipelineNodeExecutionStage(
             _ = context.NodeEnvironment.NodeExecutionScopeRegistry.RemoveNodeExecutionAnnotation(nodeId);
 
         if (graph.ExecutionOptions.NodeExecutionAnnotations != null &&
-            graph.ExecutionOptions.NodeExecutionAnnotations.TryGetValue(ExecutionAnnotationKeys.NodeResiliencePolicyForNode(nodeId), out var policyAnnotation) &&
+            graph.ExecutionOptions.NodeExecutionAnnotations.TryGetValue(ExecutionAnnotationKeys.NodeResiliencePolicyForNode(nodeId),
+                out var policyAnnotation) &&
             policyAnnotation is IResiliencePolicy nodePolicy)
             context.NodeEnvironment.NodeExecutionScopeRegistry.SetRuntimeAnnotation(ExecutionAnnotationKeys.NodeResiliencePolicyForNode(nodeId), nodePolicy);
     }

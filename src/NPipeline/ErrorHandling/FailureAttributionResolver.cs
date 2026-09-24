@@ -27,13 +27,15 @@ public static class FailureAttributionResolver
         var originNodeId = ExtractOriginNodeId(exception) ?? decisionNodeId;
 
         return new NodeFailureAttribution(
-            OriginNodeId: originNodeId,
-            DecisionNodeId: decisionNodeId,
-            OriginPipelineId: context.RunIdentity.PipelineId,
-            DecisionPipelineId: context.RunIdentity.PipelineId,
-            RunId: context.RunIdentity.RunId == Guid.Empty ? null : context.RunIdentity.RunId,
-            CorrelationId: correlationId,
-            RetryCount: retryCount);
+            originNodeId,
+            decisionNodeId,
+            context.RunIdentity.PipelineId,
+            context.RunIdentity.PipelineId,
+            context.RunIdentity.RunId == Guid.Empty
+                ? null
+                : context.RunIdentity.RunId,
+            correlationId,
+            retryCount);
     }
 
     /// <summary>

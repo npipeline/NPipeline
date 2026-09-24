@@ -12,10 +12,7 @@ public static class TimeWindowedJoinWindows
     /// </summary>
     /// <param name="windowSize">The size of each window.</param>
     /// <returns>A new <see cref="TumblingWindowAssigner" /> instance.</returns>
-    public static TumblingWindowAssigner Tumbling(TimeSpan windowSize)
-    {
-        return new TumblingWindowAssigner(windowSize);
-    }
+    public static TumblingWindowAssigner Tumbling(TimeSpan windowSize) => new(windowSize);
 
     /// <summary>
     ///     Creates a sliding window assigner with the specified window size and slide interval.
@@ -23,8 +20,5 @@ public static class TimeWindowedJoinWindows
     /// <param name="windowSize">The size of each window.</param>
     /// <param name="slide">The slide interval between windows.</param>
     /// <returns>A new <see cref="SlidingWindowAssigner" /> instance.</returns>
-    public static SlidingWindowAssigner Sliding(TimeSpan windowSize, TimeSpan slide)
-    {
-        return new SlidingWindowAssigner(windowSize, slide);
-    }
+    public static SlidingWindowAssigner Sliding(TimeSpan windowSize, TimeSpan slide) => new(windowSize, slide);
 }

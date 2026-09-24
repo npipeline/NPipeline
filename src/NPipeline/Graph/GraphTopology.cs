@@ -112,12 +112,10 @@ public sealed class GraphTopology
     /// </summary>
     /// <param name="nodeId">The source node ID.</param>
     /// <returns>The node's outgoing edges.</returns>
-    public ImmutableArray<Edge> OutgoingFrom(string nodeId)
-    {
-        return OutgoingEdges.TryGetValue(nodeId, out var edges)
+    public ImmutableArray<Edge> OutgoingFrom(string nodeId) =>
+        OutgoingEdges.TryGetValue(nodeId, out var edges)
             ? edges
             : [];
-    }
 
     private static GraphTopology Compute(PipelineGraph graph, Edge[] edgesKey)
     {

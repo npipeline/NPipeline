@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Linq.Expressions;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
@@ -45,34 +46,33 @@ public static class NodeTimingDataStreamWrapper
         var scopeParam = Expression.Parameter(typeof(IAutoObservabilityScope), "scope");
 
         var wrapMethod = typeof(NodeTimingDataStreamWrapper)
-            .GetMethod(nameof(WrapInputWaitGeneric), System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!
+            .GetMethod(nameof(WrapInputWaitGeneric), BindingFlags.NonPublic | BindingFlags.Static)!
             .MakeGenericMethod(dataType);
 
         var call = Expression.Call(wrapMethod, inputParam, scopeParam);
         return Expression.Lambda<Func<IDataStream, IAutoObservabilityScope, IDataStream>>(call, inputParam, scopeParam).Compile();
     }
 
-    private static IDataStream WrapInputWaitGeneric<T>(IDataStream input, IAutoObservabilityScope scope)
-    {
-        return WrapInputWait((IDataStream<T>)input, scope);
-    }
+    private static IDataStream WrapInputWaitGeneric<T>(IDataStream input, IAutoObservabilityScope scope) => WrapInputWait((IDataStream<T>)input, scope);
 
     private static async IAsyncEnumerable<T> EnumerateWithInputWait<T>(
         IDataStream<T> input,
         IAutoObservabilityScope scope,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        #pragma warning disable CA2007
+#pragma warning disable CA2007
+
         // CA2007 false positive: the enumerator comes from a ConfigureAwait(false) sequence, so its
         // MoveNextAsync and DisposeAsync already return configured awaitables - the analyzer only
         // recognises ConfigureAwait applied directly to the await using expression.
         await using var enumerator = input.WithCancellation(cancellationToken).ConfigureAwait(false).GetAsyncEnumerator();
-        #pragma warning restore CA2007
+#pragma warning restore CA2007
 
         while (true)
         {
             var waitStart = Stopwatch.GetTimestamp();
             bool hasNext;
+
             try
             {
                 hasNext = await enumerator.MoveNextAsync();

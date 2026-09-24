@@ -54,14 +54,14 @@ public sealed class DefaultResiliencePolicy : IResiliencePolicy
     }
 
     /// <inheritdoc />
-    public ValueTask<ResilienceDecision> DecideRestartAsync(StreamFailure failure, CancellationToken cancellationToken)
-    {
-        return ValueTask.FromResult(failure.CanRestart ? ResilienceDecision.RestartNode : ResilienceDecision.Fail);
-    }
+    public ValueTask<ResilienceDecision> DecideRestartAsync(StreamFailure failure, CancellationToken cancellationToken) => ValueTask.FromResult(
+        failure.CanRestart
+            ? ResilienceDecision.RestartNode
+            : ResilienceDecision.Fail);
 
     /// <inheritdoc />
-    public ValueTask<ResilienceDecision> DecideNodeFailureAsync(NodeFailure failure, CancellationToken cancellationToken)
-    {
-        return ValueTask.FromResult(failure.CanRetry ? ResilienceDecision.Retry : ResilienceDecision.Fail);
-    }
+    public ValueTask<ResilienceDecision> DecideNodeFailureAsync(NodeFailure failure, CancellationToken cancellationToken) => ValueTask.FromResult(
+        failure.CanRetry
+            ? ResilienceDecision.Retry
+            : ResilienceDecision.Fail);
 }

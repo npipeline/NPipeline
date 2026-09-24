@@ -101,6 +101,8 @@ public sealed record PipelineResilienceOptions
     /// </summary>
     public TimeProvider Time { get; init; } = TimeProvider.System;
 
+    private static PipelineResilienceOptions DefaultProfile { get; } = new() { ItemRetry = ItemRetryOptions.Default };
+
     /// <summary>
     ///     The options an optimization profile starts from.
     /// </summary>
@@ -119,8 +121,6 @@ public sealed record PipelineResilienceOptions
             _ => throw new ArgumentOutOfRangeException(nameof(profile), profile, "Unsupported pipeline optimization profile."),
         };
     }
-
-    private static PipelineResilienceOptions DefaultProfile { get; } = new() { ItemRetry = ItemRetryOptions.Default };
 
     /// <summary>
     ///     Throws when a value is out of range.

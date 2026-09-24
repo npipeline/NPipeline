@@ -6,7 +6,10 @@ namespace NPipeline.Observability.Metrics;
 /// <param name="NodeId">The unique identifier of the node.</param>
 /// <param name="StartTime">The timestamp when the node execution started.</param>
 /// <param name="EndTime">The timestamp when the node execution completed.</param>
-/// <param name="DurationMs">The node-owned work duration in milliseconds. Breaking change: this parameter previously represented wall-clock elapsed time; use WallDurationMs for wall-clock comparisons.</param>
+/// <param name="DurationMs">
+///     The node-owned work duration in milliseconds. Breaking change: this parameter previously represented wall-clock elapsed time; use
+///     WallDurationMs for wall-clock comparisons.
+/// </param>
 /// <param name="Success">Whether the node execution was successful.</param>
 /// <param name="ItemsProcessed">The number of items processed by this node.</param>
 /// <param name="ItemsEmitted">The number of items emitted by this node.</param>

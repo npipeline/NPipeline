@@ -108,7 +108,9 @@ internal sealed class PerItemRetryExecutor : IPerItemRetryExecutor
                 switch (decision)
                 {
                     case ResilienceDecision.Skip:
-                        RecordLineageOutcome(hasLineageIndex, lineageInputIndex, in lineageOutcomeWriter, context, nodeId, LineageOutcomeReason.FilteredOut, retries);
+                        RecordLineageOutcome(hasLineageIndex, lineageInputIndex, in lineageOutcomeWriter, context, nodeId, LineageOutcomeReason.FilteredOut,
+                            retries);
+
                         ReportNoOutput(hasLineageIndex, lineageInputIndex, in lineageOutcomeWriter, LineageOutcomeReason.FilteredOut);
                         return ItemExecutionResult<TOut>.Skipped(retries);
 
@@ -118,12 +120,18 @@ internal sealed class PerItemRetryExecutor : IPerItemRetryExecutor
                             // Dropping the item here would lose it silently while lineage claimed it was dead-lettered.
                             var noSink = new DeadLetterSinkNotConfiguredException(nodeId, ex);
                             RecordErrorSample(context, nodeId, item, noSink, retries, hasLineageIndex, lineageInputIndex, in lineageOutcomeWriter);
-                            RecordLineageOutcome(hasLineageIndex, lineageInputIndex, in lineageOutcomeWriter, context, nodeId, LineageOutcomeReason.Error, retries);
+
+                            RecordLineageOutcome(hasLineageIndex, lineageInputIndex, in lineageOutcomeWriter, context, nodeId, LineageOutcomeReason.Error,
+                                retries);
+
                             throw noSink;
                         }
 
                         await DispatchDeadLetterAsync(context.DeadLetterSink, item, ex, context, nodeId, retries, cancellationToken).ConfigureAwait(false);
-                        RecordLineageOutcome(hasLineageIndex, lineageInputIndex, in lineageOutcomeWriter, context, nodeId, LineageOutcomeReason.DeadLettered, retries);
+
+                        RecordLineageOutcome(hasLineageIndex, lineageInputIndex, in lineageOutcomeWriter, context, nodeId, LineageOutcomeReason.DeadLettered,
+                            retries);
+
                         ReportNoOutput(hasLineageIndex, lineageInputIndex, in lineageOutcomeWriter, LineageOutcomeReason.DeadLettered);
                         return ItemExecutionResult<TOut>.DeadLettered(retries);
 
@@ -132,7 +140,10 @@ internal sealed class PerItemRetryExecutor : IPerItemRetryExecutor
                         {
                             var runaway = ResilienceRuntime.RepeatCeilingExceeded(policy, nodeId, decision, ex);
                             RecordErrorSample(context, nodeId, item, runaway, retries, hasLineageIndex, lineageInputIndex, in lineageOutcomeWriter);
-                            RecordLineageOutcome(hasLineageIndex, lineageInputIndex, in lineageOutcomeWriter, context, nodeId, LineageOutcomeReason.Error, retries);
+
+                            RecordLineageOutcome(hasLineageIndex, lineageInputIndex, in lineageOutcomeWriter, context, nodeId, LineageOutcomeReason.Error,
+                                retries);
+
                             throw runaway;
                         }
 
@@ -149,7 +160,10 @@ internal sealed class PerItemRetryExecutor : IPerItemRetryExecutor
                         {
                             var exhausted = new RetryExhaustedException(nodeId, attempt, ex);
                             RecordErrorSample(context, nodeId, item, exhausted, retries, hasLineageIndex, lineageInputIndex, in lineageOutcomeWriter);
-                            RecordLineageOutcome(hasLineageIndex, lineageInputIndex, in lineageOutcomeWriter, context, nodeId, LineageOutcomeReason.Error, retries);
+
+                            RecordLineageOutcome(hasLineageIndex, lineageInputIndex, in lineageOutcomeWriter, context, nodeId, LineageOutcomeReason.Error,
+                                retries);
+
                             ResilienceRuntime.ReportRetryExhausted(context, nodeId, RetryKind.ItemRetry, attempt, ex);
                             throw exhausted;
                         }
@@ -182,10 +196,7 @@ internal sealed class PerItemRetryExecutor : IPerItemRetryExecutor
         await Task.Delay(delay, options.Time, cancellationToken).ConfigureAwait(false);
     }
 
-    private static ILogger CreateLogger(PipelineContext context)
-    {
-        return context.Observability.LoggerFactory.CreateLogger(nameof(PerItemRetryExecutor));
-    }
+    private static ILogger CreateLogger(PipelineContext context) => context.Observability.LoggerFactory.CreateLogger(nameof(PerItemRetryExecutor));
 
     /// <summary>
     ///     Records the failure as an error sample, correlated to the item through the lineage registered under its input

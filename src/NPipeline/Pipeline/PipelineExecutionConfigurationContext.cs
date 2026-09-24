@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
 using NPipeline.Configuration;
-using NPipeline.ErrorHandling;
 using NPipeline.Execution;
 using NPipeline.Execution.CircuitBreaking;
 using NPipeline.Reliability;
@@ -12,10 +11,9 @@ namespace NPipeline.Pipeline;
 /// </summary>
 public sealed class PipelineExecutionConfigurationContext
 {
-    private readonly Dictionary<string, PipelineResilienceOptions> _nodeResilience = new();
-
     // Terminal nodes below a fan-out execute concurrently, so this is written from several threads.
     private readonly ConcurrentDictionary<string, InputFlow> _inputFlow = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, PipelineResilienceOptions> _nodeResilience = new();
 
     internal PipelineExecutionConfigurationContext(PipelineOptimizationProfile optimizationProfile)
     {
@@ -32,13 +30,42 @@ public sealed class PipelineExecutionConfigurationContext
     public PipelineResilienceOptions Resilience { get; internal set; } = PipelineResilienceOptions.None;
 
     /// <summary>
+    ///     Unified resilience policy used by runtime execution.
+    /// </summary>
+    public IResiliencePolicy ResiliencePolicy { get; internal set; }
+
+    /// <summary>
+    ///     The optimization profile governing runtime behavior for this pipeline run.
+    ///     This is the runtime source of truth for the active profile - node authors and runtime
+    ///     code should read it from here rather than from <see cref="PipelineContextConfiguration" />.
+    ///     The profile's effects (resilience defaults, dictionary types) are already baked into their
+    ///     respective configurations at build time.
+    /// </summary>
+    public PipelineOptimizationProfile OptimizationProfile { get; }
+
+    /// <summary>
+    ///     Indicates the current run uses parallel execution behavior.
+    /// </summary>
+    public bool IsParallelExecution { get; internal set; }
+
+    /// <summary>
+    ///     The circuit breakers for this run's nodes. A run started by <see cref="PipelineFactory" /> uses the
+    ///     factory's registry for its definition, so breaker state carries over between runs; a strategy executed
+    ///     outside a run uses this context's own.
+    /// </summary>
+    internal CircuitBreakerRegistry CircuitBreakers { get; set; } = new();
+
+    /// <summary>
     ///     The resilience options that apply to <paramref name="nodeId" />: the node's own, or else the pipeline's.
     /// </summary>
     /// <param name="nodeId">The node id.</param>
     public PipelineResilienceOptions GetResilienceOptions(string nodeId)
     {
         ArgumentNullException.ThrowIfNull(nodeId);
-        return _nodeResilience.TryGetValue(nodeId, out var options) ? options : Resilience;
+
+        return _nodeResilience.TryGetValue(nodeId, out var options)
+            ? options
+            : Resilience;
     }
 
     /// <summary>
@@ -70,34 +97,5 @@ public sealed class PipelineExecutionConfigurationContext
     /// <summary>
     ///     The input tracking for <paramref name="nodeId" />, if node retry asked for it.
     /// </summary>
-    internal InputFlow? GetInputFlow(string nodeId)
-    {
-        return _inputFlow.GetValueOrDefault(nodeId);
-    }
-
-    /// <summary>
-    ///     Unified resilience policy used by runtime execution.
-    /// </summary>
-    public IResiliencePolicy ResiliencePolicy { get; internal set; }
-
-    /// <summary>
-    ///     The optimization profile governing runtime behavior for this pipeline run.
-    ///     This is the runtime source of truth for the active profile - node authors and runtime
-    ///     code should read it from here rather than from <see cref="PipelineContextConfiguration" />.
-    ///     The profile's effects (resilience defaults, dictionary types) are already baked into their
-    ///     respective configurations at build time.
-    /// </summary>
-    public PipelineOptimizationProfile OptimizationProfile { get; }
-
-    /// <summary>
-    ///     Indicates the current run uses parallel execution behavior.
-    /// </summary>
-    public bool IsParallelExecution { get; internal set; }
-
-    /// <summary>
-    ///     The circuit breakers for this run's nodes. A run started by <see cref="PipelineFactory" /> uses the
-    ///     factory's registry for its definition, so breaker state carries over between runs; a strategy executed
-    ///     outside a run uses this context's own.
-    /// </summary>
-    internal CircuitBreakerRegistry CircuitBreakers { get; set; } = new();
+    internal InputFlow? GetInputFlow(string nodeId) => _inputFlow.GetValueOrDefault(nodeId);
 }

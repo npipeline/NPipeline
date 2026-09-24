@@ -11,10 +11,7 @@ internal sealed class InMemoryLookupNode<TIn, TKey, TValue, TOut>(InMemoryLookup
     : LookupNode<TIn, TKey, TValue, TOut>
     where TKey : notnull
 {
-    protected override TKey ExtractKey(TIn input, PipelineContext context)
-    {
-        return configuration.KeyExtractor(input);
-    }
+    protected override TKey ExtractKey(TIn input, PipelineContext context) => configuration.KeyExtractor(input);
 
     protected override Task<TValue?> LookupAsync(TKey key, PipelineContext context, CancellationToken cancellationToken)
     {
@@ -22,10 +19,7 @@ internal sealed class InMemoryLookupNode<TIn, TKey, TValue, TOut>(InMemoryLookup
         return Task.FromResult(value);
     }
 
-    protected override TOut CreateOutput(TIn input, TValue? lookupValue, PipelineContext context)
-    {
-        return configuration.OutputCreator(input, lookupValue);
-    }
+    protected override TOut CreateOutput(TIn input, TValue? lookupValue, PipelineContext context) => configuration.OutputCreator(input, lookupValue);
 
     // Configuration record to hold the data and logic for the lookup.
     internal sealed record Configuration(

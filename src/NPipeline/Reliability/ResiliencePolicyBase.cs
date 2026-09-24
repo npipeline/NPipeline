@@ -23,22 +23,16 @@ public abstract class ResiliencePolicyBase : IResiliencePolicy
 {
     /// <inheritdoc />
     /// <remarks>Default: <see cref="DefaultResiliencePolicy.DecideItemFailureAsync{TIn}" />.</remarks>
-    public virtual ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken)
-    {
-        return DefaultResiliencePolicy.Instance.DecideItemFailureAsync(failure, cancellationToken);
-    }
+    public virtual ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken) =>
+        DefaultResiliencePolicy.Instance.DecideItemFailureAsync(failure, cancellationToken);
 
     /// <inheritdoc />
     /// <remarks>Default: <see cref="DefaultResiliencePolicy.DecideRestartAsync" />.</remarks>
-    public virtual ValueTask<ResilienceDecision> DecideRestartAsync(StreamFailure failure, CancellationToken cancellationToken)
-    {
-        return DefaultResiliencePolicy.Instance.DecideRestartAsync(failure, cancellationToken);
-    }
+    public virtual ValueTask<ResilienceDecision> DecideRestartAsync(StreamFailure failure, CancellationToken cancellationToken) =>
+        DefaultResiliencePolicy.Instance.DecideRestartAsync(failure, cancellationToken);
 
     /// <inheritdoc />
     /// <remarks>Default: <see cref="DefaultResiliencePolicy.DecideNodeFailureAsync" />.</remarks>
-    public virtual ValueTask<ResilienceDecision> DecideNodeFailureAsync(NodeFailure failure, CancellationToken cancellationToken)
-    {
-        return DefaultResiliencePolicy.Instance.DecideNodeFailureAsync(failure, cancellationToken);
-    }
+    public virtual ValueTask<ResilienceDecision> DecideNodeFailureAsync(NodeFailure failure, CancellationToken cancellationToken) =>
+        DefaultResiliencePolicy.Instance.DecideNodeFailureAsync(failure, cancellationToken);
 }

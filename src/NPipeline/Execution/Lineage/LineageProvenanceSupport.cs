@@ -49,10 +49,8 @@ internal static class LineageProvenanceSupport
     ///     The lineage state of the node <paramref name="node" /> runs as, for a stream transform that reports its own
     ///     provenance. Inactive when lineage is off or the node is run outside a pipeline.
     /// </summary>
-    public static LineageNodeOutcomeWriter WriterFor(INode node, PipelineContext context)
-    {
-        return context.NodeEnvironment.TryGetNodeId(node, out var nodeId)
+    public static LineageNodeOutcomeWriter WriterFor(INode node, PipelineContext context) =>
+        context.NodeEnvironment.TryGetNodeId(node, out var nodeId)
             ? LineageNodeOutcomeRegistry.GetWriter(context.RunIdentity.PipelineId, nodeId)
             : default;
-    }
 }

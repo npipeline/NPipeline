@@ -9,8 +9,8 @@ namespace NPipeline.Execution;
 /// </remarks>
 public sealed class RestartCheckpoint
 {
-    private readonly object _gate = new();
     private readonly Action<long>? _advanced;
+    private readonly object _gate = new();
     private HashSet<long>? _completedAhead;
     private long _watermark;
 

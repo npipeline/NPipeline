@@ -140,12 +140,10 @@ internal sealed class PipelineExecutionSetupStage(
     private Dictionary<string, NodeExecutionPlan> BuildExecutionPlans(
         Type definitionType,
         PipelineGraph graph,
-        Dictionary<string, INode> nodeInstances)
-    {
-        return ShouldUseCache(graph)
+        Dictionary<string, INode> nodeInstances) =>
+        ShouldUseCache(graph)
             ? BuildPlansWithCache(definitionType, graph, nodeInstances)
             : nodeInstantiationService.BuildPlans(graph, nodeInstances);
-    }
 
     private Dictionary<string, NodeExecutionPlan> BuildPlansWithCache(
         Type pipelineDefinitionType,

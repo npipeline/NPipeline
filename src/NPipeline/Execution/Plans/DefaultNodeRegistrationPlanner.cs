@@ -20,8 +20,10 @@ public sealed class DefaultNodeRegistrationPlanner : INodeRegistrationPlanner
     private static readonly Type JoinNodeBaseDefinition = typeof(BaseJoinNode<,,,>);
 
     private static readonly MethodInfo BuildStronglyTypedCustomMergeDelegateMethod = typeof(DefaultNodeRegistrationPlanner)
-        .GetMethod(nameof(BuildStronglyTypedCustomMergeDelegate), BindingFlags.NonPublic | BindingFlags.Static)
-        ?? throw new InvalidOperationException($"Method '{nameof(BuildStronglyTypedCustomMergeDelegate)}' not found on {nameof(DefaultNodeRegistrationPlanner)}.");
+                                                                                         .GetMethod(nameof(BuildStronglyTypedCustomMergeDelegate),
+                                                                                             BindingFlags.NonPublic | BindingFlags.Static)
+                                                                                     ?? throw new InvalidOperationException(
+                                                                                         $"Method '{nameof(BuildStronglyTypedCustomMergeDelegate)}' not found on {nameof(DefaultNodeRegistrationPlanner)}.");
 
     private static readonly ConcurrentDictionary<Type, CustomMergeDelegate> CustomMergeDelegateCache = new();
 

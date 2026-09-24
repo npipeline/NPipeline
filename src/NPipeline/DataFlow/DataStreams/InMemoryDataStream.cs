@@ -39,19 +39,14 @@ public sealed class InMemoryDataStream<T>(IReadOnlyList<T> items, string streamN
     public string StreamName { get; } = streamName;
 
     /// <inheritdoc />
-    public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
-    {
-        return ToAsyncEnumerableTyped(cancellationToken).GetAsyncEnumerator(cancellationToken);
-    }
+    public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default) =>
+        ToAsyncEnumerableTyped(cancellationToken).GetAsyncEnumerator(cancellationToken);
 
     /// <summary>
     ///     Gets the data type of items carried by this pipe.
     /// </summary>
     /// <returns>The <see cref="Type" /> of data items in this pipe.</returns>
-    public Type GetDataType()
-    {
-        return typeof(T);
-    }
+    public Type GetDataType() => typeof(T);
 
     /// <summary>
     ///     Internal method to get a non-generic async enumerable from this pipe.
@@ -59,10 +54,8 @@ public sealed class InMemoryDataStream<T>(IReadOnlyList<T> items, string streamN
     /// </summary>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>An async enumerable of untyped objects.</returns>
-    public IAsyncEnumerable<object?> ToAsyncEnumerable(CancellationToken cancellationToken = default)
-    {
-        return CastToObject(ToAsyncEnumerableTyped(cancellationToken), cancellationToken);
-    }
+    public IAsyncEnumerable<object?> ToAsyncEnumerable(CancellationToken cancellationToken = default) =>
+        CastToObject(ToAsyncEnumerableTyped(cancellationToken), cancellationToken);
 
     /// <summary>
     ///     Asynchronously disposes of the data pipe. This implementation does nothing as there are no unmanaged resources.

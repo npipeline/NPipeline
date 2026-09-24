@@ -30,9 +30,7 @@ public sealed class DefaultNodeFactory : INodeFactory
 
         // If we successfully compiled a factory, use it (fast path)
         if (factory != null)
-        {
             return factory();
-        }
 
         // Fall back to Activator.CreateInstance (slow path for types without parameterless constructors)
         try

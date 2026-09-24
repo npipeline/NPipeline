@@ -198,7 +198,8 @@ public sealed class ErrorHandlingService : IErrorHandlingService
             }
 
             if (attempt > ResilienceRuntime.MaxPolicyRepeats)
-                throw new NodeExecutionException(nodeDefinition.Id, failure.Message, ResilienceRuntime.RepeatCeilingExceeded(policy, nodeDefinition.Id, decision, failure));
+                throw new NodeExecutionException(nodeDefinition.Id, failure.Message,
+                    ResilienceRuntime.RepeatCeilingExceeded(policy, nodeDefinition.Id, decision, failure));
 
             ResilienceRuntime.ReportRetry(context, nodeDefinition.Id, RetryKind.NodeRetry, attempt, failure);
 
@@ -250,8 +251,5 @@ public sealed class ErrorHandlingService : IErrorHandlingService
     /// </summary>
     /// <param name="context">The pipeline context.</param>
     /// <returns>True if execution is in parallel mode, otherwise false.</returns>
-    private static bool IsParallelExecution(PipelineContext context)
-    {
-        return context.ExecutionConfiguration.IsParallelExecution;
-    }
+    private static bool IsParallelExecution(PipelineContext context) => context.ExecutionConfiguration.IsParallelExecution;
 }

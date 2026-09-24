@@ -15,21 +15,17 @@ public static class ResiliencePolicyBuilder
     /// <typeparam name="TData">The item type to target.</typeparam>
     /// <returns>A builder for policy rules for the specified node/item pair.</returns>
     public static NodeResiliencePolicyBuilder<TNode, TData> ForNode<TNode, TData>()
-        where TNode : INode
-    {
-        return new NodeResiliencePolicyBuilder<TNode, TData>();
-    }
+        where TNode : INode =>
+        new();
 
     /// <summary>
     ///     Creates a pre-configured policy that retries item failures up to the specified maximum.
     /// </summary>
     public static IResiliencePolicy RetryAlways<TNode, TData>(int maxRetries = 3)
-        where TNode : INode
-    {
-        return ForNode<TNode, TData>()
+        where TNode : INode =>
+        ForNode<TNode, TData>()
             .OnAny().Retry(maxRetries)
             .Build();
-    }
 
     /// <summary>
     ///     Creates a pre-configured policy that retries a specific exception type up to the specified maximum.
@@ -38,34 +34,28 @@ public static class ResiliencePolicyBuilder
         int maxRetries = 3,
         ResilienceDecision exhaustedDecision = ResilienceDecision.DeadLetter)
         where TNode : INode
-        where TException : Exception
-    {
-        return ForNode<TNode, TData>()
+        where TException : Exception =>
+        ForNode<TNode, TData>()
             .RetryOn<TException>(maxRetries, exhaustedDecision)
             .Build();
-    }
 
     /// <summary>
     ///     Creates a pre-configured policy that always skips matching item failures.
     /// </summary>
     public static IResiliencePolicy SkipAlways<TNode, TData>()
-        where TNode : INode
-    {
-        return ForNode<TNode, TData>()
+        where TNode : INode =>
+        ForNode<TNode, TData>()
             .OnAny().Skip()
             .Build();
-    }
 
     /// <summary>
     ///     Creates a pre-configured policy that always dead-letters matching item failures.
     /// </summary>
     public static IResiliencePolicy DeadLetterAlways<TNode, TData>()
-        where TNode : INode
-    {
-        return ForNode<TNode, TData>()
+        where TNode : INode =>
+        ForNode<TNode, TData>()
             .OnAny().DeadLetter()
             .Build();
-    }
 }
 
 /// <summary>
@@ -98,10 +88,7 @@ public sealed class NodeResiliencePolicyBuilder<TNode, TData>
     /// <summary>
     ///     Adds a rule with a custom predicate.
     /// </summary>
-    public ResilienceRuleBuilder<TNode, TData> When(Predicate<Exception> predicate)
-    {
-        return new ResilienceRuleBuilder<TNode, TData>(this, predicate);
-    }
+    public ResilienceRuleBuilder<TNode, TData> When(Predicate<Exception> predicate) => new(this, predicate);
 
     /// <summary>
     ///     Adds a rule that retries a specific exception type for a bounded number of attempts.

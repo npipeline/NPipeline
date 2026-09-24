@@ -31,8 +31,10 @@ internal enum LineageProvenanceKind
 /// </summary>
 /// <param name="InputIndex">The item's index in the node's input.</param>
 /// <param name="Kind">What is reported.</param>
-/// <param name="Outcome">For <see cref="LineageProvenanceKind.Done" />, why the item ended: an outcome such as
-///     <see cref="LineageOutcomeReason.FilteredOut" /> when it produced no output.</param>
+/// <param name="Outcome">
+///     For <see cref="LineageProvenanceKind.Done" />, why the item ended: an outcome such as
+///     <see cref="LineageOutcomeReason.FilteredOut" /> when it produced no output.
+/// </param>
 internal readonly record struct LineageProvenance(long InputIndex, LineageProvenanceKind Kind, LineageOutcomeReason Outcome = LineageOutcomeReason.Emitted);
 
 /// <summary>
@@ -106,12 +108,10 @@ internal static class LineageNodeOutcomeRegistry
     ///     multiplied by the degree of parallelism on parallel execution paths. Returns an inactive writer
     ///     when the node is not currently tracking lineage.
     /// </summary>
-    public static LineageNodeOutcomeWriter GetWriter(Guid pipelineId, string nodeId)
-    {
-        return Nodes.TryGetValue((pipelineId, nodeId), out var node)
+    public static LineageNodeOutcomeWriter GetWriter(Guid pipelineId, string nodeId) =>
+        Nodes.TryGetValue((pipelineId, nodeId), out var node)
             ? new LineageNodeOutcomeWriter(node)
             : default;
-    }
 
     internal static void RecordInto(ConcurrentDictionary<long, LineageItemOutcome> nodeOutcomes, long inputIndex,
         LineageOutcomeReason outcomeReason, int retryCount)
@@ -127,12 +127,10 @@ internal static class LineageNodeOutcomeRegistry
             (OutcomeReason: outcomeReason, RetryCount: normalizedRetryCount));
     }
 
-    private static LineageOutcomeReason MergeOutcome(LineageOutcomeReason current, LineageOutcomeReason candidate)
-    {
-        return Priority(candidate) >= Priority(current)
+    private static LineageOutcomeReason MergeOutcome(LineageOutcomeReason current, LineageOutcomeReason candidate) =>
+        Priority(candidate) >= Priority(current)
             ? candidate
             : current;
-    }
 
     private static int Priority(LineageOutcomeReason reason)
     {
@@ -158,10 +156,7 @@ internal static class LineageNodeOutcomeRegistry
         return false;
     }
 
-    public static bool IsTracking(Guid pipelineId, string nodeId)
-    {
-        return Nodes.ContainsKey((pipelineId, nodeId));
-    }
+    public static bool IsTracking(Guid pipelineId, string nodeId) => Nodes.ContainsKey((pipelineId, nodeId));
 
     public static void ClearNode(Guid pipelineId, string nodeId)
     {
@@ -195,9 +190,7 @@ internal readonly struct LineageNodeOutcomeWriter
     public void Record(long inputIndex, LineageOutcomeReason outcomeReason, int retryCount)
     {
         if (_node is null)
-        {
             return;
-        }
 
         LineageNodeOutcomeRegistry.RecordInto(_node.Outcomes, inputIndex, outcomeReason, retryCount);
     }

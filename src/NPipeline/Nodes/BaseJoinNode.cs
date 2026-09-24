@@ -94,10 +94,7 @@ public abstract class BaseJoinNode<TKey, TIn1, TIn2, TOut> : IJoinNode where TKe
     /// <summary>
     ///     Gets the key selectors for both input types.
     /// </summary>
-    protected (Func<TIn1, TKey> GetKey1, Func<TIn2, TKey> GetKey2) GetKeySelectors()
-    {
-        return _keySelectors.Value;
-    }
+    protected (Func<TIn1, TKey> GetKey1, Func<TIn2, TKey> GetKey2) GetKeySelectors() => _keySelectors.Value;
 
     private (Func<TIn1, TKey>, Func<TIn2, TKey>) GetKeySelectorsInternal()
     {

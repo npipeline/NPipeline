@@ -41,8 +41,9 @@ public sealed class RetryClassifier
     /// </summary>
     internal const string NResilienceAttemptsKey = "NResilience.Attempts";
 
-    private readonly ImmutableArray<Rule> _rules;
     private readonly bool _everythingIsTransient;
+
+    private readonly ImmutableArray<Rule> _rules;
 
     private RetryClassifier(ImmutableArray<Rule> rules, bool everythingIsTransient)
     {
@@ -69,19 +70,13 @@ public sealed class RetryClassifier
     ///     Returns a classifier that treats <typeparamref name="TException" /> as transient.
     /// </summary>
     /// <param name="when">An optional condition. When it returns false, the rule does not apply.</param>
-    public RetryClassifier Transient<TException>(Func<TException, bool>? when = null) where TException : Exception
-    {
-        return With(Rule.For(when, true));
-    }
+    public RetryClassifier Transient<TException>(Func<TException, bool>? when = null) where TException : Exception => With(Rule.For(when, true));
 
     /// <summary>
     ///     Returns a classifier that treats <typeparamref name="TException" /> as permanent.
     /// </summary>
     /// <param name="when">An optional condition. When it returns false, the rule does not apply.</param>
-    public RetryClassifier Permanent<TException>(Func<TException, bool>? when = null) where TException : Exception
-    {
-        return With(Rule.For(when, false));
-    }
+    public RetryClassifier Permanent<TException>(Func<TException, bool>? when = null) where TException : Exception => With(Rule.For(when, false));
 
     /// <summary>
     ///     Decides whether <paramref name="exception" /> is transient.
@@ -123,10 +118,7 @@ public sealed class RetryClassifier
         return IsTransientByDefault(root);
     }
 
-    private RetryClassifier With(Rule rule)
-    {
-        return new RetryClassifier(_rules.Add(rule), _everythingIsTransient);
-    }
+    private RetryClassifier With(Rule rule) => new(_rules.Add(rule), _everythingIsTransient);
 
     private static Exception? Unwrap(Exception exception)
     {

@@ -91,13 +91,7 @@ public static class PipelineGraphExporter
         return e.TargetInputName;
     }
 
-    private static string EscapeId(string id)
-    {
-        return id.Replace('-', '_').Replace(':', '_');
-    }
+    private static string EscapeId(string id) => id.Replace('-', '_').Replace(':', '_');
 
-    private static string EscapeText(string text)
-    {
-        return text.Replace("\"", "\\\"");
-    }
+    private static string EscapeText(string text) => text.Replace("\"", "\\\"");
 }

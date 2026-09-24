@@ -48,10 +48,7 @@ public sealed class DataStream<T>(IAsyncEnumerable<T> stream, string streamName 
     ///     Gets the data type of the items in this data pipe.
     /// </summary>
     /// <returns>The type of data items in the pipe.</returns>
-    public Type GetDataType()
-    {
-        return typeof(T);
-    }
+    public Type GetDataType() => typeof(T);
 
     /// <summary>
     ///     Asynchronously disposes of the data pipe. If the underlying stream implements <see cref="IAsyncDisposable" />, it will be disposed as well.

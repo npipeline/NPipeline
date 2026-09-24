@@ -176,8 +176,6 @@ public abstract class TimeWindowedJoinNode<TKey, TIn1, TIn2, TOut> : BaseJoinNod
     ///     Gets metrics about the node's current state.
     /// </summary>
     /// <returns>A tuple containing the number of waiting items in each stream and maximum counts observed.</returns>
-    public (int WaitingList1Count, int WaitingList2Count, long MaxWaitingList1, long MaxWaitingList2) GetStateMetrics()
-    {
-        return (_waitingList1.Count, _waitingList2.Count, Interlocked.Read(ref _maxWaitingItems1), Interlocked.Read(ref _maxWaitingItems2));
-    }
+    public (int WaitingList1Count, int WaitingList2Count, long MaxWaitingList1, long MaxWaitingList2) GetStateMetrics() => (_waitingList1.Count,
+        _waitingList2.Count, Interlocked.Read(ref _maxWaitingItems1), Interlocked.Read(ref _maxWaitingItems2));
 }

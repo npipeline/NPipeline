@@ -105,10 +105,7 @@ public interface IObservabilityCollector
     /// <param name="nodeId">The unique identifier of the node.</param>
     /// <param name="pipelineId">The unique pipeline identity this node belongs to.</param>
     /// <returns>True when explicit timing buckets were recorded for this node; otherwise false.</returns>
-    bool HasTimingBreakdown(string nodeId, Guid pipelineId)
-    {
-        return false;
-    }
+    bool HasTimingBreakdown(string nodeId, Guid pipelineId) => false;
 
     /// <summary>
     ///     Gets the collected metrics for all nodes.

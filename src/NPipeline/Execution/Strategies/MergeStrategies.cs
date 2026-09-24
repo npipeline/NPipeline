@@ -113,8 +113,6 @@ public static class MergeStrategies
     /// <returns>A single merged asynchronous stream.</returns>
     public static IAsyncEnumerable<T> Custom<T>(
         Func<IAsyncEnumerable<T>[], IAsyncEnumerable<T>> mergeFunc,
-        params IAsyncEnumerable<T>[] sources)
-    {
-        return mergeFunc(sources);
-    }
+        params IAsyncEnumerable<T>[] sources) =>
+        mergeFunc(sources);
 }

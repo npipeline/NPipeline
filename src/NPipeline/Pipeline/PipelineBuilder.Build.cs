@@ -6,7 +6,6 @@ using NPipeline.Configuration;
 using NPipeline.Execution.Annotations;
 using NPipeline.Graph;
 using NPipeline.Graph.Validation;
-using NPipeline.Lineage;
 using NPipeline.Reliability;
 
 namespace NPipeline.Pipeline;
@@ -39,10 +38,12 @@ public sealed partial class PipelineBuilder
             throw new InvalidOperationException(ErrorMessages.PipelineRequiresAtLeastOneNode());
 
         if (_config.ItemLevelLineageEnabled && !Lineage.SupportsItemLevelLineage)
+        {
             throw new InvalidOperationException(
                 "Item-level lineage requires NPipeline.Extensions.Lineage. " +
                 "Install the NPipeline.Extensions.Lineage package and call services.AddNPipelineLineage() " +
                 "in your DI configuration.");
+        }
 
         if (ConfigurationState.GlobalExecutionObserver is not null)
             NodeState.ExecutionAnnotations[ExecutionAnnotationKeys.GlobalExecutionObserver] = ConfigurationState.GlobalExecutionObserver;
@@ -251,9 +252,8 @@ public sealed partial class PipelineBuilder
     /// <summary>
     ///     Builds a LineageConfiguration from the current builder state.
     /// </summary>
-    private LineageConfiguration BuildLineageConfiguration()
-    {
-        return new LineageConfiguration
+    private LineageConfiguration BuildLineageConfiguration() =>
+        new()
         {
             ItemLevelLineageEnabled = _config.ItemLevelLineageEnabled,
             LineageSink = ConfigurationState.LineageSink,
@@ -262,21 +262,18 @@ public sealed partial class PipelineBuilder
             PipelineLineageSinkType = ConfigurationState.PipelineLineageSinkType,
             LineageOptions = _config.LineageOptions,
         };
-    }
 
     /// <summary>
     ///     Builds an ExecutionOptionsConfiguration from the current builder state.
     /// </summary>
-    private ExecutionOptionsConfiguration BuildExecutionOptionsConfiguration()
-    {
-        return new ExecutionOptionsConfiguration
+    private ExecutionOptionsConfiguration BuildExecutionOptionsConfiguration() =>
+        new()
         {
             NodeExecutionAnnotations = NodeState.ExecutionAnnotations.Count > 0
                 ? NodeState.ExecutionAnnotations.ToImmutableDictionary()
                 : null,
             Visualizer = ConfigurationState.Visualizer,
         };
-    }
 
     private void WarnIfCompileTimeOptimizationProfileDiffers()
     {

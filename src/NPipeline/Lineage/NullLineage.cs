@@ -21,68 +21,47 @@ public sealed class NullLineage : ILineage
     public bool SupportsItemLevelLineage => false;
 
     /// <inheritdoc />
-    public LineageAdapterDelegate? BuildLineageAdapter<TIn, TOut>(Type? lineageMapperType)
-    {
-        return null;
-    }
+    public LineageAdapterDelegate? BuildLineageAdapter<TIn, TOut>(Type? lineageMapperType) => null;
 
     /// <inheritdoc />
-    public SinkLineageUnwrapDelegate? BuildSinkLineageUnwrapDelegate<TIn>()
-    {
-        return null;
-    }
+    public SinkLineageUnwrapDelegate? BuildSinkLineageUnwrapDelegate<TIn>() => null;
 
     /// <inheritdoc />
-    public LineageAdapterDelegate? BuildLineageAdapter(Type? inType, Type? outType, Type? lineageMapperType)
-    {
-        return null;
-    }
+    public LineageAdapterDelegate? BuildLineageAdapter(Type? inType, Type? outType, Type? lineageMapperType) => null;
 
     /// <inheritdoc />
-    public SinkLineageUnwrapDelegate? BuildSinkLineageUnwrap(Type? inType)
-    {
-        return null;
-    }
+    public SinkLineageUnwrapDelegate? BuildSinkLineageUnwrap(Type? inType) => null;
 
     /// <inheritdoc />
-    public IDataStream WrapSourceStream(IDataStream sourcePipe, string nodeId, Guid pipelineId, string? pipelineName, LineageOptions? options)
-    {
-        return sourcePipe;
-    }
+    public IDataStream WrapSourceStream(IDataStream sourcePipe, string nodeId, Guid pipelineId, string? pipelineName, LineageOptions? options) => sourcePipe;
 
     /// <inheritdoc />
     public async IAsyncEnumerable<object> UnwrapLineageStream(IAsyncEnumerable<object?> source, [EnumeratorCancellation] CancellationToken ct = default)
     {
         await foreach (var item in source.WithCancellation(ct).ConfigureAwait(false))
+        {
             yield return item!;
+        }
     }
 
     /// <inheritdoc />
     public (IDataStream unwrappedInput, IAsyncEnumerable<object?> inputLineageContext) PrepareInputWithLineageContext(
         IDataStream source,
-        CancellationToken ct = default)
-    {
-        return (source, source.ToAsyncEnumerable(ct));
-    }
+        CancellationToken ct = default) =>
+        (source, source.ToAsyncEnumerable(ct));
 
     /// <inheritdoc />
     public IDataStream WrapNodeOutput(IDataStream output, string currentNodeId, Guid pipelineId, string? pipelineName, LineageOptions? options,
-        LineageOutcomeReason outcome, CancellationToken ct = default)
-    {
-        return output;
-    }
+        LineageOutcomeReason outcome, CancellationToken ct = default) =>
+        output;
 
     /// <inheritdoc />
     public IDataStream WrapNodeOutputFromInputLineage(IDataStream output, IAsyncEnumerable<object?> inputLineageContext,
         string currentNodeId, Guid pipelineId, string? pipelineName, LineageOptions? options, LineageOutcomeReason outcome,
-        Type? lineageMapperType = null, CancellationToken ct = default)
-    {
-        return output;
-    }
+        Type? lineageMapperType = null, CancellationToken ct = default) =>
+        output;
 
     /// <inheritdoc />
-    public Task RecordPipelineAsync(Type definitionType, PipelineGraph graph, PipelineContext context, IPipelineLineageSink? pipelineLineageSink)
-    {
-        return Task.CompletedTask;
-    }
+    public Task RecordPipelineAsync(Type definitionType, PipelineGraph graph, PipelineContext context, IPipelineLineageSink? pipelineLineageSink) =>
+        Task.CompletedTask;
 }

@@ -11,15 +11,9 @@ internal sealed class AsyncEnumerableDataStream<T>(IAsyncEnumerable<T> source, s
 {
     public string StreamName { get; } = streamName;
 
-    public Type GetDataType()
-    {
-        return typeof(T);
-    }
+    public Type GetDataType() => typeof(T);
 
-    public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
-    {
-        return source.GetAsyncEnumerator(cancellationToken);
-    }
+    public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default) => source.GetAsyncEnumerator(cancellationToken);
 
     public async IAsyncEnumerable<object?> ToAsyncEnumerable([EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
@@ -113,10 +107,8 @@ internal sealed class MulticastDataStream<T> : DataStreamBase<T>, IHasBranchMetr
     }
 
     public static MulticastDataStream<T> Create(IAsyncEnumerable<T> source, int subscriberCount, int? perSubscriberBuffer, string streamName,
-        BranchMetrics metrics)
-    {
-        return new MulticastDataStream<T>(source, subscriberCount, perSubscriberBuffer, streamName, metrics);
-    }
+        BranchMetrics metrics) =>
+        new(source, subscriberCount, perSubscriberBuffer, streamName, metrics);
 
     private async Task PumpAsync()
     {

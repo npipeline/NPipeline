@@ -27,10 +27,7 @@ internal sealed class DefaultLineageFactory : ILineageFactory
     /// </summary>
     /// <param name="sinkType">The type of the lineage sink to create.</param>
     /// <returns>An instance of <see cref="ILineageSink" />, or null if it cannot be created.</returns>
-    public ILineageSink? CreateLineageSink(Type sinkType)
-    {
-        return TryCreateInstance<ILineageSink>(sinkType);
-    }
+    public ILineageSink? CreateLineageSink(Type sinkType) => TryCreateInstance<ILineageSink>(sinkType);
 
     /// <summary>
     ///     Creates an instance of the specified pipeline lineage sink type (explicit configuration path).
@@ -41,10 +38,7 @@ internal sealed class DefaultLineageFactory : ILineageFactory
     /// </remarks>
     /// <param name="sinkType">The type of the pipeline lineage sink to create.</param>
     /// <returns>An instance of <see cref="IPipelineLineageSink" />, or null if it cannot be created.</returns>
-    public IPipelineLineageSink? CreatePipelineLineageSink(Type sinkType)
-    {
-        return TryCreateInstance<IPipelineLineageSink>(sinkType);
-    }
+    public IPipelineLineageSink? CreatePipelineLineageSink(Type sinkType) => TryCreateInstance<IPipelineLineageSink>(sinkType);
 
     /// <summary>
     ///     Resolves an optional provider capable of supplying a default pipeline lineage sink (implicit default path).
@@ -55,23 +49,21 @@ internal sealed class DefaultLineageFactory : ILineageFactory
     ///     Returns null when no provider is registered or available.
     /// </remarks>
     /// <returns>An <see cref="IPipelineLineageSinkProvider" /> instance or null.</returns>
-    public IPipelineLineageSinkProvider? ResolvePipelineLineageSinkProvider()
-    {
+    public IPipelineLineageSinkProvider? ResolvePipelineLineageSinkProvider() =>
+
         // No DI container available in the default factory; cannot supply a provider.
         // This is expected behavior - lineage sink providers require dependency injection.
-        return null;
-    }
+        null;
 
     /// <summary>
     ///     Resolves an optional lineage collector for tracking data lineage.
     /// </summary>
     /// <returns>An <see cref="ILineageCollector" /> instance or null if lineage is not enabled.</returns>
-    public ILineageCollector? ResolveLineageCollector()
-    {
+    public ILineageCollector? ResolveLineageCollector() =>
+
         // No DI container available in the default factory; cannot supply a collector.
         // Lineage collection requires DI registration through services.AddLineageTracking().
-        return null;
-    }
+        null;
 
     /// <summary>
     ///     Creates a lineage report for a pipeline run.

@@ -243,12 +243,10 @@ public sealed class BranchNode<T> : TransformNode<T, T>
     ///     Falls back to the type name when the node is not attached to a pipeline, which is the case when a branch
     ///     node is exercised directly in a test.
     /// </remarks>
-    private string ResolveNodeId(PipelineContext context)
-    {
-        return context.NodeEnvironment.TryGetNodeId(this, out var nodeId)
+    private string ResolveNodeId(PipelineContext context) =>
+        context.NodeEnvironment.TryGetNodeId(this, out var nodeId)
             ? nodeId
             : nameof(BranchNode<T>);
-    }
 
     private void LogBranchException(BranchHandlerException branchException, PipelineContext context, string? additionalMessage = null)
     {

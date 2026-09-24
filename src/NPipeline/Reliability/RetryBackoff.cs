@@ -85,7 +85,9 @@ public readonly record struct RetryBackoff
     public RetryBackoffKind Kind
     {
         get;
-        init => field = Enum.IsDefined(value) ? value : throw new ArgumentOutOfRangeException(nameof(Kind), value, "Unknown backoff kind.");
+        init => field = Enum.IsDefined(value)
+            ? value
+            : throw new ArgumentOutOfRangeException(nameof(Kind), value, "Unknown backoff kind.");
     }
 
     /// <summary>
@@ -94,7 +96,9 @@ public readonly record struct RetryBackoff
     public TimeSpan BaseDelay
     {
         get;
-        init => field = value >= TimeSpan.Zero ? value : throw new ArgumentOutOfRangeException(nameof(BaseDelay), value, "The base delay cannot be negative.");
+        init => field = value >= TimeSpan.Zero
+            ? value
+            : throw new ArgumentOutOfRangeException(nameof(BaseDelay), value, "The base delay cannot be negative.");
     }
 
     /// <summary>
@@ -104,7 +108,9 @@ public readonly record struct RetryBackoff
     public double Factor
     {
         get;
-        init => field = value >= 1 ? value : throw new ArgumentOutOfRangeException(nameof(Factor), value, "The factor must be at least 1.");
+        init => field = value >= 1
+            ? value
+            : throw new ArgumentOutOfRangeException(nameof(Factor), value, "The factor must be at least 1.");
     }
 
     /// <summary>
@@ -124,7 +130,9 @@ public readonly record struct RetryBackoff
     public RetryJitter Jitter
     {
         get;
-        init => field = Enum.IsDefined(value) ? value : throw new ArgumentOutOfRangeException(nameof(Jitter), value, "Unknown jitter kind.");
+        init => field = Enum.IsDefined(value)
+            ? value
+            : throw new ArgumentOutOfRangeException(nameof(Jitter), value, "Unknown jitter kind.");
     }
 
     /// <summary>
@@ -142,10 +150,8 @@ public readonly record struct RetryBackoff
     /// </summary>
     /// <param name="delay">The delay.</param>
     /// <param name="jitter">How the delay is randomized. Default: none.</param>
-    public static RetryBackoff Constant(TimeSpan delay, RetryJitter jitter = RetryJitter.None)
-    {
-        return new RetryBackoff { Kind = RetryBackoffKind.Constant, BaseDelay = delay, Jitter = jitter }.Validated();
-    }
+    public static RetryBackoff Constant(TimeSpan delay, RetryJitter jitter = RetryJitter.None) =>
+        new RetryBackoff { Kind = RetryBackoffKind.Constant, BaseDelay = delay, Jitter = jitter }.Validated();
 
     /// <summary>
     ///     A delay of <paramref name="step" /> times the retry number.
@@ -153,11 +159,9 @@ public readonly record struct RetryBackoff
     /// <param name="step">The delay before the first retry, and the amount added for each retry after it.</param>
     /// <param name="maxDelay">The longest delay. Default: no cap.</param>
     /// <param name="jitter">How the delay is randomized. Default: <see cref="RetryJitter.Equal" />.</param>
-    public static RetryBackoff Linear(TimeSpan step, TimeSpan? maxDelay = null, RetryJitter jitter = RetryJitter.Equal)
-    {
-        return new RetryBackoff { Kind = RetryBackoffKind.Linear, BaseDelay = step, MaxDelay = maxDelay ?? TimeSpan.Zero, Jitter = jitter }
+    public static RetryBackoff Linear(TimeSpan step, TimeSpan? maxDelay = null, RetryJitter jitter = RetryJitter.Equal) =>
+        new RetryBackoff { Kind = RetryBackoffKind.Linear, BaseDelay = step, MaxDelay = maxDelay ?? TimeSpan.Zero, Jitter = jitter }
             .Validated();
-    }
 
     /// <summary>
     ///     A delay of <paramref name="baseDelay" /> times <paramref name="factor" /> raised to the retry number minus one.
@@ -166,9 +170,8 @@ public readonly record struct RetryBackoff
     /// <param name="factor">The multiplier between consecutive delays. Default: 2.</param>
     /// <param name="maxDelay">The longest delay. Default: no cap.</param>
     /// <param name="jitter">How the delay is randomized. Default: <see cref="RetryJitter.Full" />.</param>
-    public static RetryBackoff Exponential(TimeSpan baseDelay, double factor = 2, TimeSpan? maxDelay = null, RetryJitter jitter = RetryJitter.Full)
-    {
-        return new RetryBackoff
+    public static RetryBackoff Exponential(TimeSpan baseDelay, double factor = 2, TimeSpan? maxDelay = null, RetryJitter jitter = RetryJitter.Full) =>
+        new RetryBackoff
         {
             Kind = RetryBackoffKind.Exponential,
             BaseDelay = baseDelay,
@@ -176,7 +179,6 @@ public readonly record struct RetryBackoff
             MaxDelay = maxDelay ?? TimeSpan.Zero,
             Jitter = jitter,
         }.Validated();
-    }
 
     /// <summary>
     ///     A delay computed by <paramref name="delayForRetry" /> from the 1-based retry number. The result is not
@@ -204,14 +206,19 @@ public readonly record struct RetryBackoff
             RetryBackoffKind.Constant => BaseDelay.TotalMilliseconds,
             RetryBackoffKind.Linear => BaseDelay.TotalMilliseconds * retry,
             RetryBackoffKind.Exponential => BaseDelay.TotalMilliseconds * Math.Pow(Factor, retry - 1),
-            RetryBackoffKind.Custom => CustomDelay is null ? 0d : CustomDelay(retry).TotalMilliseconds,
+            RetryBackoffKind.Custom => CustomDelay is null
+                ? 0d
+                : CustomDelay(retry).TotalMilliseconds,
             _ => throw new InvalidOperationException($"Unknown backoff kind {Kind}."),
         };
 
         if (raw <= 0 || double.IsNaN(raw))
             return TimeSpan.Zero;
 
-        var cap = MaxDelay > TimeSpan.Zero && MaxDelay < Ceiling ? MaxDelay : Ceiling;
+        var cap = MaxDelay > TimeSpan.Zero && MaxDelay < Ceiling
+            ? MaxDelay
+            : Ceiling;
+
         raw = Math.Min(raw, cap.TotalMilliseconds);
 
         if (Kind != RetryBackoffKind.Custom)
@@ -219,7 +226,7 @@ public readonly record struct RetryBackoff
             raw = Jitter switch
             {
                 RetryJitter.Full => Random.Shared.NextDouble() * raw,
-                RetryJitter.Equal => (raw / 2) + (Random.Shared.NextDouble() * raw / 2),
+                RetryJitter.Equal => raw / 2 + Random.Shared.NextDouble() * raw / 2,
                 _ => raw,
             };
         }

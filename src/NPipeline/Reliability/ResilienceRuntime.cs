@@ -49,11 +49,10 @@ internal static class ResilienceRuntime
     /// <summary>
     ///     The failure raised when a policy keeps asking for the same work to be repeated.
     /// </summary>
-    public static InvalidOperationException RepeatCeilingExceeded(IResiliencePolicy policy, string nodeId, ResilienceDecision decision, Exception lastFailure)
-    {
-        return new InvalidOperationException(
+    public static InvalidOperationException
+        RepeatCeilingExceeded(IResiliencePolicy policy, string nodeId, ResilienceDecision decision, Exception lastFailure) =>
+        new(
             $"Resilience policy '{policy.GetType().FullName}' answered {decision} more than {MaxPolicyRepeats} times for the same work on node " +
             $"'{nodeId}'. A policy should stop repeating once the failure's CanRetry (or CanRestart) is false.",
             lastFailure);
-    }
 }

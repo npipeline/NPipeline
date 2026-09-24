@@ -1,4 +1,3 @@
-using NPipeline.Configuration;
 using NPipeline.Execution.CircuitBreaking;
 using NPipeline.Execution.Lineage;
 using NPipeline.Observability.Logging;

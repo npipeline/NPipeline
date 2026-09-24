@@ -21,13 +21,13 @@ public sealed class UnbatchingExecutionStrategy : IExecutionStrategy, IStreamExe
         CancellationToken cancellationToken)
     {
         var observabilityScope = context.NodeEnvironment.NodeExecutionScopeRegistry.BeginNodeScope(nodeId);
-        var timedInput = NPipeline.Execution.NodeTimingDataStreamWrapper.WrapInputWait(input, observabilityScope);
+        var timedInput = NodeTimingDataStreamWrapper.WrapInputWait(input, observabilityScope);
 
         // This strategy is designed to work with UnbatchingNode<T>, where TIn is IEnumerable<TOut>.
         // Therefore, input IDataStream<TIn> can be treated as an IAsyncEnumerable<IEnumerable<TOut>>.
         if (timedInput is not IAsyncEnumerable<IEnumerable<TOut>> batchedSource)
 
-        // This should not happen if the pipeline is configured correctly.
+            // This should not happen if the pipeline is configured correctly.
         {
             throw new InvalidOperationException(
                 $"The input for {nameof(UnbatchingExecutionStrategy)} must be an IAsyncEnumerable of IEnumerable<{typeof(TOut).Name}>.");
@@ -52,13 +52,13 @@ public sealed class UnbatchingExecutionStrategy : IExecutionStrategy, IStreamExe
         CancellationToken cancellationToken)
     {
         var observabilityScope = context.NodeEnvironment.NodeExecutionScopeRegistry.BeginNodeScope(nodeId);
-        var timedInput = NPipeline.Execution.NodeTimingDataStreamWrapper.WrapInputWait(input, observabilityScope);
+        var timedInput = NodeTimingDataStreamWrapper.WrapInputWait(input, observabilityScope);
 
         // This strategy is designed to work with UnbatchingNode<T>, where TIn is IEnumerable<TOut>.
         // Therefore, input IDataStream<TIn> can be treated as an IAsyncEnumerable<IEnumerable<TOut>>.
         if (timedInput is not IAsyncEnumerable<IEnumerable<TOut>> batchedSource)
 
-        // This should not happen if the pipeline is configured correctly.
+            // This should not happen if the pipeline is configured correctly.
         {
             throw new InvalidOperationException(
                 $"The input for {nameof(UnbatchingExecutionStrategy)} must be an IAsyncEnumerable of IEnumerable<{typeof(TOut).Name}>.");
@@ -82,7 +82,7 @@ public sealed class UnbatchingExecutionStrategy : IExecutionStrategy, IStreamExe
     {
         using var scope = observabilityScope;
 
-        #pragma warning disable CA2007
+#pragma warning disable CA2007
 
         // CA2007 false positive: the enumerator comes from a ConfigureAwait(false) sequence, so its
 
@@ -92,7 +92,7 @@ public sealed class UnbatchingExecutionStrategy : IExecutionStrategy, IStreamExe
 
         await using var batchEnumerator = batchedSource.WithCancellation(cancellationToken).ConfigureAwait(false).GetAsyncEnumerator();
 
-        #pragma warning restore CA2007
+#pragma warning restore CA2007
 
         while (true)
         {

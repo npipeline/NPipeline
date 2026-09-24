@@ -41,12 +41,12 @@ internal sealed class CircuitBreakerRegistry
         return _breakers.AddOrUpdate(
             nodeId,
             static (id, state) => new CircuitBreaker(id, state.Options, state.Time),
-            static (id, current, state) => Matches(current, state.Options, state.Time) ? current : new CircuitBreaker(id, state.Options, state.Time),
+            static (id, current, state) => Matches(current, state.Options, state.Time)
+                ? current
+                : new CircuitBreaker(id, state.Options, state.Time),
             (Options: breakerOptions, Time: time));
     }
 
-    private static bool Matches(CircuitBreaker breaker, CircuitBreakerOptions options, TimeProvider time)
-    {
-        return breaker.Options == options && ReferenceEquals(breaker.Time, time);
-    }
+    private static bool Matches(CircuitBreaker breaker, CircuitBreakerOptions options, TimeProvider time) =>
+        breaker.Options == options && ReferenceEquals(breaker.Time, time);
 }

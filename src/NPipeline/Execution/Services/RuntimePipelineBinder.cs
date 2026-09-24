@@ -18,8 +18,10 @@ namespace NPipeline.Execution.Services;
 public sealed class RuntimePipelineBinder : IRuntimePipelineBinder
 {
     private static readonly MethodInfo AdaptLineageRouteOptionsMethod = typeof(RuntimePipelineBinder)
-        .GetMethod(nameof(AdaptLineageRouteOptionsGeneric), BindingFlags.NonPublic | BindingFlags.Static)
-        ?? throw new InvalidOperationException($"Method '{nameof(AdaptLineageRouteOptionsGeneric)}' not found.");
+                                                                            .GetMethod(nameof(AdaptLineageRouteOptionsGeneric),
+                                                                                BindingFlags.NonPublic | BindingFlags.Static)
+                                                                        ?? throw new InvalidOperationException(
+                                                                            $"Method '{nameof(AdaptLineageRouteOptionsGeneric)}' not found.");
 
     /// <summary>
     ///     Shared singleton instance for the stateless runtime binder.
@@ -226,7 +228,7 @@ public sealed class RuntimePipelineBinder : IRuntimePipelineBinder
     private static object NormalizeRouteOptions(NodeDefinition nodeDef, RuntimeNodeStreamContract contract, object routeOptions)
     {
         var expectedItemType = contract.EffectiveOutputItemType
-            ?? throw new InvalidOperationException(ErrorMessages.RouteNodeMissingOutputType(nodeDef.Id));
+                               ?? throw new InvalidOperationException(ErrorMessages.RouteNodeMissingOutputType(nodeDef.Id));
 
         var expectedRouteOptionsType = typeof(RouteOptions<>).MakeGenericType(expectedItemType);
         var actualRouteOptionsType = routeOptions.GetType();

@@ -158,19 +158,10 @@ public sealed class PipelineFactory : IPipelineFactory
         private readonly Type _definitionType = definitionType;
         private readonly ILineage _lineageModule = lineageModule;
 
-        public bool Equals(GraphCacheKey other)
-        {
-            return _definitionType == other._definitionType && ReferenceEquals(_lineageModule, other._lineageModule);
-        }
+        public bool Equals(GraphCacheKey other) => _definitionType == other._definitionType && ReferenceEquals(_lineageModule, other._lineageModule);
 
-        public override bool Equals(object? obj)
-        {
-            return obj is GraphCacheKey other && Equals(other);
-        }
+        public override bool Equals(object? obj) => obj is GraphCacheKey other && Equals(other);
 
-        public override int GetHashCode()
-        {
-            return HashCode.Combine(_definitionType, RuntimeHelpers.GetHashCode(_lineageModule));
-        }
+        public override int GetHashCode() => HashCode.Combine(_definitionType, RuntimeHelpers.GetHashCode(_lineageModule));
     }
 }

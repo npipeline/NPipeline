@@ -61,8 +61,5 @@ public abstract class AggregateNode<TIn, TKey, TResult> : AdvancedAggregateNode<
     /// </summary>
     /// <param name="accumulator">The final accumulator value.</param>
     /// <returns>The accumulator (which is the final result).</returns>
-    public sealed override TResult GetResult(TResult accumulator)
-    {
-        return accumulator;
-    }
+    public sealed override TResult GetResult(TResult accumulator) => accumulator;
 }

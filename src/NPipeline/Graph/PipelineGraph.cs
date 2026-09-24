@@ -112,12 +112,12 @@ public sealed class PipelineGraphBuilder
     private ImmutableDictionary<string, object> _nodeExecutionAnnotations = ImmutableDictionary<string, object>.Empty;
     private ImmutableDictionary<string, PipelineResilienceOptions> _nodeResilience = ImmutableDictionary<string, PipelineResilienceOptions>.Empty;
     private ImmutableArray<NodeDefinition> _nodes = [];
-    private IResiliencePolicy? _resiliencePolicy;
-    private Type? _resiliencePolicyType;
     private IPipelineLineageSink? _pipelineLineageSink;
     private Type? _pipelineLineageSinkType;
     private FrozenDictionary<string, INode> _preconfiguredNodeInstances = FrozenDictionary<string, INode>.Empty;
     private PipelineResilienceOptions? _resilience;
+    private IResiliencePolicy? _resiliencePolicy;
+    private Type? _resiliencePolicyType;
     private IPipelineVisualizer? _visualizer;
 
     /// <summary>
@@ -131,10 +131,7 @@ public sealed class PipelineGraphBuilder
     ///     Creates a new PipelineGraphBuilder with default values.
     /// </summary>
     /// <returns>A new PipelineGraphBuilder instance.</returns>
-    public static PipelineGraphBuilder Create()
-    {
-        return new PipelineGraphBuilder();
-    }
+    public static PipelineGraphBuilder Create() => new();
 
     /// <summary>
     ///     Sets the nodes for the pipeline graph.

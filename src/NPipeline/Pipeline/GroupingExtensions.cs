@@ -39,10 +39,7 @@ public static class GroupingExtensions
     ///         accumulator: (sum, sale) => sum + sale.Amount);
     /// </code>
     /// </example>
-    public static GroupingBuilder<T> GroupItems<T>(this PipelineBuilder builder)
-    {
-        return new GroupingBuilder<T>(builder);
-    }
+    public static GroupingBuilder<T> GroupItems<T>(this PipelineBuilder builder) => new(builder);
 }
 
 /// <summary>
@@ -102,13 +99,11 @@ public sealed class GroupingBuilder<T>
     public TransformNodeHandle<T, IReadOnlyCollection<T>> ForOperationalEfficiency(
         int batchSize,
         TimeSpan maxWait,
-        string? name = null)
-    {
-        return _builder.AddBatcher<T>(
+        string? name = null) =>
+        _builder.AddBatcher<T>(
             name ?? $"batch_{batchSize}x{maxWait.TotalSeconds}s",
             batchSize,
             maxWait);
-    }
 
     /// <summary>
     ///     Group items for temporal correctness with time-based tumbling windows.
@@ -311,18 +306,9 @@ internal sealed class LambdaAggregateNode<T, TKey, TResult> : AggregateNode<T, T
         _accumulator = accumulator ?? throw new ArgumentNullException(nameof(accumulator));
     }
 
-    public override TKey GetKey(T item)
-    {
-        return _keySelector(item);
-    }
+    public override TKey GetKey(T item) => _keySelector(item);
 
-    public override TResult CreateAccumulator()
-    {
-        return _initialValue();
-    }
+    public override TResult CreateAccumulator() => _initialValue();
 
-    public override TResult Accumulate(TResult acc, T item)
-    {
-        return _accumulator(acc, item);
-    }
+    public override TResult Accumulate(TResult acc, T item) => _accumulator(acc, item);
 }

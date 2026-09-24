@@ -1,7 +1,7 @@
-using NPipeline.Execution.CircuitBreaking;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.Execution.Caching;
+using NPipeline.Execution.CircuitBreaking;
 using NPipeline.Graph;
 using NPipeline.Lineage;
 using NPipeline.Nodes;
@@ -17,8 +17,8 @@ internal sealed class PipelineExecutionOrchestrator : IPipelineExecutionOrchestr
     private readonly ILineage _lineage;
     private readonly PipelineLineageRecordingStage _lineageRecordingStage;
     private readonly PipelineNodeExecutionStage _nodeExecutionStage;
-    private readonly IPipelineFactory _pipelineFactory;
     private readonly IObservabilitySurface _observabilitySurface;
+    private readonly IPipelineFactory _pipelineFactory;
     private readonly PipelineExecutionSetupStage _setupStage;
 
     public PipelineExecutionOrchestrator(

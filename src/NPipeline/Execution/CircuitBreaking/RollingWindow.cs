@@ -11,9 +11,9 @@ namespace NPipeline.Execution.CircuitBreaking;
 internal sealed class RollingWindow
 {
     private const int BucketCount = 10;
+    private readonly long _bucketTicks;
 
     private readonly Bucket[] _buckets;
-    private readonly long _bucketTicks;
     private readonly TimeProvider _time;
 
     /// <param name="window">The period to count over. Must be positive.</param>
@@ -78,15 +78,12 @@ internal sealed class RollingWindow
         }
     }
 
-    private long CurrentEpoch()
-    {
-        return _time.GetTimestamp() / _bucketTicks;
-    }
+    private long CurrentEpoch() => _time.GetTimestamp() / _bucketTicks;
 
     private Bucket Current()
     {
         var epoch = CurrentEpoch();
-        var bucket = _buckets[(int)(((epoch % BucketCount) + BucketCount) % BucketCount)];
+        var bucket = _buckets[(int)((epoch % BucketCount + BucketCount) % BucketCount)];
 
         if (Volatile.Read(ref bucket.Epoch) != epoch)
         {

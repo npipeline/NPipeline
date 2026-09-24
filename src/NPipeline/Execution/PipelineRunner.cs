@@ -83,10 +83,7 @@ public sealed class PipelineRunner(
     ///     await runner.RunAsync&lt;MyPipelineDefinition&gt;();
     ///     </code>
     /// </example>
-    public static PipelineRunner Create()
-    {
-        return new PipelineRunnerBuilder().Build();
-    }
+    public static PipelineRunner Create() => new PipelineRunnerBuilder().Build();
 
     /// <summary>
     ///     Runs a pipeline defined by <typeparamref name="TDefinition" /> using a default context and cancellation token.
@@ -163,6 +160,7 @@ public sealed class PipelineRunner(
 
         if (string.IsNullOrWhiteSpace(context.RunIdentity.PipelineName))
             context.RunIdentity.PipelineName = PipelineAttributeHelper.GetPipelineName(definitionType);
+
         await _executionOrchestrator
             .RunAsync(definitionType, context, createPipeline, cancellationToken)
             .ConfigureAwait(false);

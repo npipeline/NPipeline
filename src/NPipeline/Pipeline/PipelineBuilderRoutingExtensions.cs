@@ -1,4 +1,3 @@
-using NPipeline;
 using NPipeline.DataFlow.Routing;
 using NPipeline.Execution.Annotations;
 using NPipeline.Graph;

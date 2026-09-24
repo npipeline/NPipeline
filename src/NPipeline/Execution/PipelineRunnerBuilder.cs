@@ -14,13 +14,13 @@ public sealed class PipelineRunnerBuilder
 {
     private IErrorHandlingService? _errorHandlingService;
     private IPipelineExecutionPlanCache? _executionPlanCache;
-    private INodeFactory? _nodeFactory;
+    private ILineage? _lineage;
     private INodeExecutor? _nodeExecutor;
+    private INodeFactory? _nodeFactory;
     private INodeInstantiationService? _nodeInstantiationService;
     private IObservabilitySurface? _observabilitySurface;
     private IPersistenceService? _persistenceService;
     private IPipelineFactory? _pipelineFactory;
-    private ILineage? _lineage;
     private IRuntimePipelineBinder? _runtimePipelineBinder;
     private ITopologyService? _topologyService;
 

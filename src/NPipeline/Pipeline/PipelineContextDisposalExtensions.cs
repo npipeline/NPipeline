@@ -30,10 +30,7 @@ internal static class PipelineContextDisposalExtensions
     /// <summary>
     ///     Convenience for constructing a disposable/async-disposable instance and immediately registering ownership.
     /// </summary>
-    public static T CreateAndRegister<T>(this PipelineContext context, T instance)
-    {
-        return context.RegisterIfAsyncDisposable(instance);
-    }
+    public static T CreateAndRegister<T>(this PipelineContext context, T instance) => context.RegisterIfAsyncDisposable(instance);
 
     private sealed class AsyncDisposableWrapper(IDisposable inner) : IAsyncDisposable
     {

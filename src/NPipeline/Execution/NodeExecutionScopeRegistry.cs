@@ -135,10 +135,7 @@ public sealed class NodeExecutionScopeRegistry
     /// <summary>
     ///     Enumerates all runtime annotations.
     /// </summary>
-    public IEnumerable<KeyValuePair<string, object>> EnumerateRuntimeAnnotations()
-    {
-        return _runtimeAnnotations;
-    }
+    public IEnumerable<KeyValuePair<string, object>> EnumerateRuntimeAnnotations() => _runtimeAnnotations;
 
     /// <summary>
     ///     Enumerates runtime annotations whose keys start with the provided prefix.
@@ -161,9 +158,7 @@ public sealed class NodeExecutionScopeRegistry
         if (_nodeObservabilityScopes.TryGetValue(nodeId, out var currentRegistration) &&
             ReferenceEquals(currentRegistration.Scope, expectedScope) &&
             _nodeObservabilityScopes.TryRemove(new KeyValuePair<string, NodeObservabilityRegistration>(nodeId, currentRegistration)))
-        {
             onDisposed = currentRegistration.OnDisposed;
-        }
 
         expectedScope.Dispose();
         onDisposed?.Invoke(expectedScope, expectedScope.GetFailureException());
@@ -180,9 +175,9 @@ public sealed class NodeExecutionScopeRegistry
 
     private sealed class ScopedObservabilityHandle : IAutoObservabilityScope
     {
-        private readonly NodeExecutionScopeRegistry _registry;
-        private readonly string _nodeId;
         private readonly IAutoObservabilityScope _inner;
+        private readonly string _nodeId;
+        private readonly NodeExecutionScopeRegistry _registry;
         private int _disposed;
 
         public ScopedObservabilityHandle(NodeExecutionScopeRegistry registry, string nodeId, IAutoObservabilityScope inner)
@@ -275,11 +270,11 @@ public sealed class NodeExecutionScopeRegistry
 
     private sealed class NullObservabilityScope : IAutoObservabilityScope
     {
-        public static NullObservabilityScope Instance { get; } = new();
-
         private NullObservabilityScope()
         {
         }
+
+        public static NullObservabilityScope Instance { get; } = new();
 
         public void RecordItemCount(long processed, long emitted)
         {
@@ -297,10 +292,7 @@ public sealed class NodeExecutionScopeRegistry
         {
         }
 
-        public Exception? GetFailureException()
-        {
-            return null;
-        }
+        public Exception? GetFailureException() => null;
 
         public void AddWork(TimeSpan duration)
         {
@@ -314,10 +306,7 @@ public sealed class NodeExecutionScopeRegistry
         {
         }
 
-        public NodeTimingBreakdown GetTimingBreakdown()
-        {
-            return NodeTimingBreakdown.Empty;
-        }
+        public NodeTimingBreakdown GetTimingBreakdown() => NodeTimingBreakdown.Empty;
 
         public void Dispose()
         {

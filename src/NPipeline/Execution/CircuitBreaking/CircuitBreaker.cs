@@ -44,8 +44,8 @@ internal sealed class CircuitBreaker
     private int _consecutiveFailures;
     private int _generation;
     private long _halfOpenAtTimestamp;
-    private int _probesInFlight;
     private int _probeSuccesses;
+    private int _probesInFlight;
     private volatile CircuitState _state = CircuitState.Closed;
 
     public CircuitBreaker(string nodeId, CircuitBreakerOptions options, TimeProvider time)
@@ -232,7 +232,10 @@ internal sealed class CircuitBreaker
                 return null;
 
             var remaining = _halfOpenAtTimestamp - Time.GetTimestamp();
-            return remaining <= 0 ? TimeSpan.Zero : TimeSpan.FromSeconds((double)remaining / Time.TimestampFrequency);
+
+            return remaining <= 0
+                ? TimeSpan.Zero
+                : TimeSpan.FromSeconds((double)remaining / Time.TimestampFrequency);
         }
     }
 
@@ -260,8 +263,5 @@ internal sealed class CircuitBreaker
         Interlocked.Exchange(ref _admissionChanged, NewSignal()).TrySetResult();
     }
 
-    private static TaskCompletionSource NewSignal()
-    {
-        return new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-    }
+    private static TaskCompletionSource NewSignal() => new(TaskCreationOptions.RunContinuationsAsynchronously);
 }

@@ -14,10 +14,7 @@ public sealed class NullLoggerFactory : ILoggerFactory
     public static readonly NullLoggerFactory Instance = new();
 
     /// <inheritdoc />
-    public ILogger CreateLogger(string categoryName)
-    {
-        return NullLogger.Instance;
-    }
+    public ILogger CreateLogger(string categoryName) => NullLogger.Instance;
 
     /// <inheritdoc />
     public void AddProvider(ILoggerProvider provider)
@@ -42,16 +39,10 @@ public sealed class NullLogger : ILogger
     public static readonly NullLogger Instance = new();
 
     /// <inheritdoc />
-    public IDisposable? BeginScope<TState>(TState state) where TState : notnull
-    {
-        return null;
-    }
+    public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
 
     /// <inheritdoc />
-    public bool IsEnabled(LogLevel logLevel)
-    {
-        return false;
-    }
+    public bool IsEnabled(LogLevel logLevel) => false;
 
     /// <inheritdoc />
     public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)

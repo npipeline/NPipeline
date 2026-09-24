@@ -1,3 +1,5 @@
+using NPipeline.Observability;
+
 namespace NPipeline.Execution;
 
 /// <summary>
@@ -124,7 +126,7 @@ public sealed record NodeDataflowCompleted(
     Exception? Error,
     Guid PipelineId,
     string? PipelineName = null,
-    NPipeline.Observability.NodeTimingBreakdown TimingBreakdown = default,
+    NodeTimingBreakdown TimingBreakdown = default,
     bool MetricsAlreadyCaptured = false);
 
 /// <summary>

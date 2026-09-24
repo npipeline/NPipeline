@@ -121,7 +121,9 @@ public sealed class SelectManyNode<TIn, TOut> : IStreamTransformNode<TIn, TOut>,
                 yield return produced;
             }
 
-            lineage.ReportDone(index++, emitted ? LineageOutcomeReason.Emitted : LineageOutcomeReason.ConsumedWithoutEmission);
+            lineage.ReportDone(index++, emitted
+                ? LineageOutcomeReason.Emitted
+                : LineageOutcomeReason.ConsumedWithoutEmission);
         }
     }
 }

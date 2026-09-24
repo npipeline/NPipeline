@@ -242,7 +242,6 @@ internal static partial class RuntimePipelineBinderLogMessages
     public static partial void ItemLevelLineageSinkIgnored(ILogger logger, string sinkType);
 }
 
-
 /// <summary>
 ///     Source-generated logging methods for branch node operations.
 /// </summary>

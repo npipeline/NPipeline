@@ -68,12 +68,10 @@ internal sealed class ResilienceOptionsRule : IGraphRule
         return issues.ToImmutable();
     }
 
-    private static ValidationIssue Unsupported(NodeDefinition node, string setting)
-    {
-        return new ValidationIssue(
+    private static ValidationIssue Unsupported(NodeDefinition node, string setting) =>
+        new(
             ValidationSeverity.Error,
             $"Node '{node.Name}' is a {node.Kind} node, but its resilience options set {setting}, which only transform nodes use. " +
             "Remove the setting, or use NodeRetry to execute the whole node again.",
             "Resilience");
-    }
 }

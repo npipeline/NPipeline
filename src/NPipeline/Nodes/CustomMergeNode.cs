@@ -89,10 +89,8 @@ public abstract class CustomMergeNode<TIn> : ICustomMergeNode<TIn>, ICustomMerge
     /// <param name="pipes">The input data pipes to merge.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>A data pipe containing the merged output stream.</returns>
-    public async Task<IDataStream> MergeAsyncUntyped(IEnumerable<IDataStream> pipes, CancellationToken cancellationToken)
-    {
-        return await MergeAsync(pipes, cancellationToken).ConfigureAwait(false);
-    }
+    public async Task<IDataStream> MergeAsyncUntyped(IEnumerable<IDataStream> pipes, CancellationToken cancellationToken) =>
+        await MergeAsync(pipes, cancellationToken).ConfigureAwait(false);
 
     // Metadata (used for sink scenario only; transformations would have both in/out but this base
     // class is typically combined with a sink or transform base that already supplies metadata).

@@ -129,36 +129,29 @@ public readonly struct NodeObservationScope(
     /// </summary>
     /// <param name="obj">The object to compare with current <see cref="NodeObservationScope" />.</param>
     /// <returns>true if specified object is equal to current <see cref="NodeObservationScope" />; otherwise, false.</returns>
-    public override bool Equals(object? obj)
-    {
-        return obj is NodeObservationScope other && Equals(other);
-    }
+    public override bool Equals(object? obj) => obj is NodeObservationScope other && Equals(other);
 
     /// <summary>
     ///     Determines whether specified <see cref="NodeObservationScope" /> is equal to current <see cref="NodeObservationScope" />.
     /// </summary>
     /// <param name="other">The <see cref="NodeObservationScope" /> to compare with current <see cref="NodeObservationScope" />.</param>
     /// <returns>true if specified <see cref="NodeObservationScope" /> is equal to current <see cref="NodeObservationScope" />; otherwise, false.</returns>
-    public bool Equals(NodeObservationScope other)
-    {
-        return NodeId == other.NodeId &&
-               NodeType == other.NodeType &&
-               PipelineId == other.PipelineId &&
-               PipelineName == other.PipelineName &&
-               StartTime.Equals(other.StartTime) &&
-               StartTimestamp == other.StartTimestamp &&
-               Equals(Activity, other.Activity) &&
-               Equals(AutoObservabilityScope, other.AutoObservabilityScope);
-    }
+    public bool Equals(NodeObservationScope other) =>
+        NodeId == other.NodeId &&
+        NodeType == other.NodeType &&
+        PipelineId == other.PipelineId &&
+        PipelineName == other.PipelineName &&
+        StartTime.Equals(other.StartTime) &&
+        StartTimestamp == other.StartTimestamp &&
+        Equals(Activity, other.Activity) &&
+        Equals(AutoObservabilityScope, other.AutoObservabilityScope);
 
     /// <summary>
     ///     Returns hash code for current <see cref="NodeObservationScope" />.
     /// </summary>
     /// <returns>A hash code for current <see cref="NodeObservationScope" />.</returns>
-    public override int GetHashCode()
-    {
-        return HashCode.Combine(NodeId, NodeType, PipelineId, PipelineName, StartTime, StartTimestamp, Activity, AutoObservabilityScope);
-    }
+    public override int GetHashCode() =>
+        HashCode.Combine(NodeId, NodeType, PipelineId, PipelineName, StartTime, StartTimestamp, Activity, AutoObservabilityScope);
 
     /// <summary>
     ///     Determines whether two <see cref="NodeObservationScope" /> instances are equal.
@@ -166,10 +159,7 @@ public readonly struct NodeObservationScope(
     /// <param name="left">The first <see cref="NodeObservationScope" /> to compare.</param>
     /// <param name="right">The second <see cref="NodeObservationScope" /> to compare.</param>
     /// <returns>true if instances are equal; otherwise, false.</returns>
-    public static bool operator ==(NodeObservationScope left, NodeObservationScope right)
-    {
-        return left.Equals(right);
-    }
+    public static bool operator ==(NodeObservationScope left, NodeObservationScope right) => left.Equals(right);
 
     /// <summary>
     ///     Determines whether two <see cref="NodeObservationScope" /> instances are not equal.
@@ -177,8 +167,5 @@ public readonly struct NodeObservationScope(
     /// <param name="left">The first <see cref="NodeObservationScope" /> to compare.</param>
     /// <param name="right">The second <see cref="NodeObservationScope" /> to compare.</param>
     /// <returns>true if instances are not equal; otherwise, false.</returns>
-    public static bool operator !=(NodeObservationScope left, NodeObservationScope right)
-    {
-        return !left.Equals(right);
-    }
+    public static bool operator !=(NodeObservationScope left, NodeObservationScope right) => !left.Equals(right);
 }

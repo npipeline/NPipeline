@@ -1,13 +1,10 @@
-using System.Runtime.CompilerServices;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.Execution.Lineage;
 using NPipeline.Execution.Services;
-using NPipeline.Lineage;
 using NPipeline.Nodes;
-using NPipeline.Observability;
-using NPipeline.Observability.Tracing;
 using NPipeline.Pipeline;
 
 namespace NPipeline.Execution.Strategies;
@@ -42,10 +39,7 @@ public sealed class SequentialExecutionStrategy : IResumableExecutionStrategy, I
     }
 
     /// <inheritdoc />
-    bool ILineageProvenanceStrategy.ReportsLineageProvenance(INode node)
-    {
-        return true;
-    }
+    bool ILineageProvenanceStrategy.ReportsLineageProvenance(INode node) => true;
 
     /// <inheritdoc />
     public Task<IDataStream<TOut>> ExecuteAsync<TIn, TOut>(
@@ -53,10 +47,8 @@ public sealed class SequentialExecutionStrategy : IResumableExecutionStrategy, I
         ITransformNode<TIn, TOut> node,
         PipelineContext context,
         string nodeId,
-        CancellationToken cancellationToken)
-    {
-        return Execute(input, 0, null, node, context, nodeId, cancellationToken);
-    }
+        CancellationToken cancellationToken) =>
+        Execute(input, 0, null, node, context, nodeId, cancellationToken);
 
     /// <inheritdoc />
     public Task<IDataStream<TOut>> ExecuteFromAsync<TIn, TOut>(
@@ -81,7 +73,6 @@ public sealed class SequentialExecutionStrategy : IResumableExecutionStrategy, I
         string nodeId,
         CancellationToken cancellationToken)
     {
-
         // Create cached execution context once per node (optimization: reduces per-item dictionary lookups)
         var cached = CachedNodeExecutionContext.Create(context, nodeId);
 
@@ -96,13 +87,14 @@ public sealed class SequentialExecutionStrategy : IResumableExecutionStrategy, I
             var tracer = context.Observability.Tracer;
             var nodeId = cached.NodeId;
             var lineageTrackingEnabled = LineageNodeOutcomeRegistry.IsTracking(context.RunIdentity.PipelineId, nodeId);
+
             // The index in the node's input of the last item read. A resumed run starts part-way through the input.
             // Lineage is keyed by this index, so a replayed item finds its own lineage.
             var inputIndex = offset - 1;
             using var observabilityScope = context.NodeEnvironment.NodeExecutionScopeRegistry.BeginNodeScope(nodeId);
-            var timedInput = NPipeline.Execution.NodeTimingDataStreamWrapper.WrapInputWait(input, observabilityScope);
+            var timedInput = NodeTimingDataStreamWrapper.WrapInputWait(input, observabilityScope);
 
-            #pragma warning disable CA2007
+#pragma warning disable CA2007
 
             // CA2007 false positive: the enumerator comes from a ConfigureAwait(false) sequence, so its
 
@@ -112,7 +104,7 @@ public sealed class SequentialExecutionStrategy : IResumableExecutionStrategy, I
 
             await using var inputEnumerator = timedInput.WithCancellation(ct).ConfigureAwait(false).GetAsyncEnumerator();
 
-            #pragma warning restore CA2007
+#pragma warning restore CA2007
 
             while (true)
             {
@@ -147,6 +139,7 @@ public sealed class SequentialExecutionStrategy : IResumableExecutionStrategy, I
                 try
                 {
                     var workStart = Stopwatch.GetTimestamp();
+
                     var executionResult = await _perItemRetryExecutor.ExecuteWithRetryAsync(
                             item,
                             node,
@@ -160,6 +153,7 @@ public sealed class SequentialExecutionStrategy : IResumableExecutionStrategy, I
                             ct,
                             circuitBreaker: cached.CircuitBreaker)
                         .ConfigureAwait(false);
+
                     observabilityScope.AddWork(Stopwatch.GetElapsedTime(workStart));
                     produced = executionResult.Produced;
                     output = executionResult.Output;
