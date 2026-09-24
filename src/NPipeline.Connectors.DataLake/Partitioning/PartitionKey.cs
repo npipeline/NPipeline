@@ -21,19 +21,13 @@ public sealed record PartitionKey
     ///     Example: <c>event_date=2025-01-15/</c>
     /// </summary>
     /// <returns>A Hive-style partition directory string.</returns>
-    public string ToHiveStylePath()
-    {
-        return $"{ColumnName}={Value}/";
-    }
+    public string ToHiveStylePath() => $"{ColumnName}={Value}/";
 
     /// <summary>
     ///     Returns a string representation of the partition key in Hive format.
     /// </summary>
     /// <returns>The Hive-style partition string.</returns>
-    public override string ToString()
-    {
-        return $"{ColumnName}={Value}";
-    }
+    public override string ToString() => $"{ColumnName}={Value}";
 
     /// <summary>
     ///     Parses a Hive-style partition string into a <see cref="PartitionKey" />.

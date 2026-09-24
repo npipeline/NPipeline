@@ -48,12 +48,18 @@ public static class RabbitMqConnectorResilience
     ///         </item>
     ///     </list>
     /// </summary>
-    public static Classifier Classifier { get; } = NResilience.Classifier.Default
+    public static Classifier Classifier { get; } = Classifier.Default
         .On<ChannelAllocationException>(Verdict.Transient)
-        .On<ConnectFailureException>(static e => IsRefusedConnection(e) ? Verdict.Permanent : Verdict.Transient)
-        .On<BrokerUnreachableException>(static e => IsRefusedConnection(e) ? Verdict.Permanent : Verdict.Transient)
+        .On<ConnectFailureException>(static e => IsRefusedConnection(e)
+            ? Verdict.Permanent
+            : Verdict.Transient)
+        .On<BrokerUnreachableException>(static e => IsRefusedConnection(e)
+            ? Verdict.Permanent
+            : Verdict.Transient)
         .On<PossibleAuthenticationFailureException>(Verdict.Permanent)
-        .On<PublishException>(static e => e.IsReturn ? Verdict.Permanent : Verdict.Transient)
+        .On<PublishException>(static e => e.IsReturn
+            ? Verdict.Permanent
+            : Verdict.Transient)
         .On<OperationInterruptedException>(static e => ClassifyShutdown(e.ShutdownReason));
 
     /// <summary>
@@ -66,7 +72,7 @@ public static class RabbitMqConnectorResilience
     ///     publisher confirm has no timeout, as before. To bound it, set <see cref="NResilience.Resilience.AttemptTimeout" />;
     ///     a publish that times out may still have reached the broker, so its retry can duplicate the message.
     /// </remarks>
-    public static NResilience.Resilience Default { get; } = new()
+    public static Resilience Default { get; } = new()
     {
         Name = "npipeline.rabbitmq.publish",
         Attempts = 4,
@@ -77,6 +83,7 @@ public static class RabbitMqConnectorResilience
             TransientBase = TimeSpan.FromMilliseconds(100),
             MaximumDelay = TimeSpan.FromSeconds(30),
         },
+
         // Declared above so it is initialized first; a static initializer reads fields in declaration order.
         Classifier = Classifier,
         Adaptive = false,

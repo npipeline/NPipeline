@@ -38,17 +38,13 @@ public sealed class CosmosSqlApiAdapter : ICosmosApiAdapter
     }
 
     /// <inheritdoc />
-    public ICosmosSourceExecutor CreateSourceExecutor(object client, CosmosConfiguration configuration)
-    {
-        return new CosmosSqlSourceExecutor((CosmosClient)client, configuration);
-    }
+    public ICosmosSourceExecutor CreateSourceExecutor(object client, CosmosConfiguration configuration) =>
+        new CosmosSqlSourceExecutor((CosmosClient)client, configuration);
 
     /// <inheritdoc />
     public ICosmosSinkExecutor<T> CreateSinkExecutor<T>(
         object client,
         CosmosConfiguration configuration,
-        Func<T, string>? idSelector = null)
-    {
-        return new CosmosSqlSinkExecutor<T>((CosmosClient)client, configuration, idSelector);
-    }
+        Func<T, string>? idSelector = null) =>
+        new CosmosSqlSinkExecutor<T>((CosmosClient)client, configuration, idSelector);
 }

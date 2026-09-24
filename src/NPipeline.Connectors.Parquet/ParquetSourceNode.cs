@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using NPipeline.Connectors.Parquet.Mapping;
@@ -400,34 +401,39 @@ public sealed class ParquetSourceNode<T> : SourceNode<T>
             valuesMemory = new Memory<string>((string[])typedValues);
 
             var stringReadMethod = typeof(ParquetRowGroupReader).GetMethod(
-                nameof(ParquetRowGroupReader.ReadAsync),
-                [typeof(DataField), typeof(Memory<string>), typeof(Memory<int>?), typeof(CancellationToken)])
-                ?? throw new InvalidOperationException("Could not find string ReadAsync overload on ParquetRowGroupReader");
+                                       nameof(ParquetRowGroupReader.ReadAsync),
+                                       [typeof(DataField), typeof(Memory<string>), typeof(Memory<int>?), typeof(CancellationToken)])
+                                   ?? throw new InvalidOperationException("Could not find string ReadAsync overload on ParquetRowGroupReader");
 
             invocationResult = stringReadMethod.Invoke(rowGroupReader, [field, valuesMemory, null, cancellationToken]);
         }
+
         // Parquet.net 6.1.0+ normalizes byte[] columns to ReadOnlyMemory<byte>, so match both
         if (clrType == typeof(byte[]) || clrType == typeof(ReadOnlyMemory<byte>))
         {
             typedValues = new byte[rowCount][];
 
             var byteArrayReadMethod = typeof(ParquetRowGroupReader).GetMethod(
-                nameof(ParquetRowGroupReader.ReadAsync),
-                [typeof(DataField), typeof(Memory<byte[]>), typeof(Memory<int>?), typeof(CancellationToken)])
-                ?? throw new InvalidOperationException("Could not find byte[] ReadAsync overload on ParquetRowGroupReader");
+                                          nameof(ParquetRowGroupReader.ReadAsync),
+                                          [typeof(DataField), typeof(Memory<byte[]>), typeof(Memory<int>?), typeof(CancellationToken)])
+                                      ?? throw new InvalidOperationException("Could not find byte[] ReadAsync overload on ParquetRowGroupReader");
 
             invocationResult = byteArrayReadMethod.Invoke(rowGroupReader, [field, new Memory<byte[]>((byte[][])typedValues), null, cancellationToken]);
         }
         else
         {
             var usesNullableValueBuffer = field.IsNullable && clrType.IsValueType;
-            var elementType = usesNullableValueBuffer ? typeof(Nullable<>).MakeGenericType(clrType) : clrType;
+
+            var elementType = usesNullableValueBuffer
+                ? typeof(Nullable<>).MakeGenericType(clrType)
+                : clrType;
 
             typedValues = Array.CreateInstance(elementType, rowCount);
 
             var memoryType = typeof(Memory<>).MakeGenericType(elementType);
+
             valuesMemory = Activator.CreateInstance(memoryType, typedValues)
-                ?? throw new InvalidOperationException($"Failed to create {memoryType}");
+                           ?? throw new InvalidOperationException($"Failed to create {memoryType}");
 
             var readMethod = GetGenericReadAsyncMethod(usesNullableValueBuffer).MakeGenericMethod(clrType);
             invocationResult = readMethod.Invoke(rowGroupReader, [field, valuesMemory, null, cancellationToken]);
@@ -436,6 +442,7 @@ public sealed class ParquetSourceNode<T> : SourceNode<T>
         await AwaitReadAsyncResult(invocationResult).ConfigureAwait(false);
 
         var result = new object?[typedValues.Length];
+
         for (var i = 0; i < typedValues.Length; i++)
         {
             result[i] = typedValues.GetValue(i);
@@ -444,13 +451,13 @@ public sealed class ParquetSourceNode<T> : SourceNode<T>
         return result;
     }
 
-    private static System.Reflection.MethodInfo GetGenericReadAsyncMethod(bool nullableValueBuffer)
+    private static MethodInfo GetGenericReadAsyncMethod(bool nullableValueBuffer)
     {
         var readMethods = typeof(ParquetRowGroupReader)
             .GetMethods()
             .Where(m => m.Name == nameof(ParquetRowGroupReader.ReadAsync)
-                && m.IsGenericMethodDefinition
-                && m.GetGenericArguments().Length == 1);
+                        && m.IsGenericMethodDefinition
+                        && m.GetGenericArguments().Length == 1);
 
         foreach (var method in readMethods)
         {
@@ -460,30 +467,23 @@ public sealed class ParquetSourceNode<T> : SourceNode<T>
                 || parameters[0].ParameterType != typeof(DataField)
                 || parameters[2].ParameterType != typeof(Memory<int>?)
                 || parameters[3].ParameterType != typeof(CancellationToken))
-            {
                 continue;
-            }
 
             var valuesParameterType = parameters[1].ParameterType;
+
             if (!valuesParameterType.IsGenericType || valuesParameterType.GetGenericTypeDefinition() != typeof(Memory<>))
-            {
                 continue;
-            }
 
             var valueType = valuesParameterType.GetGenericArguments()[0];
 
             if (!nullableValueBuffer && valueType.IsGenericParameter)
-            {
                 return method;
-            }
 
             if (nullableValueBuffer
                 && valueType.IsGenericType
                 && valueType.GetGenericTypeDefinition() == typeof(Nullable<>)
                 && valueType.GetGenericArguments()[0].IsGenericParameter)
-            {
                 return method;
-            }
         }
 
         throw new InvalidOperationException(

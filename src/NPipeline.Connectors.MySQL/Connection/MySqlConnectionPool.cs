@@ -88,16 +88,10 @@ internal sealed class MySqlConnectionPool : IMySqlConnectionPool
     }
 
     /// <inheritdoc />
-    public bool HasNamedConnection(string name)
-    {
-        return _namedConnectionStrings.ContainsKey(name);
-    }
+    public bool HasNamedConnection(string name) => _namedConnectionStrings.ContainsKey(name);
 
     /// <inheritdoc />
-    public IEnumerable<string> GetNamedConnectionNames()
-    {
-        return _namedConnectionStrings.Keys;
-    }
+    public IEnumerable<string> GetNamedConnectionNames() => _namedConnectionStrings.Keys;
 
     /// <inheritdoc />
     public ValueTask DisposeAsync()

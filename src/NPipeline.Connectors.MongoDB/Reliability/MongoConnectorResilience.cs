@@ -68,7 +68,7 @@ public static class MongoConnectorResilience
     ///     to 30 seconds. It replaces <c>MaxRetryAttempts = 3</c> and <c>RetryDelay = 1s</c>, whose loop made four
     ///     calls with delays of 1, 2, and 4 seconds.
     /// </summary>
-    public static NResilience.Resilience Default { get; } = new()
+    public static Resilience Default { get; } = new()
     {
         Name = "npipeline.mongodb.sink",
         Attempts = 4,
@@ -79,6 +79,7 @@ public static class MongoConnectorResilience
             TransientBase = TimeSpan.FromSeconds(1),
             MaximumDelay = TimeSpan.FromSeconds(30),
         },
+
         // Declared above so it is initialized first; a static initializer reads fields in declaration order.
         Classifier = Classifier,
         Adaptive = false,
@@ -89,7 +90,7 @@ public static class MongoConnectorResilience
     ///     backoff and full jitter from two seconds up to 30 seconds. It replaces <c>MaxRetryAttempts = 3</c> and
     ///     <c>RetryDelay = 2s</c>, whose loop made four attempts with a fixed two-second delay.
     /// </summary>
-    public static NResilience.Resilience ChangeStream { get; } = Default with
+    public static Resilience ChangeStream { get; } = Default with
     {
         Name = "npipeline.mongodb.changestream",
         Backoff = Default.Backoff with { TransientBase = TimeSpan.FromSeconds(2) },

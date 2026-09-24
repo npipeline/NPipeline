@@ -185,10 +185,7 @@ public class KeyBasedCheckpointHandler
     /// <summary>
     ///     Serializes key values to a string.
     /// </summary>
-    private static string SerializeKeyValues(IReadOnlyDictionary<string, object?> keyValues)
-    {
-        return JsonSerializer.Serialize(keyValues, JsonOptions);
-    }
+    private static string SerializeKeyValues(IReadOnlyDictionary<string, object?> keyValues) => JsonSerializer.Serialize(keyValues, JsonOptions);
 
     /// <summary>
     ///     Deserializes key values from a string.

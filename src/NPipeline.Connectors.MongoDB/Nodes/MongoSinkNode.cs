@@ -7,6 +7,7 @@ using NPipeline.Nodes;
 using NPipeline.Pipeline;
 using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Models;
+using NResilience;
 using OurMongoWriteException = NPipeline.Connectors.MongoDB.Exceptions.MongoWriteException;
 
 namespace NPipeline.Connectors.MongoDB.Nodes;
@@ -122,7 +123,7 @@ public class MongoSinkNode<T> : SinkNode<T>, IAsyncDisposable
     /// <summary>
     ///     Gets the policy that retries each batch write.
     /// </summary>
-    protected virtual NResilience.Resilience Resilience => _configuration.Resilience;
+    protected virtual Resilience Resilience => _configuration.Resilience;
 
     /// <summary>
     ///     Disposes resources used by the sink node.

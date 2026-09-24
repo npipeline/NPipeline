@@ -121,27 +121,21 @@ public sealed class ServiceBusMessage<T> : IAcknowledgableMessage<T>, IServiceBu
     ///     Equivalent to <see cref="CompleteAsync" />.
     /// </summary>
     /// <inheritdoc />
-    public Task AcknowledgeAsync(CancellationToken cancellationToken = default)
-    {
-        return CompleteAsync(cancellationToken);
-    }
+    public Task AcknowledgeAsync(CancellationToken cancellationToken = default) => CompleteAsync(cancellationToken);
 
     /// <summary>
     ///     Negatively acknowledges the message.
     ///     When <paramref name="requeue" /> is <c>true</c> (default), the message is abandoned and
     ///     becomes available for redelivery.  When <c>false</c>, the message is dead-lettered.
     /// </summary>
-    public Task NegativeAcknowledgeAsync(bool requeue = true, CancellationToken cancellationToken = default)
-    {
-        return requeue
+    public Task NegativeAcknowledgeAsync(bool requeue = true, CancellationToken cancellationToken = default) =>
+        requeue
             ? AbandonAsync(cancellationToken: cancellationToken)
             : DeadLetterAsync(cancellationToken: cancellationToken);
-    }
 
     /// <inheritdoc />
-    public IAcknowledgableMessage<TNew> WithBody<TNew>(TNew body)
-    {
-        return new ServiceBusMessage<TNew>(
+    public IAcknowledgableMessage<TNew> WithBody<TNew>(TNew body) =>
+        new ServiceBusMessage<TNew>(
             body,
             MessageId,
             _completeCallback,
@@ -149,7 +143,6 @@ public sealed class ServiceBusMessage<T> : IAcknowledgableMessage<T>, IServiceBu
             _deadLetterCallback,
             _deferCallback,
             ApplicationProperties);
-    }
 
     // ── IServiceBusMessageMetadata ───────────────────────────────────────────────
 
@@ -283,10 +276,7 @@ public sealed class ServiceBusMessage<T> : IAcknowledgableMessage<T>, IServiceBu
     // ── Private Helpers ──────────────────────────────────────────────────────────
 
     /// <returns><c>true</c> if this call is the first settlement; <c>false</c> if already settled.</returns>
-    private bool TryMarkSettled()
-    {
-        return Interlocked.CompareExchange(ref _settlementState, 1, 0) == 0;
-    }
+    private bool TryMarkSettled() => Interlocked.CompareExchange(ref _settlementState, 1, 0) == 0;
 
     private void SignalSettlementTcs()
     {

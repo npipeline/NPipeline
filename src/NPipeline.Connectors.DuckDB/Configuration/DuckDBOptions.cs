@@ -35,10 +35,7 @@ public sealed class DuckDBOptions
     /// <summary>
     ///     Checks if a named database exists.
     /// </summary>
-    public bool HasDatabase(string name)
-    {
-        return !string.IsNullOrWhiteSpace(name) && NamedDatabases.ContainsKey(name);
-    }
+    public bool HasDatabase(string name) => !string.IsNullOrWhiteSpace(name) && NamedDatabases.ContainsKey(name);
 
     /// <summary>
     ///     Adds or updates a named database configuration.

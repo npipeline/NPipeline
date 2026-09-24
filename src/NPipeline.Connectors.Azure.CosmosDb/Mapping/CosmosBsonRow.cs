@@ -37,10 +37,7 @@ public sealed class CosmosBsonRow : ICosmosDataWrapper
     }
 
     /// <inheritdoc />
-    public bool HasColumn(string name)
-    {
-        return TryGetBsonValue(name, out _);
-    }
+    public bool HasColumn(string name) => TryGetBsonValue(name, out _);
 
     /// <inheritdoc />
     public Dictionary<string, object?> ToDictionary()

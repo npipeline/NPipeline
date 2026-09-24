@@ -27,8 +27,8 @@ public sealed class KafkaSourceNode<T> : SourceNode<KafkaMessage<T>>
             "Consume failed, retrying in {Delay}ms (attempt {Attempt} of {Attempts})");
 
     private readonly KafkaConfiguration _configuration;
+    private readonly Resilience _consumePolicy;
     private readonly IConsumer<string, T> _consumer;
-    private readonly NResilience.Resilience _consumePolicy;
     private readonly IKafkaMetrics _metrics;
     private readonly bool _ownsConsumer;
     private readonly ISerializerProvider _serializer;
@@ -296,9 +296,8 @@ public sealed class KafkaSourceNode<T> : SourceNode<KafkaMessage<T>>
         return Task.CompletedTask;
     }
 
-    private static ConsumerConfig BuildConsumerConfig(KafkaConfiguration config)
-    {
-        return new ConsumerConfig
+    private static ConsumerConfig BuildConsumerConfig(KafkaConfiguration config) =>
+        new()
         {
             BootstrapServers = config.BootstrapServers,
             ClientId = config.ClientId,
@@ -317,7 +316,6 @@ public sealed class KafkaSourceNode<T> : SourceNode<KafkaMessage<T>>
             IsolationLevel = config.IsolationLevel,
             StatisticsIntervalMs = config.StatisticsIntervalMs,
         };
-    }
 
     private static ISerializerProvider CreateSerializer(KafkaConfiguration config, IKafkaMetrics metrics)
     {

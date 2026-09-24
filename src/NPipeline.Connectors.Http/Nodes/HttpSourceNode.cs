@@ -87,6 +87,17 @@ public sealed partial class HttpSourceNode<T> : SourceNode<T>, IAsyncDisposable
     }
 
     /// <inheritdoc />
+    public ValueTask DisposeAsync()
+    {
+        _sender.Dispose();
+
+        if (_ownsClient)
+            _httpClient.Dispose();
+
+        return ValueTask.CompletedTask;
+    }
+
+    /// <inheritdoc />
     public override IDataStream<T> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         var stream = FetchAllPagesAsync(cancellationToken);
@@ -306,12 +317,10 @@ public sealed partial class HttpSourceNode<T> : SourceNode<T>, IAsyncDisposable
         return trimmed;
     }
 
-    private static string Truncate(string value, int maxLength)
-    {
-        return value.Length <= maxLength
+    private static string Truncate(string value, int maxLength) =>
+        value.Length <= maxLength
             ? value
             : string.Concat(value.AsSpan(0, maxLength), "…");
-    }
 
     private static async Task EnsureResponseBodyWithinLimitAsync(
         HttpResponseMessage response,
@@ -347,17 +356,6 @@ public sealed partial class HttpSourceNode<T> : SourceNode<T>, IAsyncDisposable
         return configuration.HttpClientName != null
             ? httpClientFactory.CreateClient(configuration.HttpClientName)
             : httpClientFactory.CreateClient();
-    }
-
-    /// <inheritdoc />
-    public ValueTask DisposeAsync()
-    {
-        _sender.Dispose();
-
-        if (_ownsClient)
-            _httpClient.Dispose();
-
-        return ValueTask.CompletedTask;
     }
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "HttpSourceNode<{TypeName}>: reached MaxPages limit of {MaxPages}, stopping.")]

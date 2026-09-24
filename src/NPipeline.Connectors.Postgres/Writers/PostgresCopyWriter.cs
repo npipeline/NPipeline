@@ -7,7 +7,6 @@ using NpgsqlTypes;
 using NPipeline.Connectors.Attributes;
 using NPipeline.Connectors.Postgres.Configuration;
 using NPipeline.Connectors.Postgres.Connection;
-using NPipeline.Connectors.Postgres.Exceptions;
 using NPipeline.Connectors.Postgres.Mapping;
 using NPipeline.Connectors.Postgres.Reliability;
 using NPipeline.StorageProviders.Abstractions;
@@ -120,16 +119,6 @@ internal sealed class PostgresCopyWriter<T> : IDatabaseWriter<T>
         }
     }
 
-    private async Task ExecuteCopyAsync(CancellationToken cancellationToken)
-    {
-        var npgsqlConnection = GetNpgsqlConnection();
-
-        if (_configuration.UseBinaryCopy)
-            await ExecuteBinaryCopyAsync(npgsqlConnection, cancellationToken).ConfigureAwait(false);
-        else
-            await ExecuteTextCopyAsync(npgsqlConnection, cancellationToken).ConfigureAwait(false);
-    }
-
     /// <summary>
     ///     Disposes the writer.
     /// </summary>
@@ -147,6 +136,16 @@ internal sealed class PostgresCopyWriter<T> : IDatabaseWriter<T>
             Debug.WriteLine(
                 $"Warning: Failed to flush during disposal for PostgresCopyWriter<{typeof(T).Name}>: {ex.Message}");
         }
+    }
+
+    private async Task ExecuteCopyAsync(CancellationToken cancellationToken)
+    {
+        var npgsqlConnection = GetNpgsqlConnection();
+
+        if (_configuration.UseBinaryCopy)
+            await ExecuteBinaryCopyAsync(npgsqlConnection, cancellationToken).ConfigureAwait(false);
+        else
+            await ExecuteTextCopyAsync(npgsqlConnection, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -279,14 +278,12 @@ internal sealed class PostgresCopyWriter<T> : IDatabaseWriter<T>
     /// <summary>
     ///     Escapes a value for text COPY format.
     /// </summary>
-    private static string EscapeCopyValue(string value)
-    {
-        return value
+    private static string EscapeCopyValue(string value) =>
+        value
             .Replace("\\", "\\\\")
             .Replace("\t", "\\t")
             .Replace("\n", "\\n")
             .Replace("\r", "\\r");
-    }
 
     /// <summary>
     ///     Gets values from an item using convention-based mapping.

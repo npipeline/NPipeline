@@ -13,10 +13,7 @@ internal static class DuckDBSchemaBuilder
     /// <summary>
     ///     Generates a CREATE TABLE IF NOT EXISTS statement for the given type and table name.
     /// </summary>
-    public static string BuildCreateTable<T>(string tableName)
-    {
-        return BuildCreateTable(typeof(T), tableName);
-    }
+    public static string BuildCreateTable<T>(string tableName) => BuildCreateTable(typeof(T), tableName);
 
     /// <summary>
     ///     Generates a CREATE TABLE IF NOT EXISTS statement for the given type and table name.

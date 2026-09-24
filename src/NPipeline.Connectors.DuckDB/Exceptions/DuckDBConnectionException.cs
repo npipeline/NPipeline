@@ -19,10 +19,8 @@ public sealed class DuckDBConnectionException : DuckDBConnectorException
     /// </summary>
     public string? DatabasePath { get; }
 
-    private static string FormatMessage(string message, string? databasePath)
-    {
-        return databasePath is not null
+    private static string FormatMessage(string message, string? databasePath) =>
+        databasePath is not null
             ? $"{message} | Database: {databasePath}"
             : message;
-    }
 }

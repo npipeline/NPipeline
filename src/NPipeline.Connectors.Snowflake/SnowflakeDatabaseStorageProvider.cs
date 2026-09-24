@@ -105,37 +105,28 @@ public sealed class SnowflakeDatabaseStorageProvider : IDatabaseStorageProvider,
     }
 
     /// <inheritdoc />
-    public Task<Stream> OpenReadAsync(StorageUri uri, CancellationToken cancellationToken = default)
-    {
+    public Task<Stream> OpenReadAsync(StorageUri uri, CancellationToken cancellationToken = default) =>
         throw new NotSupportedException(
             $"OpenReadAsync is not supported by {nameof(SnowflakeDatabaseStorageProvider)}. " +
             $"Database providers are intended for connection management only. " +
             $"Use {nameof(IDatabaseConnection)} and {nameof(IDatabaseCommand)} for database operations.");
-    }
 
     /// <inheritdoc />
-    public Task<Stream> OpenWriteAsync(StorageUri uri, CancellationToken cancellationToken = default)
-    {
+    public Task<Stream> OpenWriteAsync(StorageUri uri, CancellationToken cancellationToken = default) =>
         throw new NotSupportedException(
             $"OpenWriteAsync is not supported by {nameof(SnowflakeDatabaseStorageProvider)}. " +
             $"Database providers are intended for connection management only. " +
             $"Use {nameof(IDatabaseConnection)} and {nameof(IDatabaseCommand)} for database operations.");
-    }
 
     /// <inheritdoc />
-    public Task<bool> ExistsAsync(StorageUri uri, CancellationToken cancellationToken = default)
-    {
+    public Task<bool> ExistsAsync(StorageUri uri, CancellationToken cancellationToken = default) =>
         throw new NotSupportedException(
             $"ExistsAsync is not supported by {nameof(SnowflakeDatabaseStorageProvider)}. " +
             $"Database providers are intended for connection management only. " +
             $"Use {nameof(IDatabaseConnection)} and {nameof(IDatabaseCommand)} for database operations.");
-    }
 
     /// <inheritdoc />
-    public StorageProviderMetadata GetMetadata()
-    {
-        return Metadata;
-    }
+    public StorageProviderMetadata GetMetadata() => Metadata;
 
     private static bool IsHandledParameter(string key)
     {

@@ -1,6 +1,7 @@
 using MongoDB.Bson;
 using MongoDB.Driver;
 using NPipeline.Connectors.MongoDB.Reliability;
+using NResilience;
 
 namespace NPipeline.Connectors.MongoDB.ChangeStream;
 
@@ -63,9 +64,8 @@ public class MongoChangeStreamConfiguration
     ///     Creates a copy of this configuration.
     /// </summary>
     /// <returns>A new <see cref="MongoChangeStreamConfiguration" /> with the same values.</returns>
-    public MongoChangeStreamConfiguration Clone()
-    {
-        return new MongoChangeStreamConfiguration
+    public MongoChangeStreamConfiguration Clone() =>
+        new()
         {
             ConnectionString = ConnectionString,
             DatabaseName = DatabaseName,
@@ -83,7 +83,6 @@ public class MongoChangeStreamConfiguration
             CaseInsensitiveMapping = CaseInsensitiveMapping,
             ThrowOnMappingError = ThrowOnMappingError,
         };
-    }
 
     #region Change Stream Options
 
@@ -144,7 +143,7 @@ public class MongoChangeStreamConfiguration
     ///     stream with that exception. <see cref="Nodes.MongoChangeStreamSourceNode{T}.ResumeToken" /> then holds the
     ///     token of the last change the node emitted, and opening the same node again resumes after it.
     /// </remarks>
-    public NResilience.Resilience Resilience { get; set; } = MongoConnectorResilience.ChangeStream;
+    public Resilience Resilience { get; set; } = MongoConnectorResilience.ChangeStream;
 
     /// <summary>
     ///     Gets or sets whether to continue when an error occurs.

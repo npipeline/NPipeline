@@ -180,12 +180,10 @@ internal sealed class SqlServerBatchWriter<T> : IDatabaseWriter<T>
     ///     Determines whether to use MERGE statement based on configuration.
     /// </summary>
     /// <returns>True if MERGE should be used; otherwise, false.</returns>
-    private bool ShouldUseMerge()
-    {
-        return _configuration.UseUpsert
-               && _configuration.UpsertKeyColumns != null
-               && _configuration.UpsertKeyColumns.Length > 0;
-    }
+    private bool ShouldUseMerge() =>
+        _configuration.UseUpsert
+        && _configuration.UpsertKeyColumns != null
+        && _configuration.UpsertKeyColumns.Length > 0;
 
     /// <summary>
     ///     Builds the INSERT SQL statement using square brackets for identifier quoting.

@@ -199,20 +199,18 @@ internal static class MongoMapperBuilder
     /// <summary>
     ///     Checks if a type is a numeric type.
     /// </summary>
-    private static bool IsNumericType(Type type)
-    {
-        return type == typeof(int) ||
-               type == typeof(long) ||
-               type == typeof(short) ||
-               type == typeof(byte) ||
-               type == typeof(float) ||
-               type == typeof(double) ||
-               type == typeof(decimal) ||
-               type == typeof(uint) ||
-               type == typeof(ulong) ||
-               type == typeof(ushort) ||
-               type == typeof(sbyte);
-    }
+    private static bool IsNumericType(Type type) =>
+        type == typeof(int) ||
+        type == typeof(long) ||
+        type == typeof(short) ||
+        type == typeof(byte) ||
+        type == typeof(float) ||
+        type == typeof(double) ||
+        type == typeof(decimal) ||
+        type == typeof(uint) ||
+        type == typeof(ulong) ||
+        type == typeof(ushort) ||
+        type == typeof(sbyte);
 
     /// <summary>
     ///     Converts a string to camelCase.

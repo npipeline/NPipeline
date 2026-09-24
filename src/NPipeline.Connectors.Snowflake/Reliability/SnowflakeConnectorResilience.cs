@@ -53,7 +53,7 @@ public static class SnowflakeConnectorResilience
     ///     <see cref="Configuration.SnowflakeConfiguration.CommandTimeout" /> bounds each attempt. Replaces
     ///     <c>MaxRetryAttempts = 3</c> and <c>RetryDelay = 2 s</c>.
     /// </summary>
-    public static NResilience.Resilience Default { get; } = new()
+    public static Resilience Default { get; } = new()
     {
         Name = "npipeline.snowflake",
         Attempts = 4,
@@ -65,6 +65,7 @@ public static class SnowflakeConnectorResilience
             ThrottledBase = TimeSpan.FromSeconds(10),
             MaximumDelay = TimeSpan.FromSeconds(60),
         },
+
         // Declared above so it is initialized first; a static initializer reads fields in declaration order.
         Classifier = Classifier,
         Adaptive = false,

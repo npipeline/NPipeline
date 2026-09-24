@@ -25,8 +25,8 @@ internal sealed class PostgresBatchWriter<T> : IDatabaseWriter<T>
     private readonly PropertyMapping[] _mappings;
     private readonly int _parameterCount;
     private readonly Func<T, IEnumerable<DatabaseParameter>>? _parameterMapper;
-    private readonly ConnectionResilience _resilience;
     private readonly List<object?[]> _pendingRows;
+    private readonly ConnectionResilience _resilience;
     private readonly string _schema;
     private readonly string _tableName;
     private readonly Func<T, object?[]> _valueFactory;
@@ -115,6 +115,15 @@ internal sealed class PostgresBatchWriter<T> : IDatabaseWriter<T>
         }
     }
 
+    /// <summary>
+    ///     Disposes the writer.
+    /// </summary>
+    public async ValueTask DisposeAsync()
+    {
+        // Flush any buffered items before disposal
+        await FlushAsync().ConfigureAwait(false);
+    }
+
     private async Task ExecuteFlushAsync(CancellationToken cancellationToken)
     {
         var valueClauses = new List<string>(_pendingRows.Count);
@@ -144,15 +153,6 @@ internal sealed class PostgresBatchWriter<T> : IDatabaseWriter<T>
         command.CommandText = _insertSql + string.Join(", ", valueClauses);
 
         _ = await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-    }
-
-    /// <summary>
-    ///     Disposes the writer.
-    /// </summary>
-    public async ValueTask DisposeAsync()
-    {
-        // Flush any buffered items before disposal
-        await FlushAsync().ConfigureAwait(false);
     }
 
     /// <summary>

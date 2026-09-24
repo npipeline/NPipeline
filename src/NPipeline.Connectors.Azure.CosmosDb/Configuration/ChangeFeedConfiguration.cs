@@ -91,9 +91,8 @@ public class ChangeFeedConfiguration
     ///     Creates a deep copy of this configuration.
     /// </summary>
     /// <returns>A new <see cref="ChangeFeedConfiguration" /> instance with copied values.</returns>
-    public ChangeFeedConfiguration Clone()
-    {
-        return new ChangeFeedConfiguration
+    public ChangeFeedConfiguration Clone() =>
+        new()
         {
             StartFrom = StartFrom,
             StartTime = StartTime,
@@ -106,5 +105,4 @@ public class ChangeFeedConfiguration
             MaxRateLimitWaitTime = MaxRateLimitWaitTime,
             ContinueOnError = ContinueOnError,
         };
-    }
 }

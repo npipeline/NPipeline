@@ -21,9 +21,9 @@ internal sealed class SqlServerPerRowWriter<T> : IDatabaseWriter<T>
     private readonly IDatabaseConnection _connection;
     private readonly string _insertSql;
     private readonly PropertyMapping[] _mappings;
-    private readonly ConnectionResilience _resilience;
     private readonly Func<T, IEnumerable<DatabaseParameter>>? _parameterMapper;
     private readonly string[] _parameterNames;
+    private readonly ConnectionResilience _resilience;
     private readonly string _schema;
     private readonly string _tableName;
     private readonly Func<T, object?[]> _valueFactory;
@@ -70,22 +70,6 @@ internal sealed class SqlServerPerRowWriter<T> : IDatabaseWriter<T>
         await _resilience.RunAsync(ct => InsertAsync(values, ct), cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task InsertAsync(object?[] values, CancellationToken cancellationToken)
-    {
-        var command = await _connection.CreateCommandAsync(cancellationToken).ConfigureAwait(false);
-        await using var commandScope = command.ConfigureAwait(false);
-        command.CommandText = _insertSql;
-        command.CommandType = CommandType.Text;
-        command.CommandTimeout = _configuration.CommandTimeout;
-
-        for (var i = 0; i < values.Length; i++)
-        {
-            command.AddParameter(_parameterNames[i], values[i] ?? DBNull.Value);
-        }
-
-        _ = await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-    }
-
     /// <summary>
     ///     Writes a batch of items to the database using individual INSERT statements.
     /// </summary>
@@ -105,10 +89,7 @@ internal sealed class SqlServerPerRowWriter<T> : IDatabaseWriter<T>
     /// </summary>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
-    public Task FlushAsync(CancellationToken cancellationToken = default)
-    {
-        return Task.CompletedTask;
-    }
+    public Task FlushAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
     /// <summary>
     ///     Disposes the writer.
@@ -117,6 +98,22 @@ internal sealed class SqlServerPerRowWriter<T> : IDatabaseWriter<T>
     {
         // Connection is owned by the sink node, not the writer
         await ValueTask.CompletedTask.ConfigureAwait(false);
+    }
+
+    private async Task InsertAsync(object?[] values, CancellationToken cancellationToken)
+    {
+        var command = await _connection.CreateCommandAsync(cancellationToken).ConfigureAwait(false);
+        await using var commandScope = command.ConfigureAwait(false);
+        command.CommandText = _insertSql;
+        command.CommandType = CommandType.Text;
+        command.CommandTimeout = _configuration.CommandTimeout;
+
+        for (var i = 0; i < values.Length; i++)
+        {
+            command.AddParameter(_parameterNames[i], values[i] ?? DBNull.Value);
+        }
+
+        _ = await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>

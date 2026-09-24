@@ -32,10 +32,7 @@ public interface ISerializerProvider
     /// <param name="value">The value to serialize.</param>
     /// <param name="context">The topic and component being written.</param>
     /// <returns>The serialized bytes.</returns>
-    byte[] Serialize<T>(T value, SerializationContext context)
-    {
-        return Serialize(value);
-    }
+    byte[] Serialize<T>(T value, SerializationContext context) => Serialize(value);
 
     /// <summary>
     ///     Deserializes a message read from the topic and component in <paramref name="context" />. The connector calls
@@ -45,8 +42,5 @@ public interface ISerializerProvider
     /// <param name="data">The bytes to deserialize.</param>
     /// <param name="context">The topic and component being read.</param>
     /// <returns>The deserialized value.</returns>
-    T Deserialize<T>(byte[] data, SerializationContext context)
-    {
-        return Deserialize<T>(data);
-    }
+    T Deserialize<T>(byte[] data, SerializationContext context) => Deserialize<T>(data);
 }

@@ -29,8 +29,8 @@ internal sealed class MySqlBatchWriter<T> : IDatabaseWriter<T>
     private readonly string _insertPrefix;
     private readonly PropertyMapping[] _mappings;
     private readonly Func<T, IEnumerable<DatabaseParameter>>? _parameterMapper;
-    private readonly ConnectionResilience _resilience;
     private readonly List<object?[]> _pendingRows;
+    private readonly ConnectionResilience _resilience;
     private readonly string _tableName;
     private readonly Func<T, object?[]> _valueFactory;
 
@@ -172,10 +172,7 @@ internal sealed class MySqlBatchWriter<T> : IDatabaseWriter<T>
         return sb.ToString();
     }
 
-    private string BuildInsertPrefix()
-    {
-        return $"INSERT INTO {QuoteIdentifier(_tableName)} ({BuildColumnList()}) VALUES";
-    }
+    private string BuildInsertPrefix() => $"INSERT INTO {QuoteIdentifier(_tableName)} ({BuildColumnList()}) VALUES";
 
     private string BuildColumnList()
     {

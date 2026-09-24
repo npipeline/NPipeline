@@ -176,12 +176,10 @@ public sealed class SqsSourceNode<T> : SourceNode<SqsMessage<T>>
     {
         public static readonly LowerCaseNamingPolicy Instance = new();
 
-        public override string ConvertName(string name)
-        {
-            return string.IsNullOrEmpty(name)
+        public override string ConvertName(string name) =>
+            string.IsNullOrEmpty(name)
                 ? name
                 : name.ToLowerInvariant();
-        }
     }
 
     private sealed class PascalCaseNamingPolicy : JsonNamingPolicy

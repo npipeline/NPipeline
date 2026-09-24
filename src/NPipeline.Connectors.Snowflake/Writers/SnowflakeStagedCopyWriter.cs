@@ -26,8 +26,8 @@ internal sealed class SnowflakeStagedCopyWriter<T> : IDatabaseWriter<T>
     private readonly IDatabaseConnection _connection;
     private readonly PropertyMapping[] _mappings;
     private readonly Func<T, IEnumerable<DatabaseParameter>>? _parameterMapper;
-    private readonly ConnectionResilience _resilience;
     private readonly List<object?[]> _pendingRows;
+    private readonly ConnectionResilience _resilience;
     private readonly string _schema;
     private readonly string _tableName;
     private readonly Func<T, object?[]> _valueFactory;
@@ -166,8 +166,12 @@ internal sealed class SnowflakeStagedCopyWriter<T> : IDatabaseWriter<T>
     ///     Runs COPY INTO and checks that it processed the staged file.
     /// </summary>
     /// <remarks>
-    ///     Snowflake answers a COPY INTO that found nothing to load with a single row, <c>Copy executed with 0 files
-    ///     processed.</c>, and no <c>file</c> column. On the first attempt that means the file just uploaded is missing, so
+    ///     Snowflake answers a COPY INTO that found nothing to load with a single row,
+    ///     <c>
+    ///         Copy executed with 0 files
+    ///         processed.
+    ///     </c>
+    ///     , and no <c>file</c> column. On the first attempt that means the file just uploaded is missing, so
     ///     the rows would be lost: it fails. On a retry it is the expected answer when an earlier attempt loaded the file and
     ///     only its reply was lost, because load metadata then skips the file.
     /// </remarks>

@@ -64,12 +64,10 @@ public static class MySqlExceptionHandler
     /// <summary>
     ///     Returns a human-readable description for a MySQL error code.
     /// </summary>
-    public static string? GetErrorDescription(int errorCode)
-    {
-        return ErrorDescriptions.TryGetValue(errorCode, out var description)
+    public static string? GetErrorDescription(int errorCode) =>
+        ErrorDescriptions.TryGetValue(errorCode, out var description)
             ? description
             : null;
-    }
 
     private static bool IsConnectionError(Exception exception)
     {

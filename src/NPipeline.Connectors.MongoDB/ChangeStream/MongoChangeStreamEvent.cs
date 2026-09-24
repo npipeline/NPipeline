@@ -119,8 +119,5 @@ public sealed class MongoChangeStreamEvent<TDocument>
     ///     Returns a string representation of this change stream event.
     /// </summary>
     /// <returns>A string describing the event.</returns>
-    public override string ToString()
-    {
-        return $"[{OperationType}] {DatabaseName}.{CollectionName} - ClusterTime: {ClusterTime:O}";
-    }
+    public override string ToString() => $"[{OperationType}] {DatabaseName}.{CollectionName} - ClusterTime: {ClusterTime:O}";
 }

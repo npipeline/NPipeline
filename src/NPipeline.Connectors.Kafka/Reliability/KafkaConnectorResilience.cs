@@ -47,7 +47,7 @@ public static class KafkaConnectorResilience
     ///     retriable codes are listed here, following the Kafka protocol's <c>RetriableException</c> set and
     ///     librdkafka's transient local errors.
     /// </remarks>
-    public static Classifier Classifier { get; } = NResilience.Classifier.Default
+    public static Classifier Classifier { get; } = Classifier.Default
         .On<KafkaException>(static e => Classify(e));
 
     /// <summary>
@@ -61,7 +61,7 @@ public static class KafkaConnectorResilience
     ///     one fewer than <c>MaxRetries</c> documented; this preset makes the documented three retries. It also retried
     ///     every exception, where this preset retries only retriable Kafka errors.
     /// </remarks>
-    public static NResilience.Resilience Default { get; } = new()
+    public static Resilience Default { get; } = new()
     {
         Name = "npipeline.kafka.consume",
         Attempts = 4,
@@ -72,6 +72,7 @@ public static class KafkaConnectorResilience
             TransientBase = TimeSpan.FromMilliseconds(100),
             MaximumDelay = TimeSpan.FromSeconds(30),
         },
+
         // Declared above so it is initialized first; a static initializer reads fields in declaration order.
         Classifier = Classifier,
         Adaptive = false,

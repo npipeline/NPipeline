@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using System.Runtime.ExceptionServices;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using NPipeline.Connectors.MongoDB.ChangeStream;
@@ -191,7 +192,7 @@ public class MongoChangeStreamSourceNode<T> : SourceNode<T>, IAsyncDisposable
             if (_configuration.ContinueOnError && _configuration.DocumentErrorHandler?.Invoke(openFailure, null) == true)
                 yield break;
 
-            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw(openFailure);
+            ExceptionDispatchInfo.Throw(openFailure);
         }
 
         _cursor = cursor!;

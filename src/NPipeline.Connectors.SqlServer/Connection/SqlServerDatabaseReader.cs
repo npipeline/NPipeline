@@ -26,40 +26,28 @@ internal sealed class SqlServerDatabaseReader(SqlDataReader reader) : IDatabaseR
     /// </summary>
     /// <param name="ordinal">The column ordinal.</param>
     /// <returns>The column name.</returns>
-    public string GetName(int ordinal)
-    {
-        return Reader.GetName(ordinal);
-    }
+    public string GetName(int ordinal) => Reader.GetName(ordinal);
 
     /// <summary>
     ///     Gets column type by ordinal position.
     /// </summary>
     /// <param name="ordinal">The column ordinal.</param>
     /// <returns>The column type.</returns>
-    public Type GetFieldType(int ordinal)
-    {
-        return Reader.GetFieldType(ordinal);
-    }
+    public Type GetFieldType(int ordinal) => Reader.GetFieldType(ordinal);
 
     /// <summary>
     ///     Advances reader to next row.
     /// </summary>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>True if there are more rows, false otherwise.</returns>
-    public Task<bool> ReadAsync(CancellationToken cancellationToken = default)
-    {
-        return Reader.ReadAsync(cancellationToken);
-    }
+    public Task<bool> ReadAsync(CancellationToken cancellationToken = default) => Reader.ReadAsync(cancellationToken);
 
     /// <summary>
     ///     Advances reader to next result set.
     /// </summary>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>True if there are more result sets, false otherwise.</returns>
-    public Task<bool> NextResultAsync(CancellationToken cancellationToken = default)
-    {
-        return Reader.NextResultAsync(cancellationToken);
-    }
+    public Task<bool> NextResultAsync(CancellationToken cancellationToken = default) => Reader.NextResultAsync(cancellationToken);
 
     /// <summary>
     ///     Gets field value by ordinal position.
@@ -67,22 +55,17 @@ internal sealed class SqlServerDatabaseReader(SqlDataReader reader) : IDatabaseR
     /// <typeparam name="T">The value type.</typeparam>
     /// <param name="ordinal">The column ordinal.</param>
     /// <returns>The field value.</returns>
-    public T? GetFieldValue<T>(int ordinal)
-    {
-        return Reader.IsDBNull(ordinal)
+    public T? GetFieldValue<T>(int ordinal) =>
+        Reader.IsDBNull(ordinal)
             ? default
             : Reader.GetFieldValue<T>(ordinal);
-    }
 
     /// <summary>
     ///     Checks if field value is DBNull.
     /// </summary>
     /// <param name="ordinal">The column ordinal.</param>
     /// <returns>True if value is DBNull, false otherwise.</returns>
-    public bool IsDBNull(int ordinal)
-    {
-        return Reader.IsDBNull(ordinal);
-    }
+    public bool IsDBNull(int ordinal) => Reader.IsDBNull(ordinal);
 
     /// <summary>
     ///     Disposes reader asynchronously.

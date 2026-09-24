@@ -65,10 +65,8 @@ internal sealed class SqlServerDatabaseCommand(SqlCommand command) : IDatabaseCo
     /// </summary>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
-    public async Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken = default)
-    {
-        return await _command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-    }
+    public async Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken = default) =>
+        await _command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
 
     /// <summary>
     ///     Disposes the command asynchronously.

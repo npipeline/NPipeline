@@ -54,8 +54,9 @@ public sealed class KafkaSinkNode<T> : SinkNode<T>, IAsyncDisposable
         LoggerMessage.Define(LogLevel.Error, new EventId(7, nameof(LogFlushFailed)),
             "Failed to flush producer");
 
-    private readonly MessageBatcher _batcher;
     private readonly SemaphoreSlim _batchFlushSemaphore = new(1, 1);
+
+    private readonly MessageBatcher _batcher;
     private readonly KafkaConfiguration _configuration;
     private readonly IKafkaMetrics _metrics;
     private readonly bool _ownsProducer;
@@ -126,6 +127,39 @@ public sealed class KafkaSinkNode<T> : SinkNode<T>, IAsyncDisposable
         _serializer = CreateSerializer(configuration, metrics);
         _ownsProducer = false;
         _batcher = new MessageBatcher(configuration.BatchSize);
+    }
+
+    /// <inheritdoc />
+    public async ValueTask DisposeAsync()
+    {
+        // An initialization abandoned by cancellation may still be running on the producer. Let it finish (it is bounded
+        // by TransactionInitTimeoutMs) before flushing and disposing, so the producer is never disposed under it.
+        if (_transactionInit is { IsCompleted: false } init)
+        {
+            try
+            {
+                await init.ConfigureAwait(false);
+            }
+            catch (Exception)
+            {
+                // Its failure was the node's to report; disposal goes ahead.
+            }
+        }
+
+        try
+        {
+            _producer.Flush(CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            LogFlushFailed(_logger, ex);
+        }
+
+        if (_ownsProducer)
+            _producer.Dispose();
+
+        _batcher.Dispose();
+        _batchFlushSemaphore.Dispose();
     }
 
     /// <inheritdoc />
@@ -283,10 +317,7 @@ public sealed class KafkaSinkNode<T> : SinkNode<T>, IAsyncDisposable
             await message.AcknowledgeAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    private static OutgoingMessage CreateOutgoingMessage(T item)
-    {
-        return new OutgoingMessage(item, item as IAcknowledgableMessage);
-    }
+    private static OutgoingMessage CreateOutgoingMessage(T item) => new(item, item as IAcknowledgableMessage);
 
     /// <summary>
     ///     Builds the record for <paramref name="item" />. An acknowledgable message is produced as itself; the value
@@ -448,7 +479,11 @@ public sealed class KafkaSinkNode<T> : SinkNode<T>, IAsyncDisposable
             if (task.IsCompletedSuccessfully)
             {
                 var persisted = task.Result.Status == PersistenceStatus.Persisted;
-                produced += persisted ? 1 : 0;
+
+                produced += persisted
+                    ? 1
+                    : 0;
+
                 results.Add((persisted, taskToMessage[i]));
                 continue;
             }
@@ -570,39 +605,6 @@ public sealed class KafkaSinkNode<T> : SinkNode<T>, IAsyncDisposable
             await Task.Delay(_configuration.BatchLingerMs, cancellationToken).ConfigureAwait(false);
             await FlushBatchAsync(logger, cancellationToken).ConfigureAwait(false);
         }
-    }
-
-    /// <inheritdoc />
-    public async ValueTask DisposeAsync()
-    {
-        // An initialization abandoned by cancellation may still be running on the producer. Let it finish (it is bounded
-        // by TransactionInitTimeoutMs) before flushing and disposing, so the producer is never disposed under it.
-        if (_transactionInit is { IsCompleted: false } init)
-        {
-            try
-            {
-                await init.ConfigureAwait(false);
-            }
-            catch (Exception)
-            {
-                // Its failure was the node's to report; disposal goes ahead.
-            }
-        }
-
-        try
-        {
-            _producer.Flush(CancellationToken.None);
-        }
-        catch (Exception ex)
-        {
-            LogFlushFailed(_logger, ex);
-        }
-
-        if (_ownsProducer)
-            _producer.Dispose();
-
-        _batcher.Dispose();
-        _batchFlushSemaphore.Dispose();
     }
 
     /// <summary>

@@ -22,42 +22,25 @@ internal sealed class MySqlDatabaseReader(MySqlDataReader reader) : IDatabaseRea
     public int FieldCount => Reader.FieldCount;
 
     /// <inheritdoc />
-    public string GetName(int ordinal)
-    {
-        return Reader.GetName(ordinal);
-    }
+    public string GetName(int ordinal) => Reader.GetName(ordinal);
 
     /// <inheritdoc />
-    public Type GetFieldType(int ordinal)
-    {
-        return Reader.GetFieldType(ordinal);
-    }
+    public Type GetFieldType(int ordinal) => Reader.GetFieldType(ordinal);
 
     /// <inheritdoc />
-    public Task<bool> ReadAsync(CancellationToken cancellationToken = default)
-    {
-        return Reader.ReadAsync(cancellationToken);
-    }
+    public Task<bool> ReadAsync(CancellationToken cancellationToken = default) => Reader.ReadAsync(cancellationToken);
 
     /// <inheritdoc />
-    public Task<bool> NextResultAsync(CancellationToken cancellationToken = default)
-    {
-        return Reader.NextResultAsync(cancellationToken);
-    }
+    public Task<bool> NextResultAsync(CancellationToken cancellationToken = default) => Reader.NextResultAsync(cancellationToken);
 
     /// <inheritdoc />
-    public T? GetFieldValue<T>(int ordinal)
-    {
-        return Reader.IsDBNull(ordinal)
+    public T? GetFieldValue<T>(int ordinal) =>
+        Reader.IsDBNull(ordinal)
             ? default
             : Reader.GetFieldValue<T>(ordinal);
-    }
 
     /// <inheritdoc />
-    public bool IsDBNull(int ordinal)
-    {
-        return Reader.IsDBNull(ordinal);
-    }
+    public bool IsDBNull(int ordinal) => Reader.IsDBNull(ordinal);
 
     /// <inheritdoc />
     public async ValueTask DisposeAsync()
@@ -66,10 +49,8 @@ internal sealed class MySqlDatabaseReader(MySqlDataReader reader) : IDatabaseRea
     }
 
     /// <inheritdoc />
-    public object? GetValue(int ordinal)
-    {
-        return Reader.IsDBNull(ordinal)
+    public object? GetValue(int ordinal) =>
+        Reader.IsDBNull(ordinal)
             ? null
             : Reader.GetValue(ordinal);
-    }
 }

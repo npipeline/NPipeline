@@ -219,10 +219,8 @@ public class PostgresSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
     /// <remarks>
     ///     Retried by <see cref="PostgresConfiguration.Resilience" />: no row has been read yet, so a retry cannot emit one twice.
     /// </remarks>
-    protected override async Task<IDatabaseConnection> GetConnectionAsync(CancellationToken cancellationToken)
-    {
-        return await _configuration.Resilience.RunAsync(ConnectAsync, cancellationToken).ConfigureAwait(false);
-    }
+    protected override async Task<IDatabaseConnection> GetConnectionAsync(CancellationToken cancellationToken) =>
+        await _configuration.Resilience.RunAsync(ConnectAsync, cancellationToken).ConfigureAwait(false);
 
     private async Task<IDatabaseConnection> ConnectAsync(CancellationToken cancellationToken)
     {

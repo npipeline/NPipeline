@@ -62,10 +62,8 @@ internal sealed class SnowflakeDatabaseCommand(DbCommand command) : IDatabaseCom
     /// <summary>
     ///     Executes the command and returns the number of rows affected.
     /// </summary>
-    public async Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken = default)
-    {
-        return await _command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-    }
+    public async Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken = default) =>
+        await _command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
 
     /// <summary>
     ///     Disposes the command asynchronously.

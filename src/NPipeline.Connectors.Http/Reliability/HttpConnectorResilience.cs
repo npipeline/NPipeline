@@ -34,7 +34,7 @@ public static class HttpConnectorResilience
     ///     Four attempts (three retries), a 30-second timeout on each, and exponential backoff with full jitter from
     ///     200 milliseconds up to 30 seconds. There is no overall deadline, so the attempt count bounds the call.
     /// </summary>
-    public static NResilience.Resilience Default { get; } = new()
+    public static Resilience Default { get; } = new()
     {
         Name = "npipeline.http",
         Attempts = 4,
@@ -45,6 +45,7 @@ public static class HttpConnectorResilience
             TransientBase = TimeSpan.FromMilliseconds(200),
             MaximumDelay = TimeSpan.FromSeconds(30),
         },
+
         // Declared above so it is initialized first; a static initializer reads fields in declaration order.
         Classifier = Classifier,
         Adaptive = false,
@@ -54,7 +55,7 @@ public static class HttpConnectorResilience
     ///     Three attempts (two retries) with exponential backoff from one second up to 60 seconds, for APIs that
     ///     prefer fewer, slower retries.
     /// </summary>
-    public static NResilience.Resilience Conservative { get; } = Default with
+    public static Resilience Conservative { get; } = Default with
     {
         Name = "npipeline.http.conservative",
         Attempts = 3,

@@ -88,10 +88,7 @@ public class CursorCheckpointHandler
     /// <summary>
     ///     Serializes a cursor position to a string.
     /// </summary>
-    private static string SerializeCursorPosition(CursorPosition position)
-    {
-        return JsonSerializer.Serialize(position, JsonOptions);
-    }
+    private static string SerializeCursorPosition(CursorPosition position) => JsonSerializer.Serialize(position, JsonOptions);
 
     /// <summary>
     ///     Deserializes a cursor position from a string.
@@ -158,15 +155,13 @@ public sealed record CursorPosition
     /// <param name="lastKeyValues">The last seen key values.</param>
     /// <param name="rowCount">Optional row count.</param>
     /// <returns>A new cursor position.</returns>
-    public static CursorPosition Keyset(Dictionary<string, object?> lastKeyValues, long? rowCount = null)
-    {
-        return new CursorPosition
+    public static CursorPosition Keyset(Dictionary<string, object?> lastKeyValues, long? rowCount = null) =>
+        new()
         {
             Type = "keyset",
             LastKeyValues = lastKeyValues,
             RowCount = rowCount,
         };
-    }
 
     /// <summary>
     ///     Creates an offset-based cursor position.
@@ -175,14 +170,12 @@ public sealed record CursorPosition
     /// <param name="rowCount">Optional row count.</param>
     /// <param name="fetchSize">The fetch size.</param>
     /// <returns>A new cursor position.</returns>
-    public static CursorPosition FromOffset(long offset, long? rowCount = null, int fetchSize = 100)
-    {
-        return new CursorPosition
+    public static CursorPosition FromOffset(long offset, long? rowCount = null, int fetchSize = 100) =>
+        new()
         {
             Type = "offset",
             Offset = offset,
             RowCount = rowCount,
             FetchSize = fetchSize,
         };
-    }
 }

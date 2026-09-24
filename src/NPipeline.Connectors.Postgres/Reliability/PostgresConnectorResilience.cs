@@ -1,6 +1,7 @@
 using Npgsql;
 using NPipeline.Connectors.Postgres.Exceptions;
 using NResilience;
+using PostgresException = NPipeline.Connectors.Postgres.Exceptions.PostgresException;
 
 namespace NPipeline.Connectors.Postgres.Reliability;
 
@@ -37,7 +38,7 @@ public static class PostgresConnectorResilience
     /// </summary>
     public static Classifier Classifier { get; } = Classifier.Default
         .On<NpgsqlException>(Judge)
-        .On<Exceptions.PostgresException>(Judge);
+        .On<PostgresException>(Judge);
 
     /// <summary>
     ///     Four attempts (three retries) and exponential backoff with full jitter from one second up to 30 seconds, or
@@ -46,7 +47,7 @@ public static class PostgresConnectorResilience
     ///     each attempt. Replaces
     ///     <c>MaxRetryAttempts = 3</c> and <c>RetryDelay = 1 s</c>.
     /// </summary>
-    public static NResilience.Resilience Default { get; } = new()
+    public static Resilience Default { get; } = new()
     {
         Name = "npipeline.postgres",
         Attempts = 4,
@@ -58,6 +59,7 @@ public static class PostgresConnectorResilience
             ThrottledBase = TimeSpan.FromSeconds(5),
             MaximumDelay = TimeSpan.FromSeconds(30),
         },
+
         // Declared above so it is initialized first; a static initializer reads fields in declaration order.
         Classifier = Classifier,
         Adaptive = false,
@@ -73,9 +75,9 @@ public static class PostgresConnectorResilience
                 : Verdict.Permanent,
 
             // The connector's own wrapper, thrown by the source: judge the SQLSTATE it carries, or what it wraps.
-            Exceptions.PostgresException { ErrorCode: { } sqlState } => FromSqlState(sqlState),
-            Exceptions.PostgresException { InnerException: NpgsqlException or Exceptions.PostgresException } wrapper => Judge(wrapper.InnerException!),
-            Exceptions.PostgresException { InnerException: { } inner } => Classifier.Default.ClassifyException(inner),
+            PostgresException { ErrorCode: { } sqlState } => FromSqlState(sqlState),
+            PostgresException { InnerException: NpgsqlException or PostgresException } wrapper => Judge(wrapper.InnerException!),
+            PostgresException { InnerException: { } inner } => Classifier.Default.ClassifyException(inner),
             _ => Verdict.Permanent,
         };
     }

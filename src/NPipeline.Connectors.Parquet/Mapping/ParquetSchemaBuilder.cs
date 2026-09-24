@@ -20,10 +20,7 @@ public static class ParquetSchemaBuilder
     /// <typeparam name="T">The CLR type to build a schema for.</typeparam>
     /// <returns>A Parquet schema corresponding to the CLR type.</returns>
     /// <exception cref="ParquetSchemaException">Thrown when schema building fails.</exception>
-    public static ParquetSchema Build<T>()
-    {
-        return Build(typeof(T));
-    }
+    public static ParquetSchema Build<T>() => Build(typeof(T));
 
     /// <summary>
     ///     Builds or retrieves a cached Parquet schema for the specified CLR type.
@@ -31,10 +28,7 @@ public static class ParquetSchemaBuilder
     /// <param name="type">The CLR type to build a schema for.</param>
     /// <returns>A Parquet schema corresponding to the CLR type.</returns>
     /// <exception cref="ParquetSchemaException">Thrown when schema building fails.</exception>
-    public static ParquetSchema Build(Type type)
-    {
-        return SchemaCache.GetOrAdd(type, BuildSchema);
-    }
+    public static ParquetSchema Build(Type type) => SchemaCache.GetOrAdd(type, BuildSchema);
 
     /// <summary>
     ///     Gets the column name for a property, considering attributes and conventions.

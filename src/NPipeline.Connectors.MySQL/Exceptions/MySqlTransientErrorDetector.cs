@@ -55,25 +55,16 @@ public static class MySqlTransientErrorDetector
     /// <summary>
     ///     Gets the MySQL error number from a <see cref="MySqlConnector.MySqlException" />.
     /// </summary>
-    public static int? GetErrorCode(MySqlConnector.MySqlException exception)
-    {
-        return exception.Number;
-    }
+    public static int? GetErrorCode(MySqlConnector.MySqlException exception) => exception.Number;
 
     /// <summary>
     ///     Determines if a specific MySQL error number is transient.
     /// </summary>
-    public static bool IsTransientError(int errorCode)
-    {
-        return TransientErrorCodes.Contains(errorCode);
-    }
+    public static bool IsTransientError(int errorCode) => TransientErrorCodes.Contains(errorCode);
 
     /// <summary>
     ///     Determines if a specific MySQL error number means the server is throttling the client, so it should back off for
     ///     longer than for other transient errors.
     /// </summary>
-    public static bool IsThrottlingError(int errorCode)
-    {
-        return ThrottlingErrorCodes.Contains(errorCode);
-    }
+    public static bool IsThrottlingError(int errorCode) => ThrottlingErrorCodes.Contains(errorCode);
 }

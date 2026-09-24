@@ -51,10 +51,8 @@ public class DuckDBSinkNodeFactory
     /// <returns>A configured DuckDB sink node.</returns>
     public DuckDBSinkNode<T> CreateSink<T>(
         string tableName,
-        DuckDBConfiguration? configuration = null) where T : class
-    {
-        return CreateSink<T>(null, tableName, configuration);
-    }
+        DuckDBConfiguration? configuration = null) where T : class =>
+        CreateSink<T>(null, tableName, configuration);
 
     private DuckDBConfiguration ResolveConfiguration(string? databaseName, DuckDBConfiguration? overrides)
     {

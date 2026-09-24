@@ -24,9 +24,8 @@ public sealed class SqlServerCheckpointStorage : DatabaseCheckpointStorage
     }
 
     /// <inheritdoc />
-    protected override string GetCreateTableSql()
-    {
-        return $@"
+    protected override string GetCreateTableSql() =>
+        $@"
             IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = '{QuotedTableName.TrimStart('[').TrimEnd(']')}')
             BEGIN
                 CREATE TABLE {QuotedTableName} (
@@ -44,12 +43,10 @@ public sealed class SqlServerCheckpointStorage : DatabaseCheckpointStorage
                 CREATE INDEX IX_{QuotedTableName.TrimStart('[').TrimEnd(']')}_pipeline_id ON {QuotedTableName}(pipeline_id);
                 CREATE INDEX IX_{QuotedTableName.TrimStart('[').TrimEnd(']')}_updated_at ON {QuotedTableName}(updated_at);
             END";
-    }
 
     /// <inheritdoc />
-    protected override string GetUpsertSql()
-    {
-        return $@"
+    protected override string GetUpsertSql() =>
+        $@"
             MERGE INTO {QuotedTableName} AS target
             USING (SELECT @pipelineId AS pipeline_id, @nodeId AS node_id) AS source
             ON (target.pipeline_id = source.pipeline_id AND target.node_id = source.node_id)
@@ -58,5 +55,4 @@ public sealed class SqlServerCheckpointStorage : DatabaseCheckpointStorage
             WHEN NOT MATCHED THEN
                 INSERT (pipeline_id, node_id, checkpoint_value, checkpoint_timestamp, metadata, created_at, updated_at)
                 VALUES (@pipelineId, @nodeId, @value, @timestamp, @metadata, @createdAt, @updatedAt);";
-    }
 }

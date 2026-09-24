@@ -40,12 +40,14 @@ public sealed class AvroMessageSerializer : ISerializerProvider, IDisposable
 
         var schemaRegistryConfigDict = BuildSchemaRegistryConfig(schemaRegistryConfig);
         _schemaRegistryClient = new CachedSchemaRegistryClient(schemaRegistryConfigDict);
+
         // The serializer, not the registry client, reads these settings; the client ignores them.
         _serializerConfig = serializerConfig ?? new AvroSerializerConfig
         {
             AutoRegisterSchemas = schemaRegistryConfig.AutoRegisterSchemas,
             SubjectNameStrategy = schemaRegistryConfig.SubjectNameStrategy,
         };
+
         _deserializerConfig = deserializerConfig;
     }
 
@@ -95,11 +97,10 @@ public sealed class AvroMessageSerializer : ISerializerProvider, IDisposable
     }
 
     /// <inheritdoc />
-    public byte[] Serialize<T>(T value)
-    {
+    public byte[] Serialize<T>(T value) =>
+
         // No topic: the subject becomes "-value". The sink calls the overload below with the real topic.
-        return Serialize(value, new SerializationContext(MessageComponentType.Value, string.Empty));
-    }
+        Serialize(value, new SerializationContext(MessageComponentType.Value, string.Empty));
 
     /// <summary>
     ///     Serializes a value for the topic and component in <paramref name="context" />. The Schema Registry subject
@@ -120,7 +121,6 @@ public sealed class AvroMessageSerializer : ISerializerProvider, IDisposable
         {
             var serializer = GetOrCreateSerializer<T>();
 
-
             // Confluent serializers are async-only; Kafka expects sync serializers, so we block here.
             return serializer.SerializeAsync(value, context).GetAwaiter().GetResult();
         }
@@ -136,10 +136,7 @@ public sealed class AvroMessageSerializer : ISerializerProvider, IDisposable
     }
 
     /// <inheritdoc />
-    public T Deserialize<T>(byte[] data)
-    {
-        return Deserialize<T>(data, new SerializationContext(MessageComponentType.Value, string.Empty));
-    }
+    public T Deserialize<T>(byte[] data) => Deserialize<T>(data, new SerializationContext(MessageComponentType.Value, string.Empty));
 
     /// <summary>
     ///     Deserializes a value read from the topic and component in <paramref name="context" />.
@@ -158,7 +155,6 @@ public sealed class AvroMessageSerializer : ISerializerProvider, IDisposable
         try
         {
             var deserializer = GetOrCreateDeserializer<T>();
-
 
             // Confluent deserializers are async-only; Kafka expects sync deserializers, so we block here.
             return deserializer.DeserializeAsync(data, data == null, context).GetAwaiter().GetResult();

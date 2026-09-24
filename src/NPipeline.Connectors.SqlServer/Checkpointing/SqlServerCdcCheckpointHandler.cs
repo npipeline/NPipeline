@@ -169,10 +169,7 @@ public class SqlServerCdcCheckpointHandler
     /// <summary>
     ///     Serializes a CDC position to a string.
     /// </summary>
-    private static string SerializePosition(SqlServerCdcPosition position)
-    {
-        return JsonSerializer.Serialize(position, JsonOptions);
-    }
+    private static string SerializePosition(SqlServerCdcPosition position) => JsonSerializer.Serialize(position, JsonOptions);
 
     /// <summary>
     ///     Deserializes a CDC position from a string.
@@ -246,24 +243,19 @@ public sealed record SqlServerCdcPosition
     /// </summary>
     /// <param name="lsnHex">The LSN as hex string.</param>
     /// <returns>A new CDC position.</returns>
-    public static SqlServerCdcPosition FromLsnHex(string lsnHex)
-    {
-        return new SqlServerCdcPosition { StartLsnHex = lsnHex };
-    }
+    public static SqlServerCdcPosition FromLsnHex(string lsnHex) => new() { StartLsnHex = lsnHex };
 
     /// <summary>
     ///     Creates a position from a binary LSN.
     /// </summary>
     /// <param name="lsn">The LSN as byte array.</param>
     /// <returns>A new CDC position.</returns>
-    public static SqlServerCdcPosition FromLsn(byte[] lsn)
-    {
-        return new SqlServerCdcPosition
+    public static SqlServerCdcPosition FromLsn(byte[] lsn) =>
+        new()
         {
             StartLsn = Convert.ToBase64String(lsn),
             StartLsnHex = "0x" + Convert.ToHexString(lsn),
         };
-    }
 
     /// <summary>
     ///     Parses the hex LSN to a byte array.

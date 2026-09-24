@@ -22,8 +22,8 @@ internal sealed class MySqlPerRowWriter<T> : IDatabaseWriter<T>
     private readonly string _insertSql;
     private readonly PropertyMapping[] _mappings;
     private readonly Func<T, IEnumerable<DatabaseParameter>>? _parameterMapper;
-    private readonly ConnectionResilience _resilience;
     private readonly string[] _parameterNames;
+    private readonly ConnectionResilience _resilience;
     private readonly string _tableName;
     private readonly Func<T, object?[]> _valueFactory;
 
@@ -63,16 +63,10 @@ internal sealed class MySqlPerRowWriter<T> : IDatabaseWriter<T>
     }
 
     /// <inheritdoc />
-    public Task FlushAsync(CancellationToken cancellationToken = default)
-    {
-        return Task.CompletedTask;
-    }
+    public Task FlushAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
     /// <inheritdoc />
-    public ValueTask DisposeAsync()
-    {
-        return ValueTask.CompletedTask;
-    }
+    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
     // -------------------------------------------------------------------------
     // Helpers

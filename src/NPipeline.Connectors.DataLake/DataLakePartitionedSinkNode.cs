@@ -339,9 +339,6 @@ public sealed class DataLakePartitionedSinkNode<T> : SinkNode<T>
     {
         private int _current;
 
-        public int GetNext()
-        {
-            return Interlocked.Increment(ref _current) - 1;
-        }
+        public int GetNext() => Interlocked.Increment(ref _current) - 1;
     }
 }

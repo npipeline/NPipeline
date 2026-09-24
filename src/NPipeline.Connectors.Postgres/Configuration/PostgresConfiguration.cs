@@ -3,6 +3,7 @@ using NPipeline.Connectors.Checkpointing;
 using NPipeline.Connectors.Configuration;
 using NPipeline.Connectors.Postgres.Mapping;
 using NPipeline.Connectors.Postgres.Reliability;
+using NResilience;
 
 namespace NPipeline.Connectors.Postgres.Configuration;
 
@@ -130,7 +131,7 @@ public class PostgresConfiguration
     ///     <see cref="CommandTimeout" />, or <see cref="CopyTimeout" /> for COPY. Use
     ///     <see cref="NResilience.Resilience.None" /> to turn retries off.
     /// </summary>
-    public NResilience.Resilience Resilience { get; set; } = PostgresConnectorResilience.Default;
+    public Resilience Resilience { get; set; } = PostgresConnectorResilience.Default;
 
     /// <summary>
     ///     Gets or sets whether to perform case-insensitive column matching.

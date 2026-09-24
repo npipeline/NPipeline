@@ -8,6 +8,8 @@ namespace NPipeline.Connectors.Snowflake.Exceptions;
 /// </summary>
 public static class SnowflakeTransientErrorDetector
 {
+    private const int SessionGone = 390111;
+
     /// <summary>
     ///     Snowflake error codes that are transient (retryable).
     /// </summary>
@@ -57,10 +59,7 @@ public static class SnowflakeTransientErrorDetector
     /// </summary>
     /// <param name="exception">The exception to check.</param>
     /// <returns>True if the exception is a statement-level throttling error; otherwise, false.</returns>
-    public static bool IsThrottling(Exception exception)
-    {
-        return exception is DbException dbEx && !IsRetriedByDriver(dbEx) && IsThrottlingMessage(dbEx.Message);
-    }
+    public static bool IsThrottling(Exception exception) => exception is DbException dbEx && !IsRetriedByDriver(dbEx) && IsThrottlingMessage(dbEx.Message);
 
     /// <summary>
     ///     Determines if an exception is a failure the Snowflake.Data driver has already retried, or reports only after
@@ -106,23 +105,19 @@ public static class SnowflakeTransientErrorDetector
     /// </summary>
     /// <param name="exception">The DbException to extract the error code from.</param>
     /// <returns>The error code, or null if not found.</returns>
-    public static int? GetErrorCode(DbException exception)
-    {
+    public static int? GetErrorCode(DbException exception) =>
+
         // Snowflake.Data driver sets ErrorCode on SnowflakeDbException
-        return exception.ErrorCode != 0
+        exception.ErrorCode != 0
             ? exception.ErrorCode
             : null;
-    }
 
     /// <summary>
     ///     Determines if a specific Snowflake error code is transient.
     /// </summary>
     /// <param name="errorCode">The Snowflake error code.</param>
     /// <returns>True if the error code is transient; otherwise, false.</returns>
-    public static bool IsTransientError(int errorCode)
-    {
-        return TransientErrorCodes.Contains(errorCode);
-    }
+    public static bool IsTransientError(int errorCode) => TransientErrorCodes.Contains(errorCode);
 
     private static bool HasTransientErrorCode(DbException exception)
     {
@@ -143,13 +138,10 @@ public static class SnowflakeTransientErrorDetector
                || message.Contains("429", StringComparison.OrdinalIgnoreCase);
     }
 
-    private const int SessionGone = 390111;
+    private static bool IsDriverErrorCode(int errorCode) =>
 
-    private static bool IsDriverErrorCode(int errorCode)
-    {
         // Snowflake.Data's own client-side errors (SFError) are numbered from 270000.
-        return errorCode is >= 270000 and < 271000;
-    }
+        errorCode is >= 270000 and < 271000;
 
     private static bool IsThrottlingMessage(string message)
     {

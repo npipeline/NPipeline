@@ -187,10 +187,7 @@ public class CheckpointManager : IAsyncDisposable
     ///     Gets the current offset value, if applicable.
     /// </summary>
     /// <returns>The offset value, or null if not an offset checkpoint.</returns>
-    public long? GetCurrentOffset()
-    {
-        return CurrentCheckpoint?.GetAsOffset();
-    }
+    public long? GetCurrentOffset() => CurrentCheckpoint?.GetAsOffset();
 
     /// <summary>
     ///     Determines if a checkpoint should be saved based on interval configuration.

@@ -1,6 +1,7 @@
 using Confluent.Kafka;
 using NPipeline.Connectors.Configuration;
 using NPipeline.Connectors.Kafka.Reliability;
+using NResilience;
 
 namespace NPipeline.Connectors.Kafka.Configuration;
 
@@ -243,7 +244,7 @@ public sealed class KafkaConfiguration
     ///     second retry layer above it cannot be deduplicated. A produce error therefore surfaces as soon as librdkafka
     ///     gives up.
     /// </remarks>
-    public NResilience.Resilience Resilience { get; init; } = KafkaConnectorResilience.Default;
+    public Resilience Resilience { get; init; } = KafkaConnectorResilience.Default;
 
     /// <summary>
     ///     Gets or sets whether to continue processing on errors.

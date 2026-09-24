@@ -102,11 +102,9 @@ internal sealed class CosmosDatabaseCommand : IDatabaseCommand
     /// </summary>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The number of affected rows.</returns>
-    public Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken = default)
-    {
+    public Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken = default) =>
         throw new NotSupportedException(
             "Use the CosmosSinkNode for write operations. ExecuteNonQueryAsync is not supported for Cosmos DB.");
-    }
 
     /// <summary>
     ///     Disposes the command asynchronously.

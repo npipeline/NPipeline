@@ -66,19 +66,15 @@ public class MongoBulkWriter<T> : IMongoWriter<T>, IPreparedMongoWriter<T>
             await SendAsync(collection, models, configuration, cancellationToken).ConfigureAwait(false);
     }
 
-    IReadOnlyList<WriteModel<BsonDocument>> IPreparedMongoWriter<T>.Prepare(IEnumerable<T> items, MongoConfiguration configuration)
-    {
-        return Prepare(items, configuration);
-    }
+    IReadOnlyList<WriteModel<BsonDocument>> IPreparedMongoWriter<T>.Prepare(IEnumerable<T> items, MongoConfiguration configuration) =>
+        Prepare(items, configuration);
 
     Task IPreparedMongoWriter<T>.SendAsync(
         IMongoCollection<BsonDocument> collection,
         IReadOnlyList<WriteModel<BsonDocument>> models,
         MongoConfiguration configuration,
-        CancellationToken cancellationToken)
-    {
-        return SendAsync(collection, models, configuration, cancellationToken);
-    }
+        CancellationToken cancellationToken) =>
+        SendAsync(collection, models, configuration, cancellationToken);
 
     private List<WriteModel<BsonDocument>> Prepare(IEnumerable<T> items, MongoConfiguration configuration)
     {

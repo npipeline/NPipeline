@@ -111,6 +111,17 @@ public sealed partial class HttpSinkNode<T> : SinkNode<T>, IAsyncDisposable
     }
 
     /// <inheritdoc />
+    public ValueTask DisposeAsync()
+    {
+        _sender.Dispose();
+
+        if (_ownsClient)
+            _httpClient.Dispose();
+
+        return ValueTask.CompletedTask;
+    }
+
+    /// <inheritdoc />
     public override async Task ConsumeAsync(
         IDataStream<T> input,
         PipelineContext context,
@@ -252,12 +263,10 @@ public sealed partial class HttpSinkNode<T> : SinkNode<T>, IAsyncDisposable
         return content;
     }
 
-    private static string Truncate(string value, int maxLength)
-    {
-        return value.Length <= maxLength
+    private static string Truncate(string value, int maxLength) =>
+        value.Length <= maxLength
             ? value
             : string.Concat(value.AsSpan(0, maxLength), "…");
-    }
 
     private static HttpClient CreateClient(HttpSinkConfiguration configuration, IHttpClientFactory httpClientFactory)
     {
@@ -294,17 +303,6 @@ public sealed partial class HttpSinkNode<T> : SinkNode<T>, IAsyncDisposable
             IdempotencyKeyFactory = configuration.IdempotencyKeyFactory,
             IdempotencyHeaderName = configuration.IdempotencyHeaderName,
         };
-    }
-
-    /// <inheritdoc />
-    public ValueTask DisposeAsync()
-    {
-        _sender.Dispose();
-
-        if (_ownsClient)
-            _httpClient.Dispose();
-
-        return ValueTask.CompletedTask;
     }
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "HttpSinkNode<{TypeName}>: sending {Method} {Uri} with {Count} item(s).")]

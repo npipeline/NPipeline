@@ -9,7 +9,6 @@ using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Exceptions;
 using NPipeline.StorageProviders.Models;
 using Parquet;
-using Parquet.Data;
 using Parquet.Schema;
 
 namespace NPipeline.Connectors.Parquet;
@@ -186,12 +185,12 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
         CancellationToken cancellationToken)
     {
         var options = new ParquetOptions();
-        
+
         // Apply compression setting from configuration
         options.CompressionMethod = _configuration.Compression;
 
         // Parquet.Net 6.x uses ParquetOptions for configuration
-        var writer = await ParquetWriter.CreateAsync(schema, stream, options: options, cancellationToken: cancellationToken)
+        var writer = await ParquetWriter.CreateAsync(schema, stream, options, cancellationToken: cancellationToken)
             .ConfigureAwait(false);
 
         return writer;
@@ -242,8 +241,12 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
         if (underlyingType == typeof(string))
         {
             var data = new string?[buffer.Count];
+
             for (var i = 0; i < buffer.Count; i++)
+            {
                 data[i] = valueGetter(buffer[i]) as string;
+            }
+
             await rowGroupWriter.WriteAsync(dataField, data).ConfigureAwait(false);
         }
         else if (underlyingType == typeof(int))
@@ -251,21 +254,31 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
             if (isNullableProperty)
             {
                 var data = new int?[buffer.Count];
+
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-                    data[i] = value is int intValue ? intValue : null;
+
+                    data[i] = value is int intValue
+                        ? intValue
+                        : null;
                 }
+
                 await rowGroupWriter.WriteAsync<int>(dataField, data).ConfigureAwait(false);
             }
             else
             {
                 var data = new int[buffer.Count];
+
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-                    data[i] = value is int intValue ? intValue : default;
+
+                    data[i] = value is int intValue
+                        ? intValue
+                        : default;
                 }
+
                 await rowGroupWriter.WriteAsync<int>(dataField, data).ConfigureAwait(false);
             }
         }
@@ -274,21 +287,31 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
             if (isNullableProperty)
             {
                 var data = new long?[buffer.Count];
+
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-                    data[i] = value is long longValue ? longValue : null;
+
+                    data[i] = value is long longValue
+                        ? longValue
+                        : null;
                 }
+
                 await rowGroupWriter.WriteAsync<long>(dataField, data).ConfigureAwait(false);
             }
             else
             {
                 var data = new long[buffer.Count];
+
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-                    data[i] = value is long longValue ? longValue : default;
+
+                    data[i] = value is long longValue
+                        ? longValue
+                        : default;
                 }
+
                 await rowGroupWriter.WriteAsync<long>(dataField, data).ConfigureAwait(false);
             }
         }
@@ -297,21 +320,31 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
             if (isNullableProperty)
             {
                 var data = new short?[buffer.Count];
+
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-                    data[i] = value is short shortValue ? shortValue : null;
+
+                    data[i] = value is short shortValue
+                        ? shortValue
+                        : null;
                 }
+
                 await rowGroupWriter.WriteAsync<short>(dataField, data).ConfigureAwait(false);
             }
             else
             {
                 var data = new short[buffer.Count];
+
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-                    data[i] = value is short shortValue ? shortValue : default;
+
+                    data[i] = value is short shortValue
+                        ? shortValue
+                        : default;
                 }
+
                 await rowGroupWriter.WriteAsync<short>(dataField, data).ConfigureAwait(false);
             }
         }
@@ -320,21 +353,31 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
             if (isNullableProperty)
             {
                 var data = new byte?[buffer.Count];
+
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-                    data[i] = value is byte byteValue ? byteValue : null;
+
+                    data[i] = value is byte byteValue
+                        ? byteValue
+                        : null;
                 }
+
                 await rowGroupWriter.WriteAsync<byte>(dataField, data).ConfigureAwait(false);
             }
             else
             {
                 var data = new byte[buffer.Count];
+
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-                    data[i] = value is byte byteValue ? byteValue : default;
+
+                    data[i] = value is byte byteValue
+                        ? byteValue
+                        : default;
                 }
+
                 await rowGroupWriter.WriteAsync<byte>(dataField, data).ConfigureAwait(false);
             }
         }
@@ -343,21 +386,31 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
             if (isNullableProperty)
             {
                 var data = new float?[buffer.Count];
+
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-                    data[i] = value is float floatValue ? floatValue : null;
+
+                    data[i] = value is float floatValue
+                        ? floatValue
+                        : null;
                 }
+
                 await rowGroupWriter.WriteAsync<float>(dataField, data).ConfigureAwait(false);
             }
             else
             {
                 var data = new float[buffer.Count];
+
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-                    data[i] = value is float floatValue ? floatValue : default;
+
+                    data[i] = value is float floatValue
+                        ? floatValue
+                        : default;
                 }
+
                 await rowGroupWriter.WriteAsync<float>(dataField, data).ConfigureAwait(false);
             }
         }
@@ -366,21 +419,31 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
             if (isNullableProperty)
             {
                 var data = new double?[buffer.Count];
+
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-                    data[i] = value is double doubleValue ? doubleValue : null;
+
+                    data[i] = value is double doubleValue
+                        ? doubleValue
+                        : null;
                 }
+
                 await rowGroupWriter.WriteAsync<double>(dataField, data).ConfigureAwait(false);
             }
             else
             {
                 var data = new double[buffer.Count];
+
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-                    data[i] = value is double doubleValue ? doubleValue : default;
+
+                    data[i] = value is double doubleValue
+                        ? doubleValue
+                        : default;
                 }
+
                 await rowGroupWriter.WriteAsync<double>(dataField, data).ConfigureAwait(false);
             }
         }
@@ -389,21 +452,31 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
             if (isNullableProperty)
             {
                 var data = new bool?[buffer.Count];
+
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-                    data[i] = value is bool boolValue ? boolValue : null;
+
+                    data[i] = value is bool boolValue
+                        ? boolValue
+                        : null;
                 }
+
                 await rowGroupWriter.WriteAsync<bool>(dataField, data).ConfigureAwait(false);
             }
             else
             {
                 var data = new bool[buffer.Count];
+
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-                    data[i] = value is bool boolValue ? boolValue : default;
+
+                    data[i] = value is bool boolValue
+                        ? boolValue
+                        : default;
                 }
+
                 await rowGroupWriter.WriteAsync<bool>(dataField, data).ConfigureAwait(false);
             }
         }
@@ -412,21 +485,31 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
             if (isNullableProperty)
             {
                 var data = new decimal?[buffer.Count];
+
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-                    data[i] = value is decimal decimalValue ? decimalValue : null;
+
+                    data[i] = value is decimal decimalValue
+                        ? decimalValue
+                        : null;
                 }
+
                 await rowGroupWriter.WriteAsync<decimal>(dataField, data).ConfigureAwait(false);
             }
             else
             {
                 var data = new decimal[buffer.Count];
+
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-                    data[i] = value is decimal decimalValue ? decimalValue : default;
+
+                    data[i] = value is decimal decimalValue
+                        ? decimalValue
+                        : default;
                 }
+
                 await rowGroupWriter.WriteAsync<decimal>(dataField, data).ConfigureAwait(false);
             }
         }
@@ -435,21 +518,31 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
             if (isNullableProperty)
             {
                 var data = new DateTime?[buffer.Count];
+
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-                    data[i] = value is DateTime dateTimeValue ? dateTimeValue : null;
+
+                    data[i] = value is DateTime dateTimeValue
+                        ? dateTimeValue
+                        : null;
                 }
+
                 await rowGroupWriter.WriteAsync<DateTime>(dataField, data).ConfigureAwait(false);
             }
             else
             {
                 var data = new DateTime[buffer.Count];
+
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-                    data[i] = value is DateTime dateTimeValue ? dateTimeValue : default;
+
+                    data[i] = value is DateTime dateTimeValue
+                        ? dateTimeValue
+                        : default;
                 }
+
                 await rowGroupWriter.WriteAsync<DateTime>(dataField, data).ConfigureAwait(false);
             }
         }
@@ -459,21 +552,31 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
             if (isNullableProperty)
             {
                 var data = new DateTime?[buffer.Count];
+
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-                    data[i] = value is DateTime dateTimeValue ? dateTimeValue : null;
+
+                    data[i] = value is DateTime dateTimeValue
+                        ? dateTimeValue
+                        : null;
                 }
+
                 await rowGroupWriter.WriteAsync<DateTime>(dataField, data).ConfigureAwait(false);
             }
             else
             {
                 var data = new DateTime[buffer.Count];
+
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-                    data[i] = value is DateTime dateTimeValue ? dateTimeValue : default;
+
+                    data[i] = value is DateTime dateTimeValue
+                        ? dateTimeValue
+                        : default;
                 }
+
                 await rowGroupWriter.WriteAsync<DateTime>(dataField, data).ConfigureAwait(false);
             }
         }
@@ -483,43 +586,57 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
             if (isNullableProperty)
             {
                 var data = new DateTime?[buffer.Count];
+
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-                    data[i] = value is DateTime dateTimeValue ? dateTimeValue : null;
+
+                    data[i] = value is DateTime dateTimeValue
+                        ? dateTimeValue
+                        : null;
                 }
+
                 await rowGroupWriter.WriteAsync<DateTime>(dataField, data).ConfigureAwait(false);
             }
             else
             {
                 var data = new DateTime[buffer.Count];
+
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-                    data[i] = value is DateTime dateTimeValue ? dateTimeValue : default;
+
+                    data[i] = value is DateTime dateTimeValue
+                        ? dateTimeValue
+                        : default;
                 }
+
                 await rowGroupWriter.WriteAsync<DateTime>(dataField, data).ConfigureAwait(false);
             }
         }
         else if (underlyingType == typeof(byte[]))
         {
             var data = new byte[buffer.Count][];
+
             for (var i = 0; i < buffer.Count; i++)
             {
                 var value = valueGetter(buffer[i]);
                 data[i] = value as byte[] ?? [];
             }
+
             await rowGroupWriter.WriteAsync(dataField, data).ConfigureAwait(false);
         }
         else
         {
             // Default: convert to string representation
             var data = new string?[buffer.Count];
+
             for (var i = 0; i < buffer.Count; i++)
             {
                 var value = valueGetter(buffer[i]);
                 data[i] = value?.ToString();
             }
+
             await rowGroupWriter.WriteAsync(dataField, data).ConfigureAwait(false);
         }
 #pragma warning restore CA2016

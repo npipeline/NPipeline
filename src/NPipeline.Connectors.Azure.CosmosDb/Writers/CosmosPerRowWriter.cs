@@ -92,10 +92,7 @@ internal sealed class CosmosPerRowWriter<T> : IDatabaseWriter<T>
     /// </summary>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A completed task.</returns>
-    public Task FlushAsync(CancellationToken cancellationToken = default)
-    {
-        return Task.CompletedTask;
-    }
+    public Task FlushAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
     /// <summary>
     ///     Disposes the writer.

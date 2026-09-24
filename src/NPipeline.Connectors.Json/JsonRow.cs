@@ -85,12 +85,10 @@ public readonly struct JsonRow
     ///     This is a convenience method that calls <see cref="TryGet{T}" /> and returns the value
     ///     or the default value if the property is missing or conversion fails.
     /// </remarks>
-    public T? Get<T>(string name, T? defaultValue = default)
-    {
-        return TryGet(name, out var value, defaultValue)
+    public T? Get<T>(string name, T? defaultValue = default) =>
+        TryGet(name, out var value, defaultValue)
             ? value
             : defaultValue;
-    }
 
     /// <summary>
     ///     Checks whether the row contains a specified property.
@@ -369,10 +367,7 @@ public readonly struct JsonRow
         }
     }
 
-    private JsonProperty? FindPropertyCaseSensitive(string name)
-    {
-        return FindPropertyCaseSensitive(name, _element);
-    }
+    private JsonProperty? FindPropertyCaseSensitive(string name) => FindPropertyCaseSensitive(name, _element);
 
     private static JsonProperty? FindPropertyCaseSensitive(string name, JsonElement element)
     {
@@ -385,10 +380,7 @@ public readonly struct JsonRow
         return null;
     }
 
-    private JsonProperty? FindPropertyCaseInsensitive(string name)
-    {
-        return FindPropertyCaseInsensitive(name, _element);
-    }
+    private JsonProperty? FindPropertyCaseInsensitive(string name) => FindPropertyCaseInsensitive(name, _element);
 
     private static JsonProperty? FindPropertyCaseInsensitive(string name, JsonElement element)
     {

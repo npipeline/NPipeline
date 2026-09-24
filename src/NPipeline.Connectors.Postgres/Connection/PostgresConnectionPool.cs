@@ -134,19 +134,13 @@ public class PostgresConnectionPool : IPostgresConnectionPool
     /// </summary>
     /// <param name="name">The name of the connection.</param>
     /// <returns>True if the named connection exists; otherwise, false.</returns>
-    public bool HasNamedConnection(string name)
-    {
-        return _namedDataSources.ContainsKey(name);
-    }
+    public bool HasNamedConnection(string name) => _namedDataSources.ContainsKey(name);
 
     /// <summary>
     ///     Gets all named connection names.
     /// </summary>
     /// <returns>A collection of named connection names.</returns>
-    public IEnumerable<string> GetNamedConnectionNames()
-    {
-        return _namedDataSources.Keys;
-    }
+    public IEnumerable<string> GetNamedConnectionNames() => _namedDataSources.Keys;
 
     /// <summary>
     ///     Disposes the connection pool and all associated data sources.

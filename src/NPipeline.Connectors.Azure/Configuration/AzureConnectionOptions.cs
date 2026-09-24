@@ -25,12 +25,10 @@ public class AzureConnectionOptions
     /// </summary>
     /// <param name="name">The connection name.</param>
     /// <returns>The connection string, or null if not found.</returns>
-    public string? GetConnectionString(string name)
-    {
-        return _namedConnections.TryGetValue(name, out var connectionString)
+    public string? GetConnectionString(string name) =>
+        _namedConnections.TryGetValue(name, out var connectionString)
             ? connectionString
             : null;
-    }
 
     /// <summary>
     ///     Adds or updates a named connection string.
@@ -47,12 +45,10 @@ public class AzureConnectionOptions
     /// </summary>
     /// <param name="name">The endpoint name.</param>
     /// <returns>The endpoint options, or null if not found.</returns>
-    public AzureEndpointOptions? GetEndpoint(string name)
-    {
-        return _namedEndpoints.TryGetValue(name, out var endpoint)
+    public AzureEndpointOptions? GetEndpoint(string name) =>
+        _namedEndpoints.TryGetValue(name, out var endpoint)
             ? endpoint
             : null;
-    }
 
     /// <summary>
     ///     Adds or updates a named endpoint.
@@ -68,17 +64,12 @@ public class AzureConnectionOptions
     ///     Gets all named connection strings.
     /// </summary>
     /// <returns>A dictionary of named connections.</returns>
-    public IReadOnlyDictionary<string, string> GetAllConnections()
-    {
-        return new Dictionary<string, string>(_namedConnections, StringComparer.OrdinalIgnoreCase);
-    }
+    public IReadOnlyDictionary<string, string> GetAllConnections() => new Dictionary<string, string>(_namedConnections, StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     ///     Gets all named endpoints.
     /// </summary>
     /// <returns>A dictionary of named endpoints.</returns>
-    public IReadOnlyDictionary<string, AzureEndpointOptions> GetAllEndpoints()
-    {
-        return new Dictionary<string, AzureEndpointOptions>(_namedEndpoints, StringComparer.OrdinalIgnoreCase);
-    }
+    public IReadOnlyDictionary<string, AzureEndpointOptions> GetAllEndpoints() =>
+        new Dictionary<string, AzureEndpointOptions>(_namedEndpoints, StringComparer.OrdinalIgnoreCase);
 }

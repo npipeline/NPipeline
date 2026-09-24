@@ -46,7 +46,7 @@ public static class SqlServerConnectorResilience
     ///     from ten seconds when Azure SQL throttles. There is no attempt timeout or deadline; the driver's command and
     ///     bulk copy timeouts bound each attempt. Replaces <c>MaxRetryAttempts = 3</c> and <c>RetryDelay = 1 s</c>.
     /// </summary>
-    public static NResilience.Resilience Default { get; } = new()
+    public static Resilience Default { get; } = new()
     {
         Name = "npipeline.sqlserver",
         Attempts = 4,
@@ -58,6 +58,7 @@ public static class SqlServerConnectorResilience
             ThrottledBase = TimeSpan.FromSeconds(10),
             MaximumDelay = TimeSpan.FromSeconds(30),
         },
+
         // Declared above so it is initialized first; a static initializer reads fields in declaration order.
         Classifier = Classifier,
         Adaptive = false,

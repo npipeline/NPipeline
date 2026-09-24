@@ -83,6 +83,15 @@ public sealed class ServiceBusQueueSinkNode<T> : SinkNode<T>, IAsyncDisposable
     }
 
     /// <inheritdoc />
+    public async ValueTask DisposeAsync()
+    {
+        await _sender.DisposeAsync().ConfigureAwait(false);
+
+        if (_ownsClient && _ownedClient != null)
+            await _ownedClient.DisposeAsync().ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
     public override async Task ConsumeAsync(
         IDataStream<T> input,
         PipelineContext context,
@@ -212,12 +221,10 @@ public sealed class ServiceBusQueueSinkNode<T> : SinkNode<T>, IAsyncDisposable
             await ack.AcknowledgeAsync(ct).ConfigureAwait(false);
     }
 
-    private static object GetSerializableBody(T item)
-    {
-        return item is IAcknowledgableMessage ack
+    private static object GetSerializableBody(T item) =>
+        item is IAcknowledgableMessage ack
             ? ack.Body
             : item!;
-    }
 
     private ServiceBusMessage CreateOutboundMessage(object body, T originalItem)
     {
@@ -303,21 +310,10 @@ public sealed class ServiceBusQueueSinkNode<T> : SinkNode<T>, IAsyncDisposable
         scope.Complete();
     }
 
-    /// <inheritdoc />
-    public async ValueTask DisposeAsync()
-    {
-        await _sender.DisposeAsync().ConfigureAwait(false);
-
-        if (_ownsClient && _ownedClient != null)
-            await _ownedClient.DisposeAsync().ConfigureAwait(false);
-    }
-
-    private static JsonSerializerOptions CreateSerializerOptions(ServiceBusConfiguration config)
-    {
-        return config.JsonSerializerOptions ?? new JsonSerializerOptions
+    private static JsonSerializerOptions CreateSerializerOptions(ServiceBusConfiguration config) =>
+        config.JsonSerializerOptions ?? new JsonSerializerOptions
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
             DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
         };
-    }
 }

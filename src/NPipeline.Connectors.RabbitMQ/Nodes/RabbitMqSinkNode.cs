@@ -8,7 +8,6 @@ using NPipeline.Connectors.RabbitMQ.Configuration;
 using NPipeline.Connectors.RabbitMQ.Connection;
 using NPipeline.Connectors.RabbitMQ.Metrics;
 using NPipeline.Connectors.RabbitMQ.Models;
-using NPipeline.Connectors.RabbitMQ.Reliability;
 using NPipeline.Connectors.RabbitMQ.Topology;
 using NPipeline.Connectors.Serialization;
 using NPipeline.DataFlow;
@@ -30,7 +29,7 @@ public sealed class RabbitMqSinkNode<T> : SinkNode<T>
     private readonly ILogger _logger;
     private readonly IRabbitMqMetrics _metrics;
     private readonly RabbitMqSinkOptions _options;
-    private readonly NResilience.Resilience _publishPolicy;
+    private readonly Resilience _publishPolicy;
     private readonly IMessageSerializer _serializer;
     private bool _topologyDeclared;
 
@@ -281,7 +280,9 @@ public sealed class RabbitMqSinkNode<T> : SinkNode<T>
         // The messages before a failure reached the exchange. Leaving them unacknowledged would redeliver them, and the
         // next run would publish them again. On cancellation the acknowledgements get their own short deadline, since
         // the pipeline's token has already fired.
-        using (var ackCts = cancelled ? new CancellationTokenSource(_options.ShutdownFlushTimeout) : null)
+        using (var ackCts = cancelled
+                   ? new CancellationTokenSource(_options.ShutdownFlushTimeout)
+                   : null)
         {
             var ackToken = ackCts?.Token ?? cancellationToken;
 
@@ -445,10 +446,8 @@ public sealed class RabbitMqSinkNode<T> : SinkNode<T>
             _options.Resilience.Attempts);
     }
 
-    private static bool IsCancellation(Exception exception, CancellationToken cancellationToken)
-    {
-        return exception is OperationCanceledException && cancellationToken.IsCancellationRequested;
-    }
+    private static bool IsCancellation(Exception exception, CancellationToken cancellationToken) =>
+        exception is OperationCanceledException && cancellationToken.IsCancellationRequested;
 
     private ReadOnlyMemory<byte> SerializeItem(T item)
     {
@@ -505,10 +504,7 @@ public sealed class RabbitMqSinkNode<T> : SinkNode<T>
         return properties;
     }
 
-    private static IAcknowledgableMessage? ExtractSourceMessage(T item)
-    {
-        return item as IAcknowledgableMessage;
-    }
+    private static IAcknowledgableMessage? ExtractSourceMessage(T item) => item as IAcknowledgableMessage;
 
     private async Task AcknowledgeSourceMessageAsync(IAcknowledgableMessage message, CancellationToken cancellationToken)
     {
@@ -521,12 +517,11 @@ public sealed class RabbitMqSinkNode<T> : SinkNode<T>
         }
     }
 
-    private AcknowledgmentStrategy ExtractAckStrategy()
-    {
+    private AcknowledgmentStrategy ExtractAckStrategy() =>
+
         // The source options are not available in the sink, but
         // we default to AutoOnSinkSuccess which is the most common pattern.
-        return AcknowledgmentStrategy.AutoOnSinkSuccess;
-    }
+        AcknowledgmentStrategy.AutoOnSinkSuccess;
 
     /// <summary>
     ///     The channel a sequence of publishes uses, replaced when it closes. The holder keeps the current channel so

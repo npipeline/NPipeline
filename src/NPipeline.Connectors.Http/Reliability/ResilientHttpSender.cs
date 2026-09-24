@@ -22,7 +22,7 @@ internal sealed class ResilientHttpSender : IDisposable
 
     public ResilientHttpSender(
         HttpClient client,
-        NResilience.Resilience policy,
+        Resilience policy,
         bool bufferResponses,
         IHttpConnectorMetrics metrics,
         Action<CallEvent> listener)
@@ -36,19 +36,17 @@ internal sealed class ResilientHttpSender : IDisposable
         _invoker = new HttpMessageInvoker(handler, true);
     }
 
-    /// <summary>
-    ///     Sends the request, retrying as the policy allows, and returns the final response. A response that is still a
-    ///     failure once retries are spent is returned rather than thrown, so the caller judges it.
-    /// </summary>
-    public Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-    {
-        return _invoker.SendAsync(request, cancellationToken);
-    }
-
     public void Dispose()
     {
         _invoker.Dispose();
     }
+
+    /// <summary>
+    ///     Sends the request, retrying as the policy allows, and returns the final response. A response that is still a
+    ///     failure once retries are spent is returned rather than thrown, so the caller judges it.
+    /// </summary>
+    public Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+        _invoker.SendAsync(request, cancellationToken);
 
     /// <summary>
     ///     Forwards each attempt to the caller's client, which the sender does not own, and records it as one request.

@@ -117,11 +117,10 @@ internal sealed class CosmosDatabaseReader : IDatabaseReader
     /// </summary>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>True if there are more result sets, false otherwise.</returns>
-    public Task<bool> NextResultAsync(CancellationToken cancellationToken = default)
-    {
+    public Task<bool> NextResultAsync(CancellationToken cancellationToken = default) =>
+
         // Cosmos DB doesn't support multiple result sets
-        return Task.FromResult(false);
-    }
+        Task.FromResult(false);
 
     /// <summary>
     ///     Gets field value by ordinal position.

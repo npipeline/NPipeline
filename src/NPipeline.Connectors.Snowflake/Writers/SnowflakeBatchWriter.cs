@@ -28,8 +28,8 @@ internal sealed class SnowflakeBatchWriter<T> : IDatabaseWriter<T>
     private readonly string _mergeSqlTemplate;
     private readonly int _parameterCount;
     private readonly Func<T, IEnumerable<DatabaseParameter>>? _parameterMapper;
-    private readonly ConnectionResilience _resilience;
     private readonly List<object?[]> _pendingRows;
+    private readonly ConnectionResilience _resilience;
     private readonly string _schema;
     private readonly string _tableName;
     private readonly Func<T, object?[]> _valueFactory;
@@ -142,12 +142,10 @@ internal sealed class SnowflakeBatchWriter<T> : IDatabaseWriter<T>
         _ = await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    private bool ShouldUseMerge()
-    {
-        return _configuration.UseUpsert
-               && _configuration.UpsertKeyColumns != null
-               && _configuration.UpsertKeyColumns.Length > 0;
-    }
+    private bool ShouldUseMerge() =>
+        _configuration.UseUpsert
+        && _configuration.UpsertKeyColumns != null
+        && _configuration.UpsertKeyColumns.Length > 0;
 
     /// <summary>
     ///     Builds the INSERT SQL statement using double-quote identifier quoting (Snowflake convention).

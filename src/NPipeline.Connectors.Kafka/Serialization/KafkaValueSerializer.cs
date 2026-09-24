@@ -45,8 +45,6 @@ internal sealed class KafkaValueSerializer<TValue>(ISerializerProvider serialize
         return serialize(_serializer, body, context);
     }
 
-    private static byte[] SerializeAs<TBody>(ISerializerProvider serializer, object body, SerializationContext context)
-    {
-        return serializer.Serialize((TBody)body, context);
-    }
+    private static byte[] SerializeAs<TBody>(ISerializerProvider serializer, object body, SerializationContext context) =>
+        serializer.Serialize((TBody)body, context);
 }

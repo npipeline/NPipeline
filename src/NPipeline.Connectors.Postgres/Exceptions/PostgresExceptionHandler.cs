@@ -57,14 +57,12 @@ public static class PostgresExceptionHandler
     /// <summary>
     ///     Returns a human-readable description for a SQLSTATE code when available.
     /// </summary>
-    public static string? GetErrorDescription(string? sqlState)
-    {
-        return string.IsNullOrEmpty(sqlState)
+    public static string? GetErrorDescription(string? sqlState) =>
+        string.IsNullOrEmpty(sqlState)
             ? null
             : ErrorDescriptions.TryGetValue(sqlState, out var description)
                 ? description
                 : null;
-    }
 
     /// <summary>
     ///     Determines whether an exception is transient and can be retried.
@@ -83,15 +81,13 @@ public static class PostgresExceptionHandler
     /// <summary>
     ///     Evaluates SQLSTATE codes for retryability.
     /// </summary>
-    public static bool IsTransientSqlState(string? sqlState)
-    {
-        return !string.IsNullOrEmpty(sqlState)
-               && (sqlState.StartsWith("08", StringComparison.Ordinal)
-                   || sqlState == "40001"
-                   || sqlState == "40P01"
-                   || sqlState.StartsWith("53", StringComparison.Ordinal)
-                   || sqlState == "57P01"
-                   || sqlState == "57P02"
-                   || sqlState == "57P03");
-    }
+    public static bool IsTransientSqlState(string? sqlState) =>
+        !string.IsNullOrEmpty(sqlState)
+        && (sqlState.StartsWith("08", StringComparison.Ordinal)
+            || sqlState == "40001"
+            || sqlState == "40P01"
+            || sqlState.StartsWith("53", StringComparison.Ordinal)
+            || sqlState == "57P01"
+            || sqlState == "57P02"
+            || sqlState == "57P03");
 }

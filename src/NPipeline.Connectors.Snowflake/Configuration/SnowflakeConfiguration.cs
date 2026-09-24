@@ -2,6 +2,7 @@ using NPipeline.Connectors.Checkpointing;
 using NPipeline.Connectors.Configuration;
 using NPipeline.Connectors.Snowflake.Mapping;
 using NPipeline.Connectors.Snowflake.Reliability;
+using NResilience;
 
 namespace NPipeline.Connectors.Snowflake.Configuration;
 
@@ -198,7 +199,7 @@ public class SnowflakeConfiguration
     ///     judges transient. Each attempt is bounded by <see cref="CommandTimeout" />. Use
     ///     <see cref="NResilience.Resilience.None" /> to turn retries off.
     /// </summary>
-    public NResilience.Resilience Resilience { get; set; } = SnowflakeConnectorResilience.Default;
+    public Resilience Resilience { get; set; } = SnowflakeConnectorResilience.Default;
 
     /// <summary>
     ///     Gets or sets whether to continue when a row-level error occurs.

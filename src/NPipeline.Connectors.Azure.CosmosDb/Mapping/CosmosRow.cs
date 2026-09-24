@@ -242,10 +242,7 @@ public sealed class CosmosRow
     ///     Gets the underlying JSON document.
     /// </summary>
     /// <returns>The <see cref="JsonElement" /> representing the document.</returns>
-    public JsonElement GetDocument()
-    {
-        return _document;
-    }
+    public JsonElement GetDocument() => _document;
 
     /// <summary>
     ///     Gets a value from the row by ordinal position.
@@ -468,19 +465,13 @@ public sealed class CosmosRow
     ///     Gets the document ID (id property).
     /// </summary>
     /// <returns>The document ID, or null if not found.</returns>
-    public string? GetId()
-    {
-        return Get<string>("id") ?? Get<string>("Id") ?? Get<string>("_id");
-    }
+    public string? GetId() => Get<string>("id") ?? Get<string>("Id") ?? Get<string>("_id");
 
     /// <summary>
     ///     Gets the partition key value if present.
     /// </summary>
     /// <returns>The partition key value, or null if not found.</returns>
-    public string? GetPartitionKey()
-    {
-        return Get<string>("partitionKey") ?? Get<string>("PartitionKey");
-    }
+    public string? GetPartitionKey() => Get<string>("partitionKey") ?? Get<string>("PartitionKey");
 
     /// <summary>
     ///     Gets the _ts (timestamp) value if present.
@@ -500,10 +491,7 @@ public sealed class CosmosRow
     ///     Gets the _etag value if present.
     /// </summary>
     /// <returns>The etag, or null if not found.</returns>
-    public string? GetEtag()
-    {
-        return Get<string>("_etag");
-    }
+    public string? GetEtag() => Get<string>("_etag");
 
     private static object? GetObjectValue(JsonElement property)
     {

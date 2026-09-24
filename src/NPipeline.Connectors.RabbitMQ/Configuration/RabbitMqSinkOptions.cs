@@ -1,4 +1,5 @@
 using NPipeline.Connectors.RabbitMQ.Reliability;
+using NResilience;
 
 namespace NPipeline.Connectors.RabbitMQ.Configuration;
 
@@ -68,7 +69,7 @@ public sealed record RabbitMqSinkOptions
     ///     attempts with exponential backoff from 100 milliseconds, retrying lost connections and closed channels but
     ///     not access, routing, or precondition failures. Use <see cref="NResilience.Resilience.None" /> to publish once.
     /// </summary>
-    public NResilience.Resilience Resilience { get; init; } = RabbitMqConnectorResilience.Default;
+    public Resilience Resilience { get; init; } = RabbitMqConnectorResilience.Default;
 
     /// <summary>
     ///     Gets or sets whether to continue past publish errors. Default is false.

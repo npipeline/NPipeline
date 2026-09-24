@@ -44,9 +44,8 @@ public sealed class SnowflakeCheckpointStorage : DatabaseCheckpointStorage
     }
 
     /// <inheritdoc />
-    protected override string GetUpsertSql()
-    {
-        return $@"
+    protected override string GetUpsertSql() =>
+        $@"
             MERGE INTO {QuotedTableName} AS target
             USING (SELECT :pipelineId AS ""PIPELINE_ID"", :nodeId AS ""NODE_ID"") AS source
             ON (target.""PIPELINE_ID"" = source.""PIPELINE_ID"" AND target.""NODE_ID"" = source.""NODE_ID"")
@@ -55,5 +54,4 @@ public sealed class SnowflakeCheckpointStorage : DatabaseCheckpointStorage
             WHEN NOT MATCHED THEN
                 INSERT (""PIPELINE_ID"", ""NODE_ID"", ""CHECKPOINT_VALUE"", ""CHECKPOINT_TIMESTAMP"", ""METADATA"", ""CREATED_AT"", ""UPDATED_AT"")
                 VALUES (:pipelineId, :nodeId, :value, :timestamp, :metadata, :createdAt, :updatedAt)";
-    }
 }

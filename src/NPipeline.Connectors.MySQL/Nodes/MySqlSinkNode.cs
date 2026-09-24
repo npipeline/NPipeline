@@ -155,6 +155,17 @@ public class MySqlSinkNode<T> : DatabaseSinkNode<T>, IAsyncDisposable
     /// <inheritdoc />
     protected override bool ContinueOnError => _configuration.ContinueOnError;
 
+    /// <summary>
+    ///     Disposes the connection pool, but only when this node created it: an injected pool belongs to its caller.
+    /// </summary>
+    public async ValueTask DisposeAsync()
+    {
+        GC.SuppressFinalize(this);
+
+        if (_ownsConnectionPool && _connectionPool is not null)
+            await _connectionPool.DisposeAsync().ConfigureAwait(false);
+    }
+
     /// <inheritdoc />
     protected override async Task<IDatabaseConnection> GetConnectionAsync(
         CancellationToken cancellationToken)
@@ -197,16 +208,5 @@ public class MySqlSinkNode<T> : DatabaseSinkNode<T>, IAsyncDisposable
         };
 
         return Task.FromResult(writer);
-    }
-
-    /// <summary>
-    ///     Disposes the connection pool, but only when this node created it: an injected pool belongs to its caller.
-    /// </summary>
-    public async ValueTask DisposeAsync()
-    {
-        GC.SuppressFinalize(this);
-
-        if (_ownsConnectionPool && _connectionPool is not null)
-            await _connectionPool.DisposeAsync().ConfigureAwait(false);
     }
 }

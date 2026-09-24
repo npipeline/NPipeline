@@ -80,12 +80,10 @@ public static class SqlServerExceptionHandler
     /// </summary>
     /// <param name="errorCode">The SQL Server error code.</param>
     /// <returns>A description of the error, or null if not found.</returns>
-    public static string? GetErrorDescription(int errorCode)
-    {
-        return ErrorDescriptions.TryGetValue(errorCode, out var description)
+    public static string? GetErrorDescription(int errorCode) =>
+        ErrorDescriptions.TryGetValue(errorCode, out var description)
             ? description
             : null;
-    }
 
     /// <summary>
     ///     Determines if an exception represents a connection error.
@@ -110,8 +108,5 @@ public static class SqlServerExceptionHandler
     /// </summary>
     /// <param name="errorCode">The SQL Server error code.</param>
     /// <returns>True if the error code is a connection error; otherwise, false.</returns>
-    private static bool IsConnectionErrorCode(int errorCode)
-    {
-        return errorCode is -2 or 53 or 64 or 121;
-    }
+    private static bool IsConnectionErrorCode(int errorCode) => errorCode is -2 or 53 or 64 or 121;
 }

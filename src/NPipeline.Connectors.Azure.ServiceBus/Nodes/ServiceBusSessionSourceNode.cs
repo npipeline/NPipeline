@@ -90,6 +90,24 @@ public sealed class ServiceBusSessionSourceNode<T> : SourceNode<ServiceBusMessag
     }
 
     /// <inheritdoc />
+    public async ValueTask DisposeAsync()
+    {
+        _messageChannel?.Writer.TryComplete();
+
+        try
+        {
+            if (_processor.IsProcessing)
+                await _processor.StopProcessingAsync().ConfigureAwait(false);
+        }
+        catch
+        {
+            /* best-effort */
+        }
+
+        await _processor.DisposeAsync().ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
     public override IDataStream<ServiceBusMessage<T>> OpenStream(
         PipelineContext context,
         CancellationToken cancellationToken)
@@ -223,24 +241,6 @@ public sealed class ServiceBusSessionSourceNode<T> : SourceNode<ServiceBusMessag
         return Task.CompletedTask;
     }
 
-    /// <inheritdoc />
-    public async ValueTask DisposeAsync()
-    {
-        _messageChannel?.Writer.TryComplete();
-
-        try
-        {
-            if (_processor.IsProcessing)
-                await _processor.StopProcessingAsync().ConfigureAwait(false);
-        }
-        catch
-        {
-            /* best-effort */
-        }
-
-        await _processor.DisposeAsync().ConfigureAwait(false);
-    }
-
     private static ServiceBusSessionProcessor CreateSessionProcessor(
         ServiceBusClient client,
         ServiceBusConfiguration configuration)
@@ -263,13 +263,11 @@ public sealed class ServiceBusSessionSourceNode<T> : SourceNode<ServiceBusMessag
                 options);
     }
 
-    private static JsonSerializerOptions CreateSerializerOptions(ServiceBusConfiguration config)
-    {
-        return config.JsonSerializerOptions ?? new JsonSerializerOptions
+    private static JsonSerializerOptions CreateSerializerOptions(ServiceBusConfiguration config) =>
+        config.JsonSerializerOptions ?? new JsonSerializerOptions
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
             PropertyNameCaseInsensitive = true,
             DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
         };
-    }
 }

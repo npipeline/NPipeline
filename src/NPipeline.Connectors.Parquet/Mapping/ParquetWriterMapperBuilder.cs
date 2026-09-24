@@ -69,12 +69,10 @@ public static class ParquetWriterMapperBuilder
         return properties;
     }
 
-    private static string[] BuildColumnNames<T>()
-    {
-        return GetProperties<T>()
+    private static string[] BuildColumnNames<T>() =>
+        GetProperties<T>()
             .Select(ParquetSchemaBuilder.GetColumnName)
             .ToArray();
-    }
 
     private static Func<T, object?>[] BuildValueGetters<T>()
     {

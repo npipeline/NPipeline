@@ -13,11 +13,11 @@ namespace NPipeline.Connectors.RabbitMQ.Connection;
 public sealed class RabbitMqConnectionManager : IRabbitMqConnectionManager
 {
     private readonly Channel<IChannel> _channelPool;
-    private readonly ConcurrentDictionary<IChannel, byte> _unconfirmedChannels = new(ReferenceEqualityComparer.Instance);
-    private readonly Channel<IChannel> _unconfirmedChannelPool;
     private readonly SemaphoreSlim _connectionLock = new(1, 1);
     private readonly ILogger<RabbitMqConnectionManager> _logger;
     private readonly RabbitMqConnectionOptions _options;
+    private readonly Channel<IChannel> _unconfirmedChannelPool;
+    private readonly ConcurrentDictionary<IChannel, byte> _unconfirmedChannels = new(ReferenceEqualityComparer.Instance);
     private IConnection? _connection;
     private bool _disposed;
 
@@ -81,10 +81,7 @@ public sealed class RabbitMqConnectionManager : IRabbitMqConnectionManager
     }
 
     /// <inheritdoc />
-    public Task<IChannel> GetPooledChannelAsync(CancellationToken cancellationToken = default)
-    {
-        return GetPooledChannelAsync(true, cancellationToken);
-    }
+    public Task<IChannel> GetPooledChannelAsync(CancellationToken cancellationToken = default) => GetPooledChannelAsync(true, cancellationToken);
 
     /// <inheritdoc />
     public async Task<IChannel> GetPooledChannelAsync(bool publisherConfirms, CancellationToken cancellationToken = default)
@@ -150,13 +147,6 @@ public sealed class RabbitMqConnectionManager : IRabbitMqConnectionManager
         }
     }
 
-    private Channel<IChannel> PoolFor(bool publisherConfirms)
-    {
-        return publisherConfirms
-            ? _channelPool
-            : _unconfirmedChannelPool;
-    }
-
     /// <inheritdoc />
     public async ValueTask DisposeAsync()
     {
@@ -203,15 +193,18 @@ public sealed class RabbitMqConnectionManager : IRabbitMqConnectionManager
         _connectionLock.Dispose();
     }
 
-    private static Channel<IChannel> CreatePool(int capacity)
-    {
-        return Channel.CreateBounded<IChannel>(new BoundedChannelOptions(capacity)
+    private Channel<IChannel> PoolFor(bool publisherConfirms) =>
+        publisherConfirms
+            ? _channelPool
+            : _unconfirmedChannelPool;
+
+    private static Channel<IChannel> CreatePool(int capacity) =>
+        Channel.CreateBounded<IChannel>(new BoundedChannelOptions(capacity)
         {
             FullMode = BoundedChannelFullMode.Wait,
             SingleReader = false,
             SingleWriter = false,
         });
-    }
 
     private ConnectionFactory BuildConnectionFactory()
     {

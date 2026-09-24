@@ -3,6 +3,7 @@ using NPipeline.Connectors.Http.Auth;
 using NPipeline.Connectors.Http.Pagination;
 using NPipeline.Connectors.Http.RateLimiting;
 using NPipeline.Connectors.Http.Reliability;
+using NResilience;
 
 namespace NPipeline.Connectors.Http.Configuration;
 
@@ -61,7 +62,7 @@ public sealed class HttpSourceConfiguration
     ///     attempts, a 30-second timeout on each, and exponential backoff that honors <c>Retry-After</c>.
     ///     <see cref="NResilience.Resilience.AttemptTimeout" /> is the per-request timeout.
     /// </summary>
-    public NResilience.Resilience Resilience { get; init; } = HttpConnectorResilience.Default;
+    public Resilience Resilience { get; init; } = HttpConnectorResilience.Default;
 
     /// <summary>
     ///     Optional mutator invoked immediately before each send, including any retry attempts.

@@ -1,4 +1,5 @@
 using NPipeline.StorageProviders.Abstractions;
+using NResilience;
 
 namespace NPipeline.Connectors.Postgres.Reliability;
 
@@ -19,10 +20,10 @@ namespace NPipeline.Connectors.Postgres.Reliability;
 internal sealed class ConnectionResilience
 {
     private readonly IDatabaseConnection _connection;
-    private readonly NResilience.Resilience _policy;
-    private readonly NResilience.Resilience _singleAttempt;
+    private readonly Resilience _policy;
+    private readonly Resilience _singleAttempt;
 
-    public ConnectionResilience(NResilience.Resilience policy, IDatabaseConnection connection)
+    public ConnectionResilience(Resilience policy, IDatabaseConnection connection)
     {
         ArgumentNullException.ThrowIfNull(policy);
 

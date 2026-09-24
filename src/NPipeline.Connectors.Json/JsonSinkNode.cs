@@ -188,6 +188,7 @@ public sealed class JsonSinkNode<T> : SinkNode<T>
                 {
                     Indented = false,
                 });
+
                 await using var ndjsonWriterScope = ndjsonWriter.ConfigureAwait(false);
 
                 WriteItem(ndjsonWriter, item, valueGetters, propertyNames, useMapper);

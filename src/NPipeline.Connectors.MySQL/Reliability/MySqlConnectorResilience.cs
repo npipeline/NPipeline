@@ -1,5 +1,6 @@
 using NPipeline.Connectors.MySql.Exceptions;
 using NResilience;
+using MySqlException = MySqlConnector.MySqlException;
 
 namespace NPipeline.Connectors.MySql.Reliability;
 
@@ -36,7 +37,7 @@ public static class MySqlConnectorResilience
             ? Verdict.Transient
             : Verdict.Permanent)
         .On<ObjectDisposedException>(Verdict.Permanent)
-        .On<MySqlConnector.MySqlException>(static e => MySqlTransientErrorDetector.IsThrottlingError(e.Number)
+        .On<MySqlException>(static e => MySqlTransientErrorDetector.IsThrottlingError(e.Number)
             ? Verdict.Throttled()
             : MySqlTransientErrorDetector.IsTransient(e)
                 ? Verdict.Transient
@@ -48,7 +49,7 @@ public static class MySqlConnectorResilience
     ///     driver's command and bulk load timeouts bound each attempt. Replaces <c>MaxRetryAttempts = 3</c> and
     ///     <c>RetryDelay = 2 s</c>.
     /// </summary>
-    public static NResilience.Resilience Default { get; } = new()
+    public static Resilience Default { get; } = new()
     {
         Name = "npipeline.mysql",
         Attempts = 4,
@@ -60,6 +61,7 @@ public static class MySqlConnectorResilience
             ThrottledBase = TimeSpan.FromSeconds(5),
             MaximumDelay = TimeSpan.FromSeconds(30),
         },
+
         // Declared above so it is initialized first; a static initializer reads fields in declaration order.
         Classifier = Classifier,
         Adaptive = false,

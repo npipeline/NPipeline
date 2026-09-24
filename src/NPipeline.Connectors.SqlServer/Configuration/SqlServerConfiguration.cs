@@ -2,6 +2,7 @@ using NPipeline.Connectors.Checkpointing;
 using NPipeline.Connectors.Configuration;
 using NPipeline.Connectors.SqlServer.Mapping;
 using NPipeline.Connectors.SqlServer.Reliability;
+using NResilience;
 
 namespace NPipeline.Connectors.SqlServer.Configuration;
 
@@ -148,7 +149,7 @@ public class SqlServerConfiguration
     ///     judges transient. Each attempt is bounded by <see cref="CommandTimeout" /> or <see cref="BulkCopyTimeout" />.
     ///     Use <see cref="NResilience.Resilience.None" /> to turn retries off.
     /// </summary>
-    public NResilience.Resilience Resilience { get; set; } = SqlServerConnectorResilience.Default;
+    public Resilience Resilience { get; set; } = SqlServerConnectorResilience.Default;
 
     /// <summary>
     ///     Gets or sets whether to continue when a row-level error occurs.

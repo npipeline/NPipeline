@@ -46,10 +46,7 @@ public static class PostgresTransientErrorDetector
     /// </summary>
     /// <param name="sqlState">The PostgreSQL SQL state code.</param>
     /// <returns>True if SQL state is transient; otherwise, false.</returns>
-    public static bool IsTransientSqlState(string sqlState)
-    {
-        return !string.IsNullOrWhiteSpace(sqlState) && TransientErrorCodes.Contains(sqlState);
-    }
+    public static bool IsTransientSqlState(string sqlState) => !string.IsNullOrWhiteSpace(sqlState) && TransientErrorCodes.Contains(sqlState);
 
     /// <summary>
     ///     Determines if a SQL state code means the server is refusing work until load drops, so the client should back off
@@ -57,8 +54,5 @@ public static class PostgresTransientErrorDetector
     /// </summary>
     /// <param name="sqlState">The PostgreSQL SQL state code.</param>
     /// <returns>True if SQL state is a throttling error; otherwise, false.</returns>
-    public static bool IsThrottlingSqlState(string sqlState)
-    {
-        return string.Equals(sqlState, "53300", StringComparison.OrdinalIgnoreCase); // Too many connections
-    }
+    public static bool IsThrottlingSqlState(string sqlState) => string.Equals(sqlState, "53300", StringComparison.OrdinalIgnoreCase); // Too many connections
 }

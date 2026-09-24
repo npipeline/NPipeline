@@ -7,7 +7,6 @@ using MySqlConnector;
 using NPipeline.Connectors.Attributes;
 using NPipeline.Connectors.MySql.Configuration;
 using NPipeline.Connectors.MySql.Connection;
-using NPipeline.Connectors.MySql.Exceptions;
 using NPipeline.Connectors.MySql.Mapping;
 using NPipeline.Connectors.MySql.Reliability;
 using NPipeline.StorageProviders.Abstractions;
@@ -28,8 +27,8 @@ internal sealed class MySqlBulkLoadWriter<T> : IDatabaseWriter<T>
     private readonly int _flushThreshold;
     private readonly PropertyMapping[] _mappings;
     private readonly Func<T, IEnumerable<DatabaseParameter>>? _parameterMapper;
-    private readonly ConnectionResilience _resilience;
     private readonly List<T> _pendingRows;
+    private readonly ConnectionResilience _resilience;
     private readonly string _tableName;
     private readonly Func<T, object?[]> _valueFactory;
 

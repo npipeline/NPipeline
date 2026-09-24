@@ -40,7 +40,7 @@ public static class DataLakeConnectorResilience
     ///     without <see cref="StorageProviders.Abstractions.IMoveableStorageProvider" />) can truncate the manifest. The
     ///     attempt count bounds the call; the caller's cancellation token still applies.
     /// </remarks>
-    public static NResilience.Resilience ManifestWrite { get; } = new()
+    public static Resilience ManifestWrite { get; } = new()
     {
         Name = "npipeline.datalake.manifest",
         Attempts = 3,
@@ -50,6 +50,7 @@ public static class DataLakeConnectorResilience
         {
             TransientBase = TimeSpan.FromMilliseconds(100),
         },
+
         // Declared above so it is initialized first; a static initializer reads fields in declaration order.
         Classifier = ManifestClassifier,
         Adaptive = false,
@@ -59,7 +60,7 @@ public static class DataLakeConnectorResilience
     ///     <see cref="ManifestWrite" />'s attempts, backoff, and classifier for reading the manifest and its snapshot files.
     ///     Reads are idempotent, so each <see cref="Manifest.ManifestReader" /> call is retried as a whole.
     /// </summary>
-    public static NResilience.Resilience ManifestRead { get; } = ManifestWrite with
+    public static Resilience ManifestRead { get; } = ManifestWrite with
     {
         Name = "npipeline.datalake.manifest.read",
     };

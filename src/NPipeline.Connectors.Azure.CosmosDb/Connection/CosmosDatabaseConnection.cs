@@ -89,11 +89,9 @@ internal sealed class CosmosDatabaseConnection : IDatabaseConnection
     /// </summary>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <exception cref="NotSupportedException">Always thrown. Use Cosmos DB transactional batch operations instead.</exception>
-    public Task<IDatabaseTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default)
-    {
+    public Task<IDatabaseTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default) =>
         throw new NotSupportedException(
             "Cosmos DB does not support traditional database transactions. Use Cosmos DB transactional batch operations instead.");
-    }
 
     /// <summary>
     ///     Closes the database connection asynchronously.
@@ -101,10 +99,7 @@ internal sealed class CosmosDatabaseConnection : IDatabaseConnection
     /// </summary>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A completed task.</returns>
-    public Task CloseAsync(CancellationToken cancellationToken = default)
-    {
-        return Task.CompletedTask;
-    }
+    public Task CloseAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
     /// <summary>
     ///     Creates a database command for this connection.

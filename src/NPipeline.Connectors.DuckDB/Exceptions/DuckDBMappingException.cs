@@ -19,10 +19,8 @@ public sealed class DuckDBMappingException : DuckDBConnectorException
     /// </summary>
     public long? RowIndex { get; }
 
-    private static string FormatMessage(string message, long? rowIndex)
-    {
-        return rowIndex.HasValue
+    private static string FormatMessage(string message, long? rowIndex) =>
+        rowIndex.HasValue
             ? $"Row {rowIndex}: {message}"
             : message;
-    }
 }

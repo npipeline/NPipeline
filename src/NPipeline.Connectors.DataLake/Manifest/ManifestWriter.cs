@@ -5,6 +5,7 @@ using System.Text.Json;
 using NPipeline.Connectors.DataLake.Reliability;
 using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Models;
+using NResilience;
 
 namespace NPipeline.Connectors.DataLake.Manifest;
 
@@ -40,13 +41,14 @@ public sealed class ManifestWriter : IAsyncDisposable
         WriteIndented = false,
     };
 
-    private readonly StorageUri _manifestUri;
     // Entries already written by earlier flushes; the snapshot file is rewritten with these plus the pending ones
     private readonly List<ManifestEntry> _flushedEntries = [];
+
+    private readonly StorageUri _manifestUri;
     private readonly List<ManifestEntry> _pendingEntries = [];
 
     private readonly IStorageProvider _provider;
-    private readonly NResilience.Resilience _resilience;
+    private readonly Resilience _resilience;
     private readonly StorageUri _snapshotManifestUri;
     private readonly SemaphoreSlim _writeLock = new(1, 1);
     private bool _disposed;
@@ -64,7 +66,7 @@ public sealed class ManifestWriter : IAsyncDisposable
         IStorageProvider provider,
         StorageUri tableBasePath,
         string snapshotId,
-        NResilience.Resilience? resilience = null)
+        Resilience? resilience = null)
     {
         ArgumentNullException.ThrowIfNull(provider);
         ArgumentNullException.ThrowIfNull(tableBasePath);
@@ -197,6 +199,7 @@ public sealed class ManifestWriter : IAsyncDisposable
 
         var stream = await _provider.OpenWriteAsync(_snapshotManifestUri, cancellationToken)
             .ConfigureAwait(false);
+
         await using var streamScope = stream.ConfigureAwait(false);
 
         var writer = new StreamWriter(stream, Encoding.UTF8, leaveOpen: false);
@@ -251,6 +254,7 @@ public sealed class ManifestWriter : IAsyncDisposable
             // Create new manifest
             var writeStream = await _provider.OpenWriteAsync(_manifestUri, cancellationToken)
                 .ConfigureAwait(false);
+
             await using var writeStreamScope = writeStream.ConfigureAwait(false);
 
             var writer = new StreamWriter(writeStream, Encoding.UTF8, leaveOpen: false);
@@ -331,6 +335,7 @@ public sealed class ManifestWriter : IAsyncDisposable
 
         var writeStream = await _provider.OpenWriteAsync(_manifestUri, cancellationToken)
             .ConfigureAwait(false);
+
         await using var writeStreamScope = writeStream.ConfigureAwait(false);
 
         var writer = new StreamWriter(writeStream, Encoding.UTF8, leaveOpen: false);
@@ -339,11 +344,10 @@ public sealed class ManifestWriter : IAsyncDisposable
         await writer.FlushAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    private static bool ContainsEntries(string existingContent, string newContent)
-    {
+    private static bool ContainsEntries(string existingContent, string newContent) =>
+
         // Every entry carries this flush's snapshot ID and write timestamps, so the serialized block is unique to it
-        return newContent.Length > 0 && existingContent.Contains(newContent, StringComparison.Ordinal);
-    }
+        newContent.Length > 0 && existingContent.Contains(newContent, StringComparison.Ordinal);
 
     private StorageUri CreateTempManifestUri()
     {

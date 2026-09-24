@@ -103,34 +103,25 @@ public sealed class MySqlDatabaseStorageProvider : IDatabaseStorageProvider, ISt
     }
 
     /// <inheritdoc />
-    public Task<Stream> OpenReadAsync(StorageUri uri, CancellationToken cancellationToken = default)
-    {
+    public Task<Stream> OpenReadAsync(StorageUri uri, CancellationToken cancellationToken = default) =>
         throw new NotSupportedException(
             $"OpenReadAsync is not supported by {nameof(MySqlDatabaseStorageProvider)}. " +
             "Use IDatabaseConnection for data access.");
-    }
 
     /// <inheritdoc />
-    public Task<Stream> OpenWriteAsync(StorageUri uri, CancellationToken cancellationToken = default)
-    {
+    public Task<Stream> OpenWriteAsync(StorageUri uri, CancellationToken cancellationToken = default) =>
         throw new NotSupportedException(
             $"OpenWriteAsync is not supported by {nameof(MySqlDatabaseStorageProvider)}. " +
             "Use IDatabaseConnection for data access.");
-    }
 
     /// <inheritdoc />
-    public Task<bool> ExistsAsync(StorageUri uri, CancellationToken cancellationToken = default)
-    {
+    public Task<bool> ExistsAsync(StorageUri uri, CancellationToken cancellationToken = default) =>
         throw new NotSupportedException(
             $"ExistsAsync is not supported by {nameof(MySqlDatabaseStorageProvider)}. " +
             "Use IDatabaseConnection for data access.");
-    }
 
     /// <inheritdoc />
-    public StorageProviderMetadata GetMetadata()
-    {
-        return ProviderMetadata;
-    }
+    public StorageProviderMetadata GetMetadata() => ProviderMetadata;
 
     private static bool IsHandledParameter(string key)
     {

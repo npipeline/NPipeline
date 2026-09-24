@@ -135,18 +135,12 @@ public sealed class DuckDBRow
     /// <summary>
     ///     Checks if a column value is null.
     /// </summary>
-    public bool IsNull(string columnName)
-    {
-        return _reader.IsDBNull(GetOrdinal(columnName));
-    }
+    public bool IsNull(string columnName) => _reader.IsDBNull(GetOrdinal(columnName));
 
     /// <summary>
     ///     Checks if a column value is null.
     /// </summary>
-    public bool IsNull(int ordinal)
-    {
-        return _reader.IsDBNull(ordinal);
-    }
+    public bool IsNull(int ordinal) => _reader.IsDBNull(ordinal);
 
     /// <summary>
     ///     Gets the raw object value by column name.
@@ -163,28 +157,20 @@ public sealed class DuckDBRow
     /// <summary>
     ///     Gets the raw object value by ordinal.
     /// </summary>
-    public object? GetValue(int ordinal)
-    {
-        return _reader.IsDBNull(ordinal)
+    public object? GetValue(int ordinal) =>
+        _reader.IsDBNull(ordinal)
             ? null
             : _reader.GetValue(ordinal);
-    }
 
     /// <summary>
     ///     Gets the column name by ordinal.
     /// </summary>
-    public string GetColumnName(int ordinal)
-    {
-        return _reader.GetName(ordinal);
-    }
+    public string GetColumnName(int ordinal) => _reader.GetName(ordinal);
 
     /// <summary>
     ///     Checks if a column with the given name exists.
     /// </summary>
-    public bool HasColumn(string columnName)
-    {
-        return _columnOrdinals.ContainsKey(columnName);
-    }
+    public bool HasColumn(string columnName) => _columnOrdinals.ContainsKey(columnName);
 
     /// <summary>
     ///     Updates the current row index. Called internally by the source node.

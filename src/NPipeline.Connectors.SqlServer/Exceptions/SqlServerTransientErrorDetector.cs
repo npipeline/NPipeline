@@ -93,10 +93,7 @@ public static class SqlServerTransientErrorDetector
     /// </summary>
     /// <param name="errorCode">The SQL Server error code.</param>
     /// <returns>True if the error code is a throttling error; otherwise, false.</returns>
-    public static bool IsThrottlingError(int errorCode)
-    {
-        return ThrottlingErrorCodes.Contains(errorCode);
-    }
+    public static bool IsThrottlingError(int errorCode) => ThrottlingErrorCodes.Contains(errorCode);
 
     /// <summary>
     ///     Gets the SQL Server error code from a SqlException.
@@ -116,8 +113,5 @@ public static class SqlServerTransientErrorDetector
     /// </summary>
     /// <param name="errorCode">The SQL Server error code.</param>
     /// <returns>True if the error code is transient; otherwise, false.</returns>
-    public static bool IsTransientError(int errorCode)
-    {
-        return TransientErrorCodes.Contains(errorCode);
-    }
+    public static bool IsTransientError(int errorCode) => TransientErrorCodes.Contains(errorCode);
 }

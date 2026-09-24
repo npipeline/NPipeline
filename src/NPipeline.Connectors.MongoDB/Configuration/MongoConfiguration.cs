@@ -3,6 +3,7 @@ using MongoDB.Driver;
 using NPipeline.Connectors.Checkpointing;
 using NPipeline.Connectors.Configuration;
 using NPipeline.Connectors.MongoDB.Reliability;
+using NResilience;
 
 namespace NPipeline.Connectors.MongoDB.Configuration;
 
@@ -208,7 +209,7 @@ public class MongoConfiguration
     ///     (and skipped when <see cref="OnDuplicate" /> is <see cref="OnDuplicateAction.Ignore" />) rather than
     ///     inserted twice. A bulk write that reported write errors is never retried.
     /// </remarks>
-    public NResilience.Resilience Resilience { get; set; } = MongoConnectorResilience.Default;
+    public Resilience Resilience { get; set; } = MongoConnectorResilience.Default;
 
     /// <summary>
     ///     Gets or sets whether to continue when a document-level error occurs.

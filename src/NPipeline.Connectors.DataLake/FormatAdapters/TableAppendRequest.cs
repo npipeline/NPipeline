@@ -146,9 +146,8 @@ public sealed class TableAppendRequest<T>
     ///     Converts this typed request to an untyped request.
     /// </summary>
     /// <returns>An untyped <see cref="TableAppendRequest" />.</returns>
-    public TableAppendRequest ToUntyped()
-    {
-        return new TableAppendRequest
+    public TableAppendRequest ToUntyped() =>
+        new()
         {
             TableBasePath = TableBasePath,
             Provider = Provider,
@@ -164,12 +163,10 @@ public sealed class TableAppendRequest<T>
             CommitMessage = CommitMessage,
             AdditionalMetadata = AdditionalMetadata,
         };
-    }
 
-    private static PartitionSpec<object> ConvertPartitionSpec(PartitionSpec<T> _)
-    {
+    private static PartitionSpec<object> ConvertPartitionSpec(PartitionSpec<T> _) =>
+
         // This is a simplified conversion - in practice, the spec would need to be
         // properly converted to work with object types
-        return PartitionSpec<object>.None();
-    }
+        PartitionSpec<object>.None();
 }

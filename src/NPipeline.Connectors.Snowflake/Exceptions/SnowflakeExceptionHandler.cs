@@ -74,12 +74,10 @@ public static class SnowflakeExceptionHandler
     /// </summary>
     /// <param name="errorCode">The Snowflake error code.</param>
     /// <returns>A description of the error, or null if not found.</returns>
-    public static string? GetErrorDescription(int errorCode)
-    {
-        return ErrorDescriptions.TryGetValue(errorCode, out var description)
+    public static string? GetErrorDescription(int errorCode) =>
+        ErrorDescriptions.TryGetValue(errorCode, out var description)
             ? description
             : null;
-    }
 
     /// <summary>
     ///     Determines if an exception represents a connection error.

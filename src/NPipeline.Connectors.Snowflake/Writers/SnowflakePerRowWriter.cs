@@ -22,8 +22,8 @@ internal sealed class SnowflakePerRowWriter<T> : IDatabaseWriter<T>
     private readonly string _insertSql;
     private readonly PropertyMapping[] _mappings;
     private readonly Func<T, IEnumerable<DatabaseParameter>>? _parameterMapper;
-    private readonly ConnectionResilience _resilience;
     private readonly string[] _parameterNames;
+    private readonly ConnectionResilience _resilience;
     private readonly string _schema;
     private readonly string _tableName;
     private readonly Func<T, object?[]> _valueFactory;
@@ -60,6 +60,24 @@ internal sealed class SnowflakePerRowWriter<T> : IDatabaseWriter<T>
         await _resilience.RunAsync(ct => InsertAsync(values, ct), cancellationToken).ConfigureAwait(false);
     }
 
+    /// <inheritdoc />
+    public async Task WriteBatchAsync(IEnumerable<T> items, CancellationToken cancellationToken = default)
+    {
+        foreach (var item in items)
+        {
+            await WriteAsync(item, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    /// <inheritdoc />
+    public Task FlushAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+    /// <inheritdoc />
+    public async ValueTask DisposeAsync()
+    {
+        await ValueTask.CompletedTask.ConfigureAwait(false);
+    }
+
     private async Task InsertAsync(object?[] values, CancellationToken cancellationToken)
     {
         var command = await _connection.CreateCommandAsync(cancellationToken).ConfigureAwait(false);
@@ -74,27 +92,6 @@ internal sealed class SnowflakePerRowWriter<T> : IDatabaseWriter<T>
         }
 
         _ = await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-    }
-
-    /// <inheritdoc />
-    public async Task WriteBatchAsync(IEnumerable<T> items, CancellationToken cancellationToken = default)
-    {
-        foreach (var item in items)
-        {
-            await WriteAsync(item, cancellationToken).ConfigureAwait(false);
-        }
-    }
-
-    /// <inheritdoc />
-    public Task FlushAsync(CancellationToken cancellationToken = default)
-    {
-        return Task.CompletedTask;
-    }
-
-    /// <inheritdoc />
-    public async ValueTask DisposeAsync()
-    {
-        await ValueTask.CompletedTask.ConfigureAwait(false);
     }
 
     /// <summary>

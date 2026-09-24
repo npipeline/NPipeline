@@ -170,10 +170,7 @@ public sealed class ParquetRow
     /// </summary>
     /// <param name="columnName">The name of the column.</param>
     /// <returns><c>true</c> if the column exists; otherwise <c>false</c>.</returns>
-    public bool HasColumn(string columnName)
-    {
-        return _columnNameToIndex.ContainsKey(columnName);
-    }
+    public bool HasColumn(string columnName) => _columnNameToIndex.ContainsKey(columnName);
 
     /// <summary>
     ///     Tries to get a typed column value by column name.

@@ -3,6 +3,7 @@ using System.Text.Json;
 using NPipeline.Connectors.DataLake.Reliability;
 using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Models;
+using NResilience;
 
 namespace NPipeline.Connectors.DataLake.Manifest;
 
@@ -28,7 +29,7 @@ public sealed class ManifestReader
     };
 
     private readonly IStorageProvider _provider;
-    private readonly NResilience.Resilience _resilience;
+    private readonly Resilience _resilience;
     private readonly StorageUri _tableBasePath;
 
     /// <summary>
@@ -39,7 +40,7 @@ public sealed class ManifestReader
     /// <param name="resilience">
     ///     The policy for each read. Defaults to <see cref="DataLakeConnectorResilience.ManifestRead" />.
     /// </param>
-    public ManifestReader(IStorageProvider provider, StorageUri tableBasePath, NResilience.Resilience? resilience = null)
+    public ManifestReader(IStorageProvider provider, StorageUri tableBasePath, Resilience? resilience = null)
     {
         ArgumentNullException.ThrowIfNull(provider);
         ArgumentNullException.ThrowIfNull(tableBasePath);
@@ -55,10 +56,7 @@ public sealed class ManifestReader
     /// </summary>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A list of all manifest entries.</returns>
-    public Task<IReadOnlyList<ManifestEntry>> ReadAllAsync(CancellationToken cancellationToken = default)
-    {
-        return RunAsync(ReadAllCoreAsync, cancellationToken);
-    }
+    public Task<IReadOnlyList<ManifestEntry>> ReadAllAsync(CancellationToken cancellationToken = default) => RunAsync(ReadAllCoreAsync, cancellationToken);
 
     private async Task<IReadOnlyList<ManifestEntry>> ReadAllCoreAsync(CancellationToken cancellationToken)
     {
@@ -187,10 +185,8 @@ public sealed class ManifestReader
         return RunAsync(ct => ExistsAsync(manifestUri, ct), cancellationToken);
     }
 
-    private async Task<T> RunAsync<T>(Func<CancellationToken, Task<T>> read, CancellationToken cancellationToken)
-    {
-        return await _resilience.RunAsync(read, cancellationToken).ConfigureAwait(false);
-    }
+    private async Task<T> RunAsync<T>(Func<CancellationToken, Task<T>> read, CancellationToken cancellationToken) =>
+        await _resilience.RunAsync(read, cancellationToken).ConfigureAwait(false);
 
     private StorageUri BuildManifestUri()
     {

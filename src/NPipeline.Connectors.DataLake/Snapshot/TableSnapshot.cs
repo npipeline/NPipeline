@@ -181,10 +181,7 @@ public sealed class TableSnapshot
     ///     Creates a summary string for logging or debugging.
     /// </summary>
     /// <returns>A summary string.</returns>
-    public override string ToString()
-    {
-        return $"Snapshot {SnapshotId}: {FileCount} files, {TotalRowCount:N0} rows, {FormatBytes(TotalFileSizeBytes)}";
-    }
+    public override string ToString() => $"Snapshot {SnapshotId}: {FileCount} files, {TotalRowCount:N0} rows, {FormatBytes(TotalFileSizeBytes)}";
 
     private static string FormatBytes(long bytes)
     {

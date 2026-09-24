@@ -415,10 +415,7 @@ public class CosmosSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
         ];
     }
 
-    private static bool IsIgnored(PropertyInfo property)
-    {
-        return property.IsDefined(typeof(IgnoreColumnAttribute), true);
-    }
+    private static bool IsIgnored(PropertyInfo property) => property.IsDefined(typeof(IgnoreColumnAttribute), true);
 
     private static Action<T, object?> BuildSetter(PropertyInfo property)
     {
@@ -443,11 +440,10 @@ public class CosmosSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
         return Expression.Lambda<Func<T>>(Expression.New(ctor)).Compile();
     }
 
-    private static string GetColumnName(PropertyInfo property)
-    {
+    private static string GetColumnName(PropertyInfo property) =>
+
         // For Cosmos DB, use the property name as-is (case-preserving)
-        return property.Name;
-    }
+        property.Name;
 
     /// <summary>
     ///     Parses the URI path to extract database and container IDs.

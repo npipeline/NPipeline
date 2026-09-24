@@ -25,22 +25,14 @@ public sealed record BinlogPosition
     public DateTimeOffset? LastEventTimestamp { get; init; }
 
     /// <summary>Creates a <see cref="BinlogPosition" /> from file/offset values.</summary>
-    public static BinlogPosition FromFileOffset(string fileName, long position)
-    {
-        return new BinlogPosition { FileName = fileName, Position = position };
-    }
+    public static BinlogPosition FromFileOffset(string fileName, long position) => new() { FileName = fileName, Position = position };
 
     /// <summary>Creates a <see cref="BinlogPosition" /> from a GTID set string.</summary>
-    public static BinlogPosition FromGtid(string gtidSet)
-    {
-        return new BinlogPosition { GtidSet = gtidSet };
-    }
+    public static BinlogPosition FromGtid(string gtidSet) => new() { GtidSet = gtidSet };
 
     /// <summary>Returns a human-readable representation of the position.</summary>
-    public override string ToString()
-    {
-        return GtidSet is not null
+    public override string ToString() =>
+        GtidSet is not null
             ? $"GTID:{GtidSet}"
             : $"{FileName ?? "?"}@{Position}";
-    }
 }

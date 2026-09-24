@@ -50,10 +50,8 @@ internal sealed class MySqlDatabaseCommand(MySqlCommand command) : IDatabaseComm
     }
 
     /// <inheritdoc />
-    public async Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken = default)
-    {
-        return await UnderlyingCommand.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-    }
+    public async Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken = default) =>
+        await UnderlyingCommand.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
 
     /// <inheritdoc />
     public async ValueTask DisposeAsync()

@@ -54,17 +54,6 @@ public sealed class KafkaMessage<T> : IAcknowledgableMessage<T>, IKafkaMessageMe
     }
 
     /// <summary>
-    ///     Gets the topic partition offset for this message, used for exactly-once semantics.
-    /// </summary>
-    public TopicPartitionOffset TopicPartitionOffset { get; }
-
-    /// <summary>
-    ///     Gets the consumer group metadata for exactly-once semantics.
-    ///     This is used by the sink to call SendOffsetsToTransaction.
-    /// </summary>
-    public IConsumerGroupMetadata? ConsumerGroupMetadata { get; }
-
-    /// <summary>
     ///     Gets the deserialized message body.
     /// </summary>
     public T Body { get; }
@@ -145,12 +134,11 @@ public sealed class KafkaMessage<T> : IAcknowledgableMessage<T>, IKafkaMessageMe
     /// <param name="requeue">Ignored for Kafka. Kafka does not support requeue semantics.</param>
     /// <param name="cancellationToken">Cancellation token for the operation.</param>
     /// <returns>A completed task.</returns>
-    public Task NegativeAcknowledgeAsync(bool requeue = true, CancellationToken cancellationToken = default)
-    {
+    public Task NegativeAcknowledgeAsync(bool requeue = true, CancellationToken cancellationToken = default) =>
+
         // Kafka does not support negative acknowledgment.
         // Message redelivery is handled by not committing the offset.
-        return Task.CompletedTask;
-    }
+        Task.CompletedTask;
 
     /// <summary>
     ///     Creates a new KafkaMessage with the provided body while preserving acknowledgment behavior.
@@ -158,9 +146,8 @@ public sealed class KafkaMessage<T> : IAcknowledgableMessage<T>, IKafkaMessageMe
     /// <typeparam name="TNew">The new body type.</typeparam>
     /// <param name="body">The new message body.</param>
     /// <returns>A new KafkaMessage with the same acknowledgment callback.</returns>
-    public IAcknowledgableMessage<TNew> WithBody<TNew>(TNew body)
-    {
-        return new KafkaMessage<TNew>(
+    public IAcknowledgableMessage<TNew> WithBody<TNew>(TNew body) =>
+        new KafkaMessage<TNew>(
             body,
             Topic,
             Partition,
@@ -170,7 +157,6 @@ public sealed class KafkaMessage<T> : IAcknowledgableMessage<T>, IKafkaMessageMe
             Headers,
             _acknowledgeCallback,
             ConsumerGroupMetadata);
-    }
 
     // IKafkaMessageMetadata implementation
 
@@ -191,6 +177,17 @@ public sealed class KafkaMessage<T> : IAcknowledgableMessage<T>, IKafkaMessageMe
 
     /// <inheritdoc />
     public Headers Headers { get; }
+
+    /// <summary>
+    ///     Gets the topic partition offset for this message, used for exactly-once semantics.
+    /// </summary>
+    public TopicPartitionOffset TopicPartitionOffset { get; }
+
+    /// <summary>
+    ///     Gets the consumer group metadata for exactly-once semantics.
+    ///     This is used by the sink to call SendOffsetsToTransaction.
+    /// </summary>
+    public IConsumerGroupMetadata? ConsumerGroupMetadata { get; }
 
     /// <summary>
     ///     Marks the message as acknowledged without invoking the callback.

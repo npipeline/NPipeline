@@ -21,10 +21,7 @@ public sealed class DefaultPartitionKeyProvider<T> : IPartitionKeyProvider<T>
     }
 
     /// <inheritdoc />
-    public string GetPartitionKey(T message)
-    {
-        return _keySelector(message);
-    }
+    public string GetPartitionKey(T message) => _keySelector(message);
 }
 
 /// <summary>

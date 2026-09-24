@@ -2,6 +2,7 @@ using NPipeline.Connectors.Checkpointing;
 using NPipeline.Connectors.Configuration;
 using NPipeline.Connectors.MySql.Mapping;
 using NPipeline.Connectors.MySql.Reliability;
+using NResilience;
 
 namespace NPipeline.Connectors.MySql.Configuration;
 
@@ -171,7 +172,7 @@ public class MySqlConfiguration
     ///     transient. Each attempt is bounded by <see cref="CommandTimeout" /> or <see cref="BulkLoadTimeout" />. Use
     ///     <see cref="NResilience.Resilience.None" /> to turn retries off.
     /// </summary>
-    public NResilience.Resilience Resilience { get; set; } = MySqlConnectorResilience.Default;
+    public Resilience Resilience { get; set; } = MySqlConnectorResilience.Default;
 
     /// <summary>
     ///     Gets or sets whether to continue processing when a row-level error occurs.
