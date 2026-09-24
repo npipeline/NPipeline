@@ -50,8 +50,6 @@ internal interface IPerItemRetryExecutor
         LineageNodeOutcomeWriter lineageOutcomeWriter,
         IPipelineActivity? itemActivity,
         CancellationToken cancellationToken,
-        Guid? correlationId = null,
-        int[]? ancestryInputIndices = null,
         Action<int>? onRetry = null,
         CircuitBreaker? circuitBreaker = null);
 }

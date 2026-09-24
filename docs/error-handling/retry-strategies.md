@@ -42,6 +42,10 @@ Each layer's options record has a `Backoff` property, of type `RetryBackoff`:
 | L2: node restart | `NodeRestart.Backoff` | Exponential from 1 s up to 30 s, with full jitter |
 | L3: node retry | `NodeRetry.Backoff` | Exponential from 1 s up to 30 s, with full jitter |
 
+Node restart and node retry run a whole node again, so their default waits are longer, and `new NodeRestartOptions {
+MaxRestarts = 3 }` doesn't restart in a tight loop against a dependency that's down. In tests, set
+`Backoff = RetryBackoff.None`, or put a fake clock in `PipelineResilienceOptions.Time`.
+
 Every delay waits on the clock in `PipelineResilienceOptions.Time`, and cancelling the pipeline ends the wait at once.
 
 A backoff belongs to the node's options, and it depends only on the retry number. Nothing is shared between items or
@@ -85,9 +89,13 @@ var steeper = backoff with { Factor = 3 };
 var predictable = backoff with { Jitter = RetryJitter.None };
 ```
 
-The factory methods check their arguments and throw `ArgumentOutOfRangeException` for a negative delay, or for an
-exponential factor below 1. A value changed with `with` skips those checks, so building the pipeline checks every
-node's options again. To check a value yourself, call `Validate()`.
+Each property rejects an out-of-range value when it's set, so a bad value throws `ArgumentOutOfRangeException` where
+you write it: a negative delay, a factor below 1, or an undefined kind or jitter. This applies to the factory methods
+and to `with` expressions alike.
+
+Some combinations are checked only as a whole, for example an exponential kind with no factor, or a custom kind with
+no function. Building the pipeline checks every node's options again, and catches these. To check a value yourself,
+call `Validate()`.
 
 ### Custom curves
 
@@ -162,6 +170,16 @@ builder.WithResilience(options => options with
 ```
 
 A rule matches the exception or any wrapped exception as described in the preceding section.
+
+To check a classifier, for example in a unit test, call `IsTransient`:
+
+```csharp
+var classifier = RetryClassifier.Default.Transient<SqlException>(e => e.Number is 1205);
+bool retried = classifier.IsTransient(new TimeoutException()); // true
+```
+
+Outside a pipeline there's no pipeline token, so you can omit it. A `TaskCanceledException` then counts as a client
+timeout, which is transient.
 
 ## Choose a strategy
 

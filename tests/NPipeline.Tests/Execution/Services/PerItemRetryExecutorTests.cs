@@ -59,7 +59,6 @@ public sealed class PerItemRetryExecutorTests
         finally
         {
             LineageNodeOutcomeRegistry.ClearNode(pipelineId, NodeId);
-            LineageExecutionItemContext.ClearCurrentInputIndex();
         }
     }
 
@@ -104,7 +103,6 @@ public sealed class PerItemRetryExecutorTests
         finally
         {
             LineageNodeOutcomeRegistry.ClearNode(pipelineId, NodeId);
-            LineageExecutionItemContext.ClearCurrentInputIndex();
         }
     }
 
@@ -150,7 +148,6 @@ public sealed class PerItemRetryExecutorTests
         finally
         {
             LineageNodeOutcomeRegistry.ClearNode(pipelineId, NodeId);
-            LineageExecutionItemContext.ClearCurrentInputIndex();
         }
     }
 
@@ -166,7 +163,8 @@ public sealed class PerItemRetryExecutorTests
         var (context, pipelineId) = CreateTrackedContext();
         context.ExecutionConfiguration.ResiliencePolicy = resiliencePolicy;
         context.Properties[PipelineContextKeys.SampleRecorder] = recorder;
-        LineageExecutionItemContext.SetCurrentInputContext(0, Guid.NewGuid(), [1, 2]);
+        var correlationId = Guid.NewGuid();
+        LineageNodeOutcomeRegistry.GetWriter(pipelineId, NodeId).RegisterInput(0, correlationId, [1, 2]);
 
         try
         {
@@ -186,6 +184,8 @@ public sealed class PerItemRetryExecutorTests
             _ = thrown.Which.Should().BeSameAs(transformException);
 
             _ = recorder.Errors.Should().HaveCount(1);
+            _ = recorder.Errors[0].CorrelationId.Should().Be(correlationId);
+            _ = recorder.Errors[0].AncestryInputIndices.Should().BeEquivalentTo([1, 2]);
             _ = recorder.Errors[0].RetryCount.Should().Be(0);
             _ = recorder.Errors[0].ErrorMessage.Should().Contain("terminal");
 
@@ -196,7 +196,6 @@ public sealed class PerItemRetryExecutorTests
         finally
         {
             LineageNodeOutcomeRegistry.ClearNode(pipelineId, NodeId);
-            LineageExecutionItemContext.ClearCurrentInputIndex();
         }
     }
 
@@ -212,7 +211,7 @@ public sealed class PerItemRetryExecutorTests
         var (context, pipelineId) = CreateTrackedContext();
         context.ExecutionConfiguration.ResiliencePolicy = resiliencePolicy;
         context.Properties[PipelineContextKeys.SampleRecorder] = recorder;
-        LineageExecutionItemContext.SetCurrentInputContext(0, Guid.NewGuid(), [4]);
+        LineageNodeOutcomeRegistry.GetWriter(pipelineId, NodeId).RegisterInput(0, Guid.NewGuid(), [4]);
 
         try
         {
@@ -245,7 +244,6 @@ public sealed class PerItemRetryExecutorTests
         finally
         {
             LineageNodeOutcomeRegistry.ClearNode(pipelineId, NodeId);
-            LineageExecutionItemContext.ClearCurrentInputIndex();
         }
     }
 

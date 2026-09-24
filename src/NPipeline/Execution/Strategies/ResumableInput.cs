@@ -37,6 +37,9 @@ internal sealed class ResumableInput<T> : IAsyncDisposable
     // Items from _released to _readHead - 1; the item at index i is _retained[_head + (i - _released)].
     private readonly List<T> _retained = [];
     private TaskCompletionSource _changed = NewSignal();
+
+    // Whether a reader is waiting on _changed. Signalling is needed only then, so the common path allocates nothing.
+    private bool _changeAwaited;
     private bool _closed;
     private bool _drained;
     private Exception? _fault;
@@ -154,7 +157,10 @@ internal sealed class ResumableInput<T> : IAsyncDisposable
                 else if (_drained)
                     yield break;
                 else if (_readHead - _released >= _maxRetained)
+                {
                     waitFor = _changed.Task;
+                    _changeAwaited = true;
+                }
             }
 
             if (available)
@@ -279,8 +285,15 @@ internal sealed class ResumableInput<T> : IAsyncDisposable
             await enumerator.DisposeAsync().ConfigureAwait(false);
     }
 
+    /// <summary>
+    ///     Wakes the readers waiting for a change. Called under <c>_gate</c>.
+    /// </summary>
     private void Signal()
     {
+        if (!_changeAwaited)
+            return;
+
+        _changeAwaited = false;
         var previous = _changed;
         _changed = NewSignal();
         _ = previous.TrySetResult();

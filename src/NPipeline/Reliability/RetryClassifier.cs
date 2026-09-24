@@ -87,8 +87,11 @@ public sealed class RetryClassifier
     ///     Decides whether <paramref name="exception" /> is transient.
     /// </summary>
     /// <param name="exception">The failure.</param>
-    /// <param name="pipelineToken">The pipeline's cancellation token. A cancellation it caused is never transient.</param>
-    public bool IsTransient(Exception exception, CancellationToken pipelineToken)
+    /// <param name="pipelineToken">
+    ///     The pipeline's cancellation token. A cancellation it caused is never transient. Omit it when classifying
+    ///     outside a pipeline; a <see cref="TaskCanceledException" /> is then treated as a client timeout.
+    /// </param>
+    public bool IsTransient(Exception exception, CancellationToken pipelineToken = default)
     {
         ArgumentNullException.ThrowIfNull(exception);
 

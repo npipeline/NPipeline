@@ -52,7 +52,6 @@ All samples are in the [`samples/`](https://github.com/NPipeline/NPipeline/tree/
 |--------|-------------|------------|
 | `Sample_BasicErrorHandling` | Try/catch patterns in nodes | Beginner |
 | `Sample_AdvancedErrorHandling` | Polly inside nodes, composed with dead-letter queues | Intermediate |
-| `Sample_FluentErrorHandling` | Fluent API for resilience configuration | Intermediate |
 | `Sample_RetryDelay` | Backoff curves, jitter, and per-node retry options | Intermediate |
 | `Sample_EdgeResilience` | NResilience inside a transform, with pipeline item retry off for that node | Intermediate |
 

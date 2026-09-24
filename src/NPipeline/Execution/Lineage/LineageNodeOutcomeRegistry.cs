@@ -5,19 +5,40 @@ namespace NPipeline.Execution.Lineage;
 
 internal readonly record struct LineageItemOutcome(LineageOutcomeReason OutcomeReason, int RetryCount);
 
+/// <summary>
+///     The lineage of one input item of a transform: the correlation id of the packet it came in, and the contributor
+///     indices of the hop that produced it.
+/// </summary>
+internal readonly record struct LineageInputMetadata(Guid CorrelationId, int[]? AncestryInputIndices);
+
+/// <summary>
+///     One transform's lineage state for a run, keyed by input index: the lineage of each input item, registered by the
+///     lineage adapter as it reads the input, and each item's outcome, recorded by the execution strategy.
+/// </summary>
+/// <remarks>
+///     Everything is keyed by the item's index in the node's input, which each strategy knows and which a node restart
+///     preserves: a replayed item has the same index, so it finds the same lineage.
+/// </remarks>
+internal sealed class LineageNodeState
+{
+    public ConcurrentDictionary<long, LineageItemOutcome> Outcomes { get; } = new();
+
+    public ConcurrentDictionary<long, LineageInputMetadata> Inputs { get; } = new();
+}
+
 internal static class LineageNodeOutcomeRegistry
 {
-    private static readonly ConcurrentDictionary<(Guid PipelineId, string NodeId), ConcurrentDictionary<long, LineageItemOutcome>> Outcomes = new();
+    private static readonly ConcurrentDictionary<(Guid PipelineId, string NodeId), LineageNodeState> Nodes = new();
 
     public static void BeginNode(Guid pipelineId, string nodeId)
     {
-        Outcomes[(pipelineId, nodeId)] = new ConcurrentDictionary<long, LineageItemOutcome>();
+        Nodes[(pipelineId, nodeId)] = new LineageNodeState();
     }
 
     public static void Record(Guid pipelineId, string nodeId, long inputIndex, LineageOutcomeReason outcomeReason, int retryCount)
     {
-        var nodeOutcomes = Outcomes.GetOrAdd((pipelineId, nodeId), static _ => new ConcurrentDictionary<long, LineageItemOutcome>());
-        RecordInto(nodeOutcomes, inputIndex, outcomeReason, retryCount);
+        var node = Nodes.GetOrAdd((pipelineId, nodeId), static _ => new LineageNodeState());
+        RecordInto(node.Outcomes, inputIndex, outcomeReason, retryCount);
     }
 
     /// <summary>
@@ -28,8 +49,8 @@ internal static class LineageNodeOutcomeRegistry
     /// </summary>
     public static LineageNodeOutcomeWriter GetWriter(Guid pipelineId, string nodeId)
     {
-        return Outcomes.TryGetValue((pipelineId, nodeId), out var nodeOutcomes)
-            ? new LineageNodeOutcomeWriter(nodeOutcomes)
+        return Nodes.TryGetValue((pipelineId, nodeId), out var node)
+            ? new LineageNodeOutcomeWriter(node)
             : default;
     }
 
@@ -71,7 +92,7 @@ internal static class LineageNodeOutcomeRegistry
 
     public static bool TryGet(Guid pipelineId, string nodeId, long inputIndex, out LineageItemOutcome outcome)
     {
-        if (Outcomes.TryGetValue((pipelineId, nodeId), out var nodeOutcomes) && nodeOutcomes.TryGetValue(inputIndex, out outcome))
+        if (Nodes.TryGetValue((pipelineId, nodeId), out var node) && node.Outcomes.TryGetValue(inputIndex, out outcome))
             return true;
 
         outcome = default;
@@ -80,12 +101,12 @@ internal static class LineageNodeOutcomeRegistry
 
     public static bool IsTracking(Guid pipelineId, string nodeId)
     {
-        return Outcomes.ContainsKey((pipelineId, nodeId));
+        return Nodes.ContainsKey((pipelineId, nodeId));
     }
 
     public static void ClearNode(Guid pipelineId, string nodeId)
     {
-        _ = Outcomes.TryRemove((pipelineId, nodeId), out _);
+        _ = Nodes.TryRemove((pipelineId, nodeId), out _);
     }
 }
 
@@ -97,28 +118,49 @@ internal static class LineageNodeOutcomeRegistry
 /// </summary>
 internal readonly struct LineageNodeOutcomeWriter
 {
-    private readonly ConcurrentDictionary<long, LineageItemOutcome>? _nodeOutcomes;
+    private readonly LineageNodeState? _node;
 
-    internal LineageNodeOutcomeWriter(ConcurrentDictionary<long, LineageItemOutcome>? nodeOutcomes)
+    internal LineageNodeOutcomeWriter(LineageNodeState? node)
     {
-        _nodeOutcomes = nodeOutcomes;
+        _node = node;
     }
 
     /// <summary>
     ///     Gets a value indicating whether this writer is bound to an active outcome store.
     /// </summary>
-    public bool IsActive => _nodeOutcomes is not null;
+    public bool IsActive => _node is not null;
 
     /// <summary>
     ///     Records an outcome for the supplied input index. No-op when the writer is inactive.
     /// </summary>
     public void Record(long inputIndex, LineageOutcomeReason outcomeReason, int retryCount)
     {
-        if (_nodeOutcomes is null)
+        if (_node is null)
         {
             return;
         }
 
-        LineageNodeOutcomeRegistry.RecordInto(_nodeOutcomes, inputIndex, outcomeReason, retryCount);
+        LineageNodeOutcomeRegistry.RecordInto(_node.Outcomes, inputIndex, outcomeReason, retryCount);
+    }
+
+    /// <summary>
+    ///     Registers the lineage of the input item at <paramref name="inputIndex" />. No-op when the writer is inactive.
+    /// </summary>
+    public void RegisterInput(long inputIndex, Guid correlationId, int[]? ancestryInputIndices)
+    {
+        if (_node is not null)
+            _node.Inputs[inputIndex] = new LineageInputMetadata(correlationId, ancestryInputIndices);
+    }
+
+    /// <summary>
+    ///     Gets the lineage of the input item at <paramref name="inputIndex" />.
+    /// </summary>
+    public bool TryGetInput(long inputIndex, out LineageInputMetadata metadata)
+    {
+        if (_node is not null && _node.Inputs.TryGetValue(inputIndex, out metadata))
+            return true;
+
+        metadata = default;
+        return false;
     }
 }

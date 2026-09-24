@@ -1,7 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using NPipeline.ErrorHandling;
-using NPipeline.Execution.Lineage;
 using NPipeline.Lineage;
 using NPipeline.Pipeline;
 
@@ -20,35 +19,29 @@ internal static class PipelineSampleErrorReporter
         PropertyNameCaseInsensitive = true,
     };
 
+    /// <summary>
+    ///     Records an item's failure with the recorder in the context, if there is one.
+    /// </summary>
+    /// <param name="context">The pipeline context holding the recorder.</param>
+    /// <param name="nodeId">The node that made the error handling decision.</param>
+    /// <param name="item">The failed item.</param>
+    /// <param name="exception">The failure.</param>
+    /// <param name="retryCount">The retries made before the failure was final.</param>
+    /// <param name="correlationId">The item's lineage correlation id.</param>
+    /// <param name="ancestryInputIndices">The contributor indices of the hop that produced the item.</param>
+    /// <param name="originNodeId">The node where the failure originated, when known; otherwise it is resolved from the exception.</param>
     public static void TryRecordError<T>(
         PipelineContext context,
         string nodeId,
         T item,
         Exception exception,
         int retryCount,
-        Guid? correlationIdOverride = null,
-        int[]? ancestryInputIndicesOverride = null,
+        Guid correlationId,
+        int[]? ancestryInputIndices,
         string? originNodeId = null)
     {
         if (!TryGetRecorder(context, out var recorder))
             return;
-
-        Guid correlationId;
-        int[]? ancestryInputIndices;
-
-        if (correlationIdOverride is Guid overrideCorrelationId)
-        {
-            correlationId = overrideCorrelationId;
-            ancestryInputIndices = ancestryInputIndicesOverride;
-        }
-        else
-        {
-            if (!LineageExecutionItemContext.TryGetCurrentItemMetadata(out var currentMetadata))
-                return;
-
-            correlationId = currentMetadata.CorrelationId;
-            ancestryInputIndices = currentMetadata.AncestryInputIndices;
-        }
 
         var serialized = item is ILineageEnvelope envelope
             ? SafeSerialize(envelope.Data)

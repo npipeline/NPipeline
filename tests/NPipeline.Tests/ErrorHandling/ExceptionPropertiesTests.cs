@@ -16,7 +16,7 @@ public sealed class ExceptionPropertiesTests
         var exception = new RetryExhaustedException();
 
         // Assert
-        _ = exception.ErrorCode.Should().Be("RETRY_EXHAUSTED");
+        _ = exception.ErrorCode.Should().Be(ErrorCodes.RetryLimitExhausted);
         _ = exception.NodeId.Should().Be(string.Empty);
     }
 
@@ -59,6 +59,8 @@ public sealed class ExceptionPropertiesTests
         _ = exception.NodeId.Should().Be("NodeX");
         _ = exception.AttemptCount.Should().Be(10);
         _ = exception.InnerException.Should().Be(inner);
+        _ = exception.ErrorCode.Should().Be("NP0311");
+        _ = exception.Message.Should().StartWith("[NP0311] Retry attempts exhausted for node 'NodeX' after 10 attempts.");
     }
 
     #endregion

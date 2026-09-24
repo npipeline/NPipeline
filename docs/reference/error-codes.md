@@ -44,12 +44,12 @@ NPipeline error codes follow the pattern `NPxxxx` where the first two digits ind
 | NP0302 | OutputNotFoundForSourceNode | Could not locate the output data stream for a source node. |
 | NP0303 | PipelineExecutionFailedAtNode | Execution failed at a specific node. Check the `NodeId` in the exception. |
 | NP0304 | PipelineExecutionFailed | The pipeline execution failed. Check the inner exception for details. |
-| NP0305 | ItemFailedAfterMaxRetries | An item failed to process after all retry attempts were exhausted. |
-| NP0306 | ErrorHandlingFailed | The error handler itself threw an exception. |
+| NP0305 | *Retired* | Never raised. An item that runs out of retries raises NP0311. Not reused. |
+| NP0306 | *Retired* | Never raised. A resilience policy that throws fails the node with its own exception. Not reused. |
 | NP0307 | LineageCardinalityMismatch | The number of lineage inputs doesn't match the number of outputs. Internal framework error. |
 | NP0308 | FailedToExtractItemsFromInMemoryDataStream | Could not extract items from an InMemoryDataStream. Internal framework error. |
-| NP0310 | *(retired)* | No longer used. It belonged to `CircuitBreakerTrippedException`, which was never thrown and has been removed. An open breaker raises `CircuitBreakerOpenException`. |
-| NP0311 | RetryLimitExhausted | All retry attempts were exhausted. |
+| NP0310 | *Retired* | No longer used. It belonged to `CircuitBreakerTrippedException`, which was never thrown and has been removed. An open breaker raises `CircuitBreakerOpenException`. |
+| NP0311 | RetryLimitExhausted | `RetryExhaustedException`: an item, a node retry, or a node restart ran out of attempts. `AttemptCount` is the number of attempts, and the inner exception is the last failure. |
 
 ## NP04xx - Configuration and Setup Errors
 
@@ -67,7 +67,7 @@ NPipeline error codes follow the pattern `NPxxxx` where the first two digits ind
 | NP0412 | UnbatchingNodeNotSupported | UnbatchingNode cannot be executed directly; use the unbatching execution strategy. |
 | NP0413 | BatchingNodeNotSupported | BatchingNode doesn't support per-item transformation; use the batching execution strategy. |
 | NP0414 | CustomMergeNodeMissingInterface | The custom merge node is missing the required interface implementation. |
-| NP0415 | UnbatchingExecutionStrategyMissingDeadLetterHandler | The unbatching strategy requires a dead letter handler when resilience is enabled. |
+| NP0415 | *Retired* | Never raised. A dead-lettered item with no dead-letter sink raises NP0424. Not reused. |
 | NP0416 | LineageAdapterMissing | Internal: lineage adapter not configured. |
 | NP0417 | SourceNodeLineageUnwrapMissing | Internal: source node lineage unwrap delegate not configured. |
 | NP0418 | SinkNodeLineageUnwrapMissing | Internal: sink node lineage unwrap delegate not configured. |
@@ -75,6 +75,7 @@ NPipeline error codes follow the pattern `NPxxxx` where the first two digits ind
 | NP0420 | TimeWindowAssignerCannotBeNull | The time window assigner cannot be null for time-windowed operations. |
 | NP0421 | StreamTransformNodeRequiresStreamStrategy | A stream transform node was configured with a strategy that cannot execute streams. |
 | NP0422 | NodeCannotSupplyExecutionStrategy | A node scheduled as a transform does not implement the transform interface. |
+| NP0423 | NodeIdNotResolvable | A node asked the context for its own id, and no single id matched. Either no pipeline run owns the context (the node is being called directly, as in a unit test), or the same instance is wired into the graph under more than one id. Use `TryGetNodeId` where a node can run outside a pipeline, or give each graph position its own instance. |
 | NP0424 | DeadLetterSinkNotConfigured | An item was dead-lettered, but the pipeline has no dead-letter sink. A transform with `OnItemFailure = ItemFailureAction.DeadLetter` raises it before any node starts; a custom resilience policy that returns `DeadLetter` raises it when the item fails. Add a sink with `AddDeadLetterSink`, or use `Skip` or `Fail`. |
 | NP0425 | NodeRestartRequiresResumableStrategy | A transform has `NodeRestart.MaxRestarts` above zero, but its execution strategy does not implement `IResumableExecutionStrategy`. Use a resumable strategy, or set `MaxRestarts` to 0 for that node. |
 
@@ -83,7 +84,7 @@ NPipeline error codes follow the pattern `NPxxxx` where the first two digits ind
 | Code | Name | Description |
 |------|------|-------------|
 | NP0501 | ContextDisposalFailed | One or more errors occurred while disposing pipeline context resources. |
-| NP0502 | DeadLetterQueueCapacityExceeded | The dead letter queue has reached its capacity limit. |
+| NP0502 | DeadLetterQueueCapacityExceeded | `BoundedInMemoryDeadLetterSink` is full, and it throws `InvalidOperationException` instead of growing. Raise its capacity, or use a sink that writes somewhere durable. |
 | NP0503 | *Retired* | Belonged to the node restart materialization buffer, which the replay window replaced. `NodeRestart.MaxReplayWindow` applies backpressure instead of failing. Not reused. |
 | NP0504 | BatchSizeMustBeGreaterThanZero | Batch size must be a positive integer. |
 

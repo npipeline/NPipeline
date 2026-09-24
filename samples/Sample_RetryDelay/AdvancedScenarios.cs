@@ -58,7 +58,7 @@ public static class AdvancedScenarios
 
         static string Verdict(RetryClassifier c, Exception e)
         {
-            return c.IsTransient(e, CancellationToken.None) ? "transient" : "permanent";
+            return c.IsTransient(e) ? "transient" : "permanent";
         }
     }
 

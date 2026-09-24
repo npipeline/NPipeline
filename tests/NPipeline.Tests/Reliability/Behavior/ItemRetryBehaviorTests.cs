@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using Microsoft.Extensions.Time.Testing;
 using NPipeline.Configuration;
 using NPipeline.ErrorHandling;
+using NPipeline.Execution;
 using NPipeline.Extensions.Parallelism;
 using NPipeline.Graph;
 using NPipeline.Graph.Validation;
@@ -129,6 +130,24 @@ public sealed class ItemRetryBehaviorTests
 
         (await act.Should().ThrowAsync<DeadLetterSinkNotConfiguredException>()).Which.NodeId.Should().Be("transform");
         transform.TotalAttempts.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task DeadLetterOption_WithASinkSuppliedOnlyAtRunTime_Runs()
+    {
+        // Why the check is made at run setup and not by Build(): the builder has no sink here, but the context does.
+        var deadLetters = new CollectingDeadLetterSink();
+        var sink = new CollectingSink<int>();
+        await using var context = new PipelineContext(PipelineContextConfiguration.WithErrorHandling(deadLetters));
+
+        await PipelineRunner.Create().RunAsync(new BehaviorPipeline(b =>
+        {
+            _ = Wire(b, StreamingSource<int>.Of([1, 2]), new FailsOnTransform(1), sink);
+            _ = b.WithResilience(o => o with { OnItemFailure = ItemFailureAction.DeadLetter });
+        }), context);
+
+        sink.Items.Should().Equal([2]);
+        deadLetters.Envelopes.Should().ContainSingle();
     }
 
     [Theory]

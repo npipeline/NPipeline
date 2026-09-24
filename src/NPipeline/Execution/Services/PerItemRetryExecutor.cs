@@ -28,8 +28,6 @@ internal sealed class PerItemRetryExecutor : IPerItemRetryExecutor
         LineageNodeOutcomeWriter lineageOutcomeWriter,
         IPipelineActivity? itemActivity,
         CancellationToken cancellationToken,
-        Guid? correlationId = null,
-        int[]? ancestryInputIndices = null,
         Action<int>? onRetry = null,
         CircuitBreaker? circuitBreaker = null)
     {
@@ -118,7 +116,7 @@ internal sealed class PerItemRetryExecutor : IPerItemRetryExecutor
                         {
                             // Dropping the item here would lose it silently while lineage claimed it was dead-lettered.
                             var noSink = new DeadLetterSinkNotConfiguredException(nodeId, ex);
-                            PipelineSampleErrorReporter.TryRecordError(context, nodeId, item, noSink, retries, correlationId, ancestryInputIndices);
+                            RecordErrorSample(context, nodeId, item, noSink, retries, hasLineageIndex, lineageInputIndex, in lineageOutcomeWriter);
                             RecordLineageOutcome(hasLineageIndex, lineageInputIndex, in lineageOutcomeWriter, context, nodeId, LineageOutcomeReason.Error, retries);
                             throw noSink;
                         }
@@ -131,7 +129,7 @@ internal sealed class PerItemRetryExecutor : IPerItemRetryExecutor
                         if (attempt > ResilienceRuntime.MaxPolicyRepeats)
                         {
                             var runaway = ResilienceRuntime.RepeatCeilingExceeded(policy, nodeId, decision, ex);
-                            PipelineSampleErrorReporter.TryRecordError(context, nodeId, item, runaway, retries, correlationId, ancestryInputIndices);
+                            RecordErrorSample(context, nodeId, item, runaway, retries, hasLineageIndex, lineageInputIndex, in lineageOutcomeWriter);
                             RecordLineageOutcome(hasLineageIndex, lineageInputIndex, in lineageOutcomeWriter, context, nodeId, LineageOutcomeReason.Error, retries);
                             throw runaway;
                         }
@@ -148,13 +146,13 @@ internal sealed class PerItemRetryExecutor : IPerItemRetryExecutor
                         if (retries > 0)
                         {
                             var exhausted = new RetryExhaustedException(nodeId, attempt, ex);
-                            PipelineSampleErrorReporter.TryRecordError(context, nodeId, item, exhausted, retries, correlationId, ancestryInputIndices);
+                            RecordErrorSample(context, nodeId, item, exhausted, retries, hasLineageIndex, lineageInputIndex, in lineageOutcomeWriter);
                             RecordLineageOutcome(hasLineageIndex, lineageInputIndex, in lineageOutcomeWriter, context, nodeId, LineageOutcomeReason.Error, retries);
                             ResilienceRuntime.ReportRetryExhausted(context, nodeId, RetryKind.ItemRetry, attempt, ex);
                             throw exhausted;
                         }
 
-                        PipelineSampleErrorReporter.TryRecordError(context, nodeId, item, ex, retries, correlationId, ancestryInputIndices);
+                        RecordErrorSample(context, nodeId, item, ex, retries, hasLineageIndex, lineageInputIndex, in lineageOutcomeWriter);
                         RecordLineageOutcome(hasLineageIndex, lineageInputIndex, in lineageOutcomeWriter, context, nodeId, LineageOutcomeReason.Error, retries);
                         throw;
 
@@ -185,6 +183,24 @@ internal sealed class PerItemRetryExecutor : IPerItemRetryExecutor
     private static ILogger CreateLogger(PipelineContext context)
     {
         return context.Observability.LoggerFactory.CreateLogger(nameof(PerItemRetryExecutor));
+    }
+
+    /// <summary>
+    ///     Records the failure as an error sample, correlated to the item through the lineage registered under its input
+    ///     index. Without lineage there is nothing to correlate it to, so nothing is recorded.
+    /// </summary>
+    private static void RecordErrorSample<TIn>(
+        PipelineContext context,
+        string nodeId,
+        TIn item,
+        Exception exception,
+        int retryCount,
+        bool hasLineageIndex,
+        long lineageInputIndex,
+        in LineageNodeOutcomeWriter lineageOutcomeWriter)
+    {
+        if (hasLineageIndex && lineageOutcomeWriter.TryGetInput(lineageInputIndex, out var lineage))
+            PipelineSampleErrorReporter.TryRecordError(context, nodeId, item, exception, retryCount, lineage.CorrelationId, lineage.AncestryInputIndices);
     }
 
     private static void RecordLineageOutcome(

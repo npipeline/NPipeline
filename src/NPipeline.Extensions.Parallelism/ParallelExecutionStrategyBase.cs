@@ -28,12 +28,12 @@ namespace NPipeline.Extensions.Parallelism
         /// </summary>
         /// <typeparam name="T">The input item type.</typeparam>
         /// <param name="Item">The actual item payload.</param>
-        /// <param name="LineageInputIndex">Optional lineage input index associated with the item.</param>
-        /// <param name="CorrelationId">Optional correlation identifier associated with the item.</param>
-        /// <param name="AncestryInputIndices">Optional contributor indices associated with the item.</param>
+        /// <param name="LineageInputIndex">
+        ///     The item's index in the node's input when the node tracks lineage, which the item's lineage is keyed by;
+        ///     otherwise <see langword="null" />.
+        /// </param>
         /// <param name="Sequence">Monotonically increasing input sequence number used to restore ordering.</param>
-        protected readonly record struct IndexedWorkItem<T>(T Item, long? LineageInputIndex, Guid? CorrelationId = null,
-            int[]? AncestryInputIndices = null, long Sequence = 0);
+        protected readonly record struct IndexedWorkItem<T>(T Item, long? LineageInputIndex, long Sequence = 0);
 
         /// <summary>
         ///     A worker's output, carrying the input sequence number of the item it came from.
@@ -113,8 +113,6 @@ namespace NPipeline.Extensions.Parallelism
                 cached.LineageOutcomeWriter,
                 itemActivity,
                 cached.CancellationToken,
-                work.CorrelationId,
-                work.AncestryInputIndices,
                 onRetry,
                 cached.CircuitBreaker);
         }

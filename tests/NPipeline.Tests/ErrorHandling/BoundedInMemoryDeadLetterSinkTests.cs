@@ -54,7 +54,7 @@ public sealed class BoundedInMemoryDeadLetterSinkTests
 
         // The 1001st item should throw
         var act = async () => await sink.HandleAsync(Envelope("item-1000"), context, CancellationToken.None);
-        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*exceeded its capacity of 1000*");
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("[NP0502]*exceeded its capacity of 1000*");
     }
 
     [Fact]

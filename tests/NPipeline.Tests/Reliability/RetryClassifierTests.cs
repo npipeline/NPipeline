@@ -120,4 +120,12 @@ public sealed class RetryClassifierTests
         withRule.Should().NotBeSameAs(RetryClassifier.Default);
         RetryClassifier.Default.IsTransient(new InvalidOperationException(), CancellationToken.None).Should().BeFalse();
     }
+
+    [Fact]
+    public void IsTransient_WithoutAToken_TreatsATaskCanceledExceptionAsATimeout()
+    {
+        RetryClassifier.Default.IsTransient(new TimeoutException()).Should().BeTrue();
+        RetryClassifier.Default.IsTransient(new TaskCanceledException()).Should().BeTrue();
+        RetryClassifier.Default.IsTransient(new InvalidOperationException()).Should().BeFalse();
+    }
 }

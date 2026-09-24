@@ -55,7 +55,8 @@ public sealed class PipelineResilienceOptionsTests
     {
         var options = PipelineResilienceOptions.None with
         {
-            ItemRetry = new ItemRetryOptions { Backoff = new RetryBackoff { Kind = RetryBackoffKind.Exponential, Factor = 0.5 } },
+            // An exponential kind with no factor: each property is valid on its own, the combination is not.
+            ItemRetry = new ItemRetryOptions { Backoff = new RetryBackoff { Kind = RetryBackoffKind.Exponential } },
         };
 
         ((Action)(() => options.Validate())).Should().Throw<ArgumentOutOfRangeException>();

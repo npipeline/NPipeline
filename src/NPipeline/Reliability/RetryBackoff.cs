@@ -68,6 +68,11 @@ public enum RetryJitter
 ///         <see cref="MaxDelay" /> caps the delay after jitter is applied. <see cref="TimeSpan.Zero" />, the default,
 ///         means no cap.
 ///     </para>
+///     <para>
+///         Each property rejects an out-of-range value when it is set, so a <c>with</c> expression fails where it is
+///         written. <see cref="Validate" /> also checks the combination (an exponential backoff needs a factor, a
+///         custom one a delay function); the factories call it, and so does <c>Build()</c>.
+///     </para>
 /// </remarks>
 public readonly record struct RetryBackoff
 {
@@ -77,27 +82,50 @@ public readonly record struct RetryBackoff
     /// <summary>
     ///     The shape of the curve.
     /// </summary>
-    public RetryBackoffKind Kind { get; init; }
+    public RetryBackoffKind Kind
+    {
+        get;
+        init => field = Enum.IsDefined(value) ? value : throw new ArgumentOutOfRangeException(nameof(Kind), value, "Unknown backoff kind.");
+    }
 
     /// <summary>
     ///     The delay before the first retry, and the step for <see cref="RetryBackoffKind.Linear" />.
     /// </summary>
-    public TimeSpan BaseDelay { get; init; }
+    public TimeSpan BaseDelay
+    {
+        get;
+        init => field = value >= TimeSpan.Zero ? value : throw new ArgumentOutOfRangeException(nameof(BaseDelay), value, "The base delay cannot be negative.");
+    }
 
     /// <summary>
     ///     The multiplier between consecutive delays for <see cref="RetryBackoffKind.Exponential" />.
     /// </summary>
-    public double Factor { get; init; }
+    /// <exception cref="ArgumentOutOfRangeException">The factor is less than 1 or not a number.</exception>
+    public double Factor
+    {
+        get;
+        init => field = value >= 1 ? value : throw new ArgumentOutOfRangeException(nameof(Factor), value, "The factor must be at least 1.");
+    }
 
     /// <summary>
     ///     The longest delay, applied after jitter. <see cref="TimeSpan.Zero" /> means no cap.
     /// </summary>
-    public TimeSpan MaxDelay { get; init; }
+    public TimeSpan MaxDelay
+    {
+        get;
+        init => field = value >= TimeSpan.Zero
+            ? value
+            : throw new ArgumentOutOfRangeException(nameof(MaxDelay), value, "The maximum delay cannot be negative. Use TimeSpan.Zero for no cap.");
+    }
 
     /// <summary>
     ///     How the computed delay is randomized.
     /// </summary>
-    public RetryJitter Jitter { get; init; }
+    public RetryJitter Jitter
+    {
+        get;
+        init => field = Enum.IsDefined(value) ? value : throw new ArgumentOutOfRangeException(nameof(Jitter), value, "Unknown jitter kind.");
+    }
 
     /// <summary>
     ///     Computes the delay before a retry from its 1-based number, for <see cref="RetryBackoffKind.Custom" />.

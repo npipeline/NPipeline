@@ -119,4 +119,28 @@ public sealed class RetryBackoffTests
 
         act.Should().Throw<ArgumentException>();
     }
+
+    [Fact]
+    public void With_RejectsAnInvalidValueWhereItIsWritten()
+    {
+        var backoff = RetryBackoff.Exponential(TimeSpan.FromMilliseconds(100));
+
+        ((Action)(() => _ = backoff with { Factor = 0.5 })).Should().Throw<ArgumentOutOfRangeException>().WithParameterName("Factor");
+        ((Action)(() => _ = backoff with { Factor = double.NaN })).Should().Throw<ArgumentOutOfRangeException>();
+        ((Action)(() => _ = backoff with { BaseDelay = TimeSpan.FromMilliseconds(-1) })).Should().Throw<ArgumentOutOfRangeException>()
+            .WithParameterName("BaseDelay");
+        ((Action)(() => _ = backoff with { MaxDelay = TimeSpan.FromMilliseconds(-1) })).Should().Throw<ArgumentOutOfRangeException>()
+            .WithParameterName("MaxDelay");
+        ((Action)(() => _ = backoff with { Kind = (RetryBackoffKind)99 })).Should().Throw<ArgumentOutOfRangeException>();
+        ((Action)(() => _ = backoff with { Jitter = (RetryJitter)99 })).Should().Throw<ArgumentOutOfRangeException>();
+    }
+
+    [Fact]
+    public void With_AcceptsValidValues()
+    {
+        var slower = RetryBackoff.Exponential(TimeSpan.FromMilliseconds(100)) with { Factor = 3, MaxDelay = TimeSpan.Zero };
+
+        slower.Factor.Should().Be(3);
+        slower.DelayFor(2).Should().BeLessThanOrEqualTo(TimeSpan.FromMilliseconds(300));
+    }
 }

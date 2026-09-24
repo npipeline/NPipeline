@@ -223,22 +223,6 @@ internal static class ErrorMessages
                $"See: {DocsBaseUrl}#{ErrorCodes.PipelineExecutionFailed}";
     }
 
-    public static string ItemFailedAfterMaxRetries(int attempts, Exception originalException)
-    {
-        return $"[{ErrorCodes.ItemFailedAfterMaxRetries}] An item failed to process after {attempts} attempts. " +
-               $"Original error: {originalException.Message}. " +
-               $"Item retry limit exhausted. Check error handling or increase retry limits. " +
-               $"See: {DocsBaseUrl}#{ErrorCodes.ItemFailedAfterMaxRetries}";
-    }
-
-    public static string ErrorHandlingFailed(string nodeId, Exception handlerException)
-    {
-        return $"[{ErrorCodes.ErrorHandlingFailed}] Error handling failed for node '{nodeId}'. " +
-               $"Handler error: {handlerException.Message}. " +
-               $"The error handler itself threw an exception. Review your error handler implementation. " +
-               $"See: {DocsBaseUrl}#{ErrorCodes.ErrorHandlingFailed}";
-    }
-
     public static string LineageCardinalityMismatch(string nodeId, int inputCount, int outputCount)
     {
         return $"[{ErrorCodes.LineageCardinalityMismatch}] Lineage cardinality mismatch in node '{nodeId}'. " +
@@ -256,11 +240,10 @@ internal static class ErrorMessages
                $"See: {DocsBaseUrl}#{ErrorCodes.FailedToExtractItemsFromInMemoryDataStream}";
     }
 
-    public static string RetryLimitExhausted(string nodeId, int maxAttempts, int consecutiveFailures)
+    public static string RetryLimitExhausted(string nodeId, int attemptCount)
     {
-        return $"[{ErrorCodes.RetryLimitExhausted}] Retry limit exhausted for node '{nodeId}'. " +
-               $"Attempted {maxAttempts} times with {consecutiveFailures} consecutive failures. " +
-               $"The node cannot recover. Review error logs and the node implementation. " +
+        return $"[{ErrorCodes.RetryLimitExhausted}] Retry attempts exhausted for node '{nodeId}' after {attemptCount} attempts. " +
+               $"The inner exception is the last failure. Raise the retry limit, dead-letter the item, or fix the cause. " +
                $"See: {DocsBaseUrl}#{ErrorCodes.RetryLimitExhausted}";
     }
 
@@ -353,14 +336,6 @@ internal static class ErrorMessages
                $"Custom merge nodes must implement ICusMergeNode<T1, T2, TOut>. " +
                $"Review your merge node implementation. " +
                $"See: {DocsBaseUrl}#{ErrorCodes.CustomMergeNodeMissingInterface}";
-    }
-
-    public static string UnbatchingExecutionStrategyMissingDeadLetterHandler()
-    {
-        return $"[{ErrorCodes.UnbatchingExecutionStrategyMissingDeadLetterHandler}] Unbatching execution strategy could not find dead letter handler. " +
-               $"Items that fail unbatching need a dead letter sink for error handling. " +
-               $"Ensure a dead letter handler is configured in the pipeline context. " +
-               $"See: {DocsBaseUrl}#{ErrorCodes.UnbatchingExecutionStrategyMissingDeadLetterHandler}";
     }
 
     public static string StreamTransformNodeRequiresStreamStrategy(string nodeId, string nodeTypeName, string strategyTypeName)
@@ -473,14 +448,6 @@ internal static class ErrorMessages
                $"Too many failed items have been queued for the dead letter sink. " +
                $"Failing the pipeline to prevent memory overflow. Increase capacity or fix upstream errors. " +
                $"See: {DocsBaseUrl}#{ErrorCodes.DeadLetterQueueCapacityExceeded}";
-    }
-
-    public static string MaterializationCapExceeded(string nodeId, int cap)
-    {
-        return $"[{ErrorCodes.MaterializationCapExceeded}] Materialization cap exceeded for node '{nodeId}' (cap={cap}). " +
-               $"Too many items are being buffered in memory. " +
-               $"Reduce the volume of items or increase the materialization cap. " +
-               $"See: {DocsBaseUrl}#{ErrorCodes.MaterializationCapExceeded}";
     }
 
     public static string BatchSizeMustBeGreaterThanZero()

@@ -191,11 +191,8 @@ public static class ErrorCodes
     /// <summary>Pipeline execution failed overall.</summary>
     public const string PipelineExecutionFailed = "NP0304";
 
-    /// <summary>An item failed to process after maximum retries.</summary>
-    public const string ItemFailedAfterMaxRetries = "NP0305";
-
-    /// <summary>Error handling itself failed.</summary>
-    public const string ErrorHandlingFailed = "NP0306";
+    // NP0305 and NP0306 are retired: nothing raised them. An item that runs out of retries raises NP0311
+    // (RetryExhaustedException), and a policy that throws surfaces its own exception. Don't reuse them.
 
     /// <summary>Lineage cardinality mismatch (inputs/outputs count mismatch).</summary>
     public const string LineageCardinalityMismatch = "NP0307";
@@ -205,7 +202,7 @@ public static class ErrorCodes
 
     // NP0310 is retired: it belonged to CircuitBreakerTrippedException, which was never thrown. Don't reuse it.
 
-    /// <summary>Retry limit exhausted after maximum attempts.</summary>
+    /// <summary>Retry limit exhausted after maximum attempts (<c>RetryExhaustedException</c>).</summary>
     public const string RetryLimitExhausted = "NP0311";
 
     #endregion
@@ -248,8 +245,7 @@ public static class ErrorCodes
     /// <summary>Custom merge node missing required interface implementation.</summary>
     public const string CustomMergeNodeMissingInterface = "NP0414";
 
-    /// <summary>Unbatching execution strategy missing dead letter handler.</summary>
-    public const string UnbatchingExecutionStrategyMissingDeadLetterHandler = "NP0415";
+    // NP0415 is retired: nothing raised it. A dead-lettered item with no sink raises NP0424. Don't reuse it.
 
     /// <summary>Lineage adapter missing (internal framework error).</summary>
     public const string LineageAdapterMissing = "NP0416";
@@ -291,8 +287,7 @@ public static class ErrorCodes
     /// <summary>Dead letter queue has exceeded capacity.</summary>
     public const string DeadLetterQueueCapacityExceeded = "NP0502";
 
-    /// <summary>Materialization cap exceeded for node.</summary>
-    public const string MaterializationCapExceeded = "NP0503";
+    // NP0503 is retired: node restart no longer materializes its input. Don't reuse it.
 
     /// <summary>Batch size must be greater than zero.</summary>
     public const string BatchSizeMustBeGreaterThanZero = "NP0504";

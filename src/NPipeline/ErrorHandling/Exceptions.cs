@@ -120,7 +120,7 @@ public sealed class RetryExhaustedException : PipelineException
     /// </summary>
     public RetryExhaustedException() : base("Retry attempts exhausted.")
     {
-        ErrorCode = "RETRY_EXHAUSTED";
+        ErrorCode = ErrorCodes.RetryLimitExhausted;
         NodeId = string.Empty;
     }
 
@@ -130,7 +130,7 @@ public sealed class RetryExhaustedException : PipelineException
     /// <param name="message">The message that describes the error.</param>
     public RetryExhaustedException(string message) : base(message)
     {
-        ErrorCode = "RETRY_EXHAUSTED";
+        ErrorCode = ErrorCodes.RetryLimitExhausted;
         NodeId = string.Empty;
     }
 
@@ -142,7 +142,7 @@ public sealed class RetryExhaustedException : PipelineException
     /// <param name="innerException">The exception that is the cause of the current exception.</param>
     public RetryExhaustedException(string message, Exception innerException) : base(message, innerException)
     {
-        ErrorCode = "RETRY_EXHAUSTED";
+        ErrorCode = ErrorCodes.RetryLimitExhausted;
         NodeId = string.Empty;
     }
 
@@ -153,11 +153,11 @@ public sealed class RetryExhaustedException : PipelineException
     /// <param name="attemptCount">The total number of attempts made.</param>
     /// <param name="lastException">The last exception that occurred during the final retry attempt.</param>
     public RetryExhaustedException(string nodeId, int attemptCount, Exception lastException)
-        : base($"Retry attempts exhausted for node '{nodeId}' after {attemptCount} attempts.", lastException)
+        : base(ErrorMessages.RetryLimitExhausted(nodeId, attemptCount), lastException)
     {
         NodeId = nodeId;
         AttemptCount = attemptCount;
-        ErrorCode = "RETRY_EXHAUSTED";
+        ErrorCode = ErrorCodes.RetryLimitExhausted;
     }
 
     /// <summary>
@@ -171,7 +171,7 @@ public sealed class RetryExhaustedException : PipelineException
     public int AttemptCount { get; }
 
     /// <summary>
-    ///     Gets the error code associated with this exception.
+    ///     Gets the error code associated with this exception: <see cref="ErrorCodes.RetryLimitExhausted" /> (NP0311).
     /// </summary>
     public string ErrorCode { get; }
 }

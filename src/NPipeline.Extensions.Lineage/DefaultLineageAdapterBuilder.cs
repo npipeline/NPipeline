@@ -28,18 +28,16 @@ internal sealed class DefaultLineageAdapterBuilder
         {
             var typedInput = (IDataStream<LineagePacket<TIn>>)transformInput;
             LineageNodeOutcomeRegistry.BeginNode(pipelineId, nodeId);
+            var nodeLineage = LineageNodeOutcomeRegistry.GetWriter(pipelineId, nodeId);
 
             // Read typed input once and fan out packets + raw values via channels.
-            var dataChannel = Channel.CreateUnbounded<(long Index, Guid CorrelationId, int[]? AncestryInputIndices, TIn Data)>(
-                new UnboundedChannelOptions { SingleWriter = true });
+            var dataChannel = Channel.CreateUnbounded<TIn>(new UnboundedChannelOptions { SingleWriter = true });
 
             var packetChannel = Channel.CreateUnbounded<LineagePacket<TIn>>(new UnboundedChannelOptions { SingleWriter = true });
 
-            _ = PumpInputAsync(typedInput, dataChannel.Writer, packetChannel.Writer, cancellationToken);
+            _ = PumpInputAsync(typedInput, dataChannel.Writer, packetChannel.Writer, nodeLineage, cancellationToken);
 
-            var unwrappedPipe = new DataStream<TIn>(
-                ProjectWithInputIndex(dataChannel.Reader.ReadAllAsync(cancellationToken), cancellationToken),
-                $"Unwrapped_{typedInput.StreamName}");
+            var unwrappedPipe = new DataStream<TIn>(dataChannel.Reader.ReadAllAsync(cancellationToken), $"Unwrapped_{typedInput.StreamName}");
 
             return (unwrappedPipe, RewrapFunc);
 
@@ -86,24 +84,6 @@ internal sealed class DefaultLineageAdapterBuilder
                     ct);
             }
 
-            static async IAsyncEnumerable<TIn> ProjectWithInputIndex(
-                IAsyncEnumerable<(long Index, Guid CorrelationId, int[]? AncestryInputIndices, TIn Data)> source,
-                [EnumeratorCancellation] CancellationToken ct)
-            {
-                try
-                {
-                    await foreach (var (index, correlationId, ancestryInputIndices, data) in source.WithCancellation(ct).ConfigureAwait(false))
-                    {
-                        LineageExecutionItemContext.SetCurrentInputContext(index, correlationId, ancestryInputIndices);
-                        yield return data;
-                    }
-                }
-                finally
-                {
-                    LineageExecutionItemContext.ClearCurrentInputIndex();
-                }
-            }
-
             static async IAsyncEnumerable<LineagePacket<TOut>> CleanupOnComplete(
                 IAsyncEnumerable<LineagePacket<TOut>> source,
                 Guid currentPipelineId,
@@ -126,8 +106,9 @@ internal sealed class DefaultLineageAdapterBuilder
 
         static async Task PumpInputAsync(
             IDataStream<LineagePacket<TIn>> source,
-            ChannelWriter<(long Index, Guid CorrelationId, int[]? AncestryInputIndices, TIn Data)> dataWriter,
+            ChannelWriter<TIn> dataWriter,
             ChannelWriter<LineagePacket<TIn>> packetWriter,
+            LineageNodeOutcomeWriter nodeLineage,
             CancellationToken ct)
         {
             try
@@ -148,9 +129,13 @@ internal sealed class DefaultLineageAdapterBuilder
                         }
                     }
 
+                    // The strategy looks the item's lineage up by its input index, which a node restart preserves.
+                    // Registered before the item is written, so it is there when the strategy reads the item.
+                    nodeLineage.RegisterInput(inputIndex, packet.CorrelationId, ancestryInputIndices);
+
                     // Write packet first so strategy input is available before transform output is consumed.
                     await packetWriter.WriteAsync(packet, ct).ConfigureAwait(false);
-                    await dataWriter.WriteAsync((inputIndex, packet.CorrelationId, ancestryInputIndices, packet.Data), ct).ConfigureAwait(false);
+                    await dataWriter.WriteAsync(packet.Data, ct).ConfigureAwait(false);
                     inputIndex++;
                 }
 

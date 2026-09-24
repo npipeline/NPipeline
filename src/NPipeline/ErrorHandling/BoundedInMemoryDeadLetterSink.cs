@@ -78,8 +78,7 @@ public class BoundedInMemoryDeadLetterSink : IDeadLetterSink
         {
             if (_queue.Count >= _capacity)
             {
-                throw new InvalidOperationException(
-                    $"Dead Letter Queue has exceeded its capacity of {_capacity}. Failing pipeline to prevent memory overflow.");
+                throw new InvalidOperationException(ErrorMessages.DeadLetterQueueCapacityExceeded(_capacity));
             }
 
             _queue.Enqueue(envelope);

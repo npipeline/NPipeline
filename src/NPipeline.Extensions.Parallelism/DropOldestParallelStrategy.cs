@@ -71,6 +71,7 @@ public sealed class DropOldestParallelStrategy : ParallelExecutionStrategyBase
         var observabilityScope = BeginNodeObservabilityScope(context, nodeId);
         var currentActivity = context.Observability.Tracer.CurrentActivity;
         var cachedContext = CachedNodeExecutionContext.Create(context, nodeId);
+        var trackLineage = cachedContext.LineageOutcomeWriter.IsActive;
         var logger = context.Observability.LoggerFactory.CreateLogger(nameof(DropOldestParallelStrategy));
         ParallelExecutionStrategyLogMessages.FinalMaxRetries(logger, nodeId, cachedContext.Resilience.ItemRetry.MaxRetries);
 
@@ -143,19 +144,10 @@ public sealed class DropOldestParallelStrategy : ParallelExecutionStrategyBase
             {
                 await foreach (var item in timedInput.WithCancellation(faultCts.Token).ConfigureAwait(false))
                 {
-                    var lineageInputIndex = LineageExecutionItemContext.TryGetCurrentInputIndex(out var currentInputIndex)
-                        ? currentInputIndex
-                        : (long?)null;
+                    // Lineage is keyed by the item's index in the node's input, which a restart preserves.
+                    var lineageInputIndex = trackLineage ? sequence : (long?)null;
 
-                    var hasMetadata = LineageExecutionItemContext.TryGetCurrentItemMetadata(out var currentMetadata);
-                    var correlationId = hasMetadata
-                        ? currentMetadata.CorrelationId
-                        : (Guid?)null;
-                    var ancestryInputIndices = hasMetadata
-                        ? currentMetadata.AncestryInputIndices
-                        : null;
-
-                    var indexedItem = new IndexedWorkItem<TIn>(item, lineageInputIndex, correlationId, ancestryInputIndices, sequence++);
+                    var indexedItem = new IndexedWorkItem<TIn>(item, lineageInputIndex, sequence++);
 
                     if (queue.Writer.TryWrite(indexedItem))
                     {

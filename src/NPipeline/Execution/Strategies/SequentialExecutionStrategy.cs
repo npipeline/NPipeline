@@ -90,8 +90,9 @@ public sealed class SequentialExecutionStrategy : IResumableExecutionStrategy
             var tracer = context.Observability.Tracer;
             var nodeId = cached.NodeId;
             var lineageTrackingEnabled = LineageNodeOutcomeRegistry.IsTracking(context.RunIdentity.PipelineId, nodeId);
-            // The index of the last item read. A resumed run starts part-way through the input.
-            var fallbackInputIndex = offset - 1;
+            // The index in the node's input of the last item read. A resumed run starts part-way through the input.
+            // Lineage is keyed by this index, so a replayed item finds its own lineage.
+            var inputIndex = offset - 1;
             using var observabilityScope = context.NodeEnvironment.NodeExecutionScopeRegistry.BeginNodeScope(nodeId);
             var timedInput = NPipeline.Execution.NodeTimingDataStreamWrapper.WrapInputWait(input, observabilityScope);
 
@@ -127,15 +128,7 @@ public sealed class SequentialExecutionStrategy : IResumableExecutionStrategy
                 // Track item processed
                 observabilityScope.IncrementProcessed();
 
-                fallbackInputIndex++;
-
-                var hasLineageIndex = LineageExecutionItemContext.TryGetCurrentInputIndex(out var lineageInputIndex);
-
-                if (!hasLineageIndex && lineageTrackingEnabled)
-                {
-                    hasLineageIndex = true;
-                    lineageInputIndex = fallbackInputIndex;
-                }
+                inputIndex++;
 
                 // Use cached values to avoid per-item dictionary lookups and allocations
                 using var itemActivity = cached.TracingEnabled
@@ -154,8 +147,8 @@ public sealed class SequentialExecutionStrategy : IResumableExecutionStrategy
                             context,
                             nodeId,
                             cached.Resilience,
-                            hasLineageIndex,
-                            lineageInputIndex,
+                            lineageTrackingEnabled,
+                            inputIndex,
                             cached.LineageOutcomeWriter,
                             itemActivity,
                             ct,
@@ -180,7 +173,7 @@ public sealed class SequentialExecutionStrategy : IResumableExecutionStrategy
 
                 // Reached once the consumer asks for the next item, so the item's output has been delivered. A skipped
                 // or dead-lettered item has no output and is delivered at once.
-                checkpoint?.Advance(fallbackInputIndex + 1);
+                checkpoint?.Advance(inputIndex + 1);
             }
 
             // Validate context immutability after processing all items (DEBUG-only, zero overhead in RELEASE)
