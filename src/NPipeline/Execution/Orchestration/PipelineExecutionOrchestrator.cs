@@ -148,6 +148,5 @@ internal sealed class PipelineExecutionOrchestrator : IPipelineExecutionOrchestr
         observability.ProcessedItemsCounter = new StatsCounter();
         execution.ResetResilienceOptions();
         nodeEnvironment.NodeExecutionScopeRegistry.Clear();
-        execution.IsParallelExecution = false;
     }
 }

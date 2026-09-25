@@ -176,6 +176,16 @@ builder.AddResiliencePolicy(enrich, new PatientWithRateLimits());
 
 The policy applies as soon as it's registered. There's nothing to enable on each node.
 
+You can also supply a policy through the context instead of the builder, with
+`PipelineContextConfiguration.WithResilience(policy)`. The full precedence at run time is:
+
+1. The graph's policy instance (`builder.AddResiliencePolicy(policy)`).
+2. The graph's policy type (`builder.AddResiliencePolicy<T>()`).
+3. The context's policy (`PipelineContextConfiguration.WithResilience(policy)`).
+4. `DefaultResiliencePolicy.Instance`.
+
+A graph-level policy therefore takes precedence over a context-level one.
+
 ## The fluent policy builder
 
 For rules that depend only on the exception type, `ResiliencePolicyBuilder`, in the `NPipeline.ErrorHandling`
@@ -197,6 +207,10 @@ builder.AddResiliencePolicy(policy);
 ```
 
 The builder's policies make item decisions only. Restart and node decisions follow the node's options.
+
+The policy doesn't consult rules for an attempt the circuit breaker refused. Such an attempt fails the node, as it does with
+`DefaultResiliencePolicy`, so `.OnAny().Skip()` cannot drain the input while a dependency is down. To wait out an
+outage instead, use the breaker's opt-in `Pause` mode ([Circuit breakers](circuit-breakers.md)).
 
 ### Builder methods
 

@@ -247,13 +247,9 @@ internal sealed class PipelineNodeExecutionStage(
         var logger = context.Observability.LoggerFactory.CreateLogger(nameof(PipelineRunner));
         PipelineRunnerLogMessages.NodeFailed(logger, nodeDef.Id, ex.GetType().Name, ex.Message);
 
-        if (context.ExecutionConfiguration.IsParallelExecution)
-        {
-            PipelineRunnerLogMessages.PreservingExceptionForParallelExecution(logger, ex.GetType().Name, nodeDef.Id);
-            ExceptionDispatchInfo.Capture(ex).Throw();
-        }
-
-        if (ex is OperationCanceledException)
+        // A cancellation of this run is preserved raw. A foreign OperationCanceledException, such as a client
+        // timeout, is wrapped like any other failure so it names its node.
+        if (ex is OperationCanceledException && context.CancellationToken.IsCancellationRequested)
         {
             PipelineRunnerLogMessages.PreservingCancellationException(logger, nodeDef.Id);
             ExceptionDispatchInfo.Capture(ex).Throw();

@@ -40,7 +40,7 @@ public sealed class RuntimePipelineBinder : IRuntimePipelineBinder
 
         var deadLetterSink = ResolveDeadLetterSink(overriddenGraph, context.ErrorHandlerFactory);
         deadLetterSink = ApplyDeadLetterSinkDecorator(context, deadLetterSink);
-        var resiliencePolicy = ResolveResiliencePolicy(overriddenGraph);
+        var resiliencePolicy = ResolveResiliencePolicy(overriddenGraph, context);
 
         var itemLevelLineageEnabled = overriddenGraph.Lineage.ItemLevelLineageEnabled;
 
@@ -92,13 +92,13 @@ public sealed class RuntimePipelineBinder : IRuntimePipelineBinder
         RuntimePipelineBinderLogMessages.ItemLevelLineageSinkIgnored(logger, configuredSink);
     }
 
-    private static IResiliencePolicy ResolveResiliencePolicy(PipelineGraph graph)
+    private static IResiliencePolicy ResolveResiliencePolicy(PipelineGraph graph, PipelineContext context)
     {
         if (graph.ErrorHandling.ResiliencePolicy is not null)
             return graph.ErrorHandling.ResiliencePolicy;
 
         if (graph.ErrorHandling.ResiliencePolicyType is null)
-            return DefaultResiliencePolicy.Instance;
+            return context.ConfiguredResiliencePolicy ?? DefaultResiliencePolicy.Instance;
 
         if (!typeof(IResiliencePolicy).IsAssignableFrom(graph.ErrorHandling.ResiliencePolicyType))
         {

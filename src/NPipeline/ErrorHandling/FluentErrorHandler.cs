@@ -6,6 +6,11 @@ namespace NPipeline.ErrorHandling;
 /// <summary>
 ///     Provides factory methods for creating resilience policies using a fluent builder pattern.
 /// </summary>
+/// <remarks>
+///     The rules decide item failures only, and are not consulted for an attempt an open circuit breaker refused; such
+///     an attempt fails the node, as it does with <see cref="DefaultResiliencePolicy" />. Use the breaker's opt-in
+///     <see cref="BreakerOpenBehavior.Pause" /> mode to wait out an outage instead.
+/// </remarks>
 public static class ResiliencePolicyBuilder
 {
     /// <summary>
@@ -267,6 +272,12 @@ internal sealed class NodeScopedResiliencePolicy<TNode, TData> : ResiliencePolic
         var itemMatches = failure.Item is TData || (failure.Item is null && default(TData) is null);
 
         if (failure.Node is not TNode || !itemMatches)
+            return base.DecideItemFailureAsync(failure, cancellationToken);
+
+        // A refused attempt says nothing about the item. Retrying, skipping or dead-lettering it would drain the input
+        // while the dependency is down, so follow the node's options (Fail), as DefaultResiliencePolicy does. The
+        // breaker's opt-in Pause mode is the way to wait out an outage.
+        if (failure.IsBreakerOpen)
             return base.DecideItemFailureAsync(failure, cancellationToken);
 
         foreach (var (predicate, factory) in _rules)

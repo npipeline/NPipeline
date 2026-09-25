@@ -233,6 +233,11 @@ internal sealed class ResumableInput<T> : IAsyncDisposable
         }
         finally
         {
+            // The lock is released before re-checking, then raced for again. If DisposeAsync's Wait(0) failed, it set
+            // _closed before this reader's Release, so the re-check below sees it; the reader that wins the race
+            // disposes the enumerator.
+            _ = _readLock.Release();
+
             bool closed;
 
             lock (_gate)
@@ -240,10 +245,17 @@ internal sealed class ResumableInput<T> : IAsyncDisposable
                 closed = _closed;
             }
 
-            if (closed)
-                await DisposeSourceAsync().ConfigureAwait(false);
-
-            _ = _readLock.Release();
+            if (closed && _readLock.Wait(0, CancellationToken.None))
+            {
+                try
+                {
+                    await DisposeSourceAsync().ConfigureAwait(false);
+                }
+                finally
+                {
+                    _ = _readLock.Release();
+                }
+            }
         }
     }
 

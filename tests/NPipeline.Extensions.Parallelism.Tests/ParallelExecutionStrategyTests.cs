@@ -7,6 +7,7 @@ using NPipeline.Execution;
 using NPipeline.Extensions.Testing;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
+using NPipeline.Reliability;
 using ParallelExecOptions = NPipeline.Extensions.Parallelism.ParallelOptions;
 
 namespace NPipeline.Extensions.Parallelism.Tests;
@@ -113,6 +114,21 @@ public class ParallelExecutionStrategyTests
 
         thrown.Which.GetBaseException().Should().BeOfType<InvalidOperationException>()
             .Which.Message.Should().Be("source-boom");
+    }
+
+    [Fact]
+    public async Task ParallelNode_DoesNotStopAnotherNodeFromBeingWrapped()
+    {
+        // C36: one parallel node must not switch off exception wrapping for the whole run, which would let a failure
+        // in an unrelated node surface as its raw type with no node id.
+        var ctx = PipelineContext.CreateDefault();
+        var runner = PipelineRunner.Create();
+
+        var act = async () => await runner.RunAsync<ParallelThenFailingSinkPipeline>(ctx);
+
+        var thrown = await act.Should().ThrowAsync<NodeExecutionException>();
+        thrown.Which.NodeId.Should().Be("sink");
+        thrown.Which.GetBaseException().Should().BeOfType<FormatException>().Which.Message.Should().Be("policy-boom");
     }
 
     [Fact]
@@ -225,6 +241,22 @@ public class ParallelExecutionStrategyTests
         }
     }
 
+    private sealed class ParallelThenFailingSinkPipeline : IPipelineDefinition
+    {
+        public void Define(PipelineBuilder builder, PipelineContext context)
+        {
+            var s = builder.AddInMemorySourceWithDataFromContext(context, "Source", Enumerable.Range(0, 8));
+            var t = builder.AddTransform<VariableDelayTransform, int, int>("Transform");
+            var k = builder.AddSink<ThrowingSink, int>("Sink");
+            builder.Connect(s, t).Connect(t, k);
+            builder.WithExecutionStrategy(t, new BlockingParallelStrategy());
+            builder.SetNodeExecutionOption(t.Id, new ParallelExecOptions(4));
+
+            // A policy that throws while deciding surfaces through the wrapping path that reads the flag.
+            builder.AddResiliencePolicy(new ThrowingPolicy());
+        }
+    }
+
     private sealed class OrderedSourceFaultingPipeline : IPipelineDefinition
     {
         public void Define(PipelineBuilder builder, PipelineContext context)
@@ -292,6 +324,18 @@ public class ParallelExecutionStrategyTests
 
             return item * 2;
         }
+    }
+
+    public sealed class ThrowingSink : SinkNode<int>
+    {
+        public override Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken cancellationToken) =>
+            throw new InvalidOperationException("sink-boom");
+    }
+
+    private sealed class ThrowingPolicy : ResiliencePolicyBase
+    {
+        public override ValueTask<ResilienceDecision> DecideNodeFailureAsync(NodeFailure failure, CancellationToken cancellationToken) =>
+            throw new FormatException("policy-boom");
     }
 
     public sealed class FaultingSource : SourceNode<int>

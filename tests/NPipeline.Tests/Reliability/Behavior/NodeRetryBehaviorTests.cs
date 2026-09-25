@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using NPipeline.Configuration;
 using NPipeline.DataFlow;
 using NPipeline.ErrorHandling;
 using NPipeline.Execution;
@@ -84,14 +85,88 @@ public sealed class NodeRetryBehaviorTests
         observer.Retries.Select(e => e.Attempt).Should().Equal(1, 2);
     }
 
-    private static void WireSource(PipelineBuilder builder, FailsToOpenOnceSource source, CollectingSink<int> sink)
+    private static void WireSource<TSource>(PipelineBuilder builder, TSource source, CollectingSink<int> sink)
+        where TSource : ISourceNode<int>
     {
-        var s = builder.AddSource<FailsToOpenOnceSource, int>("source");
+        var s = builder.AddSource<TSource, int>("source");
         var k = builder.AddSink<CollectingSink<int>, int>("sink");
 
         _ = builder.AddPreconfiguredNodeInstance(s.Id, source)
             .AddPreconfiguredNodeInstance(k.Id, sink)
             .Connect(s, k);
+    }
+
+    /// <summary>
+    ///     A client timeout (<see cref="TaskCanceledException" />) is not a cancellation of the run, so node retry
+    ///     offers it to the policy like any other transient failure.
+    /// </summary>
+    [Fact]
+    public async Task NodeRetry_RetriesAClientTimeout()
+    {
+        var source = new TimesOutOnceSource();
+        var sink = new CollectingSink<int>();
+
+        await BehaviorPipeline.RunAsync(b =>
+        {
+            WireSource(b, source, sink);
+            _ = b.WithResilience(o => o with { NodeRetry = new NodeRetryOptions { MaxRetries = 1, Backoff = RetryBackoff.None } });
+        });
+
+        source.Opens.Should().Be(2);
+        sink.Items.Should().Equal(1);
+    }
+
+    /// <summary>
+    ///     Without a retry, a foreign <see cref="TaskCanceledException" /> is wrapped and names the node, rather
+    ///     than escaping as a bare cancellation that looks like a cancelled run.
+    /// </summary>
+    [Fact]
+    public async Task ForeignClientTimeout_SurfacesWrappedWithTheNodeId()
+    {
+        var source = new FailsToOpenSource(() => new TaskCanceledException("HttpClient.Timeout elapsed"));
+
+        var act = () => BehaviorPipeline.RunAsync(b => WireSource(b, source, new CollectingSink<int>()));
+
+        var thrown = await act.Should().ThrowAsync<NodeExecutionException>();
+        thrown.Which.NodeId.Should().Be("source");
+        thrown.Which.GetBaseException().Should().BeOfType<TaskCanceledException>();
+    }
+
+    [Fact]
+    public async Task ContextPolicy_IsHonoured_WhenTheGraphDoesNotConfigureOne()
+    {
+        var policy = new RetryDecisionsPolicy();
+        await using var context = new PipelineContext(PipelineContextConfiguration.WithResilience(policy));
+        var sink = new CollectingSink<int>();
+
+        await PipelineRunner.Create().RunAsync(new BehaviorPipeline(b =>
+        {
+            WireSource(b, new FailsToOpenOnceSource([1]), sink);
+            _ = b.WithResilience(o => o with { NodeRetry = new NodeRetryOptions { MaxRetries = 1, Backoff = RetryBackoff.None } });
+        }), context);
+
+        sink.Items.Should().Equal(1);
+        policy.NodeDecisions.Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public async Task GraphPolicy_WinsOverTheContextPolicy()
+    {
+        var contextPolicy = new RetryDecisionsPolicy();
+        var graphPolicy = new RetryDecisionsPolicy();
+
+        await using var context = new PipelineContext(PipelineContextConfiguration.WithResilience(contextPolicy));
+        var sink = new CollectingSink<int>();
+
+        await PipelineRunner.Create().RunAsync(new BehaviorPipeline(b =>
+        {
+            WireSource(b, new FailsToOpenOnceSource([1]), sink);
+            _ = b.AddResiliencePolicy(graphPolicy);
+            _ = b.WithResilience(o => o with { NodeRetry = new NodeRetryOptions { MaxRetries = 1, Backoff = RetryBackoff.None } });
+        }), context);
+
+        graphPolicy.NodeDecisions.Should().BeGreaterThan(0);
+        contextPolicy.NodeDecisions.Should().Be(0);
     }
 
     [Fact]
@@ -244,6 +319,37 @@ public sealed class NodeRetryBehaviorTests
         {
             _ = Interlocked.Increment(ref _opens);
             throw failure();
+        }
+    }
+
+    /// <summary>
+    ///     Fails its first open with a client timeout, then yields one item.
+    /// </summary>
+    private sealed class TimesOutOnceSource : SourceNode<int>
+    {
+        private int _opens;
+
+        public int Opens => _opens;
+
+        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken) =>
+            Interlocked.Increment(ref _opens) == 1
+                ? throw new TaskCanceledException("HttpClient.Timeout elapsed")
+                : StreamingSource<int>.Of([1]).OpenStream(context, cancellationToken);
+    }
+
+    /// <summary>
+    ///     Counts the node failures it is asked to decide, and retries every one.
+    /// </summary>
+    private sealed class RetryDecisionsPolicy : ResiliencePolicyBase
+    {
+        private int _nodeDecisions;
+
+        public int NodeDecisions => _nodeDecisions;
+
+        public override ValueTask<ResilienceDecision> DecideNodeFailureAsync(NodeFailure failure, CancellationToken cancellationToken)
+        {
+            _ = Interlocked.Increment(ref _nodeDecisions);
+            return ValueTask.FromResult(ResilienceDecision.Retry);
         }
     }
 }

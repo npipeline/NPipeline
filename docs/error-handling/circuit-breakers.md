@@ -121,6 +121,11 @@ whose inner exception is the `CircuitBreakerOpenException`.
 A custom policy can choose differently. For example, it can return `ResilienceDecision.DeadLetter` for a refused
 attempt when dead-lettering during an outage is what you want.
 
+A policy built with `ResiliencePolicyBuilder` follows the default while the breaker is open: its rules match
+`CircuitBreakerOpenException` like any other exception, but they are not consulted for a refused attempt. A refused
+attempt fails the node instead, so a `.OnAny().Skip()` or `.OnAny().DeadLetter()` rule cannot drain the input while the
+dependency is down. The `Pause` mode is the way to wait out an outage.
+
 ### Pause (opt-in)
 
 To make an attempt wait for the breaker instead of failing, set `WhenOpen` to `BreakerOpenBehavior.Pause`:

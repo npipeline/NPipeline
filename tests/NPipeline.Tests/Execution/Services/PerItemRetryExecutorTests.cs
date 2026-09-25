@@ -1,6 +1,8 @@
 using AwesomeAssertions;
+using Microsoft.Extensions.Time.Testing;
 using NPipeline.ErrorHandling;
 using NPipeline.Execution;
+using NPipeline.Execution.CircuitBreaking;
 using NPipeline.Execution.Lineage;
 using NPipeline.Execution.Services;
 using NPipeline.Lineage;
@@ -240,6 +242,58 @@ public sealed class PerItemRetryExecutorTests
             _ = LineageNodeOutcomeRegistry.TryGet(pipelineId, NodeId, 0, out var outcome).Should().BeTrue();
             _ = outcome.OutcomeReason.Should().Be(LineageOutcomeReason.Error);
             _ = outcome.RetryCount.Should().Be(1);
+        }
+        finally
+        {
+            LineageNodeOutcomeRegistry.ClearNode(pipelineId, NodeId);
+        }
+    }
+
+    [Fact]
+    public async Task ExecuteWithRetryAsync_ClassifierThatThrows_FreesTheBreakerPermit()
+    {
+        var time = new FakeTimeProvider();
+        var breaker = new CircuitBreaker(
+            NodeId,
+            new CircuitBreakerOptions { ConsecutiveFailures = 1, OpenDuration = TimeSpan.FromSeconds(30) },
+            time);
+
+        // Trip the breaker, then let it half-open so the next attempt takes its only probe slot.
+        breaker.TryAcquire(out var trip, out _).Should().BeTrue();
+        _ = breaker.RecordFailure(trip);
+        time.Advance(TimeSpan.FromSeconds(30));
+
+        var classifier = RetryClassifier.Default.Transient<TimeoutException>(_ => throw new InvalidOperationException("classifier boom"));
+
+        var options = PipelineResilienceOptions.None with
+        {
+            ItemRetry = new ItemRetryOptions { MaxRetries = 0, Classifier = classifier },
+        };
+
+        var executor = PerItemRetryExecutor.Instance;
+        var transform = new ScriptedTransform(new TimeoutException("transient"));
+        var (context, pipelineId) = CreateTrackedContext();
+
+        try
+        {
+            var act = async () => await executor.ExecuteWithRetryAsync(
+                1,
+                transform,
+                context,
+                NodeId,
+                options,
+                false,
+                0,
+                default,
+                null,
+                CancellationToken.None,
+                circuitBreaker: breaker);
+
+            _ = await act.Should().ThrowAsync<InvalidOperationException>("the classifier's own failure surfaces");
+
+            // Without the release, the probe slot stays in use and every later attempt is refused.
+            breaker.TryAcquire(out var next, out _).Should().BeTrue("a throwing classifier must not wedge the breaker half-open");
+            next.IsProbe.Should().BeTrue();
         }
         finally
         {

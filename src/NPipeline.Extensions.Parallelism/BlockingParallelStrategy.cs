@@ -65,9 +65,6 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
         string nodeId,
         CancellationToken cancellationToken)
     {
-        // Set the parallel execution flag to help ErrorHandlingService preserve original exception types
-        context.ExecutionConfiguration.IsParallelExecution = true;
-
         // Capture a stable node id (PipelineRunner sets this prior to invoking the strategy). In parallel execution
         var observabilityScope = BeginNodeObservabilityScope(context, nodeId);
 

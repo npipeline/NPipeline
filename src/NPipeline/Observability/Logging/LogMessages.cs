@@ -167,9 +167,6 @@ internal static partial class PipelineRunnerLogMessages
     [LoggerMessage(4, LogLevel.Warning, "Node {NodeId} failed with exception type {ExceptionType}: {ExceptionMessage}")]
     public static partial void NodeFailed(ILogger logger, string nodeId, string exceptionType, string exceptionMessage);
 
-    [LoggerMessage(7, LogLevel.Warning, "Preserving original exception {ExceptionType} for parallel execution of node {NodeId}")]
-    public static partial void PreservingExceptionForParallelExecution(ILogger logger, string exceptionType, string nodeId);
-
     [LoggerMessage(8, LogLevel.Warning, "Preserving OperationCanceledException for node {NodeId}")]
     public static partial void PreservingCancellationException(ILogger logger, string nodeId);
 

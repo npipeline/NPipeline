@@ -21,10 +21,9 @@ internal sealed class PipelineExecutionFailureStage(IObservabilitySurface observ
 
         await observabilitySurface.FailPipeline(definitionType, context, ex, pipelineActivity).ConfigureAwait(false);
 
-        if (context.ExecutionConfiguration.IsParallelExecution)
-            ExceptionDispatchInfo.Capture(ex).Throw();
-
-        if (ex is OperationCanceledException)
+        // A cancellation of this run is preserved raw. A foreign OperationCanceledException, such as a client
+        // timeout, is wrapped like any other failure.
+        if (ex is OperationCanceledException && context.CancellationToken.IsCancellationRequested)
             ExceptionDispatchInfo.Capture(ex).Throw();
 
         if (ex is not PipelineException)

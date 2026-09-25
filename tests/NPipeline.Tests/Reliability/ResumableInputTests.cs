@@ -101,6 +101,32 @@ public sealed class ResumableInputTests
     }
 
     [Fact]
+    public async Task DisposalRacingARead_DisposesTheSourceEnumeratorExactlyOnce()
+    {
+        for (var i = 0; i < 10_000; i++)
+        {
+            var source = new RacingSource();
+            var input = new ResumableInput<int>(source.Stream, 10, CancellationToken.None);
+            await using var enumerator = input.Open(out _).Input.GetAsyncEnumerator();
+
+            // The read holds the input's read lock while it waits on the gate.
+            var moveNext = enumerator.MoveNextAsync().AsTask();
+            await source.ReadStarted.WaitAsync(TimeSpan.FromSeconds(5));
+
+            // Dispose the input and complete the read at the same time: depending on the interleaving either the
+            // reader or the disposer disposes the source enumerator, never both and never neither.
+            var dispose = Task.Run(async () => await input.DisposeAsync());
+            source.ReleaseRead();
+
+            // The read either takes the item or is superseded by the disposal; either way it completes.
+            _ = await moveNext.WaitAsync(TimeSpan.FromSeconds(5));
+            await dispose;
+
+            source.Disposals.Should().Be(1, "the source enumerator must be disposed exactly once (iteration {0})", i);
+        }
+    }
+
+    [Fact]
     public void TheCheckpoint_MovesOverOutOfOrderCompletions_OnceTheGapIsFilled()
     {
         var advancedTo = new List<long>();
@@ -151,6 +177,39 @@ public sealed class ResumableInputTests
         yield return 0;
 
         throw failure;
+    }
+
+    /// <summary>
+    ///     A source whose first <c>MoveNextAsync</c> blocks until the test lets it through, so a read and a disposal
+    ///     can be raced deliberately.
+    /// </summary>
+    private sealed class RacingSource
+    {
+        private readonly TaskCompletionSource _readStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource _readCompleted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private int _disposals;
+
+        public Task ReadStarted => _readStarted.Task;
+
+        public int Disposals => _disposals;
+
+        public DataStream<int> Stream => new(Produce());
+
+        public void ReleaseRead() => _readCompleted.TrySetResult();
+
+        private async IAsyncEnumerable<int> Produce()
+        {
+            try
+            {
+                _ = _readStarted.TrySetResult();
+                await _readCompleted.Task;
+                yield return 0;
+            }
+            finally
+            {
+                _ = Interlocked.Increment(ref _disposals);
+            }
+        }
     }
 
     /// <summary>

@@ -6,6 +6,7 @@ using NPipeline.Lineage;
 using NPipeline.Observability;
 using NPipeline.Observability.Logging;
 using NPipeline.Observability.Tracing;
+using NPipeline.Reliability;
 using NPipeline.State;
 
 namespace NPipeline.Pipeline;
@@ -174,6 +175,7 @@ public sealed class PipelineContext : IAsyncDisposable
 
         RunIdentity = new PipelineRunIdentityContext(DateTime.UtcNow);
         ExecutionConfiguration = new PipelineExecutionConfigurationContext(config.OptimizationProfile);
+        ConfiguredResiliencePolicy = config.ResiliencePolicy;
 
         if (config.ResiliencePolicy is not null)
             ExecutionConfiguration.ResiliencePolicy = config.ResiliencePolicy;
@@ -265,6 +267,16 @@ public sealed class PipelineContext : IAsyncDisposable
     ///     is cancelled. Outside a run it is the token the context was created with.
     /// </remarks>
     public CancellationToken CancellationToken => _runCancellation?.Token ?? _configuredCancellationToken;
+
+    /// <summary>
+    ///     The resilience policy supplied through <see cref="PipelineContextConfiguration" />, if any.
+    /// </summary>
+    /// <remarks>
+    ///     Kept separately from <see cref="PipelineExecutionConfigurationContext.ResiliencePolicy" />, which the setup
+    ///     stage overwrites with the graph's policy. Precedence at run time is graph instance, then graph type, then
+    ///     this, then <see cref="DefaultResiliencePolicy.Instance" />.
+    /// </remarks>
+    internal IResiliencePolicy? ConfiguredResiliencePolicy { get; }
 
     /// <summary>
     ///     The sink for items that have failed processing and have been redirected.

@@ -99,7 +99,7 @@ sub-context that owns it:
 | ------------- | ------- | ---------- |
 | `RunIdentity` | Who this run is | `PipelineId`, `RunId`, `PipelineName`, `PipelineStartTimeUtc` |
 | `Observability` | Logging, tracing, metrics | `LoggerFactory`, `Tracer`, `ExecutionObserver`, `ObservabilityFactory` |
-| `ExecutionConfiguration` | Resilience and run settings | `Resilience`, `GetResilienceOptions(nodeId)`, `ResiliencePolicy`, `OptimizationProfile`, `IsParallelExecution` |
+| `ExecutionConfiguration` | Resilience and run settings | `Resilience`, `GetResilienceOptions(nodeId)`, `ResiliencePolicy`, `OptimizationProfile` |
 | `NodeEnvironment` | Per-node execution state | `GetNodeId(node)`, `TryGetNodeId(node, out id)`, `GetNodeStatus(nodeId)`, `EnumerateNodeStatuses()`, `NodeExecutionScopeRegistry`, `DiOwnedNodes` |
 | `Lineage` | Lineage sinks and collectors | `LineageSink`, `PipelineLineageSink`, `LineageCollector`, `LineageFactory` |
 
@@ -207,7 +207,7 @@ Available factory methods:
 | `WithParameters(dict)` | Set runtime parameters |
 | `WithCancellation(token)` | Set cancellation token |
 | `WithLogging(loggerFactory)` | Configure logging |
-| `WithResilience(policy)` | Set resilience policy |
+| `WithResilience(policy)` | Set resilience policy. Use this when the graph doesn't configure one; a graph-level policy takes precedence. |
 | `WithErrorHandling(deadLetterSink?)` | Configure error handling |
 | `WithObservability(loggerFactory?, tracer?)` | Configure observability |
 
