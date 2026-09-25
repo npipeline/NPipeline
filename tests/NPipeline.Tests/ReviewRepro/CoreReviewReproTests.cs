@@ -25,44 +25,11 @@ public sealed class CoreReviewReproTests
 // ---------- Periodic watermark ----------
 // R06 moved to DataFlow/Watermarks/WatermarksTests.cs (C24).
 
-    // ---------- BatchAsync <=100ms ----------
-    [Fact]
-    public async Task R07_BatchAsync_SmallWindow_StillBatches()
-    {
-        var batches = await Enumerable.Range(0, 100).ToAsyncEnumerable()
-            .BatchAsync(10, TimeSpan.FromMilliseconds(50)).ToListAsync();
-        batches.Count.Should().BeLessThan(50);
-    }
+// ---------- BatchAsync <=100ms ----------
+// R07 moved to Nodes/Batching/BatchingTests.cs (C22).
 
     // ---------- TapNode per-item ConsumeAsync ----------
-    private sealed class CountingSink : SinkNode<int>
-    {
-        public int Calls;
-        public int Items;
-
-        public override async Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken cancellationToken)
-        {
-            Interlocked.Increment(ref Calls);
-            await foreach (var _ in input.WithCancellation(cancellationToken)) Interlocked.Increment(ref Items);
-        }
-    }
-
-    [Fact]
-    public async Task R08_Tap_CallsSinkOnce()
-    {
-        var tapSink = new CountingSink();
-        await BehaviorPipeline.RunAsync(b =>
-        {
-            var s = b.AddSource<StreamingSource<int>, int>("source");
-            _ = b.AddPreconfiguredNodeInstance(s.Id, StreamingSource<int>.Of([1, 2, 3]));
-            var tap = b.AddTap<int>(tapSink, "tap");
-            var k = b.AddSink<CollectingSink<int>, int>("sink");
-            _ = b.AddPreconfiguredNodeInstance(k.Id, new CollectingSink<int>());
-            _ = b.Connect(s, tap).Connect(tap, k);
-        });
-        tapSink.Items.Should().Be(3);
-        tapSink.Calls.Should().Be(1);
-    }
+    // R08 moved to Nodes/Source/TapNodeTests.cs (C06).
 
     // ---------- Join inputs read sequentially ----------
     // R09 moved to JoinInputInterleavingTests.Join_ReadsBothInputsConcurrently (C03).
@@ -131,26 +98,7 @@ public sealed class CoreReviewReproTests
     }
 
     // ---------- Batching strategy does not flush on time ----------
-    [Fact]
-    public async Task R13_Batcher_FlushesPartialBatchOnTimeout()
-    {
-        var sink = new CollectingSink<IReadOnlyCollection<int>>();
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-        var run = BehaviorPipeline.RunAsync(b =>
-        {
-            var s = b.AddSource<StreamingSource<int>, int>("source");
-            var batch = b.AddBatcher<int>("batch", 10, TimeSpan.FromMilliseconds(200));
-            var k = b.AddSink<CollectingSink<IReadOnlyCollection<int>>, IReadOnlyCollection<int>>("sink");
-            _ = b.AddPreconfiguredNodeInstance(s.Id, StreamingSource<int>.Unbounded([1])).AddPreconfiguredNodeInstance(k.Id, sink);
-            _ = b.Connect(s, batch).Connect(batch, k);
-        }, cancellationToken: cts.Token);
-        var deadline = DateTime.UtcNow.AddSeconds(3);
-        while (sink.Items.Count == 0 && DateTime.UtcNow < deadline) await Task.Delay(50);
-        var got = sink.Items.Count;
-        await cts.CancelAsync();
-        try { await run; } catch { /* cancelled */ }
-        got.Should().Be(1);
-    }
+    // R13 moved to Execution/Strategies/BatchingExecutionStrategyTests.cs (C07).
 
     // ---------- Validation: no edges ----------
     [Fact]

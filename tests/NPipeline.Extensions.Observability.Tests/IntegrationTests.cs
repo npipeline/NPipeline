@@ -966,10 +966,10 @@ public sealed class IntegrationTests
         Assert.NotNull(batchingMetrics);
         Assert.True(batchingMetrics.Success);
 
-        // Batching node processes 10 items and emits 10 items (grouped into 2 batches)
-        // ItemsEmitted tracks total items, not number of batches
+        // Batching node processes 10 items and emits 2 batches
+        // ItemsEmitted tracks emitted outputs, which for a batching node are batches
         Assert.Equal(10, batchingMetrics.ItemsProcessed);
-        Assert.Equal(10, batchingMetrics.ItemsEmitted);
+        Assert.Equal(2, batchingMetrics.ItemsEmitted);
     }
 
     [Fact]
@@ -1000,9 +1000,9 @@ public sealed class IntegrationTests
         Assert.NotNull(unbatchingMetrics);
         Assert.True(unbatchingMetrics.Success);
 
-        // Unbatching node processes 10 items (in 2 batches) and emits 10 items
-        // ItemsProcessed tracks total items, not number of batches
-        Assert.Equal(10, unbatchingMetrics.ItemsProcessed);
+        // Unbatching node processes 2 batches and emits 10 items
+        // ItemsProcessed counts the node's inputs (batches); ItemsEmitted counts the flattened items
+        Assert.Equal(2, unbatchingMetrics.ItemsProcessed);
         Assert.Equal(10, unbatchingMetrics.ItemsEmitted);
     }
 
@@ -1034,13 +1034,13 @@ public sealed class IntegrationTests
         Assert.NotNull(batchingMetrics);
         Assert.True(batchingMetrics.Success);
         Assert.Equal(10, batchingMetrics.ItemsProcessed);
-        Assert.Equal(10, batchingMetrics.ItemsEmitted); // Items emitted (grouped into batches)
+        Assert.Equal(2, batchingMetrics.ItemsEmitted); // 10 items grouped into 2 batches
 
         var unbatchingMetrics = GetNodeMetricsById(collector, "unbatching");
         Assert.NotNull(unbatchingMetrics);
         Assert.True(unbatchingMetrics.Success);
-        Assert.Equal(10, unbatchingMetrics.ItemsProcessed); // Items from batches
-        Assert.Equal(10, unbatchingMetrics.ItemsEmitted);
+        Assert.Equal(2, unbatchingMetrics.ItemsProcessed); // 2 batches in
+        Assert.Equal(10, unbatchingMetrics.ItemsEmitted); // flattened to 10 items
     }
 
     [Fact]
@@ -1245,7 +1245,7 @@ public sealed class IntegrationTests
             var source = builder.AddSource<TestSourceNode, int>("source")
                 .WithObservability(builder);
 
-            var batching = builder.AddBatcher<int>("batching", 5, TimeSpan.Zero)
+            var batching = builder.AddBatcher<int>("batching", 5, TimeSpan.FromSeconds(5))
                 .WithObservability(builder);
 
             var transform = builder.AddTransform<TestTransformNode<IReadOnlyCollection<int>>, IReadOnlyCollection<int>, IReadOnlyCollection<int>>("transform")
@@ -1267,7 +1267,7 @@ public sealed class IntegrationTests
             var source = builder.AddSource<TestSourceNode, int>("source")
                 .WithObservability(builder);
 
-            var batching = builder.AddBatcher<int>("batching", 5, TimeSpan.Zero)
+            var batching = builder.AddBatcher<int>("batching", 5, TimeSpan.FromSeconds(5))
                 .WithObservability(builder);
 
             var unbatching = builder.AddUnbatcher<int>("unbatching")
@@ -1293,7 +1293,7 @@ public sealed class IntegrationTests
             var source = builder.AddSource<TestSourceNode, int>("source")
                 .WithObservability(builder);
 
-            var batching = builder.AddBatcher<int>("batching", 5, TimeSpan.Zero)
+            var batching = builder.AddBatcher<int>("batching", 5, TimeSpan.FromSeconds(5))
                 .WithObservability(builder);
 
             var unbatching = builder.AddUnbatcher<int>("unbatching")
@@ -1369,7 +1369,7 @@ public sealed class IntegrationTests
             var source = builder.AddSource<TestSourceNode, int>("source")
                 .WithObservability(builder);
 
-            var batching = builder.AddBatcher<int>("batching", 5, TimeSpan.Zero)
+            var batching = builder.AddBatcher<int>("batching", 5, TimeSpan.FromSeconds(5))
                 .WithObservability(builder);
 
             var failingSink = builder.AddSink<TestFailingSinkNode<IReadOnlyCollection<int>>, IReadOnlyCollection<int>>("failingSink")
@@ -1458,8 +1458,8 @@ public sealed class IntegrationTests
             {
                 _count++;
 
-                // Fail on the 3rd batch
-                if (_count == 3)
+                // Fail on the 2nd batch
+                if (_count == 2)
                     throw new InvalidOperationException("Intentional sink failure");
 
                 // Consume items

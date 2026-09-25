@@ -46,7 +46,7 @@ builder.Connect(source, auditTap);
 builder.Connect(auditTap, transform);  // items continue downstream
 ```
 
-Taps are useful for logging, metrics collection, or debugging without altering the pipeline's data flow.
+Taps are useful for logging, metrics collection, or debugging without altering the pipeline's data flow. The pipeline drives the sink once over the whole stream; for example, a file sink opens its target once and writes every row instead of rewriting the file for each item. A bounded channel buffers items between the main flow and the sink.
 
 You can chain multiple taps:
 

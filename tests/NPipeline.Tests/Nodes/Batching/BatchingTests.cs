@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Threading.Channels;
 using AwesomeAssertions;
 using Microsoft.Extensions.Logging;
+using NPipeline.DataFlow;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 using Xunit.Abstractions;
@@ -42,6 +43,73 @@ public sealed class BatchingTests(ITestOutputHelper output)
         results[2].Should().HaveCount(5);
     }
 
+    [Fact]
+    public async Task BatchAsync_SmallWindow_StillBatches()
+    {
+        _ = output;
+
+        // Arrange
+        var source = Enumerable.Range(0, 100).ToAsyncEnumerable();
+
+        // Act
+        var batches = await source.BatchAsync(10, TimeSpan.FromMilliseconds(50)).ToListAsync();
+
+        // Assert
+        batches.Should().HaveCount(10);
+        batches.Should().AllSatisfy(batch => batch.Should().HaveCount(10));
+    }
+
+    [Fact]
+    public async Task BatchAsync_ForeignCancellation_SurfacesAsError()
+    {
+        _ = output;
+
+        // Arrange
+        var source = ThrowAfterItems(1, 2);
+
+        // Act
+        var act = async () => await source.BatchAsync(10, TimeSpan.FromSeconds(5)).ToListAsync();
+
+        // Assert
+        await act.Should().ThrowAsync<TaskCanceledException>().WithMessage("http timeout");
+    }
+
+    [Fact]
+    public async Task BatchAsync_ConsumerLeavesEarly_StopsProducer()
+    {
+        _ = output;
+
+        // Arrange
+        var yielded = 0;
+
+        async IAsyncEnumerable<int> CountingSource()
+        {
+            var i = 0;
+
+            while (true)
+            {
+                _ = Interlocked.Increment(ref yielded);
+                yield return i++;
+                await Task.Delay(10); // keep the producer from racing far ahead
+            }
+        }
+
+        // Act
+        await foreach (var batch in CountingSource().BatchAsync(5, TimeSpan.FromSeconds(5)))
+        {
+            batch.Should().HaveCount(5);
+            break;
+        }
+
+        await Task.Delay(200);
+        var afterStop = Volatile.Read(ref yielded);
+        await Task.Delay(200);
+
+        // Assert
+        Volatile.Read(ref yielded).Should().Be(afterStop);
+        afterStop.Should().BeLessThanOrEqualTo(22, "the producer stops once the consumer leaves");
+    }
+
     #endregion
 
     #region Unbatching Tests
@@ -77,6 +145,15 @@ public sealed class BatchingTests(ITestOutputHelper output)
     #endregion
 
     #region Helper Classes
+
+    private static async IAsyncEnumerable<int> ThrowAfterItems(params int[] items)
+    {
+        foreach (var item in items)
+            yield return item;
+
+        await Task.Yield();
+        throw new TaskCanceledException("http timeout");
+    }
 
     private sealed class NoOpLogger : ILogger
     {
