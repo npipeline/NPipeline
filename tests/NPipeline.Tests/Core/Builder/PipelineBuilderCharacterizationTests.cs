@@ -61,6 +61,7 @@ public sealed class PipelineBuilderCharacterizationTests
         var j = b.AddJoin<TestJoinNode, int, long, int>("j");
         var a = b.AddAggregate<IdentityAggregate, int, int, int, int>("a");
         var k = b.AddSink<InMemorySinkNode<int>, int>("k");
+        var jk = b.AddSink<InMemorySinkNode<int>, int>("jk");
 
         // Connect int source through transform and aggregate to sink
         b.Connect(s1, t);
@@ -72,8 +73,8 @@ public sealed class PipelineBuilderCharacterizationTests
         b.Connect(s1, j);
         b.Connect(s2, j);
 
-        // Join output -> transform (just to exercise a join->transform edge) then to sink via existing t
-        // (We could add a distinct sink path, but existing edges are sufficient to ensure join node definition presence.)
+        // Join output -> its own sink so the join's output is consumed
+        b.Connect(j, jk);
         var p = b.Build();
         p.Graph.Nodes.Should().Contain(n => n.Id == s1.Id && n.Kind == NodeKind.Source);
         p.Graph.Nodes.Should().Contain(n => n.Id == s2.Id && n.Kind == NodeKind.Source);
@@ -201,7 +202,8 @@ public sealed class PipelineBuilderCharacterizationTests
         var b = new PipelineBuilder().WithoutExtendedValidation();
         var s = b.AddSource<InMemorySourceNode<int>, int>("s");
         var t = b.AddTransform<PassthroughTransform, int, int>("t");
-        b.Connect(s, t);
+        var k = b.AddSink<InMemorySinkNode<int>, int>("k");
+        b.Connect(s, t).Connect(t, k);
         b.WithResilience(o => o with { ItemRetry = o.ItemRetry with { MaxRetries = 5 } });
         b.WithResilience(t, o => o with { ItemRetry = o.ItemRetry with { MaxRetries = 2 } });
         var p = b.Build();

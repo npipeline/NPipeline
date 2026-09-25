@@ -118,7 +118,8 @@ public sealed record NodeDefinition(
     Type? LineageMapperType = null,
     SinkLineageUnwrapDelegate? SinkLineageUnwrap = null,
     Type? ChildDefinitionType = null,
-    ImmutableDictionary<string, object>? Metadata = null)
+    ImmutableDictionary<string, object>? Metadata = null,
+    Type? SecondInputType = null)
 {
     /// <summary>
     ///     Compatibility constructor for older nested record callers.

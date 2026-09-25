@@ -76,14 +76,16 @@ public sealed class IntegrationTests
         var builder = new PipelineBuilder();
 
         // Act - Add nodes with observability
-        _ = builder.AddSource<TestSourceNode, int>("source")
+        var source = builder.AddSource<TestSourceNode, int>("source")
             .WithObservability(builder);
 
-        _ = builder.AddTransform<TestTransformNode, int, int>("transform")
+        var transform = builder.AddTransform<TestTransformNode, int, int>("transform")
             .WithObservability(builder);
 
-        _ = builder.AddSink<TestSinkNode, int>("sink")
+        var sink = builder.AddSink<TestSinkNode, int>("sink")
             .WithObservability(builder);
+
+        _ = builder.Connect(source, transform).Connect(transform, sink);
 
         // Build the pipeline
         var pipeline = builder.Build();

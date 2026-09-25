@@ -42,8 +42,7 @@ public static class PipelineBuilderValidationExtensions
     {
         ArgumentNullException.ThrowIfNull(builder);
 
-        var graph = BuildGraphFromBuilder(builder);
-        return PipelineGraphValidator.Validate(graph);
+        return PipelineGraphValidator.Validate(builder.CreateGraph(includeChildGraphs: false), builder.GetValidationRules());
     }
 
     /// <summary>
@@ -149,8 +148,7 @@ public static class PipelineBuilderValidationExtensions
     {
         ArgumentNullException.ThrowIfNull(builder);
 
-        var graph = BuildGraphFromBuilder(builder);
-        return PipelineGraphExporter.ToMermaid(graph);
+        return PipelineGraphExporter.ToMermaid(BuildDisplayGraph(builder));
     }
 
     /// <summary>
@@ -174,8 +172,24 @@ public static class PipelineBuilderValidationExtensions
     {
         ArgumentNullException.ThrowIfNull(builder);
 
-        var graph = BuildGraphFromBuilder(builder);
-        return PipelineGraphExporter.Describe(graph);
+        return PipelineGraphExporter.Describe(BuildDisplayGraph(builder));
+    }
+
+    /// <summary>
+    ///     Builds a lightweight graph for visualization from the current builder state. Unlike
+    ///     <see cref="PipelineBuilder.CreateGraph" />, it does not build configurations, wrap nodes for restart, or
+    ///     attach child graphs, so it cannot fail because of invalid configuration and is cheap to call.
+    /// </summary>
+    private static PipelineGraph BuildDisplayGraph(PipelineBuilder builder)
+    {
+        var nodesList = builder.NodeState.Nodes.Values.ToImmutableArray();
+
+        return PipelineGraphBuilder.Create()
+            .WithNodes(nodesList)
+            .WithEdges(builder.ConnectionState.Edges.ToImmutableArray())
+            .WithPreconfiguredNodeInstances(builder.NodeState.PreconfiguredNodeInstances.ToFrozenDictionary())
+            .WithNodeDefinitionMap(nodesList.ToFrozenDictionary(n => n.Id))
+            .Build();
     }
 
     /// <summary>
@@ -233,23 +247,5 @@ public static class PipelineBuilderValidationExtensions
         }
 
         return false;
-    }
-
-    /// <summary>
-    ///     Builds a PipelineGraph from the current builder state without finalizing the pipeline.
-    /// </summary>
-    private static PipelineGraph BuildGraphFromBuilder(PipelineBuilder builder)
-    {
-        var nodesList = builder.NodeState.Nodes.Values.ToImmutableArray();
-        var nodeDefinitionMap = nodesList.ToFrozenDictionary(n => n.Id);
-
-        var graph = PipelineGraphBuilder.Create()
-            .WithNodes(nodesList)
-            .WithEdges(builder.ConnectionState.Edges.ToImmutableArray())
-            .WithPreconfiguredNodeInstances(builder.NodeState.PreconfiguredNodeInstances.ToFrozenDictionary())
-            .WithNodeDefinitionMap(nodeDefinitionMap)
-            .Build();
-
-        return graph;
     }
 }

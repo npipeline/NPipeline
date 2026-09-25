@@ -16,6 +16,8 @@ public static class PipelineGraphValidator
         new DuplicateNodeIdRule(),
         new EdgeReferenceRule(),
         new SourceAndReachabilityRule(),
+        new UnconsumedOutputRule(),
+        new JoinInputsRule(),
         new CycleDetectionRule(),
         new ResilienceOptionsRule(),
     ];
@@ -148,76 +150,122 @@ public static class PipelineGraphValidator
             var incoming = context.Incoming;
             var nodeMap = g.Nodes.ToDictionary(n => n.Id);
 
-            if (g.Edges.Length == 0 && g.Nodes.Length > 0)
-            {
-                var hasSource = g.Nodes.Any(n => IsSourceNode(n.NodeType));
-
-                if (!hasSource)
-                {
-                    yield return new ValidationIssue(ValidationSeverity.Error, "Pipeline has no source nodes (at least one ISourceNode<T> is required).",
-                        "Sources");
-                }
-
+            if (g.Nodes.Length == 0)
                 yield break;
+
+            if (!g.Nodes.Any(n => IsSourceNode(n.NodeType)))
+                yield return new ValidationIssue(ValidationSeverity.Error,
+                    "Pipeline has no source nodes (at least one ISourceNode<T> is required).", "Sources");
+
+            var sourceCandidates = g.Nodes.Where(n => !incoming.ContainsKey(n.Id)).ToList();
+
+            if (sourceCandidates.Count == 0)
+                yield return new ValidationIssue(ValidationSeverity.Error, "Pipeline has no source nodes (nodes with zero inbound edges).", "Sources");
+
+            var nonSourceZeroInbound = sourceCandidates.Where(n => !IsSourceNode(n.NodeType)).ToList();
+
+            if (nonSourceZeroInbound.Count > 0)
+            {
+                var details = string.Join(", ", nonSourceZeroInbound.Select(n => $"{n.Id} ('{n.Name}', {n.NodeType.Name})"));
+
+                yield return new ValidationIssue(ValidationSeverity.Error,
+                    $"Non-source nodes with no inbound edges: {details}", "Sources");
             }
 
-            if (g.Edges.Length > 0)
+            var actualSourceIds = sourceCandidates.Where(n => IsSourceNode(n.NodeType)).Select(n => n.Id).ToList();
+            var reachable = new HashSet<string>();
+            var queue = new Queue<string>(actualSourceIds);
+
+            while (queue.Count > 0)
             {
-                var sourceCandidates = g.Nodes.Where(n => !incoming.ContainsKey(n.Id)).ToList();
+                var current = queue.Dequeue();
 
-                if (sourceCandidates.Count == 0)
-                    yield return new ValidationIssue(ValidationSeverity.Error, "Pipeline has no source nodes (nodes with zero inbound edges).", "Sources");
+                if (!reachable.Add(current))
+                    continue;
 
-                var nonSourceZeroInbound = sourceCandidates.Where(n => !IsSourceNode(n.NodeType)).ToList();
-
-                if (nonSourceZeroInbound.Count > 0)
+                if (outgoing.TryGetValue(current, out var targets))
                 {
-                    var details = string.Join(", ", nonSourceZeroInbound.Select(n => $"{n.Id} ('{n.Name}', {n.NodeType.Name})"));
-
-                    yield return new ValidationIssue(ValidationSeverity.Error,
-                        $"Non-source nodes with no inbound edges: {details}", "Sources");
-                }
-
-                var actualSourceIds = sourceCandidates.Where(n => IsSourceNode(n.NodeType)).Select(n => n.Id).ToList();
-                var reachable = new HashSet<string>();
-                var queue = new Queue<string>(actualSourceIds);
-
-                while (queue.Count > 0)
-                {
-                    var current = queue.Dequeue();
-
-                    if (!reachable.Add(current))
-                        continue;
-
-                    if (outgoing.TryGetValue(current, out var targets))
+                    foreach (var t in targets)
                     {
-                        foreach (var t in targets)
-                        {
-                            queue.Enqueue(t);
-                        }
+                        queue.Enqueue(t);
                     }
                 }
+            }
 
-                var unreachable = g.Nodes.Select(n => n.Id).Where(id => !reachable.Contains(id)).ToList();
+            var unreachable = g.Nodes.Select(n => n.Id).Where(id => !reachable.Contains(id)).ToList();
 
-                if (unreachable.Count > 0)
-                {
-                    var details = string.Join(", ",
-                        unreachable.Select(id => nodeMap.TryGetValue(id, out var n)
-                            ? $"{id} ('{n.Name}', {n.NodeType.Name})"
-                            : id));
+            if (unreachable.Count > 0)
+            {
+                var details = string.Join(", ",
+                    unreachable.Select(id => nodeMap.TryGetValue(id, out var n)
+                        ? $"{id} ('{n.Name}', {n.NodeType.Name})"
+                        : id));
 
+                yield return new ValidationIssue(ValidationSeverity.Error,
+                    $"Unreachable nodes (not connected to any source): {details}", "Reachability");
+            }
+
+            var isolated = g.Nodes.Where(n => !incoming.ContainsKey(n.Id) && !outgoing.ContainsKey(n.Id)).ToList();
+
+            if (isolated.Count > 0 && g.Nodes.Length > 1)
+            {
+                var details = string.Join(", ", isolated.Select(n => $"{n.Id} ('{n.Name}', {n.NodeType.Name})"));
+                yield return new ValidationIssue(ValidationSeverity.Error, $"Isolated nodes (no edges): {details}", "Reachability");
+            }
+        }
+    }
+
+    private sealed class UnconsumedOutputRule : IGraphRule
+    {
+        public string Name => "UnconsumedOutputs";
+        public bool StopOnError => false;
+
+        public IEnumerable<ValidationIssue> Evaluate(GraphValidationContext context)
+        {
+            // Nodes with inbound edges but no outbound edges, other than sinks. Fully isolated nodes are reported by
+            // SourceAndReachabilityRule.
+            var dangling = context.Graph.Nodes
+                .Where(n => n.Kind is not (NodeKind.Sink or NodeKind.CompositeOutput))
+                .Where(n => context.Incoming.ContainsKey(n.Id) && !context.Outgoing.ContainsKey(n.Id))
+                .ToList();
+
+            if (dangling.Count == 0)
+                yield break;
+
+            var details = string.Join(", ", dangling.Select(n => $"'{n.Name}' ({n.Id}, {n.Kind})"));
+            yield return new ValidationIssue(ValidationSeverity.Error,
+                $"The output of these nodes is never consumed; connect each to a downstream node or sink: {details}", "Reachability");
+        }
+    }
+
+    private sealed class JoinInputsRule : IGraphRule
+    {
+        public string Name => "JoinInputs";
+        public bool StopOnError => false;
+
+        public IEnumerable<ValidationIssue> Evaluate(GraphValidationContext context)
+        {
+            var joins = context.Graph.Nodes.Where(n => n.IsJoin).ToList();
+
+            if (joins.Count == 0)
+                yield break;
+
+            // Read the definitions from Nodes rather than NodeDefinitionMap: hand-built graphs may leave the map
+            // empty, and Nodes is the source of truth either way.
+            var nodes = context.Graph.Nodes.ToDictionary(n => n.Id);
+
+            foreach (var join in joins)
+            {
+                var upstreamIds = context.Incoming.TryGetValue(join.Id, out var ids) ? ids : [];
+                var upstreamTypes = upstreamIds.Select(id => nodes.TryGetValue(id, out var d) ? d.OutputType : null).ToList();
+
+                var hasLeft = join.InputType is null || upstreamTypes.Any(t => t is not null && join.InputType.IsAssignableFrom(t));
+                var hasRight = join.SecondInputType is null || upstreamTypes.Any(t => t is not null && join.SecondInputType.IsAssignableFrom(t));
+
+                if (upstreamIds.Count < 2 || !hasLeft || !hasRight)
                     yield return new ValidationIssue(ValidationSeverity.Error,
-                        $"Unreachable nodes (not connected to any source): {details}", "Reachability");
-                }
-
-                var isolated = g.Nodes.Where(n => !incoming.ContainsKey(n.Id) && !outgoing.ContainsKey(n.Id)).ToList();
-
-                if (isolated.Count > 0 && g.Nodes.Length > 1)
-                {
-                    var details = string.Join(", ", isolated.Select(n => $"{n.Id} ('{n.Name}', {n.NodeType.Name})"));
-                    yield return new ValidationIssue(ValidationSeverity.Error, $"Isolated nodes (no edges): {details}", "Reachability");
-                }
+                        $"Join node '{join.Name}' ({join.Id}) must have both its left and right inputs connected; found {upstreamIds.Count} input(s).",
+                        "Structure");
             }
         }
     }

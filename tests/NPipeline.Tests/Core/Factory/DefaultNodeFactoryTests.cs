@@ -19,7 +19,8 @@ public sealed class DefaultNodeFactoryTests(ITestOutputHelper output)
         var builder = new PipelineBuilder().WithoutExtendedValidation();
         var source = builder.AddSource<InMemorySourceNode<int>, int>("s");
         var handle = builder.AddTransform<SimpleTransformNode, int, int>("n");
-        _ = builder.Connect(source, handle);
+        var sink = builder.AddSink<InMemorySinkNode<int>, int>("sink");
+        _ = builder.Connect(source, handle).Connect(handle, sink);
         var pipeline = builder.Build();
         var nodeDef = pipeline.Graph.Nodes.Single(n => n.Id == handle.Id);
 
@@ -41,6 +42,8 @@ public sealed class DefaultNodeFactoryTests(ITestOutputHelper output)
         var builder = new PipelineBuilder().WithoutExtendedValidation();
         var source = builder.AddSource<InMemorySourceNode<int>, int>("s");
         var handle = builder.AddTransform<SimpleTransformNode, int, int>("n");
+        var sink = builder.AddSink<InMemorySinkNode<int>, int>("sink");
+        _ = builder.Connect(source, handle).Connect(handle, sink);
 
         var preconfiguredInstance = new SimpleTransformNode();
         _ = builder.AddPreconfiguredNodeInstance(handle.Id, preconfiguredInstance);
@@ -66,7 +69,8 @@ public sealed class DefaultNodeFactoryTests(ITestOutputHelper output)
         var builder = new PipelineBuilder().WithoutExtendedValidation();
         var source = builder.AddSource<InMemorySourceNode<int>, int>("s");
         var handle = builder.AddTransform<NodeWithDependencyConstructor, int, int>("n");
-        _ = builder.Connect(source, handle);
+        var sink = builder.AddSink<InMemorySinkNode<int>, int>("sink");
+        _ = builder.Connect(source, handle).Connect(handle, sink);
         var pipeline = builder.Build();
         var nodeDef = pipeline.Graph.Nodes.Single(n => n.Id == handle.Id);
 
@@ -90,8 +94,10 @@ public sealed class DefaultNodeFactoryTests(ITestOutputHelper output)
         var source = builder.AddSource<InMemorySourceNode<int>, int>("s");
         var handle1 = builder.AddTransform<SimpleTransformNode, int, int>("n1");
         var handle2 = builder.AddTransform<SimpleTransformNode, int, int>("n2");
+        var sink = builder.AddSink<InMemorySinkNode<int>, int>("sink");
         _ = builder.Connect(source, handle1);
         _ = builder.Connect(handle1, handle2);
+        _ = builder.Connect(handle2, sink);
         var pipeline = builder.Build();
         var nodeDef1 = pipeline.Graph.Nodes.Single(n => n.Id == handle1.Id);
         var nodeDef2 = pipeline.Graph.Nodes.Single(n => n.Id == handle2.Id);
@@ -117,7 +123,8 @@ public sealed class DefaultNodeFactoryTests(ITestOutputHelper output)
         var builder = new PipelineBuilder().WithoutExtendedValidation();
         var source = builder.AddSource<InMemorySourceNode<int>, int>("s");
         var handle = builder.AddTransform<SimpleTransformNode, int, int>("n");
-        _ = builder.Connect(source, handle);
+        var sink = builder.AddSink<InMemorySinkNode<int>, int>("sink");
+        _ = builder.Connect(source, handle).Connect(handle, sink);
         var pipeline = builder.Build();
         var nodeDef = pipeline.Graph.Nodes.Single(n => n.Id == handle.Id);
 

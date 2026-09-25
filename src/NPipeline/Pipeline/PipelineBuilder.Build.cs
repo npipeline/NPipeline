@@ -45,38 +45,11 @@ public sealed partial class PipelineBuilder
                 "in your DI configuration.");
         }
 
-        if (ConfigurationState.GlobalExecutionObserver is not null)
-            NodeState.ExecutionAnnotations[ExecutionAnnotationKeys.GlobalExecutionObserver] = ConfigurationState.GlobalExecutionObserver;
-
-        // Build configuration objects from builder state
-        var (errorHandlingConfig, lineageConfig, executionConfig) = BuildConfigurations();
-
-        // Create the immutable nodes array, with node restart applied to the transforms that configure it
-        var nodesList = WithNodeRestart(NodeState.Nodes.Values, errorHandlingConfig);
-
-        // Create a cached frozen dictionary for O(1) node lookups during execution
-        var nodeDefinitionMap = nodesList.ToFrozenDictionary(n => n.Id);
-
-        var graph = PipelineGraphBuilder.Create()
-            .WithNodes(nodesList)
-            .WithEdges(ConnectionState.Edges.ToImmutableArray())
-            .WithPreconfiguredNodeInstances(NodeState.PreconfiguredNodeInstances.ToFrozenDictionary())
-            .WithNodeDefinitionMap(nodeDefinitionMap)
-            .WithErrorHandlingConfiguration(errorHandlingConfig)
-            .WithLineageConfiguration(lineageConfig)
-            .WithExecutionOptionsConfiguration(executionConfig)
-            .Build();
-
-        // Compute and attach child graphs for composite nodes
-        graph = BuildChildGraphs(graph);
+        var graph = CreateGraph(includeChildGraphs: true);
 
         if (_config.GraphValidationMode != GraphValidationMode.Off)
         {
-            var allRules = _config.ExtendedValidation
-                ? _customValidationRules.Concat(PipelineGraphValidator.ExtendedRules)
-                : _customValidationRules.AsEnumerable();
-
-            var validationResult = PipelineGraphValidator.Validate(graph, allRules);
+            var validationResult = PipelineGraphValidator.Validate(graph, GetValidationRules());
 
             if (_config.GraphValidationMode == GraphValidationMode.Error && !validationResult.IsValid)
                 throw new PipelineValidationException(validationResult);
@@ -134,6 +107,28 @@ public sealed partial class PipelineBuilder
             return false;
         }
 
+        var graph = CreateGraph(includeChildGraphs: true);
+
+        validationResult = _config.GraphValidationMode == GraphValidationMode.Off
+            ? PipelineValidationResult.Success
+            : PipelineGraphValidator.Validate(graph, GetValidationRules());
+
+        if (_config.GraphValidationMode == GraphValidationMode.Error && !validationResult.IsValid)
+            return false;
+
+        _built = true;
+        pipeline = new Pipeline(graph) { BuilderDisposables = BuilderDisposables };
+        return true;
+    }
+
+    /// <summary>
+    ///     Assembles the pipeline graph from the current builder state, including the same error-handling, lineage and
+    ///     execution configuration that <see cref="Build" /> uses.
+    /// </summary>
+    /// <param name="includeChildGraphs">Whether to build and attach child graphs for composite nodes.</param>
+    /// <returns>The assembled graph.</returns>
+    internal PipelineGraph CreateGraph(bool includeChildGraphs)
+    {
         if (ConfigurationState.GlobalExecutionObserver is not null)
             NodeState.ExecutionAnnotations[ExecutionAnnotationKeys.GlobalExecutionObserver] = ConfigurationState.GlobalExecutionObserver;
 
@@ -157,23 +152,18 @@ public sealed partial class PipelineBuilder
             .Build();
 
         // Compute and attach child graphs for composite nodes
-        graph = BuildChildGraphs(graph);
+        return includeChildGraphs ? BuildChildGraphs(graph) : graph;
+    }
 
-        var allRules = _config.ExtendedValidation
+    /// <summary>
+    ///     The validation rules to apply when building: the pipeline's custom rules, plus the extended rules unless
+    ///     extended validation is disabled.
+    /// </summary>
+    /// <returns>The ordered set of rules.</returns>
+    internal IEnumerable<IGraphRule> GetValidationRules() =>
+        _config.ExtendedValidation
             ? _customValidationRules.Concat(PipelineGraphValidator.ExtendedRules)
             : _customValidationRules.AsEnumerable();
-
-        validationResult = _config.GraphValidationMode == GraphValidationMode.Off
-            ? PipelineValidationResult.Success
-            : PipelineGraphValidator.Validate(graph, allRules);
-
-        if (_config.GraphValidationMode == GraphValidationMode.Error && !validationResult.IsValid)
-            return false;
-
-        _built = true;
-        pipeline = new Pipeline(graph) { BuilderDisposables = BuilderDisposables };
-        return true;
-    }
 
     /// <summary>
     ///     Helper method to extract and consolidate configuration building logic.
