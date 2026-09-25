@@ -62,9 +62,6 @@ public sealed class DropNewestParallelStrategy : ParallelExecutionStrategyBase
         string nodeId,
         CancellationToken cancellationToken)
     {
-        // Set the parallel execution flag to help ErrorHandlingService preserve original exception types
-        context.ExecutionConfiguration.IsParallelExecution = true;
-
         var observabilityScope = BeginNodeObservabilityScope(context, nodeId);
         var currentActivity = context.Observability.Tracer.CurrentActivity;
         var cachedContext = CachedNodeExecutionContext.Create(context, nodeId);

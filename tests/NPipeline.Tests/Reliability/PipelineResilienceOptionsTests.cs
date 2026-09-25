@@ -50,6 +50,39 @@ public sealed class PipelineResilienceOptionsTests
             .Should().Throw<ArgumentOutOfRangeException>();
     }
 
+    [Theory]
+    [InlineData("window")]
+    [InlineData("openDuration")]
+    [InlineData("maxPause")]
+    public void Validate_RejectsDurationsThatOverflowTheTimestampArithmetic(string property)
+    {
+        var options = new CircuitBreakerOptions
+        {
+            Window = property == "window" ? TimeSpan.MaxValue : TimeSpan.FromSeconds(30),
+            OpenDuration = property == "openDuration" ? TimeSpan.MaxValue : TimeSpan.FromSeconds(30),
+            MaxPause = property == "maxPause" ? TimeSpan.MaxValue : TimeSpan.FromMinutes(5),
+        };
+
+        ((Action)(() => options.Validate())).Should().Throw<ArgumentOutOfRangeException>();
+    }
+
+    [Fact]
+    public void Validate_AcceptsDurationsAtTheCeiling()
+    {
+        var ceiling = TimeSpan.FromMilliseconds(int.MaxValue);
+
+        var options = new CircuitBreakerOptions
+        {
+            ConsecutiveFailures = null,
+            FailureRate = 0.5,
+            Window = ceiling,
+            OpenDuration = ceiling,
+            MaxPause = ceiling,
+        };
+
+        _ = options.Validate().Should().BeSameAs(options);
+    }
+
     [Fact]
     public void Validate_RejectsAnInvalidBackoff()
     {

@@ -73,6 +73,70 @@ public sealed class CircuitBreakerBehaviorTests
     }
 
     [Fact]
+    public async Task FluentSkipRule_DoesNotSkipWhileTheBreakerIsOpen()
+    {
+        // C15: a fluent policy's rules match CircuitBreakerOpenException too. Without the breaker check, every
+        // remaining item is skipped as fast as the CPU allows, which is exactly what the breaker prevents.
+        var transform = new FlakyTransform(1000);
+        var sink = new CollectingSink<int>();
+
+        var act = () => BehaviorPipeline.RunAsync(b =>
+        {
+            var t = Wire(b, transform, sink, Enumerable.Range(1, 200), "sequential");
+
+            _ = b.WithResilience(t, o => o with { CircuitBreaker = new CircuitBreakerOptions { ConsecutiveFailures = 3 } });
+            _ = b.AddResiliencePolicy(t, ResiliencePolicyBuilder.ForNode<FlakyTransform, int>().OnAny().Skip().Build());
+        });
+
+        var failure = await act.Should().ThrowAsync<Exception>();
+
+        Chain(failure.Which).Should().Contain(e => e is CircuitBreakerOpenException);
+        transform.TotalAttempts.Should().BeLessThan(10, "once the breaker opens no further calls are made");
+        sink.Items.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task FluentDeadLetterRule_DoesNotDeadLetterWhileTheBreakerIsOpen()
+    {
+        var transform = new FlakyTransform(1000);
+        var deadLetters = new CollectingDeadLetterSink();
+
+        var act = () => BehaviorPipeline.RunAsync(b =>
+        {
+            var t = Wire(b, transform, new CollectingSink<int>(), Enumerable.Range(1, 200), "sequential");
+
+            _ = b.AddDeadLetterSink(deadLetters);
+            _ = b.WithResilience(t, o => o with { CircuitBreaker = new CircuitBreakerOptions { ConsecutiveFailures = 3 } });
+            _ = b.AddResiliencePolicy(t, ResiliencePolicyBuilder.ForNode<FlakyTransform, int>().OnAny().DeadLetter().Build());
+        });
+
+        _ = await act.Should().ThrowAsync<Exception>();
+
+        // Only the failures the breaker itself admitted (its threshold) can be dead-lettered; the refusals fail.
+        deadLetters.Envelopes.Should().HaveCountLessThanOrEqualTo(3);
+        transform.TotalAttempts.Should().BeLessThan(10);
+    }
+
+    [Fact]
+    public async Task FluentRetryRule_DoesNotRetryARefusedAttempt()
+    {
+        var transform = new FlakyTransform(1000);
+
+        var act = () => BehaviorPipeline.RunAsync(b =>
+        {
+            var t = Wire(b, transform, new CollectingSink<int>(), Enumerable.Range(1, 200), "sequential");
+
+            _ = b.WithResilience(t, o => o with { CircuitBreaker = new CircuitBreakerOptions { ConsecutiveFailures = 3 } });
+            _ = b.AddResiliencePolicy(t, ResiliencePolicyBuilder.ForNode<FlakyTransform, int>().OnAny().Retry(1000).Build());
+        });
+
+        var failure = await act.Should().ThrowAsync<Exception>();
+
+        Chain(failure.Which).Should().Contain(e => e is CircuitBreakerOpenException);
+        transform.TotalAttempts.Should().BeLessThan(10);
+    }
+
+    [Fact]
     public async Task PermanentFailures_DoNotTripTheBreaker()
     {
         var transform = new PermanentFailureTransform();

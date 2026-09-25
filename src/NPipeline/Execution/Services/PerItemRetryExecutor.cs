@@ -77,15 +77,33 @@ internal sealed class PerItemRetryExecutor : IPerItemRetryExecutor
             }
             catch (Exception ex)
             {
-                itemActivity?.RecordException(ex);
-                PerItemRetryExecutorLogMessages.AttemptFailed(CreateLogger(context), ex, nodeId, attempt);
-
                 var refusedByBreaker = circuitBreaker is not null && !admitted && ex is CircuitBreakerOpenException;
-                var isTransient = !refusedByBreaker && options.ItemRetry.Classifier.IsTransient(ex, cancellationToken);
+
+                // The classifier runs user predicates (and logging and tracing are pluggable), so a throw from here
+                // must not leak the permit. Return it first, then do anything that can throw.
+                bool isTransient;
+
+                try
+                {
+                    isTransient = !refusedByBreaker && options.ItemRetry.Classifier.IsTransient(ex, cancellationToken);
+                }
+                catch
+                {
+                    if (admitted)
+                        circuitBreaker!.Release(permit);
+
+                    throw;
+                }
 
                 // Only a transient failure counts against the breaker: a permanent one says nothing about the dependency.
                 if (admitted)
+                {
+                    admitted = false;
                     CircuitBreakerGate.RecordFailure(circuitBreaker!, permit, isTransient, context);
+                }
+
+                itemActivity?.RecordException(ex);
+                PerItemRetryExecutorLogMessages.AttemptFailed(CreateLogger(context), ex, nodeId, attempt);
 
                 var policy = ResilienceRuntime.ResolvePolicy(context, nodeId);
 

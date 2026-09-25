@@ -114,6 +114,11 @@ public sealed record CircuitBreakerOptions
     /// <returns>The same options, for chaining.</returns>
     public CircuitBreakerOptions Validate()
     {
+        // The same ceiling RetryBackoff uses: Task.Delay and Task.WaitAsync reject a longer duration, so a pause
+        // beyond it could not be honoured. It also keeps the duration far from TimeSpan.MaxValue, where the breaker's
+        // timestamp arithmetic would overflow and half-open immediately.
+        var maxDuration = TimeSpan.FromMilliseconds(int.MaxValue);
+
         if (ConsecutiveFailures is null && FailureRate is null)
             throw new ArgumentException("A circuit breaker needs ConsecutiveFailures, FailureRate, or both; with neither it can never trip.");
 
@@ -125,7 +130,9 @@ public sealed record CircuitBreakerOptions
 
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(MinimumCalls);
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(Window, TimeSpan.Zero);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(Window, maxDuration);
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(OpenDuration, TimeSpan.Zero);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(OpenDuration, maxDuration);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(HalfOpenProbes);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(ProbeSuccesses);
 
@@ -133,6 +140,7 @@ public sealed record CircuitBreakerOptions
             throw new ArgumentOutOfRangeException(nameof(WhenOpen), WhenOpen, "Unknown breaker open behavior.");
 
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(MaxPause, TimeSpan.Zero);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(MaxPause, maxDuration);
         return this;
     }
 }

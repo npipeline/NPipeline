@@ -92,9 +92,10 @@ public sealed class ErrorHandlingService : IErrorHandlingService
                 executeBody,
                 cancellationToken).ConfigureAwait(false);
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            // Preserve cancellation semantics: do not wrap cancellation in a NodeExecutionException
+            // Preserve cancellation semantics: do not wrap a cancellation of this run in a NodeExecutionException.
+            // A cancellation that has nothing to do with the run, such as a client timeout, is classified below.
             throw;
         }
         catch (PipelineExecutionException)
@@ -116,10 +117,6 @@ public sealed class ErrorHandlingService : IErrorHandlingService
                 if (current is RetryExhaustedException)
                     throw new NodeExecutionException(nodeDef.Id, current.Message, current);
             }
-
-            // For parallel execution, preserve the original exception type for correct exception propagation semantics
-            if (IsParallelExecution(context))
-                throw;
 
             throw new NodeExecutionException(nodeDef.Id, ex.Message, ex);
         }
@@ -163,12 +160,14 @@ public sealed class ErrorHandlingService : IErrorHandlingService
                 await executeAsync().ConfigureAwait(false);
                 return;
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
                 throw;
             }
             catch (Exception ex)
             {
+                // A foreign OperationCanceledException, such as a client timeout, falls in here and is classified
+                // like any other failure, so the policy can retry it.
                 failure = ex;
             }
 
@@ -191,10 +190,10 @@ public sealed class ErrorHandlingService : IErrorHandlingService
             // Transforms recover mid-stream through node restart; sinks and sources through their connector's retries.
             if (decision != ResilienceDecision.Retry || inputConsumed)
             {
-                if (attempt > 1 && failure is not OperationCanceledException)
+                if (attempt > 1 && !(failure is OperationCanceledException && cancellationToken.IsCancellationRequested))
                     ResilienceRuntime.ReportRetryExhausted(context, nodeDefinition.Id, RetryKind.NodeRetry, attempt, failure);
 
-                ThrowFinalFailure(nodeDefinition.Id, failure, attempt);
+                ThrowFinalFailure(nodeDefinition.Id, failure, attempt, cancellationToken);
             }
 
             if (attempt > ResilienceRuntime.MaxPolicyRepeats)
@@ -222,10 +221,13 @@ public sealed class ErrorHandlingService : IErrorHandlingService
     /// <param name="nodeId">The node id.</param>
     /// <param name="failure">The last failure.</param>
     /// <param name="attempts">How many times the node was executed.</param>
+    /// <param name="cancellationToken">The run's token, which tells a real cancellation from a foreign one.</param>
     [DoesNotReturn]
-    private static void ThrowFinalFailure(string nodeId, Exception failure, int attempts)
+    private static void ThrowFinalFailure(string nodeId, Exception failure, int attempts, CancellationToken cancellationToken)
     {
-        if (failure is OperationCanceledException)
+        // Only a cancellation of this run is rethrown raw. A TaskCanceledException from a client timeout is a
+        // failure like any other, so it is wrapped and names its node.
+        if (failure is OperationCanceledException && cancellationToken.IsCancellationRequested)
             ExceptionDispatchInfo.Throw(failure);
 
         // Only a failure that was retried is an exhausted one; a first failure surfaces as itself.
@@ -245,11 +247,4 @@ public sealed class ErrorHandlingService : IErrorHandlingService
         var exhausted = new RetryExhaustedException(nodeId, attempts, failure);
         throw new NodeExecutionException(nodeId, exhausted.Message, exhausted);
     }
-
-    /// <summary>
-    ///     Checks if the current execution is in parallel mode.
-    /// </summary>
-    /// <param name="context">The pipeline context.</param>
-    /// <returns>True if execution is in parallel mode, otherwise false.</returns>
-    private static bool IsParallelExecution(PipelineContext context) => context.ExecutionConfiguration.IsParallelExecution;
 }

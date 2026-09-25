@@ -44,11 +44,6 @@ public sealed class PipelineExecutionConfigurationContext
     public PipelineOptimizationProfile OptimizationProfile { get; }
 
     /// <summary>
-    ///     Indicates the current run uses parallel execution behavior.
-    /// </summary>
-    public bool IsParallelExecution { get; internal set; }
-
-    /// <summary>
     ///     The circuit breakers for this run's nodes. A run started by <see cref="PipelineFactory" /> uses the
     ///     factory's registry for its definition, so breaker state carries over between runs; a strategy executed
     ///     outside a run uses this context's own.
