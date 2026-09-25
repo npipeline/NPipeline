@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using NPipeline.DataFlow.Timestamping;
 using NPipeline.DataFlow.Windowing;
 
@@ -23,18 +22,11 @@ namespace NPipeline.Configuration;
 ///     Interval for watermark updates. Watermarks advance event time and trigger window cleanup.
 ///     Default is 30 seconds.
 /// </param>
-/// <param name="UseThreadSafeAccumulator">
-///     If true, uses thread-safe <see cref="ConcurrentDictionary{TKey,TValue}" /> for storing accumulators.
-///     If false, uses regular <see cref="Dictionary{TKey, TValue}" /> with no synchronization.
-///     Set to false in single-threaded scenarios for better performance.
-///     Default is true for safety in multi-threaded pipelines.
-/// </param>
 public sealed record AggregateNodeConfiguration<TIn>(
     WindowAssigner WindowAssigner,
     TimestampExtractor<TIn>? TimestampExtractor = null,
     TimeSpan? MaxOutOfOrderness = null,
-    TimeSpan? WatermarkInterval = null,
-    bool UseThreadSafeAccumulator = true)
+    TimeSpan? WatermarkInterval = null)
 {
     /// <summary>
     ///     Gets the effective maximum out-of-orderness value, using the default if not specified.

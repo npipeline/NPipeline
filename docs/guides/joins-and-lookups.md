@@ -53,6 +53,10 @@ Set the `JoinType` property to control matching behavior:
 
 Each item is paired with every item on the other side that shares its key. For example, one customer and three orders with the same `CustomerId` produce three outputs. Many-to-many keys produce every pairing. Outer joins call the fallback methods only for items that never matched anything.
 
+A **null** key never matches anything (as in SQL). An outer join still emits the row, through its side's fallback method; an inner join discards it.
+
+Input types must be distinct. Joins with identical or assignable input types are rejected at construction because the system cannot distinguish them at runtime. Use `AddSelfJoin` to join a stream with itself, or give the two inputs distinct wrapper types.
+
 ### Memory Limits
 
 A keyed join can't know whether another item with the same key will arrive later, so it keeps every item from both inputs in memory until the input streams end. This applies to every join type, including `Inner`. Set `MaxCapacity` to limit how many items each input retains:
@@ -87,6 +91,14 @@ public class TradeSettlementJoin
 ```
 
 Within a window, time-windowed joins pair items the same way keyed joins do. They use [watermarks](../reference/glossary.md#watermark) to close expired windows and release memory. For outer joins, the unmatched items in a window are emitted when that window closes.
+
+Watermarks are computed from the **same event time** used to assign windows: the item's `ITimestamped.Timestamp`, or the corresponding `timestampExtractor`, or arrival time when neither is available. Historical, replayed or back-filled data therefore joins correctly.
+
+The join's watermark advances only when both inputs produce an item. It follows the slower input to prevent faster inputs from prematurely evicting windows from the slower stream. An input that never produces holds all state until the end of the stream.
+
+Items arriving after their window closes are dropped and counted in the `LateItemsDropped` property. Outer joins emit such an item at once as unmatched when its side is preserved by the join type.
+
+Windows are evaluated independently: an item that lives in several sliding windows participates in each of them. A pair is emitted once per shared window, and a left-outer join can emit an item as unmatched from one window even though it matched in another (per-window semantics, as in Flink).
 
 ## In-Memory Lookups
 

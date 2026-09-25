@@ -254,11 +254,10 @@ Controls windowed aggregation behavior. Passed when configuring aggregate nodes.
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
-| `WindowAssigner` | `WindowAssigner` | *(required)* | Window strategy (tumbling, sliding, session). |
-| `TimestampExtractor` | `TimestampExtractor<TIn>?` | `null` | Extracts event time from items. `null` = use system arrival time. |
+| `WindowAssigner` | `WindowAssigner` | *(required)* | Window strategy (tumbling, sliding). Window sizes and slides must be positive. |
+| `TimestampExtractor` | `TimestampExtractor<TIn>?` | `null` | Extracts event time from items. `null` = use arrival time for items that are not `ITimestamped`. |
 | `MaxOutOfOrderness` | `TimeSpan?` | 5 min | Grace period for late-arriving events. |
 | `WatermarkInterval` | `TimeSpan?` | 30 sec | How often watermarks advance. |
-| `UseThreadSafeAccumulator` | `bool` | `true` | Use `ConcurrentDictionary` vs. `Dictionary` for accumulation. |
 
 ## PipelineContextConfiguration
 

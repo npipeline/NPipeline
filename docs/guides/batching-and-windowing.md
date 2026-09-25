@@ -88,7 +88,7 @@ WindowAssigner.Sliding(
 
 ### How Windows Close
 
-Windows are closed by [watermarks](../reference/glossary.md#watermark) - timestamps that signal "no more items earlier than this will arrive." When a watermark passes a window's end time, the window closes and emits its results.
+Windows are closed by [watermarks](../reference/glossary.md#watermark) - timestamps that signal "no more items earlier than this will arrive." When a watermark passes a window's end time, the window closes and emits its results. Watermarks are computed from the same event time used to assign windows, so window closing follows the data's own clock and not the wall clock.
 
 Configure watermark behavior:
 
@@ -102,6 +102,8 @@ new AggregateNodeConfiguration<SensorReading>(
 
 - **`MaxOutOfOrderness`** - how late an item can arrive and still be assigned to its window
 - **`WatermarkInterval`** - how often watermarks are generated
+
+Items arriving after a window closes are dropped to prevent multiple partial results. Window sizes and slides must be positive. Window starts align on UTC ticks, ensuring the same instant always lands in the same window regardless of the timestamp's UTC offset.
 
 > 📝 **Note:** Windowing is used primarily with [Aggregation](aggregation.md). See that guide for complete examples of window-based aggregation.
 

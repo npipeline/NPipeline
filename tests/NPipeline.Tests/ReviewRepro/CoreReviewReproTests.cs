@@ -1,14 +1,9 @@
-using System.Runtime.CompilerServices;
 using AwesomeAssertions;
-using NPipeline.Attributes.Nodes;
 using NPipeline.Configuration;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.ErrorHandling;
 using NPipeline.Execution;
-using NPipeline.DataFlow.Timestamping;
-using NPipeline.DataFlow.Watermarks;
-using NPipeline.DataFlow.Windowing;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 using NPipeline.Reliability;
@@ -21,93 +16,14 @@ public sealed class CoreReviewReproTests
 {
     private static readonly DateTime T0 = new(2023, 1, 1, 10, 0, 0, DateTimeKind.Utc);
 
-    // ---------- Watermark uses wall clock instead of extractor ----------
-    public sealed record Sale(string Cat, int Amount, DateTime At);
+// ---------- Watermark uses wall clock instead of extractor ----------
+// R01, R02, R03 moved to Nodes/Aggregate/AggregateWatermarkTests.cs (C01/C02/C11).
 
-    private sealed class SumNode(TimeSpan? watermarkInterval, TimestampExtractor<Sale>? extractor)
-        : AggregateNode<Sale, string, int>(new AggregateNodeConfiguration<Sale>(
-            WindowAssigner.Tumbling(TimeSpan.FromMinutes(1)), extractor, TimeSpan.Zero, watermarkInterval, false))
-    {
-        public override string GetKey(Sale s) => s.Cat;
-        public override int CreateAccumulator() => 0;
-        public override int Accumulate(int a, Sale s) => a + s.Amount;
-    }
+// ---------- Window alignment on local ticks ----------
+// R04, R05 moved to Nodes/Batching/WindowAssignerTests.cs (C25/C26).
 
-    private static async Task<List<int>> RunAggregate(SumNode node, params Sale[] items)
-    {
-        var output = (IAsyncEnumerable<object?>)(await node.ExecuteAsync(items.Cast<object?>().ToAsyncEnumerable()))!;
-        var list = new List<int>();
-        await foreach (var r in output) list.Add((int)r!);
-        return list;
-    }
-
-    [Fact]
-    public async Task R01_Aggregate_WithExtractor_UsesEventTimeForWatermarks()
-    {
-        var res = await RunAggregate(new SumNode(TimeSpan.Zero, s => s.At),
-            new Sale("a", 1, T0), new Sale("a", 2, T0.AddSeconds(10)), new Sale("a", 3, T0.AddSeconds(20)));
-        res.Should().Equal(6);
-    }
-
-    [Fact]
-    public async Task R02_Aggregate_WithoutExtractor_FallsBackToArrivalTime()
-    {
-        var act = () => RunAggregate(new SumNode(null, null), new Sale("a", 1, T0), new Sale("a", 2, T0));
-        await act.Should().NotThrowAsync();
-    }
-
-    public sealed record TSale(string Cat, int Amount, DateTime At) : ITimestamped
-    {
-        public DateTimeOffset Timestamp => At;
-    }
-
-    private sealed class TSumNode()
-        : AggregateNode<TSale, string, int>(new AggregateNodeConfiguration<TSale>(
-            WindowAssigner.Tumbling(TimeSpan.FromMinutes(1)), null, TimeSpan.Zero, TimeSpan.Zero, false))
-    {
-        public override string GetKey(TSale s) => s.Cat;
-        public override int CreateAccumulator() => 0;
-        public override int Accumulate(int a, TSale s) => a + s.Amount;
-    }
-
-    [Fact]
-    public async Task R03_Aggregate_LateItem_DoesNotReopenClosedWindow()
-    {
-        var node = new TSumNode();
-        TSale[] items = [new("a", 1, T0), new("a", 2, T0.AddMinutes(2)), new("a", 4, T0.AddSeconds(10))];
-        var output = (IAsyncEnumerable<object?>)(await node.ExecuteAsync(items.Cast<object?>().ToAsyncEnumerable()))!;
-        var list = new List<int>();
-        await foreach (var r in output) list.Add((int)r!);
-        list.Should().Equal(1, 2);
-    }
-
-    // ---------- Window alignment on local ticks ----------
-    [Fact]
-    public void R04_WindowStart_IsIndependentOfOffset()
-    {
-        var a = TimeWindow.ForTimestamp(new DateTimeOffset(2024, 1, 1, 10, 15, 0, TimeSpan.FromHours(5.5)), TimeSpan.FromHours(1));
-        var b = TimeWindow.ForTimestamp(new DateTimeOffset(2024, 1, 1, 4, 45, 0, TimeSpan.Zero), TimeSpan.FromHours(1));
-        a.Start.UtcDateTime.Should().Be(b.Start.UtcDateTime);
-    }
-
-    [Fact]
-    public void R05_TumblingZero_Rejected()
-    {
-        var act = () => WindowAssigner.Tumbling(TimeSpan.Zero);
-        act.Should().Throw<ArgumentOutOfRangeException>();
-    }
-
-    // ---------- Periodic watermark ----------
-    [Fact]
-    public void R06_PeriodicWatermark_IsStableBetweenEmissions()
-    {
-        var g = WatermarkGenerators.Periodic<int>(TimeSpan.FromHours(1), TimeSpan.FromMinutes(1));
-        var t = new DateTimeOffset(2020, 1, 1, 0, 0, 0, TimeSpan.Zero);
-        g.Update(t);
-        var w1 = g.GetCurrentWatermark();
-        var w2 = g.GetCurrentWatermark();
-        w2.Timestamp.Should().Be(w1.Timestamp);
-    }
+// ---------- Periodic watermark ----------
+// R06 moved to DataFlow/Watermarks/WatermarksTests.cs (C24).
 
     // ---------- BatchAsync <=100ms ----------
     [Fact]

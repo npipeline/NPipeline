@@ -1,4 +1,8 @@
 using AwesomeAssertions;
+using NPipeline.DataFlow;
+using NPipeline.DataFlow.DataStreams;
+using NPipeline.Execution;
+using NPipeline.Nodes;
 using NPipeline.Pipeline;
 
 namespace NPipeline.Tests.Pipeline;
@@ -139,6 +143,65 @@ public sealed class GroupingExtensionsTests
         // Assert
         handle.Should().NotBeNull();
         handle.Id.Should().Be("timestamped-agg");
+    }
+
+    [Fact]
+    public async Task ForTemporalCorrectness_WithoutExtractor_OnPlainRecord_DoesNotThrow()
+    {
+        // C02: the documented arrival-time fallback. A plain record without ITimestamped and without an
+        // extractor must aggregate without throwing.
+        var items = new List<TestData>
+        {
+            new("a", 1, DateTimeOffset.UtcNow),
+            new("a", 2, DateTimeOffset.UtcNow),
+            new("b", 3, DateTimeOffset.UtcNow),
+        };
+
+        var results = new List<int>();
+
+        var definition = new InlinePipelineDefinition(b =>
+        {
+            var source = b.AddSource<InlineSource, TestData>("source");
+            _ = b.AddPreconfiguredNodeInstance(source.Id, new InlineSource(items));
+            var aggregate = b.GroupItems<TestData>()
+                .ForTemporalCorrectness<string, int>(
+                    TimeSpan.FromMinutes(5),
+                    d => d.Key,
+                    () => 0,
+                    (sum, d) => sum + d.Value,
+                    name: "agg");
+            var sink = b.AddSink<CollectingSink, int>("sink");
+            _ = b.AddPreconfiguredNodeInstance(sink.Id, new CollectingSink(results));
+            _ = b.Connect(source, aggregate).Connect(aggregate, sink);
+        });
+
+        var act = () => PipelineRunner.Create().RunAsync(definition, new PipelineContext());
+
+        await act.Should().NotThrowAsync();
+        // Arrival time puts all three items in the same window: "a" sums to 3 and "b" to 3.
+        results.Should().Equal(3, 3);
+    }
+
+    private sealed class InlinePipelineDefinition(Action<PipelineBuilder> define) : IPipelineDefinition
+    {
+        public void Define(PipelineBuilder builder, PipelineContext context) => define(builder);
+    }
+
+    private sealed class InlineSource(List<TestData> items) : SourceNode<TestData>
+    {
+        public override IDataStream<TestData> OpenStream(PipelineContext context, CancellationToken cancellationToken) =>
+            new DataStream<TestData>(items.ToAsyncEnumerable(), "Inline");
+    }
+
+    private sealed class CollectingSink(List<int> results) : SinkNode<int>
+    {
+        public override async Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken cancellationToken)
+        {
+            await foreach (var item in input.WithCancellation(cancellationToken))
+            {
+                results.Add(item);
+            }
+        }
     }
 
     #endregion

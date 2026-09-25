@@ -38,13 +38,30 @@ public abstract class WindowAssigner
 /// <summary>
 ///     Assigns data items to tumbling windows (fixed-size, non-overlapping windows).
 /// </summary>
-/// <param name="windowSize">The size of each window.</param>
-public sealed class TumblingWindowAssigner(TimeSpan windowSize) : WindowAssigner
+public sealed class TumblingWindowAssigner : WindowAssigner
 {
+    private readonly TimeSpan _windowSize;
+
+    /// <summary>
+    ///     Initializes a new instance of the <see cref="TumblingWindowAssigner" /> class.
+    /// </summary>
+    /// <param name="windowSize">The size of each window. Must be positive.</param>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="windowSize" /> is zero or negative.</exception>
+    public TumblingWindowAssigner(TimeSpan windowSize)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(windowSize, TimeSpan.Zero);
+        _windowSize = windowSize;
+    }
+
+    /// <summary>
+    ///     Gets the size of each window.
+    /// </summary>
+    public TimeSpan WindowSize => _windowSize;
+
     /// <inheritdoc />
     public override IEnumerable<IWindow> AssignWindows<T>(T item, DateTimeOffset timestamp, TimestampExtractor<T>? extractor = null)
     {
-        var window = TimeWindow.ForTimestamp(timestamp, windowSize);
+        var window = TimeWindow.ForTimestamp(timestamp, _windowSize);
         yield return window;
     }
 }
@@ -52,25 +69,52 @@ public sealed class TumblingWindowAssigner(TimeSpan windowSize) : WindowAssigner
 /// <summary>
 ///     Assigns data items to sliding windows (fixed-size windows that slide by a specified interval).
 /// </summary>
-/// <param name="windowSize">The size of each window.</param>
-/// <param name="slide">The slide interval between windows.</param>
-public sealed class SlidingWindowAssigner(TimeSpan windowSize, TimeSpan slide) : WindowAssigner
+public sealed class SlidingWindowAssigner : WindowAssigner
 {
+    private readonly TimeSpan _slide;
+    private readonly TimeSpan _windowSize;
+
+    /// <summary>
+    ///     Initializes a new instance of the <see cref="SlidingWindowAssigner" /> class.
+    /// </summary>
+    /// <param name="windowSize">The size of each window. Must be positive.</param>
+    /// <param name="slide">The slide interval between windows. Must be positive.</param>
+    /// <exception cref="ArgumentOutOfRangeException">
+    ///     Thrown when <paramref name="windowSize" /> or <paramref name="slide" /> is zero or negative.
+    /// </exception>
+    public SlidingWindowAssigner(TimeSpan windowSize, TimeSpan slide)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(windowSize, TimeSpan.Zero);
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(slide, TimeSpan.Zero);
+        _windowSize = windowSize;
+        _slide = slide;
+    }
+
+    /// <summary>
+    ///     Gets the size of each window.
+    /// </summary>
+    public TimeSpan WindowSize => _windowSize;
+
+    /// <summary>
+    ///     Gets the slide interval between windows.
+    /// </summary>
+    public TimeSpan Slide => _slide;
+
     /// <inheritdoc />
     public override IEnumerable<IWindow> AssignWindows<T>(T item, DateTimeOffset timestamp, TimestampExtractor<T>? extractor = null)
     {
-        var windowStart = TimeWindow.GetWindowStart(timestamp, slide);
+        var windowStart = TimeWindow.GetWindowStart(timestamp, _slide);
         var windows = new List<IWindow>();
 
         // Generate all windows that contain this timestamp
         var currentStart = windowStart;
 
-        while (currentStart + windowSize > timestamp)
+        while (currentStart + _windowSize > timestamp)
         {
             if (currentStart <= timestamp)
-                windows.Add(new TimeWindow(currentStart, windowSize));
+                windows.Add(new TimeWindow(currentStart, _windowSize));
 
-            currentStart -= slide;
+            currentStart -= _slide;
         }
 
         return windows;

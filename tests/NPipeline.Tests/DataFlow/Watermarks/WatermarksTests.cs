@@ -325,7 +325,64 @@ public sealed class WatermarksTests
 
         // Assert - should use max (time2)
         var expectedWatermark = time2.AddSeconds(-10);
-        _ = watermark.Timestamp.Should().Be(expectedWatermark);
+        watermark.Timestamp.Should().Be(expectedWatermark);
+    }
+
+    [Fact]
+    public void PeriodicGenerator_IsStableBetweenEmissions()
+    {
+        // Arrange
+        PeriodicWatermarkGenerator<int> generator = new(TimeSpan.FromHours(1), TimeSpan.FromMinutes(1));
+        DateTimeOffset t = new(2020, 1, 1, 0, 0, 0, TimeSpan.Zero);
+        generator.Update(t);
+
+        // Act
+        var w1 = generator.GetCurrentWatermark();
+        var w2 = generator.GetCurrentWatermark();
+
+        // Assert - a call inside the interval returns the same watermark value, not wall-clock time
+        w2.Timestamp.Should().Be(w1.Timestamp);
+        w1.Timestamp.Should().Be(t.AddMinutes(-1));
+    }
+
+    [Fact]
+    public void PeriodicGenerator_IsMonotonicAcrossUpdateAndGetCalls()
+    {
+        // Arrange
+        PeriodicWatermarkGenerator<int> generator = new(TimeSpan.FromMilliseconds(1), TimeSpan.Zero);
+        var previous = DateTimeOffset.MinValue;
+        var random = new Random(42);
+
+        // Act & Assert - the watermark never decreases, even when events arrive out of order
+        for (var i = 0; i < 200; i++)
+        {
+            generator.Update(new DateTimeOffset(2020, 1, 1, random.Next(0, 24), random.Next(0, 60), random.Next(0, 60), TimeSpan.Zero));
+
+            var watermark = generator.GetCurrentWatermark();
+            watermark.Timestamp.Should().BeOnOrAfter(previous);
+            previous = watermark.Timestamp;
+        }
+    }
+
+    [Fact]
+    public void PeriodicGenerator_NegativeInterval_Throws()
+    {
+        var act = () => new PeriodicWatermarkGenerator<int>(TimeSpan.FromMinutes(-1), TimeSpan.Zero);
+        act.Should().Throw<ArgumentOutOfRangeException>();
+    }
+
+    [Fact]
+    public void PeriodicGenerator_NegativeOutOfOrderness_Throws()
+    {
+        var act = () => new PeriodicWatermarkGenerator<int>(TimeSpan.FromMilliseconds(100), TimeSpan.FromSeconds(-1));
+        act.Should().Throw<ArgumentOutOfRangeException>();
+    }
+
+    [Fact]
+    public void BoundedOutOfOrdernessGenerator_NegativeOutOfOrderness_Throws()
+    {
+        var act = () => new BoundedOutOfOrdernessWatermarkGenerator<int>(TimeSpan.FromSeconds(-1));
+        act.Should().Throw<ArgumentOutOfRangeException>();
     }
 
     #endregion
@@ -428,20 +485,13 @@ public sealed class WatermarksTests
     }
 
     [Fact]
-    public void BoundedOutOfOrdernessWatermarkGenerator_WithNegativeMaxOutOfOrderness_AddsToTimestamp()
+    public void BoundedOutOfOrdernessGenerator_WithNegativeMaxOutOfOrderness_Throws()
     {
-        // Arrange - negative out-of-orderness means we're looking ahead
-        DateTimeOffset timestamp = new(2024, 1, 15, 10, 30, 45, TimeSpan.Zero);
-        var negativeDelta = TimeSpan.FromSeconds(-10);
-        var generator = new BoundedOutOfOrdernessWatermarkGenerator<int>(negativeDelta);
+        // Arrange - negative out-of-orderness is rejected: it would place the watermark ahead of observed events
+        var act = () => new BoundedOutOfOrdernessWatermarkGenerator<int>(TimeSpan.FromSeconds(-10));
 
-        // Act
-        generator.Update(timestamp);
-        var watermark = generator.GetCurrentWatermark();
-
-        // Assert - subtracting negative = adding
-        var expected = timestamp.AddSeconds(10);
-        _ = watermark.Timestamp.Should().Be(expected);
+        // Act & Assert
+        act.Should().Throw<ArgumentOutOfRangeException>();
     }
 
     #endregion
