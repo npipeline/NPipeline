@@ -275,7 +275,9 @@ public sealed partial class PipelineBuilder
     public JoinNodeHandle<TIn1, TIn2, TOut> AddJoin<TNode, TIn1, TIn2, TOut>(string? name = null) where TNode : IJoinNode
     {
         name ??= GenerateUniqueNodeName(typeof(TNode).Name);
-        return RegisterNode(name, NodeKind.Join, typeof(TNode), typeof(TIn1), typeof(TOut), static (id, def) => new JoinNodeHandle<TIn1, TIn2, TOut>(id));
+        var handle = RegisterNode(name, NodeKind.Join, typeof(TNode), typeof(TIn1), typeof(TOut), static (id, def) => new JoinNodeHandle<TIn1, TIn2, TOut>(id));
+        NodeState.Nodes[handle.Id] = NodeState.Nodes[handle.Id] with { SecondInputType = typeof(TIn2) };
+        return handle;
     }
 
     /// <summary>

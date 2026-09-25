@@ -114,7 +114,8 @@ public sealed class LineageGeneratorTests
         var builder = new PipelineBuilder().WithoutExtendedValidation();
         var source = builder.AddSource<DummySource, int>("source");
         var transform = builder.AddTransform<DummyTransform, int, string>("transform");
-        _ = builder.Connect(source, transform);
+        var sink = builder.AddSink<DummySink, string>("sink");
+        _ = builder.Connect(source, transform).Connect(transform, sink);
         var graph = builder.Build().Graph;
 
         // Act
@@ -151,7 +152,8 @@ public sealed class LineageGeneratorTests
         var builder = new PipelineBuilder().WithoutExtendedValidation();
         var source = builder.AddSource<DummySource, int>("source");
         var transform = builder.AddTransform<DummyTransform, int, string>("transform");
-        builder.Connect(source, transform);
+        var sink = builder.AddSink<DummySink, string>("sink");
+        builder.Connect(source, transform).Connect(transform, sink);
         var graph = builder.Build().Graph;
 
         // Act
@@ -168,7 +170,8 @@ public sealed class LineageGeneratorTests
         var builder = new PipelineBuilder().WithoutExtendedValidation();
         var source = builder.AddSource<DummySource, int>("source");
         var transform = builder.AddTransform<DummyTransform, int, string>("transform");
-        _ = builder.Connect(source, transform);
+        var sink = builder.AddSink<DummySink, string>("sink");
+        _ = builder.Connect(source, transform).Connect(transform, sink);
         var graph = builder.Build().Graph;
 
         // Act
@@ -209,6 +212,14 @@ public sealed class LineageGeneratorTests
             PipelineContext context,
             CancellationToken cancellationToken) =>
             ValueTask.FromResult<string>(item.ToString());
+
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+    }
+
+    private sealed class DummySink : ISinkNode<string>
+    {
+        public Task ConsumeAsync(IDataStream<string> input, PipelineContext context, CancellationToken cancellationToken) =>
+            Task.CompletedTask;
 
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }

@@ -15,7 +15,8 @@ public sealed class LineageGuardrailTests
         var builder = new PipelineBuilder().WithoutExtendedValidation();
         var source = builder.AddSource<DummySource, int>("source");
         var transform = builder.AddTransform<DummyTransform, int, int>("transform");
-        builder.Connect(source, transform);
+        var sink = builder.AddSink<DummySink, int>("sink");
+        builder.Connect(source, transform).Connect(transform, sink);
         builder.EnableItemLevelLineage();
 
         var ex = Assert.Throws<InvalidOperationException>(() => builder.Build());
@@ -29,7 +30,8 @@ public sealed class LineageGuardrailTests
         var builder = new PipelineBuilder().WithoutExtendedValidation();
         var source = builder.AddSource<DummySource, int>("source");
         var transform = builder.AddTransform<DummyTransform, int, int>("transform");
-        builder.Connect(source, transform);
+        var sink = builder.AddSink<DummySink, int>("sink");
+        builder.Connect(source, transform).Connect(transform, sink);
 
         var pipeline = builder.Build();
         Assert.NotNull(pipeline);
@@ -45,5 +47,11 @@ public sealed class LineageGuardrailTests
     {
         public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken ct)
             => ValueTask.FromResult(item);
+    }
+
+    private sealed class DummySink : SinkNode<int>
+    {
+        public override Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken ct)
+            => Task.CompletedTask;
     }
 }

@@ -1,8 +1,14 @@
+using System.Collections.Frozen;
 using AwesomeAssertions;
+using NPipeline.Attributes.Nodes;
+using NPipeline.DataFlow.Branching;
 using NPipeline.Extensions.Testing;
+using NPipeline.Graph;
 using NPipeline.Graph.Validation;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
+using NPipeline.Reliability;
+using NPipeline.Tests.Reliability.Behavior;
 
 namespace NPipeline.Tests.Validation.BuilderRules;
 
@@ -56,6 +62,274 @@ public sealed class PipelineValidationTests
     {
         var act = () => Build<IsolatedNodePipeline>();
         act.Should().Throw<PipelineValidationException>().WithMessage("*Isolated nodes*");
+    }
+
+    [Fact]
+    public void UnconnectedSourceAndSink_Should_FailValidation()
+    {
+        var builder = new PipelineBuilder();
+        _ = builder.AddSource<StreamingSource<int>, int>("s");
+        _ = builder.AddSink<CollectingSink<int>, int>("k");
+
+        var act = () => builder.Build();
+
+        act.Should().Throw<PipelineValidationException>();
+    }
+
+    [Fact]
+    public void UnconnectedSourceTransformAndSink_Should_FailValidation()
+    {
+        var builder = new PipelineBuilder();
+        _ = builder.AddSource<StreamingSource<int>, int>("s");
+        _ = builder.AddTransform<T, int, int>("t");
+        _ = builder.AddSink<CollectingSink<int>, int>("k");
+
+        var act = () => builder.Build();
+
+        act.Should().Throw<PipelineValidationException>();
+    }
+
+    [Fact]
+    public void LoneSource_Should_PassCoreRules()
+    {
+        var builder = new PipelineBuilder().WithoutExtendedValidation();
+        _ = builder.AddSource<StreamingSource<int>, int>("s");
+
+        var validation = builder.Validate();
+
+        validation.IsValid.Should().BeTrue();
+    }
+
+    [Fact]
+    public void DanglingTransform_Should_FailValidation()
+    {
+        var builder = new PipelineBuilder();
+        var source = builder.AddSource<StreamingSource<int>, int>("s");
+        var transform = builder.AddTransform<FlakyTransform, int, int>("t");
+        var sink = builder.AddSink<CollectingSink<int>, int>("k");
+        _ = builder.Connect(source, transform).Connect(source, sink);
+
+        var act = () => builder.Build();
+
+        act.Should()
+            .Throw<PipelineValidationException>()
+            .WithMessage("*The output of these nodes is never consumed*");
+    }
+
+    [Fact]
+    public void TerminalTap_Should_FailValidation()
+    {
+        var builder = new PipelineBuilder();
+        var source = builder.AddSource<StreamingSource<int>, int>("s");
+        var tap = builder.AddTap(new CollectingSink<int>(), "tap");
+        var sink = builder.AddSink<CollectingSink<int>, int>("k");
+        _ = builder.Connect(source, tap).Connect(source, sink);
+
+        var act = () => builder.Build();
+
+        act.Should()
+            .Throw<PipelineValidationException>()
+            .WithMessage("*The output of these nodes is never consumed*");
+    }
+
+    [Fact]
+    public void ConnectedTransformChain_Should_PassValidation()
+    {
+        var builder = new PipelineBuilder();
+        var source = builder.AddSource<StreamingSource<int>, int>("s");
+        var transform = builder.AddTransform<T, int, int>("t");
+        var sink = builder.AddSink<CollectingSink<int>, int>("k");
+        _ = builder.Connect(source, transform).Connect(transform, sink);
+
+        var act = () => builder.Build();
+
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public async Task DiamondWithBoundedBranchCapacity_Should_Complete()
+    {
+        var run = BehaviorPipeline.RunAsync(b =>
+        {
+            var source = b.AddSource<StreamingSource<int>, int>("s");
+            _ = b.AddPreconfiguredNodeInstance(source.Id, StreamingSource<int>.Of(Enumerable.Range(1, 200)));
+            var a = b.AddTransform<T, int, int>("a");
+            var d = b.AddTransform<T, int, int>("d");
+            var first = b.AddSink<CollectingSink<int>, int>("first");
+            var second = b.AddSink<CollectingSink<int>, int>("second");
+            _ = b.Connect(source, a).Connect(source, d).Connect(a, first).Connect(d, second);
+            _ = b.WithBranchOptions(source.Id, new BranchOptions(4));
+        });
+
+        var finished = await Task.WhenAny(run, Task.Delay(TimeSpan.FromSeconds(10)));
+        finished.Should().BeSameAs(run, "every branch of the diamond reaches a sink, so the run must complete");
+        await run;
+    }
+
+    [Fact]
+    public void JoinWithoutRightInput_Should_FailValidation()
+    {
+        var builder = new PipelineBuilder();
+        var left = builder.AddSource<StreamingSource<Left>, Left>("left");
+        var join = builder.AddJoin<TestJoinNode, Left, Right, int>("join");
+        var sink = builder.AddSink<CollectingSink<int>, int>("sink");
+        _ = builder.Connect(left, join).Connect(join, sink);
+
+        var act = () => builder.Build();
+
+        act.Should()
+            .Throw<PipelineValidationException>()
+            .WithMessage("*must have both its left and right inputs connected*");
+    }
+
+    [Fact]
+    public void JoinWithoutLeftInput_Should_FailValidation()
+    {
+        var builder = new PipelineBuilder();
+        var right = builder.AddSource<StreamingSource<Right>, Right>("right");
+        var join = builder.AddJoin<TestJoinNode, Left, Right, int>("join");
+        var sink = builder.AddSink<CollectingSink<int>, int>("sink");
+        _ = builder.Connect(right, join).Connect(join, sink);
+
+        var act = () => builder.Build();
+
+        act.Should()
+            .Throw<PipelineValidationException>()
+            .WithMessage("*must have both its left and right inputs connected*");
+    }
+
+    [Fact]
+    public void JoinWithBothInputs_Should_PassValidation()
+    {
+        var builder = new PipelineBuilder();
+        var left = builder.AddSource<StreamingSource<Left>, Left>("left");
+        var right = builder.AddSource<StreamingSource<Right>, Right>("right");
+        var join = builder.AddJoin<TestJoinNode, Left, Right, int>("join");
+        var sink = builder.AddSink<CollectingSink<int>, int>("sink");
+        _ = builder.Connect(left, join).Connect(right, join).Connect(join, sink);
+
+        var act = () => builder.Build();
+
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void SelfJoin_WithBothInputs_Should_PassValidation()
+    {
+        var builder = new PipelineBuilder();
+        var left = builder.AddSource<StreamingSource<int>, int>("left");
+        var right = builder.AddSource<StreamingSource<int>, int>("right");
+        var join = builder.AddSelfJoin(left, right, "selfJoin", (a, b) => a + b, i => i);
+        var sink = builder.AddSink<CollectingSink<int>, int>("sink");
+        _ = builder.Connect(join, sink);
+
+        var act = () => builder.Build();
+
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void JoinWithBothInputs_OnHandBuiltGraphWithoutDefinitionMap_Should_PassValidation()
+    {
+        var leftSource = new NodeDefinition("left", "left", typeof(StreamingSource<Left>), NodeKind.Source, null, typeof(Left));
+        var rightSource = new NodeDefinition("right", "right", typeof(StreamingSource<Right>), NodeKind.Source, null, typeof(Right));
+        var join = new NodeDefinition("join", "join", typeof(TestJoinNode), NodeKind.Join, typeof(Left), typeof(int), IsJoin: true, SecondInputType: typeof(Right));
+        var sink = new NodeDefinition("sink", "sink", typeof(CollectingSink<int>), NodeKind.Sink, typeof(int));
+
+        // No WithNodeDefinitionMap call: the validator must still read the join's input types from Nodes.
+        var graph = new PipelineGraph
+        {
+            Nodes = [leftSource, rightSource, join, sink],
+            Edges = [new Edge("left", "join"), new Edge("right", "join"), new Edge("join", "sink")],
+            PreconfiguredNodeInstances = FrozenDictionary<string, INode>.Empty,
+        };
+
+        var result = PipelineGraphValidator.Validate(graph);
+
+        result.IsValid.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Validate_And_TryBuild_Agree_OnMissingSink()
+    {
+        var builder = new PipelineBuilder();
+        var source = builder.AddSource<StreamingSource<int>, int>("s");
+        var transform = builder.AddTransform<T, int, int>("t");
+        _ = builder.Connect(source, transform);
+
+        var validation = builder.Validate();
+        validation.IsValid.Should().BeFalse();
+        validation.Errors.Should().Contain(error => error.Contains("no sink"));
+
+        var ok = builder.TryBuild(out _, out var result);
+        ok.Should().BeFalse();
+        result.Errors.Should().Contain(error => error.Contains("no sink"));
+    }
+
+    [Fact]
+    public void Validate_And_TryBuild_Agree_OnFailingCustomRule()
+    {
+        var builder = new PipelineBuilder().WithValidationRule(new AlwaysFailsRule());
+        var source = builder.AddSource<StreamingSource<int>, int>("s");
+        var sink = builder.AddSink<CollectingSink<int>, int>("k");
+        _ = builder.Connect(source, sink);
+
+        var validation = builder.Validate();
+        validation.IsValid.Should().BeFalse();
+        validation.Errors.Should().Contain(error => error.Contains("custom rule failed"));
+
+        var ok = builder.TryBuild(out _, out var result);
+        ok.Should().BeFalse();
+        result.Errors.Should().Contain(error => error.Contains("custom rule failed"));
+    }
+
+    [Fact]
+    public void Validate_And_TryBuild_Agree_OnInvalidResilienceOptions()
+    {
+        var builder = new PipelineBuilder();
+        var source = builder.AddSource<StreamingSource<int>, int>("s");
+        var sink = builder.AddSink<CollectingSink<int>, int>("k");
+        _ = builder.Connect(source, sink);
+        _ = builder.WithResilience(options => options with { ItemRetry = new ItemRetryOptions { MaxRetries = -1 } });
+
+        var validate = () => builder.Validate();
+        validate.Should().Throw<InvalidOperationException>().WithMessage("*resilience options for the pipeline are invalid*");
+
+        var tryBuild = () => builder.TryBuild(out _, out _);
+        tryBuild.Should().Throw<InvalidOperationException>().WithMessage("*resilience options for the pipeline are invalid*");
+    }
+
+    [Fact]
+    public void ToMermaidDiagram_And_Describe_DoNotThrow_OnInvalidResilienceOptions()
+    {
+        var builder = new PipelineBuilder();
+        var source = builder.AddSource<StreamingSource<int>, int>("s");
+        var sink = builder.AddSink<CollectingSink<int>, int>("k");
+        _ = builder.Connect(source, sink);
+        _ = builder.WithResilience(options => options with { ItemRetry = new ItemRetryOptions { MaxRetries = -1 } });
+
+        // Visualization renders structure only, so invalid configuration must not stop it.
+        var mermaid = builder.ToMermaidDiagram();
+        var description = builder.Describe();
+
+        mermaid.Should().Contain("s");
+        mermaid.Should().Contain("k");
+        description.Should().Contain("Nodes:");
+        description.Should().Contain("Edges:");
+    }
+
+    [Fact]
+    public void GraphWithoutAnySourceNode_Should_ReportMissingSource()
+    {
+        var builder = new PipelineBuilder().WithoutExtendedValidation();
+        var first = builder.AddTransform<T, int, int>("first");
+        var second = builder.AddTransform<T, int, int>("second");
+        _ = builder.Connect(first, second);
+
+        var result = builder.Validate();
+
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(error => error.Contains("at least one ISourceNode<T> is required"));
     }
 
     [Fact]
@@ -164,6 +438,32 @@ public sealed class PipelineValidationTests
             var t = b.AddTransform<T, int, int>("t");
             var u = b.AddTransform<T, int, int>("u");
             b.Connect(t, u);
+        }
+    }
+
+    private sealed record Left(int Id);
+
+    private sealed record Right(int Id);
+
+    [KeySelector(typeof(Left), nameof(Left.Id))]
+    [KeySelector(typeof(Right), nameof(Right.Id))]
+    private sealed class TestJoinNode : KeyedJoinNode<int, Left, Right, int>
+    {
+        public override int CreateOutput(Left item1, Right item2) => item1.Id + item2.Id;
+
+        public override int CreateOutputFromLeft(Left item1) => item1.Id;
+
+        public override int CreateOutputFromRight(Right item2) => item2.Id;
+    }
+
+    private sealed class AlwaysFailsRule : IGraphRule
+    {
+        public string Name => "AlwaysFails";
+        public bool StopOnError => false;
+
+        public IEnumerable<ValidationIssue> Evaluate(GraphValidationContext context)
+        {
+            yield return new ValidationIssue(ValidationSeverity.Error, "custom rule failed", "Custom");
         }
     }
 }

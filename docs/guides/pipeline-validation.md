@@ -35,6 +35,8 @@ builder.WithValidationMode(GraphValidationMode.Off);
 | `DuplicateNodeIdRule` | Yes | No duplicate node IDs |
 | `EdgeReferenceRule` | Yes | All edges reference existing nodes |
 | `SourceAndReachabilityRule` | No | At least one source; all nodes reachable |
+| `UnconsumedOutputRule` | No | Every non-sink node's output is consumed downstream |
+| `JoinInputsRule` | No | Every join has both its left and right inputs connected |
 | `CycleDetectionRule` | No | Graph is a DAG (no cycles) |
 
 ### Extended Rules (Opt-Out)

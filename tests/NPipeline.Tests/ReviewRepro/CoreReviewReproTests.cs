@@ -101,27 +101,7 @@ public sealed class CoreReviewReproTests
     // R13 moved to Execution/Strategies/BatchingExecutionStrategyTests.cs (C07).
 
     // ---------- Validation: no edges ----------
-    [Fact]
-    public void R14_UnconnectedSourceAndSink_FailsValidation()
-    {
-        var b = new PipelineBuilder();
-        _ = b.AddSource<StreamingSource<int>, int>("s");
-        _ = b.AddSink<CollectingSink<int>, int>("k");
-        var act = () => b.Build();
-        act.Should().Throw<Exception>();
-    }
-
-    [Fact]
-    public void R15_DanglingTransform_FailsValidation()
-    {
-        var b = new PipelineBuilder();
-        var s = b.AddSource<StreamingSource<int>, int>("s");
-        var t = b.AddTransform<FlakyTransform, int, int>("t");
-        var k = b.AddSink<CollectingSink<int>, int>("k");
-        _ = b.Connect(s, t).Connect(s, k);
-        var act = () => b.Build();
-        act.Should().Throw<Exception>();
-    }
+    // R14, R15 moved to Validation/BuilderRules/PipelineValidationTests.cs (C08/C20).
 
     // ---------- Fluent policy drains input while breaker open ----------
     [Fact]

@@ -62,13 +62,15 @@ public sealed class PipelineBuilderTests(ITestOutputHelper output)
         var builder = new PipelineBuilder().WithoutExtendedValidation();
         var source = builder.AddSource<TestSourceNode, string>("source");
         var transform = builder.AddTransform<TestTransformNode, string, int>("transform");
+        var sink = builder.AddSink<TestSinkNode, int>("sink");
 
         // Act
         builder.Connect(source, transform);
+        builder.Connect(transform, sink);
         var pipeline = builder.Build();
 
         // Assert
-        pipeline.Graph.Edges.Should().ContainSingle();
+        pipeline.Graph.Edges.Should().HaveCount(2);
         pipeline.Graph.Edges[0].SourceNodeId.Should().Be("source");
         pipeline.Graph.Edges[0].TargetNodeId.Should().Be("transform");
     }
@@ -119,7 +121,9 @@ public sealed class PipelineBuilderTests(ITestOutputHelper output)
         var builder = new PipelineBuilder().WithoutExtendedValidation();
         var source = builder.AddSource<TestSourceNode, string>("source");
         var transform = builder.AddTransform<TestTransformNode, string, int>("transform");
+        var sink = builder.AddSink<TestSinkNode, int>("sink");
         builder.Connect(source, transform);
+        builder.Connect(transform, sink);
 
         // Act
         var ok = builder.TryBuild(out var pipeline, out var result);
@@ -160,7 +164,8 @@ public sealed class PipelineBuilderTests(ITestOutputHelper output)
         var builder = new PipelineBuilder().WithoutExtendedValidation();
         var source = builder.AddSource<TestSourceNode, string>("source");
         var transform = builder.AddTransform<TestTransformNode, string, int>("transform");
-        builder.Connect(source, transform);
+        var sink = builder.AddSink<TestSinkNode, int>("sink");
+        builder.Connect(source, transform).Connect(transform, sink);
         var strategy = new SequentialExecutionStrategy();
 
         // Act
@@ -181,7 +186,8 @@ public sealed class PipelineBuilderTests(ITestOutputHelper output)
         var builder = new PipelineBuilder().WithoutExtendedValidation();
         var source = builder.AddSource<TestSourceNode, string>("source");
         var transform = builder.AddTransform<TestTransformNode, string, int>("transform");
-        builder.Connect(source, transform);
+        var sink = builder.AddSink<TestSinkNode, int>("sink");
+        builder.Connect(source, transform).Connect(transform, sink);
 
         // Act
         builder.WithResilience(transform, o => o with { NodeRestart = new NodeRestartOptions { MaxRestarts = 2 } });
@@ -199,9 +205,10 @@ public sealed class PipelineBuilderTests(ITestOutputHelper output)
     {
         var builder = new PipelineBuilder().WithoutExtendedValidation();
         var source = builder.AddSource<TestSourceNode, string>("source");
+        var sink = builder.AddSink<TestSinkNode, int>("sink");
         var strategy = new SequentialExecutionStrategy();
         var transform = builder.AddTransform<TestTransformNode, string, int>("transform").WithExecutionStrategy(builder, strategy);
-        builder.Connect(source, transform);
+        builder.Connect(source, transform).Connect(transform, sink);
 
         builder.WithResilience(transform, o => o with { NodeRestart = new NodeRestartOptions { MaxRestarts = 1 } });
         var pipeline = builder.Build();
@@ -216,7 +223,8 @@ public sealed class PipelineBuilderTests(ITestOutputHelper output)
         var builder = new PipelineBuilder().WithoutExtendedValidation();
         var source = builder.AddSource<TestSourceNode, string>("source");
         var transform = builder.AddTransform<TestTransformNode, string, int>("transform");
-        builder.Connect(source, transform);
+        var sink = builder.AddSink<TestSinkNode, int>("sink");
+        builder.Connect(source, transform).Connect(transform, sink);
 
         var pipeline = builder.Build();
 
@@ -232,7 +240,8 @@ public sealed class PipelineBuilderTests(ITestOutputHelper output)
         var builder = new PipelineBuilder().WithoutExtendedValidation();
         var source = builder.AddSource<TestSourceNode, string>("source");
         var transform = builder.AddTransform<TestTransformNode, string, int>("transform");
-        builder.Connect(source, transform);
+        var sink = builder.AddSink<TestSinkNode, int>("sink");
+        builder.Connect(source, transform).Connect(transform, sink);
 
         // Act
         builder.AddResiliencePolicy(transform, new TestResiliencePolicy());
