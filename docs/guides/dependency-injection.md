@@ -94,7 +94,7 @@ await host.Services.RunPipelineAsync<MyPipeline>(
     new Dictionary<string, object> { ["date"] = DateTime.Today });
 ```
 
-`RunPipelineAsync` creates a DI scope, resolves the runner and all dependencies, sets `context.NodeEnvironment.DiOwnedNodes = true` to prevent double-disposal, and executes the pipeline.
+`RunPipelineAsync` creates a DI scope, resolves the runner and all dependencies, and executes the pipeline. The pipeline determines ownership per instance: the container manages nodes it resolves, while an instance the run creates or the builder hands over (for example through `AddTap`, `AddBatcher` or `AddSink(instance)`) is disposed at the end of the run that owns it.
 
 ### From an Injected Runner
 
@@ -139,6 +139,33 @@ public class EnrichOrder : TransformNode<Order, EnrichedOrder>
 ```
 
 > 📝 **Note:** Without DI, nodes must have a parameterless constructor. The `NodeParameterlessConstructorAnalyzer` (NP9403) warns about this at build time.
+
+## Custom Factories and Ownership
+
+The pipeline disposes what it creates, and leaves alone what a container owns. A run resolves nodes, dead-letter sinks, and lineage sinks through `INodeFactory`, `IErrorHandlerFactory`, and `ILineageFactory`, then asks each factory whether the instance it handed over belongs to the run:
+
+```csharp
+public bool IsOwnedByRun(NodeDefinition nodeDefinition, INode instance) => true;
+public bool CallerOwnsCreatedInstance(object instance) => true;
+```
+
+The default answer is `true`, which suits a factory that always builds fresh instances. A factory backed by a container overrides the method and reports `false` for the instances it resolved:
+
+```csharp
+public sealed class MyNodeFactory(IServiceProvider serviceProvider) : INodeFactory
+{
+    private readonly HashSet<INode> _containerOwned = new(ReferenceEqualityComparer.Instance);
+
+    public INode Create(NodeDefinition nodeDefinition, PipelineGraph graph) { /* ... */ }
+
+    public bool IsOwnedByRun(NodeDefinition nodeDefinition, INode instance) => !_containerOwned.Contains(instance);
+}
+```
+
+> [!WARNING]
+> Returning `true` for a container-owned instance disposes it twice: once by the run, once when the scope ends. Because a run instantiates nodes concurrently, back the collection with a thread-safe type or guard it with a lock.
+
+A single factory can mix both. Track only the instances the container resolves and let everything the factory constructs itself be disposed by the run.
 
 ## What Gets Registered
 

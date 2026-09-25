@@ -163,6 +163,10 @@ public static class ServiceCollectionExtensions
 
         var context = new PipelineContext(config);
 
+        // The context owns the run-scoped resources handed to it during the run (a dead-letter sink or lineage
+        // sink the factory constructed itself, for example). Disposing it releases them even when the run fails.
+        await using var contextScope = context.ConfigureAwait(false);
+
         // Wire up the execution observer if one has been registered (e.g., MetricsCollectingExecutionObserver
         // registered by AddNPipelineObservability). Without this, context.Observability.ExecutionObserver defaults to
         // NullExecutionObserver and no metrics are collected.
@@ -170,9 +174,6 @@ public static class ServiceCollectionExtensions
 
         if (executionObserver is not null)
             context.Observability.ExecutionObserver = executionObserver;
-
-        // Indicate DI owns node disposal to avoid double-dispose in runner.
-        context.NodeEnvironment.DiOwnedNodes = true;
 
         await runner.RunAsync<TDefinition>(context).ConfigureAwait(false);
     }

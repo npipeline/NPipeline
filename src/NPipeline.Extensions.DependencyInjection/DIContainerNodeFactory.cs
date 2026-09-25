@@ -17,6 +17,9 @@ internal sealed class DiContainerNodeFactory(IServiceProvider serviceProvider) :
 {
     private static readonly ConcurrentDictionary<Type, Func<IServiceProvider, object?>> _constructorCache = new();
 
+    // Keyed by reference: the same node instance resolved under several node ids is recorded once.
+    private readonly ConcurrentDictionary<INode, byte> _containerOwned = new(ReferenceEqualityComparer.Instance);
+
     /// <inheritdoc />
     public INode Create(NodeDefinition nodeDefinition, PipelineGraph graph)
     {
@@ -30,13 +33,17 @@ internal sealed class DiContainerNodeFactory(IServiceProvider serviceProvider) :
         // This allows for singleton registrations in tests or specific application scenarios.
         var node = serviceProvider.GetService(nodeDefinition.NodeType);
 
+        if (node is not null)
+        {
+            // The container owns whatever it resolves; the run must not dispose it.
+            _ = _containerOwned.TryAdd((INode)node, 0);
+            return (INode)node;
+        }
+
         // If the node is not registered as a service, fall back to creating a new instance,
         // allowing the container to resolve its dependencies using compiled expression trees.
-        if (node is null)
-        {
-            var constructor = _constructorCache.GetOrAdd(nodeDefinition.NodeType, BuildConstructor);
-            node = constructor(serviceProvider);
-        }
+        var constructor = _constructorCache.GetOrAdd(nodeDefinition.NodeType, BuildConstructor);
+        node = constructor(serviceProvider);
 
         if (node is null)
         {
@@ -46,6 +53,9 @@ internal sealed class DiContainerNodeFactory(IServiceProvider serviceProvider) :
 
         return (INode)node;
     }
+
+    /// <inheritdoc />
+    public bool IsOwnedByRun(NodeDefinition nodeDefinition, INode instance) => !_containerOwned.ContainsKey(instance);
 
     /// <summary>
     ///     Builds a compiled expression tree constructor for the given type.

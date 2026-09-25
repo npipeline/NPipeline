@@ -135,7 +135,7 @@ public class DatabaseSink : SinkNode<Order>, IAsyncDisposable
 
 ## Resource Disposal
 
-Nodes are disposable only if they implement `IAsyncDisposable` or `IDisposable`. If your node holds resources like connections, file handles, or HTTP clients, implement `IAsyncDisposable` (or `IDisposable`) on it; the runtime checks for it and disposes the instance at the end of the run that created it. There is no base implementation to call:
+Nodes are disposable only if they implement `IAsyncDisposable` or `IDisposable`. If your node holds resources like connections, file handles, or HTTP clients, implement `IAsyncDisposable` (or `IDisposable`) on it; the runtime checks for it and disposes the instance at the end of the run that created it. The dependency injection container manages nodes it resolves, so they are not disposed twice. There is no base implementation to call:
 
 ```csharp
 public sealed class HttpEnricher : TransformNode<Order, Order>, IAsyncDisposable

@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
+using NPipeline.Execution;
 using NPipeline.Execution.Factories;
 using NPipeline.Execution.Services;
 using NPipeline.Execution.Strategies;
@@ -67,7 +68,7 @@ public sealed class NodeInstantiationServiceTests
         var graph = builder.Build().Graph;
 
         var service = new NodeInstantiationService();
-        var nodeInstances = service.InstantiateNodes(graph, new DefaultNodeFactory());
+        var nodeInstances = service.InstantiateNodes(graph, new DefaultNodeFactory(), new OwnedNodeInstances());
 
         var ex = Assert.Throws<InvalidOperationException>(() => service.BuildPlans(graph, nodeInstances));
         Assert.Contains("cannot run a stream transform", ex.Message, StringComparison.Ordinal);

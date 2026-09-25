@@ -91,19 +91,21 @@ public sealed class PipelineFactory : IPipelineFactory
 
         definition.Define(builder, context);
 
-        // Allow tests / advanced users to supply preconfigured node instances via context.
+        // Allow tests / advanced users to supply preconfigured node instances via context. A context-supplied
+        // instance wins over one the definition registered, so a test double replaces the real node. An unknown id
+        // throws: silently ignoring it would leave the real node running.
         if (context.NodeEnvironment.PreconfiguredNodeInstances.Count > 0)
         {
             foreach (var kvp in context.NodeEnvironment.PreconfiguredNodeInstances)
             {
-                // Best-effort: ignore duplicates (will throw) so wrap in try/catch.
                 try
                 {
-                    builder.AddPreconfiguredNodeInstance(kvp.Key, kvp.Value);
+                    _ = builder.SetPreconfiguredNodeInstance(kvp.Key, kvp.Value);
                 }
-                catch
+                catch (InvalidOperationException ex)
                 {
-                    /* ignore */
+                    throw new InvalidOperationException(
+                        $"{ex.Message} Node ids are the sanitized, lower-case form of the node's name.", ex);
                 }
             }
         }

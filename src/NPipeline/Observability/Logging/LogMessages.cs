@@ -172,6 +172,9 @@ internal static partial class PipelineRunnerLogMessages
 
     [LoggerMessage(9, LogLevel.Warning, "Wrapping non-PipelineException {ExceptionType} in PipelineExecutionException for node {NodeId}")]
     public static partial void WrappingException(ILogger logger, string exceptionType, string nodeId);
+
+    [LoggerMessage(10, LogLevel.Warning, "Cleanup after a failed pipeline run threw {ExceptionType}; the original failure is preserved")]
+    public static partial void CleanupFailed(ILogger logger, Exception exception, string exceptionType);
 }
 
 /// <summary>

@@ -100,7 +100,7 @@ sub-context that owns it:
 | `RunIdentity` | Who this run is | `PipelineId`, `RunId`, `PipelineName`, `PipelineStartTimeUtc` |
 | `Observability` | Logging, tracing, metrics | `LoggerFactory`, `Tracer`, `ExecutionObserver`, `ObservabilityFactory` |
 | `ExecutionConfiguration` | Resilience and run settings | `Resilience`, `GetResilienceOptions(nodeId)`, `ResiliencePolicy`, `OptimizationProfile` |
-| `NodeEnvironment` | Per-node execution state | `GetNodeId(node)`, `TryGetNodeId(node, out id)`, `GetNodeStatus(nodeId)`, `EnumerateNodeStatuses()`, `NodeExecutionScopeRegistry`, `DiOwnedNodes` |
+| `NodeEnvironment` | Per-node execution state | `GetNodeId(node)`, `TryGetNodeId(node, out id)`, `GetNodeStatus(nodeId)`, `EnumerateNodeStatuses()`, `NodeExecutionScopeRegistry` |
 | `Lineage` | Lineage sinks and collectors | `LineageSink`, `PipelineLineageSink`, `LineageCollector`, `LineageFactory` |
 
 ```csharp

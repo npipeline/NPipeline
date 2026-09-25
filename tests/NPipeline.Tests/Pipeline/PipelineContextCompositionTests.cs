@@ -39,7 +39,6 @@ public sealed class PipelineContextCompositionTests
         context.RunIdentity.PipelineId = pipelineId;
         context.RunIdentity.RunId = runId;
         context.RunIdentity.PipelineName = "Orders";
-        context.NodeEnvironment.DiOwnedNodes = true;
         context.Observability.ExecutionObserver = null!;
         context.ExecutionConfiguration.Resilience = resilience;
         context.ExecutionConfiguration.SetNodeResilienceOptions("node", PipelineResilienceOptions.None);
@@ -50,7 +49,6 @@ public sealed class PipelineContextCompositionTests
         _ = context.RunIdentity.PipelineId.Should().Be(pipelineId);
         _ = context.RunIdentity.RunId.Should().Be(runId);
         _ = context.RunIdentity.PipelineName.Should().Be("Invoices");
-        _ = context.NodeEnvironment.DiOwnedNodes.Should().BeTrue();
         _ = context.Observability.ExecutionObserver.Should().BeSameAs(NullExecutionObserver.Instance);
         _ = context.ExecutionConfiguration.Resilience.Should().BeSameAs(resilience);
         _ = context.ExecutionConfiguration.GetResilienceOptions("other").Should().BeSameAs(resilience);

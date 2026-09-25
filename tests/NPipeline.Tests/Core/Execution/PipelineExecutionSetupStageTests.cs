@@ -45,7 +45,7 @@ public sealed class PipelineExecutionSetupStageTests
                 pipelineLineageSink,
                 resiliencePolicy));
 
-        _ = A.CallTo(() => nodeInstantiationService.InstantiateNodes(boundGraph, nodeFactory))
+        _ = A.CallTo(() => nodeInstantiationService.InstantiateNodes(boundGraph, nodeFactory, A<OwnedNodeInstances>._))
             .Returns(nodeInstances);
 
         _ = A.CallTo(() => nodeInstantiationService.BuildPlans(
@@ -62,7 +62,8 @@ public sealed class PipelineExecutionSetupStageTests
         var context = PipelineContext.CreateDefault();
 
         // Act
-        var result = await stage.PrepareAsync(typeof(PipelineExecutionSetupStageTests), baseGraph, context, CancellationToken.None);
+        var result = await stage.PrepareAsync(
+            typeof(PipelineExecutionSetupStageTests), baseGraph, context, new OwnedNodeInstances(), CancellationToken.None);
 
         // Assert
         _ = result.Graph.Nodes.Should().HaveCount(1);
@@ -77,7 +78,7 @@ public sealed class PipelineExecutionSetupStageTests
         _ = context.Lineage.PipelineLineageSink.Should().BeSameAs(pipelineLineageSink);
         _ = context.ExecutionConfiguration.ResiliencePolicy.Should().BeSameAs(resiliencePolicy);
 
-        _ = A.CallTo(() => nodeInstantiationService.InstantiateNodes(boundGraph, nodeFactory))
+        _ = A.CallTo(() => nodeInstantiationService.InstantiateNodes(boundGraph, nodeFactory, A<OwnedNodeInstances>._))
             .MustHaveHappenedOnceExactly();
 
         _ = A.CallTo(() => nodeInstantiationService.BuildPlans(
@@ -113,7 +114,7 @@ public sealed class PipelineExecutionSetupStageTests
         _ = A.CallTo(() => runtimeBinder.BindAsync(graph, A<PipelineContext>._))
             .Returns(new RuntimePipelineBindingResult(graph, null, null, null, DefaultResiliencePolicy.Instance));
 
-        _ = A.CallTo(() => nodeInstantiationService.InstantiateNodes(graph, nodeFactory))
+        _ = A.CallTo(() => nodeInstantiationService.InstantiateNodes(graph, nodeFactory, A<OwnedNodeInstances>._))
             .Returns(nodeInstances);
 
         _ = A.CallTo(() => nodeInstantiationService.BuildPlans(
@@ -130,7 +131,7 @@ public sealed class PipelineExecutionSetupStageTests
         var context = PipelineContext.CreateDefault();
 
         // Act
-        _ = await stage.PrepareAsync(typeof(PipelineExecutionSetupStageTests), graph, context, CancellationToken.None);
+        _ = await stage.PrepareAsync(typeof(PipelineExecutionSetupStageTests), graph, context, new OwnedNodeInstances(), CancellationToken.None);
 
         // Assert
         _ = context.Observability.ExecutionObserver.Should().BeSameAs(executionObserver);

@@ -24,6 +24,41 @@ public sealed class PipelineFactoryTests
         pipeline.Graph.Nodes.Should().Contain(n => n.Id == "sink");
     }
 
+    [Fact]
+    public void Create_WithAnUnknownPreconfiguredNodeId_Throws()
+    {
+        // Arrange
+        var factory = new PipelineFactory();
+        var context = PipelineContext.CreateDefault();
+
+        context.NodeEnvironment.PreconfiguredNodeInstances["Sink"] = new TestSinkNode();
+
+        // Act
+        var act = () => factory.Create<TestPipelineDefinition>(context);
+
+        // Assert - a silently ignored id would leave the real node running instead of the test double
+        var thrown = act.Should().Throw<InvalidOperationException>();
+        _ = thrown.Which.Message.Should().Contain("Sink");
+        _ = thrown.Which.Message.Should().Contain("sanitized, lower-case form");
+    }
+
+    [Fact]
+    public void Create_WithAContextInstanceForAKnownId_ReplacesTheBuilderInstance()
+    {
+        // Arrange
+        var factory = new PipelineFactory();
+        var context = PipelineContext.CreateDefault();
+        var overrideSink = new TestSinkNode();
+
+        context.NodeEnvironment.PreconfiguredNodeInstances["sink"] = overrideSink;
+
+        // Act
+        var pipeline = factory.Create<OverridableSinkPipelineDefinition>(context);
+
+        // Assert
+        _ = pipeline.Graph.PreconfiguredNodeInstances["sink"].Should().BeSameAs(overrideSink);
+    }
+
     // Test Node Implementations
     private sealed class TestSourceNode : SourceNode<string>
     {
@@ -36,13 +71,22 @@ public sealed class PipelineFactoryTests
             throw new NotImplementedException();
     }
 
-    // Test Pipeline Definition
     private sealed class TestPipelineDefinition : IPipelineDefinition
     {
         public void Define(PipelineBuilder builder, PipelineContext context)
         {
             var source = builder.AddSource<TestSourceNode, string>("source");
             var sink = builder.AddSink<TestSinkNode, string>("sink");
+            builder.Connect(source, sink);
+        }
+    }
+
+    private sealed class OverridableSinkPipelineDefinition : IPipelineDefinition
+    {
+        public void Define(PipelineBuilder builder, PipelineContext context)
+        {
+            var source = builder.AddSource<TestSourceNode, string>("source");
+            var sink = builder.AddSink(new TestSinkNode(), "sink");
             builder.Connect(source, sink);
         }
     }

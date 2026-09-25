@@ -12,5 +12,10 @@ public interface IPersistenceService
     /// </summary>
     /// <param name="context">The pipeline context containing execution state.</param>
     /// <param name="completedEvent">The event containing information about the completed node execution.</param>
-    void TryPersistAfterNode(PipelineContext context, NodeExecutionCompleted completedEvent);
+    /// <returns>A <see cref="ValueTask" /> that completes when the snapshot attempt has finished.</returns>
+    /// <remarks>
+    ///     Await this so a snapshot cannot still be running after the run returns and the context is disposed.
+    ///     A snapshot for a lazy node is taken when its stream is created, not when data flows through it.
+    /// </remarks>
+    ValueTask TryPersistAfterNode(PipelineContext context, NodeExecutionCompleted completedEvent);
 }

@@ -49,7 +49,7 @@ public sealed class PipelineRunnerErrorTests
 
         _ = A.CallTo(() => _nodeFactory.Create(A<NodeDefinition>._, A<PipelineGraph>._)).Returns(failingNode);
 
-        _ = A.CallTo(() => _nodeInstantiationService.InstantiateNodes(A<PipelineGraph>._, A<INodeFactory>._))
+        _ = A.CallTo(() => _nodeInstantiationService.InstantiateNodes(A<PipelineGraph>._, A<INodeFactory>._, A<OwnedNodeInstances>._))
             .Returns(new Dictionary<string, INode> { { nodeId, failingNode } });
 
         _ = A.CallTo(() => _topologyService.BuildInputLookup(A<PipelineGraph>._)).Returns(A.Fake<ILookup<string, Edge>>());
@@ -117,7 +117,7 @@ public sealed class PipelineRunnerErrorTests
 
         _ = A.CallTo(() => _nodeFactory.Create(A<NodeDefinition>._, A<PipelineGraph>._)).Returns(failingNode);
 
-        _ = A.CallTo(() => _nodeInstantiationService.InstantiateNodes(A<PipelineGraph>._, A<INodeFactory>._))
+        _ = A.CallTo(() => _nodeInstantiationService.InstantiateNodes(A<PipelineGraph>._, A<INodeFactory>._, A<OwnedNodeInstances>._))
             .Returns(new Dictionary<string, INode> { { nodeId, failingNode } });
 
         _ = A.CallTo(() => _topologyService.BuildInputLookup(A<PipelineGraph>._)).Returns(A.Fake<ILookup<string, Edge>>());
@@ -184,7 +184,7 @@ public sealed class PipelineRunnerErrorTests
 
         _ = A.CallTo(() => _nodeFactory.Create(A<NodeDefinition>._, A<PipelineGraph>._)).Returns(failingNode);
 
-        _ = A.CallTo(() => _nodeInstantiationService.InstantiateNodes(A<PipelineGraph>._, A<INodeFactory>._))
+        _ = A.CallTo(() => _nodeInstantiationService.InstantiateNodes(A<PipelineGraph>._, A<INodeFactory>._, A<OwnedNodeInstances>._))
             .Returns(new Dictionary<string, INode> { { nodeId, failingNode } });
 
         _ = A.CallTo(() => _topologyService.BuildInputLookup(A<PipelineGraph>._)).Returns(A.Fake<ILookup<string, Edge>>());
@@ -246,7 +246,7 @@ public sealed class PipelineRunnerErrorTests
 
         _ = A.CallTo(() => _nodeFactory.Create(A<NodeDefinition>._, A<PipelineGraph>._)).Returns(failingNode);
 
-        _ = A.CallTo(() => _nodeInstantiationService.InstantiateNodes(A<PipelineGraph>._, A<INodeFactory>._))
+        _ = A.CallTo(() => _nodeInstantiationService.InstantiateNodes(A<PipelineGraph>._, A<INodeFactory>._, A<OwnedNodeInstances>._))
             .Returns(new Dictionary<string, INode> { { nodeId, failingNode } });
 
         _ = A.CallTo(() => _topologyService.BuildInputLookup(A<PipelineGraph>._)).Returns(A.Fake<ILookup<string, Edge>>());

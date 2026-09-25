@@ -15,8 +15,16 @@ public interface INodeInstantiationService
     /// </summary>
     /// <param name="graph">The pipeline graph containing node definitions.</param>
     /// <param name="nodeFactory">The factory used to create node instances.</param>
-    /// <returns>A dictionary mapping node IDs to their instantiated node instances.</returns>
-    Dictionary<string, INode> InstantiateNodes(PipelineGraph graph, INodeFactory nodeFactory);
+    /// <param name="ownedInstances">
+    ///     Receives every reference-distinct instance the run owns, as it is created. Cleanup belongs to the caller, so
+    ///     this method never disposes anything: when a factory fails part-way through, the partial set is left for the
+    ///     caller to release exactly once.
+    /// </param>
+    /// <returns>The instances keyed by node id.</returns>
+    Dictionary<string, INode> InstantiateNodes(
+        PipelineGraph graph,
+        INodeFactory nodeFactory,
+        OwnedNodeInstances ownedInstances);
 
     /// <summary>
     ///     Registers stateful nodes with the state registry if available in the context.

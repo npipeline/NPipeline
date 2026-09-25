@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using AwesomeAssertions;
 using NPipeline.Configuration;
 using NPipeline.DataFlow;
 using NPipeline.ErrorHandling;
@@ -59,7 +60,7 @@ public sealed class ErrorHandlingAndPersistenceTests
     }
 
     [Fact]
-    public void Persistence_Attempts_Snapshot()
+    public async Task Persistence_Attempts_Snapshot()
     {
         var persistence = new PersistenceService();
 
@@ -69,10 +70,78 @@ public sealed class ErrorHandlingAndPersistenceTests
         var sm = new SnapshotStateManager();
         ctx.StateManager = sm;
         var completed = new NodeExecutionCompleted("n1", "Dummy", TimeSpan.FromMilliseconds(5), true, null, Guid.Empty);
-        persistence.TryPersistAfterNode(ctx, completed);
+        await persistence.TryPersistAfterNode(ctx, completed);
 
-        // can't await continuation, but ensure at least snapshot task started
         Assert.Equal(1, sm.Snapshots);
+    }
+
+    [Fact]
+    public async Task SnapshotCompletesBeforeTheRunReturns()
+    {
+        // Arrange
+        var manager = new SlowSnapshotStateManager();
+        await using var context = PipelineContext.CreateDefault();
+        context.StateManager = manager;
+
+        // Act
+        await PipelineRunner.Create().RunAsync<SnapshotPipeline>(context, CancellationToken.None);
+
+        // Assert - a fire-and-forget snapshot could still be running after the run returned and the context was disposed
+        manager.CompletedBeforeContextDisposed.Should().BeTrue();
+    }
+
+    private sealed class SlowSnapshotStateManager : IPipelineStateManager
+    {
+        public volatile bool CompletedBeforeContextDisposed;
+
+        public async ValueTask CreateSnapshotAsync(PipelineContext context, CancellationToken cancellationToken, bool forceFullSnapshot = false)
+        {
+            await Task.Delay(200, CancellationToken.None).ConfigureAwait(false);
+
+            // The context's Items are cleared when it is disposed; reading one after that throws.
+            _ = context.Items.Count;
+            CompletedBeforeContextDisposed = true;
+        }
+
+        public ValueTask<bool> TryRestoreAsync(PipelineContext context, CancellationToken cancellationToken) => ValueTask.FromResult(false);
+
+        public void MarkNodeCompleted(string nodeId, PipelineContext context)
+        {
+        }
+
+        public void MarkNodeError(string nodeId, PipelineContext context)
+        {
+        }
+    }
+
+    private sealed class SnapshotSource : ISourceNode<int>
+    {
+        public IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken) =>
+            new NPipeline.DataFlow.DataStreams.InMemoryDataStream<int>([1], "snapshot-source");
+
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+    }
+
+    private sealed class SnapshotSink : ISinkNode<int>
+    {
+        public async Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken cancellationToken)
+        {
+            await foreach (var _ in input.ToAsyncEnumerable(cancellationToken).ConfigureAwait(false))
+            {
+            }
+        }
+
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+    }
+
+    private sealed class SnapshotPipeline : IPipelineDefinition
+    {
+        public void Define(PipelineBuilder builder, PipelineContext context)
+        {
+            var source = builder.AddSource<SnapshotSource, int>("source");
+            var sink = builder.AddSink<SnapshotSink, int>("sink");
+            _ = builder.Connect(source, sink);
+        }
     }
 
     private sealed class FailingSourceNode : ISourceNode<object>

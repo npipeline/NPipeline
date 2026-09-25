@@ -3,10 +3,13 @@ using FakeItEasy;
 using Microsoft.Extensions.DependencyInjection;
 using NPipeline.DataFlow;
 using NPipeline.ErrorHandling;
+using NPipeline.Execution;
 using NPipeline.Extensions.DependencyInjection;
 using NPipeline.Extensions.Testing;
+using NPipeline.Graph;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
+using NPipeline.Reliability;
 
 namespace NPipeline.Tests.Core.Execution;
 
@@ -36,12 +39,11 @@ public sealed class ResourceDisposalTests : IAsyncLifetime
 
     public async Task DisposeAsync()
     {
-        // Dispose the service provider without disposing tracked nodes
-        // to avoid "type only implements IAsyncDisposable" errors
+        // The container owns the nodes it resolved, so disposing the provider releases them. Tests that already did
+        // this set the field to null.
         if (_serviceProvider != null)
         {
-            // Create a new scope to avoid disposing the registered nodes
-            using var scope = _serviceProvider.CreateScope();
+            await _serviceProvider.DisposeAsync();
             _serviceProvider = null!;
         }
 
@@ -241,6 +243,13 @@ public sealed class ResourceDisposalTests : IAsyncLifetime
         await _pipelineRunner.RunAsync<SimpleAsyncDisposablePipeline>(context);
         await context.DisposeAsync();
 
+        // The nodes came from the container, so the container owns them: the runner must not dispose them and the
+        // container disposes them when its provider is disposed.
+        (AsyncDisposableSourceNode.DisposeCount + AsyncDisposableTransformNode.DisposeCount + AsyncDisposableSinkNode.DisposeCount)
+            .Should().Be(0, "the runner must not dispose container-owned nodes");
+        await _serviceProvider.DisposeAsync();
+        _serviceProvider = null!;
+
         // Assert - Check that all nodes were disposed
         AsyncDisposableSourceNode.DisposeCount.Should().Be(1, "Source node should be disposed once");
         AsyncDisposableTransformNode.DisposeCount.Should().Be(1, "Transform node should be disposed once");
@@ -260,10 +269,11 @@ public sealed class ResourceDisposalTests : IAsyncLifetime
         // Act
         await _pipelineRunner.RunAsync<MixedDisposalPipeline>(context);
         await context.DisposeAsync();
+        await _serviceProvider.DisposeAsync();
+        _serviceProvider = null!;
 
         // Assert
-        // Note: SyncDisposableSourceNode might not be disposed by the pipeline because DI owns it
-        // The important thing is that the AsyncDisposableTransformNode is disposed
+        // Container-resolved nodes are disposed by the container when its provider is disposed.
         AsyncDisposableTransformNode.DisposeCount.Should().Be(1, "Async disposable transform should be disposed once");
     }
 
@@ -409,6 +419,13 @@ public sealed class ResourceDisposalTests : IAsyncLifetime
 
         // Ensure context is disposed even on failure
         await context.DisposeAsync();
+
+        // The nodes were resolved from the container, which owns them: the runner must not dispose them, even on
+        // failure, and the container releases them when its provider is disposed.
+        (AsyncDisposableSourceNode.DisposeCount + ThrowingAsyncDisposableTransformNode.DisposeCount + AsyncDisposableSinkNode.DisposeCount)
+            .Should().Be(0, "the runner must not dispose container-owned nodes");
+        await _serviceProvider.DisposeAsync();
+        _serviceProvider = null!;
 
         // Assert - All nodes should still be disposed even when execution fails
         AsyncDisposableSourceNode.DisposeCount.Should().Be(1, "Source node should be disposed even on failure");
@@ -567,6 +584,248 @@ public sealed class ResourceDisposalTests : IAsyncLifetime
 
         // Assert - Still only disposed once (WasDisposed is a simple bool)
         disposable.WasDisposed.Should().BeTrue();
+    }
+
+    #endregion
+
+    #region Cleanup Failure and Ownership Tests
+
+    private sealed class ThrowingDisposeSink : SinkNode<int>, IAsyncDisposable
+    {
+        public static int Disposed;
+
+        public ValueTask DisposeAsync()
+        {
+            Disposed++;
+            throw new IOException("sink disposal failed");
+        }
+
+        public override Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken cancellationToken) =>
+            throw new InvalidOperationException("boom");
+    }
+
+    private sealed class CountingDisposableSink : SinkNode<int>, IAsyncDisposable
+    {
+        public static int Disposed;
+
+        public ValueTask DisposeAsync()
+        {
+            Disposed++;
+            return ValueTask.CompletedTask;
+        }
+
+        public override Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken cancellationToken) =>
+            Task.CompletedTask;
+    }
+
+    private sealed class ThrowingSource : SourceNode<int>, IAsyncDisposable
+    {
+        public ValueTask DisposeAsync() => throw new IOException("source disposal failed");
+
+        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken) =>
+            new InMemoryDataStream<int>([1, 2, 3], "source");
+    }
+
+    private sealed class CleanupFailurePipeline : IPipelineDefinition
+    {
+        public void Define(PipelineBuilder builder, PipelineContext context)
+        {
+            var source = builder.AddSource(new ThrowingSource(), "source");
+            var failing = builder.AddSink(new ThrowingDisposeSink(), "failing");
+            var second = builder.AddSink(new CountingDisposableSink(), "second");
+
+            _ = builder.Connect(source, failing);
+            _ = builder.Connect(source, second);
+        }
+    }
+
+    private sealed class ThrowingDisposeOnSuccessPipeline : IPipelineDefinition
+    {
+        public void Define(PipelineBuilder builder, PipelineContext context)
+        {
+            var source = builder.AddSource<SimpleSource, int>("source");
+            var sink = builder.AddSink(new ThrowingDisposeOnlySink(), "sink");
+            _ = builder.Connect(source, sink);
+        }
+    }
+
+    private sealed class SimpleSource : SourceNode<int>
+    {
+        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken) =>
+            new InMemoryDataStream<int>([1, 2, 3], "source");
+    }
+
+    private sealed class ThrowingDisposeOnlySink : SinkNode<int>, IAsyncDisposable
+    {
+        public ValueTask DisposeAsync() => throw new IOException("sink disposal failed");
+
+        public override Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken cancellationToken) =>
+            Task.CompletedTask;
+    }
+
+    [Fact]
+    public async Task Cleanup_WhenDisposalThrows_RealFailureIsPreservedAndOtherNodesStillDisposed()
+    {
+        // Arrange
+        ThrowingDisposeSink.Disposed = 0;
+        CountingDisposableSink.Disposed = 0;
+
+        await using var context = PipelineContext.CreateDefault();
+
+        // Act
+        var act = async () => await PipelineRunner.Create().RunAsync<CleanupFailurePipeline>(context);
+
+        // Assert - the sink's real failure is what surfaces, not the disposal IOException
+        var thrown = await act.Should().ThrowAsync<Exception>();
+        thrown.Which.GetBaseException().Should().BeOfType<InvalidOperationException>()
+            .Which.Message.Should().Be("boom");
+
+        ThrowingDisposeSink.Disposed.Should().Be(1, "a throwing disposal must still be attempted");
+        CountingDisposableSink.Disposed.Should().Be(1, "a throwing disposal must not stop the remaining disposals");
+    }
+
+    [Fact]
+    public async Task Cleanup_WhenNodeDisposeThrowsOnASuccessfulRun_SurfacesThatException()
+    {
+        // Arrange
+        CountingDisposableSink.Disposed = 0;
+
+        await using var context = PipelineContext.CreateDefault();
+
+        // Act
+        var act = async () => await PipelineRunner.Create().RunAsync<ThrowingDisposeOnSuccessPipeline>(context);
+
+        // Assert
+        _ = await act.Should().ThrowAsync<IOException>("a throwing disposal on an otherwise successful run is surfaced");
+    }
+
+    #endregion
+
+    #region Setup Failure Disposal Tests
+
+    private sealed class CountingDisposableTransform : TransformNode<int, int>, IAsyncDisposable
+    {
+        public static int Disposed;
+
+        public ValueTask DisposeAsync()
+        {
+            Disposed++;
+            return ValueTask.CompletedTask;
+        }
+
+        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(item);
+    }
+
+    private sealed class PreconfiguredDisposalPipeline : IPipelineDefinition
+    {
+        public void Define(PipelineBuilder builder, PipelineContext context)
+        {
+            var source = builder.AddSource<SimpleSource, int>("source");
+            var transform = builder.AddTransform<CountingDisposableTransform, int, int>("transform");
+            var sink = builder.AddSink(new CountingDisposableSink(), "sink");
+            _ = builder.Connect(source, transform).Connect(transform, sink);
+
+            // Dead-lettering with no dead-letter sink makes setup throw after the nodes are instantiated.
+            _ = builder.WithResilience(o => o with { OnItemFailure = ItemFailureAction.DeadLetter });
+        }
+    }
+
+    [Fact]
+    public async Task PreconfiguredNodes_AreDisposed_WhenSetupFails()
+    {
+        // Arrange
+        CountingDisposableSink.Disposed = 0;
+        CountingDisposableTransform.Disposed = 0;
+
+        await using var context = PipelineContext.CreateDefault();
+
+        // Act
+        var act = async () => await PipelineRunner.Create().RunAsync<PreconfiguredDisposalPipeline>(context);
+
+        // Assert
+        _ = await act.Should().ThrowAsync<DeadLetterSinkNotConfiguredException>();
+        CountingDisposableTransform.Disposed.Should().Be(1, "instances created before the setup failure must be disposed");
+        CountingDisposableSink.Disposed.Should().Be(1, "instances created before the setup failure must be disposed");
+    }
+
+    private sealed class MismatchedSink : SinkNode<string>
+    {
+        public override Task ConsumeAsync(IDataStream<string> input, PipelineContext context, CancellationToken cancellationToken) =>
+            Task.CompletedTask;
+    }
+
+    private sealed class BadPreconfiguredInstancePipeline : IPipelineDefinition
+    {
+        public void Define(PipelineBuilder builder, PipelineContext context)
+        {
+            var source = builder.AddSource<SimpleSource, int>("source");
+            var transform = builder.AddTransform<CountingDisposableTransform, int, int>("transform");
+            var sink = builder.AddSink<CountingDisposableSink, int>("sink");
+            _ = builder.Connect(source, transform).Connect(transform, sink);
+
+            // A preconfigured instance whose type does not match its node makes the sink delegate fail to compile.
+            builder.NodeState.PreconfiguredNodeInstances["sink"] = new MismatchedSink();
+        }
+    }
+
+    [Fact]
+    public async Task PreconfiguredNodes_AreDisposed_WhenPlanBuildingFails()
+    {
+        // Arrange
+        CountingDisposableSink.Disposed = 0;
+        CountingDisposableTransform.Disposed = 0;
+
+        await using var context = PipelineContext.CreateDefault();
+
+        // Act
+        var act = async () => await PipelineRunner.Create().RunAsync<BadPreconfiguredInstancePipeline>(context);
+
+        // Assert
+        _ = await act.Should().ThrowAsync<Exception>();
+        CountingDisposableTransform.Disposed.Should().Be(1, "instances created before the plan failure must be disposed");
+    }
+
+    private sealed class EmptyDefinition : IPipelineDefinition
+    {
+        public void Define(PipelineBuilder builder, PipelineContext context)
+        {
+        }
+    }
+
+    [Fact]
+    public async Task BuilderInstances_AreDisposed_WhenSetupFailsBeforeInstantiation()
+    {
+        // Arrange
+        CountingDisposableSink.Disposed = 0;
+        var builder = new PipelineBuilder().WithoutExtendedValidation();
+        _ = builder.AddSource<SimpleSource, int>("source");
+        var graph = builder.Build().Graph;
+        var pipeline = new NPipeline.Pipeline.Pipeline(graph)
+        {
+            BuilderDisposables = [new CountingDisposableSink()],
+        };
+
+        var pipelineFactory = A.Fake<IPipelineFactory>();
+        _ = A.CallTo(() => pipelineFactory.Create<EmptyDefinition>(A<PipelineContext>._)).Returns(pipeline);
+
+        var binder = A.Fake<IRuntimePipelineBinder>();
+        _ = A.CallTo(() => binder.BindAsync(A<PipelineGraph>._, A<PipelineContext>._))
+            .Throws(new InvalidOperationException("binder failure"));
+
+        var runner = new PipelineRunnerBuilder()
+            .WithPipelineFactory(pipelineFactory)
+            .WithRuntimePipelineBinder(binder)
+            .Build();
+
+        await using var context = PipelineContext.CreateDefault();
+
+        // Act
+        var act = async () => await runner.RunAsync<EmptyDefinition>(context);
+
+        // Assert
+        _ = await act.Should().ThrowAsync<Exception>();
+        CountingDisposableSink.Disposed.Should().Be(1, "a builder instance must be released even when setup fails before instantiation");
     }
 
     #endregion

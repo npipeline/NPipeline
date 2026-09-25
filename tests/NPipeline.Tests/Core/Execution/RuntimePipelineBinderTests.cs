@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using AwesomeAssertions;
 using FakeItEasy;
 using NPipeline.Configuration;
+using NPipeline.DataFlow;
 using NPipeline.DataFlow.Routing;
 using NPipeline.ErrorHandling;
 using NPipeline.Execution;
@@ -389,24 +390,297 @@ public sealed class RuntimePipelineBinderTests
         _ = contract.ItemLevelLineageEnabled.Should().BeFalse();
     }
 
+    [Fact]
+    public async Task BindAsync_DeadLetterSinkCreatedFromType_IsRegisteredForDisposal()
+    {
+        // Arrange
+        var graph = CreateGraph(deadLetterSinkType: typeof(DisposableDeadLetterSink));
+        var context = new PipelineContext();
+
+        // Act
+        var result = await _binder.BindAsync(graph, context);
+
+        // Assert - created by the default factory, which hands ownership to the caller
+        _ = result.DeadLetterSink.Should().BeOfType<DisposableDeadLetterSink>();
+
+        // The run's context disposes it; the pipeline must register it for disposal.
+        await context.DisposeAsync();
+        DisposableDeadLetterSink.Disposed.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task BindAsync_DeadLetterSinkInstancePassedDirectly_IsNotRegisteredForDisposal()
+    {
+        // Arrange
+        DisposableDeadLetterSink.Disposed = 0;
+        var instance = new DisposableDeadLetterSink();
+        var graph = CreateGraph(deadLetterSink: instance);
+        var context = new PipelineContext();
+
+        // Act
+        var result = await _binder.BindAsync(graph, context);
+
+        // Assert
+        _ = result.DeadLetterSink.Should().BeSameAs(instance);
+        await context.DisposeAsync();
+        DisposableDeadLetterSink.Disposed.Should().Be(0, "the user owns an instance passed directly");
+    }
+
+    [Fact]
+    public async Task BindAsync_DeadLetterSinkCreatedByAFactoryThatOwnsInstances_IsNotRegisteredForDisposal()
+    {
+        // Arrange
+        DisposableDeadLetterSink.Disposed = 0;
+        var graph = CreateGraph(deadLetterSinkType: typeof(DisposableDeadLetterSink));
+        var factory = new ContainerOwnedErrorHandlerFactory();
+        var context = new PipelineContext(new PipelineContextConfiguration(ErrorHandlerFactory: factory));
+
+        // Act
+        var result = await _binder.BindAsync(graph, context);
+
+        // Assert
+        _ = result.DeadLetterSink.Should().BeSameAs(factory.Sink);
+        await context.DisposeAsync();
+        DisposableDeadLetterSink.Disposed.Should().Be(0, "the container owns created instances when the factory says so");
+    }
+
+    [Fact]
+    public async Task BindAsync_FactoryReportingOwnershipPerInstance_DisposesOnlyTheCallerOwnedSink()
+    {
+        // Arrange - a container-backed factory mixes resolved and constructed instances; only the resolved ones
+        // belong to the container.
+        DisposableDeadLetterSink.Disposed = 0;
+        var graph = CreateGraph(deadLetterSinkType: typeof(DisposableDeadLetterSink));
+        var containerSink = new DisposableDeadLetterSink();
+        var factory = new MixedOwnershipErrorHandlerFactory(containerSink);
+        var context = new PipelineContext(new PipelineContextConfiguration(ErrorHandlerFactory: factory));
+
+        // Act
+        var containerResult = await _binder.BindAsync(graph, context);
+        await context.DisposeAsync();
+        DisposableDeadLetterSink.Disposed.Should().Be(0, "the container tracks the instance the factory resolved");
+
+        // A second run through the same factory constructs a fresh instance, which the caller owns.
+        DisposableDeadLetterSink.Disposed = 0;
+        factory.ResolveFromContainer = false;
+        var secondContext = new PipelineContext(new PipelineContextConfiguration(ErrorHandlerFactory: factory));
+        var constructedResult = await _binder.BindAsync(graph, secondContext);
+
+        // Assert
+        _ = containerResult.DeadLetterSink.Should().BeSameAs(containerSink);
+        _ = constructedResult.DeadLetterSink.Should().NotBeSameAs(containerSink);
+        await secondContext.DisposeAsync();
+        DisposableDeadLetterSink.Disposed.Should().Be(1, "an instance the factory constructed is the caller's to release");
+    }
+
+    [Fact]
+    public async Task BindAsync_LineageSinkCreatedByAFactoryThatOwnsInstances_IsNotRegisteredForDisposal()
+    {
+        // Arrange
+        DisposableLineageSink.Disposed = 0;
+        var graph = CreateGraph(itemLevelLineageEnabled: true, lineageSinkType: typeof(DisposableLineageSink));
+        var factory = new ContainerOwnedLineageFactory();
+        var context = new PipelineContext(new PipelineContextConfiguration(LineageFactory: factory));
+
+        // Act
+        var result = await _binder.BindAsync(graph, context);
+
+        // Assert
+        _ = result.LineageSink.Should().BeSameAs(factory.Sink);
+        await context.DisposeAsync();
+        DisposableLineageSink.Disposed.Should().Be(0, "the container owns created instances when the factory says so");
+    }
+
+    [Fact]
+    public async Task BindAsync_LineageSinkCreatedFromType_IsRegisteredForDisposal()
+    {
+        // Arrange - the default lineage factory hands the instance to the caller.
+        DisposableLineageSink.Disposed = 0;
+        var graph = CreateGraph(itemLevelLineageEnabled: true, lineageSinkType: typeof(DisposableLineageSink));
+        var context = new PipelineContext();
+
+        // Act
+        var result = await _binder.BindAsync(graph, context);
+
+        // Assert
+        _ = result.LineageSink.Should().BeOfType<DisposableLineageSink>();
+        await context.DisposeAsync();
+        DisposableLineageSink.Disposed.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task BindAsync_ResiliencePolicyCreatedFromType_IsRegisteredForDisposal()
+    {
+        // Arrange
+        DisposableResiliencePolicy.Disposed = 0;
+        var graph = CreateGraph(resiliencePolicyType: typeof(DisposableResiliencePolicy));
+        var context = new PipelineContext();
+
+        // Act
+        var result = await _binder.BindAsync(graph, context);
+
+        // Assert
+        _ = result.ResiliencePolicy.Should().BeOfType<DisposableResiliencePolicy>();
+        await context.DisposeAsync();
+        DisposableResiliencePolicy.Disposed.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task RunAsync_DeadLetterSinkCreatedFromType_IsDisposedWhenTheRunOwnsTheContext()
+    {
+        // Arrange
+        DisposableDeadLetterSink.Disposed = 0;
+
+        // Act - the parameterless RunAsync creates and disposes its own context
+        await PipelineRunner.Create().RunAsync<DeadLetterSinkPipelineDefinition>();
+
+        // Assert
+        DisposableDeadLetterSink.Disposed.Should().Be(1);
+    }
+
+    private sealed class DeadLetterSinkPipelineDefinition : IPipelineDefinition
+    {
+        public void Define(PipelineBuilder builder, PipelineContext context)
+        {
+            var source = builder.AddSource<EmptySource, int>("source");
+            var sink = builder.AddSink<EmptySink, int>("sink");
+            _ = builder.Connect(source, sink);
+            _ = builder.AddDeadLetterSink<DisposableDeadLetterSink>();
+        }
+    }
+
+    private sealed class EmptySource : SourceNode<int>
+    {
+        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken) =>
+            new NPipeline.DataFlow.DataStreams.DataStream<int>(Empty(), "empty");
+
+        private static async IAsyncEnumerable<int> Empty()
+        {
+            await Task.CompletedTask;
+            yield break;
+        }
+    }
+
+    private sealed class EmptySink : SinkNode<int>
+    {
+        public override async Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken cancellationToken)
+        {
+            await foreach (var _ in input.WithCancellation(cancellationToken))
+            {
+            }
+        }
+    }
+
     private static PipelineGraph CreateGraph(
         bool itemLevelLineageEnabled = false,
         LineageOptions? lineageOptions = null,
         Type? resiliencePolicyType = null,
         Type? deadLetterSinkType = null,
         Type? lineageSinkType = null,
-        Type? pipelineLineageSinkType = null) =>
+        Type? pipelineLineageSinkType = null,
+        IDeadLetterSink? deadLetterSink = null) =>
         PipelineGraphBuilder.Create()
             .WithNodes(ImmutableArray<NodeDefinition>.Empty)
             .WithEdges(ImmutableArray<Edge>.Empty)
             .WithPreconfiguredNodeInstances(ImmutableDictionary<string, INode>.Empty)
             .WithResiliencePolicyType(resiliencePolicyType)
             .WithDeadLetterSinkType(deadLetterSinkType)
+            .WithDeadLetterSink(deadLetterSink)
             .WithItemLevelLineageEnabled(itemLevelLineageEnabled)
             .WithLineageSinkType(lineageSinkType)
             .WithPipelineLineageSinkType(pipelineLineageSinkType)
             .WithLineageOptions(lineageOptions)
             .Build();
+
+    private sealed class DisposableDeadLetterSink : IDeadLetterSink, IAsyncDisposable
+    {
+        public static int Disposed;
+
+        public ValueTask DisposeAsync()
+        {
+            Disposed++;
+            return ValueTask.CompletedTask;
+        }
+
+        public Task HandleAsync(DeadLetterEnvelope envelope, PipelineContext context, CancellationToken cancellationToken) =>
+            Task.CompletedTask;
+    }
+
+    private sealed class ContainerOwnedErrorHandlerFactory : IErrorHandlerFactory
+    {
+        public DisposableDeadLetterSink Sink { get; } = new();
+
+        public bool CallerOwnsCreatedInstance(object instance) => !ReferenceEquals(instance, Sink);
+
+        public IDeadLetterSink? CreateDeadLetterSink(Type sinkType) => Sink;
+    }
+
+    /// <summary>
+    ///     Stands for a container-backed factory that mixes resolved and constructed instances: an instance it
+    ///     resolved is the container's, an instance it constructed is the caller's.
+    /// </summary>
+    private sealed class MixedOwnershipErrorHandlerFactory(DisposableDeadLetterSink containerSink) : IErrorHandlerFactory
+    {
+        public bool ResolveFromContainer { get; set; } = true;
+
+        public DisposableDeadLetterSink ConstructedSink { get; } = new();
+
+        public bool CallerOwnsCreatedInstance(object instance) =>
+            !ReferenceEquals(instance, containerSink);
+
+        public IDeadLetterSink? CreateDeadLetterSink(Type sinkType) => ResolveFromContainer ? containerSink : ConstructedSink;
+    }
+
+    private sealed class ContainerOwnedLineageFactory : ILineageFactory
+    {
+        public DisposableLineageSink Sink { get; } = new();
+
+        public bool CallerOwnsCreatedInstance(object instance) => !ReferenceEquals(instance, Sink);
+
+        public ILineageSink? CreateLineageSink(Type sinkType) => Sink;
+
+        public IPipelineLineageSink? CreatePipelineLineageSink(Type sinkType) => null;
+
+        public IPipelineLineageSinkProvider? ResolvePipelineLineageSinkProvider() => null;
+
+        public ILineageCollector? ResolveLineageCollector() => null;
+
+        public PipelineLineageReport? CreateLineageReport(string pipelineName, Guid pipelineId, PipelineGraph graph, Guid runId) => null;
+    }
+
+    private sealed class DisposableLineageSink : ILineageSink, IAsyncDisposable
+    {
+        public static int Disposed;
+
+        public ValueTask DisposeAsync()
+        {
+            Disposed++;
+            return ValueTask.CompletedTask;
+        }
+
+        public Task RecordAsync(LineageRecord record, CancellationToken cancellationToken) =>
+            Task.CompletedTask;
+    }
+
+    private sealed class DisposableResiliencePolicy : IResiliencePolicy, IAsyncDisposable
+    {
+        public static int Disposed;
+
+        public ValueTask DisposeAsync()
+        {
+            Disposed++;
+            return ValueTask.CompletedTask;
+        }
+
+        public ValueTask<ResilienceDecision> DecideNodeFailureAsync(NodeFailure failure, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(ResilienceDecision.Fail);
+
+        public ValueTask<ResilienceDecision> DecideRestartAsync(StreamFailure failure, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(ResilienceDecision.Fail);
+
+        public ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(ResilienceDecision.Fail);
+    }
 
     private sealed class TestPipelineErrorHandler : IResiliencePolicy
     {

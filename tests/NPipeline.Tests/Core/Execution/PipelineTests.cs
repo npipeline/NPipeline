@@ -90,64 +90,6 @@ public sealed class PipelineTests
         _ = pipeline.BuilderDisposables.Should().BeEmpty();
     }
 
-    [Fact]
-    public void TransferBuilderDisposables_WithEmptyList_DoesNotThrow()
-    {
-        // Arrange
-        var builder = new PipelineBuilder().WithoutExtendedValidation();
-        _ = builder.AddSource<DummySource, int>("source");
-        var graph = builder.Build().Graph;
-        NPipeline.Pipeline.Pipeline pipeline = new(graph) { BuilderDisposables = [] };
-        var context = PipelineContext.CreateDefault();
-
-        // Act & Assert
-        _ = pipeline.Invoking(p => p.TransferBuilderDisposables(context))
-            .Should().NotThrow();
-    }
-
-    [Fact]
-    public void TransferBuilderDisposables_WithDisposables_TransfersToContext()
-    {
-        // Arrange
-        var builder = new PipelineBuilder().WithoutExtendedValidation();
-        _ = builder.AddSource<DummySource, int>("source");
-        var graph = builder.Build().Graph;
-        NPipeline.Pipeline.Pipeline pipeline = new(graph);
-
-        DummyAsyncDisposable disposable1 = new();
-        DummyAsyncDisposable disposable2 = new();
-        pipeline.BuilderDisposables = [disposable1, disposable2];
-        var context = PipelineContext.CreateDefault();
-
-        // Act
-        pipeline.TransferBuilderDisposables(context);
-
-        // Assert - method completes without exception
-        _ = pipeline.BuilderDisposables.Should().Contain(disposable1);
-        _ = pipeline.BuilderDisposables.Should().Contain(disposable2);
-    }
-
-    [Fact]
-    public void TransferBuilderDisposables_CanBeCalledMultipleTimes()
-    {
-        // Arrange
-        var builder = new PipelineBuilder().WithoutExtendedValidation();
-        _ = builder.AddSource<DummySource, int>("source");
-        var graph = builder.Build().Graph;
-        NPipeline.Pipeline.Pipeline pipeline = new(graph);
-
-        DummyAsyncDisposable disposable = new();
-        pipeline.BuilderDisposables = [disposable];
-        var context = PipelineContext.CreateDefault();
-
-        // Act & Assert - calling multiple times should not throw
-        _ = pipeline.Invoking(p =>
-        {
-            p.TransferBuilderDisposables(context);
-            p.TransferBuilderDisposables(context);
-        }).Should().NotThrow();
-    }
-
     #region Test Fixtures
 
     private sealed class DummyAsyncDisposable : IAsyncDisposable

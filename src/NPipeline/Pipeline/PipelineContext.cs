@@ -262,9 +262,11 @@ public sealed class PipelineContext : IAsyncDisposable
     ///     A cancellation token to monitor for pipeline cancellation requests.
     /// </summary>
     /// <remarks>
-    ///     While a run is in progress this token is cancelled when either the token this context was created with, or
-    ///     the token passed to <see cref="IPipelineRunner.RunAsync(IPipelineDefinition, PipelineContext, CancellationToken)" />,
-    ///     is cancelled. Outside a run it is the token the context was created with.
+    ///     While a run is in progress this token is cancelled when the token this context was created with is cancelled,
+    ///     when the token passed to
+    ///     <see cref="IPipelineRunner.RunAsync(IPipelineDefinition, PipelineContext, CancellationToken)" /> is
+    ///     cancelled, or when the runner cancels the run itself to stop sibling nodes after one of them failed. Outside
+    ///     a run it is the token the context was created with.
     /// </remarks>
     public CancellationToken CancellationToken => _runCancellation?.Token ?? _configuredCancellationToken;
 
@@ -369,16 +371,36 @@ public sealed class PipelineContext : IAsyncDisposable
     /// </remarks>
     internal IDisposable LinkRunCancellation(CancellationToken runCancellationToken)
     {
-        if (!runCancellationToken.CanBeCanceled || runCancellationToken == _configuredCancellationToken)
-            return NoOpDisposable.Instance;
-
         if (_runCancellation is not null)
             throw new InvalidOperationException("A PipelineContext can only be used by one pipeline run at a time.");
 
-        var linked = CancellationTokenSource.CreateLinkedTokenSource(_configuredCancellationToken, runCancellationToken);
+        // Always link, even when the caller's token cannot be cancelled: the runner needs to be able to cancel the
+        // run itself, for example to stop sibling terminals when one fails.
+        var linked = runCancellationToken.CanBeCanceled && runCancellationToken != _configuredCancellationToken
+            ? CancellationTokenSource.CreateLinkedTokenSource(_configuredCancellationToken, runCancellationToken)
+            : CancellationTokenSource.CreateLinkedTokenSource(_configuredCancellationToken);
+
         var runCancellation = new RunCancellation(this, linked);
         _runCancellation = runCancellation;
         return runCancellation;
+    }
+
+    /// <summary>
+    ///     Cancels the run in progress, which stops sibling nodes that are still draining after one of them failed.
+    /// </summary>
+    /// <remarks>
+    ///     Does nothing when no run is in progress, or when the run has already ended and its linked source disposed.
+    /// </remarks>
+    internal void CancelRun()
+    {
+        try
+        {
+            _runCancellation?.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // The run already ended; there is nothing left to cancel.
+        }
     }
 
     private static IDictionary<string, object> CreateOwnedDictionary(IOptimizationProfileBehavior profileBehavior) =>
@@ -515,20 +537,13 @@ public sealed class PipelineContext : IAsyncDisposable
     {
         public CancellationToken Token { get; } = source.Token;
 
+        public void Cancel() => source.Cancel();
+
         public void Dispose()
         {
             // Unlink first, so readers fall back to the context's own token before the linked source is disposed.
             owner._runCancellation = null;
             source.Dispose();
-        }
-    }
-
-    private sealed class NoOpDisposable : IDisposable
-    {
-        public static NoOpDisposable Instance { get; } = new();
-
-        public void Dispose()
-        {
         }
     }
 }

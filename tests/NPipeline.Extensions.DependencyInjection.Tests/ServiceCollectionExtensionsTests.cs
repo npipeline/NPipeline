@@ -288,6 +288,114 @@ public sealed class ServiceCollectionExtensionsTests
         DisposableSink.DisposeCount.Should().Be(1);
     }
 
+    [Fact]
+    public async Task SingletonNode_IsNotDisposedByRunner()
+    {
+        // Arrange
+        DisposableSink.DisposeCount = 0;
+        var services = new ServiceCollection();
+        services.AddSingleton<DisposableSink>();
+        services.AddNPipeline(Assembly.GetExecutingAssembly());
+        await using var sp = services.BuildServiceProvider();
+        await using var scope = sp.CreateAsyncScope();
+        var runner = scope.ServiceProvider.GetRequiredService<IPipelineRunner>();
+
+        // Act
+        await runner.RunAsync<DisposablePipelineDefinition>(new PipelineContext());
+
+        // Assert - the container owns the singleton, so the run must leave it alone
+        DisposableSink.DisposeCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task UnregisteredNode_IsDisposed_UnderRunPipelineAsync()
+    {
+        // Arrange
+        DisposableSink.DisposeCount = 0;
+        var services = new ServiceCollection();
+        services.AddNPipeline();
+        await using var sp = services.BuildServiceProvider();
+
+        // Act
+        await sp.RunPipelineAsync<DisposablePipelineDefinition>();
+
+        // Assert - the run constructed the instance, so the run disposes it
+        DisposableSink.DisposeCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task NodeInstanceRegisteredUnderTwoIds_IsDisposedOnce()
+    {
+        // Arrange
+        DisposableSink.DisposeCount = 0;
+        var services = new ServiceCollection();
+        services.AddNPipeline();
+        await using var sp = services.BuildServiceProvider();
+        await using var scope = sp.CreateAsyncScope();
+        var runner = scope.ServiceProvider.GetRequiredService<IPipelineRunner>();
+        var shared = new DisposableSink();
+        var context = new PipelineContext();
+        context.SetSourceData<string>(["a", "b"], "s");
+        context.NodeEnvironment.PreconfiguredNodeInstances["s"] = new InMemorySourceNode<string>();
+        context.NodeEnvironment.PreconfiguredNodeInstances["t"] = shared;
+        context.NodeEnvironment.PreconfiguredNodeInstances["u"] = shared;
+
+        // Act
+        await runner.RunAsync<ThreeNodeDisposablePipelineDefinition>(context);
+
+        // Assert
+        DisposableSink.DisposeCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task NodeAddedWithAddTap_IsDisposed_UnderRunPipelineAsync()
+    {
+        // Arrange
+        DisposableSink.DisposeCount = 0;
+        var services = new ServiceCollection();
+        services.AddNPipeline();
+        await using var sp = services.BuildServiceProvider();
+
+        // Act - the AddTap sink is a builder-created instance, so the run owns and disposes it
+        await sp.RunPipelineAsync<TapPipelineDefinition>();
+
+        // Assert
+        DisposableSink.DisposeCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task DeadLetterSinkResolvedFromDI_IsDisposedExactlyOnceByTheContainer()
+    {
+        // Arrange
+        DisposableDeadLetterSink.DisposeCount = 0;
+        var services = new ServiceCollection();
+        services.AddNPipeline();
+        services.AddScoped<DisposableDeadLetterSink>();
+        await using var sp = services.BuildServiceProvider();
+
+        // Act - RunPipelineAsync builds the context with the DI factories and its own scope
+        await sp.RunPipelineAsync<DeadLetterSinkTypePipelineDefinition>();
+
+        // Assert - the run leaves the container-owned sink alone, and the container disposes it exactly once
+        DisposableDeadLetterSink.DisposeCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task DeadLetterSinkNotRegisteredInDI_IsDisposedByTheRun()
+    {
+        // Arrange - the sink type is not registered, so the DI factory constructs it itself and the run owns it.
+        DisposableDeadLetterSink.DisposeCount = 0;
+        var services = new ServiceCollection();
+        services.AddNPipeline();
+        await using var sp = services.BuildServiceProvider();
+
+        // Act - RunPipelineAsync creates and disposes its own scope and context
+        await sp.RunPipelineAsync<DeadLetterSinkTypePipelineDefinition>();
+
+        // Assert - the container never saw the instance, so it must be the run that releases it
+        DisposableDeadLetterSink.DisposeCount.Should().Be(1);
+    }
+
     private sealed class TestSinkNode : SinkNode<string>
     {
         public bool WasCalled { get; private set; }
@@ -370,6 +478,60 @@ public sealed class ServiceCollectionExtensionsTests
             var source = builder.AddSource<InMemorySourceNode<string>, string>("s");
             var sink = builder.AddSink<DisposableSink, string>("t");
             builder.Connect(source, sink);
+        }
+    }
+
+    private sealed class ThreeNodeDisposablePipelineDefinition : IPipelineDefinition
+    {
+        public void Define(PipelineBuilder builder, PipelineContext context)
+        {
+            var source = builder.AddSource<InMemorySourceNode<string>, string>("s");
+            var first = builder.AddSink<DisposableSink, string>("t");
+            var second = builder.AddSink<DisposableSink, string>("u");
+            _ = builder.Connect(source, first);
+            _ = builder.Connect(source, second);
+        }
+    }
+
+    private sealed class TapPipelineDefinition : IPipelineDefinition
+    {
+        public void Define(PipelineBuilder builder, PipelineContext context)
+        {
+            var source = builder.AddSource<ConstantSource, string>("s");
+            var tap = builder.AddTap(new DisposableSink(), "tap");
+            var sink = builder.AddSink<TestSinkNode, string>("t");
+            _ = builder.Connect(source, tap).Connect(tap, sink);
+        }
+    }
+
+    private sealed class ConstantSource : SourceNode<string>
+    {
+        public override IDataStream<string> OpenStream(PipelineContext context, CancellationToken cancellationToken) =>
+            new NPipeline.DataFlow.DataStreams.InMemoryDataStream<string>(["a", "b"], "constant");
+    }
+
+    private sealed class DisposableDeadLetterSink : IDeadLetterSink, IAsyncDisposable
+    {
+        public static int DisposeCount;
+
+        public ValueTask DisposeAsync()
+        {
+            _ = Interlocked.Increment(ref DisposeCount);
+            return ValueTask.CompletedTask;
+        }
+
+        public Task HandleAsync(DeadLetterEnvelope envelope, PipelineContext context, CancellationToken cancellationToken) =>
+            Task.CompletedTask;
+    }
+
+    private sealed class DeadLetterSinkTypePipelineDefinition : IPipelineDefinition
+    {
+        public void Define(PipelineBuilder builder, PipelineContext context)
+        {
+            var source = builder.AddSource<ConstantSource, string>("s");
+            var sink = builder.AddSink<TestSinkNode, string>("t");
+            _ = builder.Connect(source, sink);
+            _ = builder.AddDeadLetterSink<DisposableDeadLetterSink>();
         }
     }
 }

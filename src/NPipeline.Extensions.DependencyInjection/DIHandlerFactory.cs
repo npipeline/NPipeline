@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Microsoft.Extensions.DependencyInjection;
 using NPipeline.ErrorHandling;
 using NPipeline.Graph;
@@ -13,6 +14,13 @@ namespace NPipeline.Extensions.DependencyInjection;
 /// </summary>
 public sealed class DiHandlerFactory(IServiceProvider serviceProvider) : IErrorHandlerFactory, ILineageFactory, IObservabilityFactory
 {
+    private readonly ConcurrentDictionary<object, byte> _containerOwned = new(ReferenceEqualityComparer.Instance);
+
+    /// <summary>
+    ///     The container owns whatever it resolves; anything the factory constructs itself stays with the caller.
+    /// </summary>
+    public bool CallerOwnsCreatedInstance(object instance) => !_containerOwned.ContainsKey(instance);
+
     /// <summary>
     ///     Creates an instance of the specified dead-letter sink type.
     /// </summary>
@@ -23,7 +31,10 @@ public sealed class DiHandlerFactory(IServiceProvider serviceProvider) : IErrorH
         var instance = serviceProvider.GetService(sinkType);
 
         if (instance is IDeadLetterSink dls)
+        {
+            _ = _containerOwned.TryAdd(dls, 0);
             return dls;
+        }
 
         try
         {
@@ -45,7 +56,10 @@ public sealed class DiHandlerFactory(IServiceProvider serviceProvider) : IErrorH
         var instance = serviceProvider.GetService(sinkType);
 
         if (instance is ILineageSink ls)
+        {
+            _ = _containerOwned.TryAdd(ls, 0);
             return ls;
+        }
 
         try
         {
@@ -71,7 +85,10 @@ public sealed class DiHandlerFactory(IServiceProvider serviceProvider) : IErrorH
         var instance = serviceProvider.GetService(sinkType);
 
         if (instance is IPipelineLineageSink pls)
+        {
+            _ = _containerOwned.TryAdd(pls, 0);
             return pls;
+        }
 
         try
         {
