@@ -158,6 +158,81 @@ public sealed class JoinCardinalityTests
         ]);
     }
 
+    [Theory]
+    [InlineData(JoinType.Inner)]
+    [InlineData(JoinType.LeftOuter)]
+    [InlineData(JoinType.RightOuter)]
+    [InlineData(JoinType.FullOuter)]
+    public async Task KeyedJoin_NullKeyLeft_DoesNotCrashAndFollowsJoinType(JoinType joinType)
+    {
+        // C31: in SQL semantics a null key matches nothing, and outer joins still emit the row.
+        var node = new NullKeyJoin { JoinType = joinType };
+
+        var results = await RunAsync(node,
+            new NullKeyCustomer(null, "Anon"),
+            new NullKeyOrder(10, "x"));
+
+        var expected = new List<Result>();
+        if (joinType is JoinType.LeftOuter or JoinType.FullOuter)
+            expected.Add(new Result(null, "Anon"));
+        if (joinType is JoinType.RightOuter or JoinType.FullOuter)
+            expected.Add(new Result(10, null));
+
+        results.Should().BeEquivalentTo(expected);
+    }
+
+    [Theory]
+    [InlineData(JoinType.Inner)]
+    [InlineData(JoinType.LeftOuter)]
+    [InlineData(JoinType.RightOuter)]
+    [InlineData(JoinType.FullOuter)]
+    public async Task KeyedJoin_NullKeyRight_DoesNotCrashAndFollowsJoinType(JoinType joinType)
+    {
+        var node = new NullKeyJoin { JoinType = joinType };
+
+        var results = await RunAsync(node,
+            new NullKeyCustomer("x", "Alice"),
+            new NullKeyOrder(10, null));
+
+        var expected = new List<Result>();
+        if (joinType is JoinType.LeftOuter or JoinType.FullOuter)
+            expected.Add(new Result(null, "Alice"));
+        if (joinType is JoinType.RightOuter or JoinType.FullOuter)
+            expected.Add(new Result(10, null));
+
+        results.Should().BeEquivalentTo(expected);
+    }
+
+    [Fact]
+    public async Task KeyedJoin_NullKeysOnBothSides_NeverPair()
+    {
+        var node = new NullKeyJoin { JoinType = JoinType.FullOuter };
+
+        var results = await RunAsync(node,
+            new NullKeyCustomer(null, "Anon"),
+            new NullKeyOrder(10, null));
+
+        results.Should().BeEquivalentTo([
+            new Result(null, "Anon"),
+            new Result(10, null),
+        ]);
+    }
+
+    private sealed record NullKeyCustomer(string? CustomerId, string Name);
+
+    private sealed record NullKeyOrder(int OrderId, string? CustomerId);
+
+    [KeySelector(typeof(NullKeyCustomer), nameof(NullKeyCustomer.CustomerId))]
+    [KeySelector(typeof(NullKeyOrder), nameof(NullKeyOrder.CustomerId))]
+    private sealed class NullKeyJoin : KeyedJoinNode<string, NullKeyCustomer, NullKeyOrder, Result>
+    {
+        public override Result CreateOutput(NullKeyCustomer item1, NullKeyOrder item2) => new(item2.OrderId, item1.Name);
+
+        public override Result CreateOutputFromLeft(NullKeyCustomer item1) => new(null, item1.Name);
+
+        public override Result CreateOutputFromRight(NullKeyOrder item2) => new(item2.OrderId, null);
+    }
+
     [Fact]
     public async Task TimeWindowedJoin_ManyItemsInSameWindow_EmitsEveryPairing()
     {

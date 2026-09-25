@@ -118,4 +118,95 @@ public class WindowAssignerTests
     }
 
     #endregion
+
+    #region Validation Tests (C26)
+
+    [Fact]
+    public void WindowStart_IsIndependentOfOffset()
+    {
+        var a = TimeWindow.ForTimestamp(new DateTimeOffset(2024, 1, 1, 10, 15, 0, TimeSpan.FromHours(5.5)), TimeSpan.FromHours(1));
+        var b = TimeWindow.ForTimestamp(new DateTimeOffset(2024, 1, 1, 4, 45, 0, TimeSpan.Zero), TimeSpan.FromHours(1));
+        a.Start.UtcDateTime.Should().Be(b.Start.UtcDateTime);
+    }
+
+    [Fact]
+    public void WindowStart_ForNonUtcTimestamp_CoversTheTimestamp()
+    {
+        var timestamp = new DateTimeOffset(2024, 1, 1, 10, 15, 0, TimeSpan.FromHours(5.5));
+        var window = TimeWindow.ForTimestamp(timestamp, TimeSpan.FromHours(1));
+        window.Contains(timestamp).Should().BeTrue();
+        window.Start.Offset.Should().Be(timestamp.Offset);
+    }
+
+    [Fact]
+    public void WindowStart_SameInstantSameWindow_AcrossOffsets()
+    {
+        var utc = new DateTimeOffset(2024, 1, 1, 4, 45, 0, TimeSpan.Zero);
+        var shifted = utc.ToOffset(TimeSpan.FromHours(5.5));
+        var windowUtc = TimeWindow.ForTimestamp(utc, TimeSpan.FromHours(1));
+        var windowShifted = TimeWindow.ForTimestamp(shifted, TimeSpan.FromHours(1));
+        windowUtc.Should().Be(windowShifted);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void Tumbling_WithNonPositiveWindowSize_ThrowsArgumentOutOfRange(int seconds)
+    {
+        var act = () => WindowAssigner.Tumbling(TimeSpan.FromSeconds(seconds));
+        act.Should().Throw<ArgumentOutOfRangeException>();
+    }
+
+    [Fact]
+    public void Sliding_WithNegativeSlide_ThrowsArgumentOutOfRange()
+    {
+        var act = () => WindowAssigner.Sliding(TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(-1));
+        act.Should().Throw<ArgumentOutOfRangeException>();
+    }
+
+    [Fact]
+    public void Sliding_WithZeroSlide_ThrowsArgumentOutOfRange()
+    {
+        var act = () => WindowAssigner.Sliding(TimeSpan.FromMinutes(5), TimeSpan.Zero);
+        act.Should().Throw<ArgumentOutOfRangeException>();
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void Sliding_WithNonPositiveWindowSize_ThrowsArgumentOutOfRange(int seconds)
+    {
+        var act = () => WindowAssigner.Sliding(TimeSpan.FromSeconds(seconds), TimeSpan.FromSeconds(1));
+        act.Should().Throw<ArgumentOutOfRangeException>();
+    }
+
+    [Fact]
+    public void AggregateWindows_Tumbling_WithZeroWindowSize_ThrowsArgumentOutOfRange()
+    {
+        var act = () => AggregateWindows.Tumbling(TimeSpan.Zero);
+        act.Should().Throw<ArgumentOutOfRangeException>();
+    }
+
+    [Fact]
+    public void AggregateWindows_Sliding_WithNegativeSlide_ThrowsArgumentOutOfRange()
+    {
+        var act = () => AggregateWindows.Sliding(TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(-1));
+        act.Should().Throw<ArgumentOutOfRangeException>();
+    }
+
+    [Fact]
+    public void TimeWindowedJoinWindows_Tumbling_WithZeroWindowSize_ThrowsArgumentOutOfRange()
+    {
+        var act = () => TimeWindowedJoinWindows.Tumbling(TimeSpan.Zero);
+        act.Should().Throw<ArgumentOutOfRangeException>();
+    }
+
+    [Fact]
+    public void TimeWindowedJoinWindows_Sliding_WithNegativeSlide_ThrowsArgumentOutOfRange()
+    {
+        var act = () => TimeWindowedJoinWindows.Sliding(TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(-1));
+        act.Should().Throw<ArgumentOutOfRangeException>();
+    }
+
+    #endregion
 }

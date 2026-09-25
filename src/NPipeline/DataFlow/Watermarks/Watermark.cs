@@ -1,3 +1,5 @@
+using NPipeline.Utils;
+
 namespace NPipeline.DataFlow.Watermarks;
 
 /// <summary>
@@ -87,10 +89,21 @@ public static class WatermarkGenerators
 ///     A watermark generator that uses bounded out-of-orderness to determine watermarks.
 /// </summary>
 /// <typeparam name="T">The type of the data items.</typeparam>
-/// <param name="maxOutOfOrderness">The maximum allowed out-of-orderness.</param>
-public sealed class BoundedOutOfOrdernessWatermarkGenerator<T>(TimeSpan maxOutOfOrderness) : WatermarkGenerator<T>
+public sealed class BoundedOutOfOrdernessWatermarkGenerator<T> : WatermarkGenerator<T>
 {
+    private readonly TimeSpan _maxOutOfOrderness;
     private DateTimeOffset _maxTimestamp = DateTimeOffset.MinValue;
+
+    /// <summary>
+    ///     Initializes a new instance of the <see cref="BoundedOutOfOrdernessWatermarkGenerator{T}" /> class.
+    /// </summary>
+    /// <param name="maxOutOfOrderness">The maximum allowed out-of-orderness. Must not be negative.</param>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="maxOutOfOrderness" /> is negative.</exception>
+    public BoundedOutOfOrdernessWatermarkGenerator(TimeSpan maxOutOfOrderness)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(maxOutOfOrderness, TimeSpan.Zero);
+        _maxOutOfOrderness = maxOutOfOrderness;
+    }
 
     /// <inheritdoc />
     public override void Update(DateTimeOffset timestamp)
@@ -101,40 +114,38 @@ public sealed class BoundedOutOfOrdernessWatermarkGenerator<T>(TimeSpan maxOutOf
 
     /// <inheritdoc />
     public override Watermark GetCurrentWatermark() =>
-
-        // Prevent underflow when _maxTimestamp is DateTimeOffset.MinValue (no events yet)
         _maxTimestamp == DateTimeOffset.MinValue
             ? new Watermark(DateTimeOffset.MinValue)
-            : new Watermark(SafeSubtract(_maxTimestamp, maxOutOfOrderness));
-
-    /// <summary>
-    ///     Safely subtracts a TimeSpan from a DateTimeOffset, preventing underflow to DateTimeOffset.MinValue.
-    /// </summary>
-    private static DateTimeOffset SafeSubtract(DateTimeOffset ts, TimeSpan delta)
-    {
-        if (ts == DateTimeOffset.MinValue)
-            return DateTimeOffset.MinValue;
-
-        // If delta is larger than the distance to MinValue, just return MinValue
-        var distanceToMin = ts - DateTimeOffset.MinValue;
-
-        if (delta >= distanceToMin)
-            return DateTimeOffset.MinValue;
-
-        return ts - delta;
-    }
+            : new Watermark(TimestampUtils.SafeSubtract(_maxTimestamp, _maxOutOfOrderness));
 }
 
 /// <summary>
 ///     A watermark generator that emits watermarks periodically.
 /// </summary>
 /// <typeparam name="T">The type of the data items.</typeparam>
-/// <param name="interval">The interval at which to emit watermarks.</param>
-/// <param name="maxOutOfOrderness">The maximum allowed out-of-orderness.</param>
-public sealed class PeriodicWatermarkGenerator<T>(TimeSpan interval, TimeSpan maxOutOfOrderness) : WatermarkGenerator<T>
+public sealed class PeriodicWatermarkGenerator<T> : WatermarkGenerator<T>
 {
-    private DateTimeOffset _lastEmittedWatermark = DateTimeOffset.MinValue;
+    private readonly TimeSpan _interval;
+    private readonly TimeSpan _maxOutOfOrderness;
+    private Watermark _current = new(DateTimeOffset.MinValue);
+    private DateTimeOffset _lastEmitTime = DateTimeOffset.MinValue;
     private DateTimeOffset _maxTimestamp = DateTimeOffset.MinValue;
+
+    /// <summary>
+    ///     Initializes a new instance of the <see cref="PeriodicWatermarkGenerator{T}" /> class.
+    /// </summary>
+    /// <param name="interval">The interval at which watermarks are emitted. Must be positive.</param>
+    /// <param name="maxOutOfOrderness">The maximum allowed out-of-orderness. Must not be negative.</param>
+    /// <exception cref="ArgumentOutOfRangeException">
+    ///     Thrown when <paramref name="interval" /> is zero or negative, or <paramref name="maxOutOfOrderness" /> is negative.
+    /// </exception>
+    public PeriodicWatermarkGenerator(TimeSpan interval, TimeSpan maxOutOfOrderness)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(interval, TimeSpan.Zero);
+        ArgumentOutOfRangeException.ThrowIfLessThan(maxOutOfOrderness, TimeSpan.Zero);
+        _interval = interval;
+        _maxOutOfOrderness = maxOutOfOrderness;
+    }
 
     /// <inheritdoc />
     public override void Update(DateTimeOffset timestamp)
@@ -146,36 +157,21 @@ public sealed class PeriodicWatermarkGenerator<T>(TimeSpan interval, TimeSpan ma
     /// <inheritdoc />
     public override Watermark GetCurrentWatermark()
     {
-        var currentTime = DateTimeOffset.UtcNow;
+        var now = DateTimeOffset.UtcNow;
 
-        if (currentTime - _lastEmittedWatermark >= interval)
+        if (now - _lastEmitTime >= _interval)
         {
-            _lastEmittedWatermark = currentTime;
+            _lastEmitTime = now;
 
-            return _maxTimestamp == DateTimeOffset.MinValue
-                ? new Watermark(DateTimeOffset.MinValue)
-                : new Watermark(SafeSubtract(_maxTimestamp, maxOutOfOrderness));
+            if (_maxTimestamp != DateTimeOffset.MinValue)
+            {
+                var candidate = TimestampUtils.SafeSubtract(_maxTimestamp, _maxOutOfOrderness);
+
+                if (candidate > _current.Timestamp)
+                    _current = new Watermark(candidate);
+            }
         }
 
-        return new Watermark(_lastEmittedWatermark == DateTimeOffset.MinValue
-            ? DateTimeOffset.MinValue
-            : _lastEmittedWatermark);
-    }
-
-    /// <summary>
-    ///     Safely subtracts a TimeSpan from a DateTimeOffset, preventing underflow to DateTimeOffset.MinValue.
-    /// </summary>
-    private static DateTimeOffset SafeSubtract(DateTimeOffset ts, TimeSpan delta)
-    {
-        if (ts == DateTimeOffset.MinValue)
-            return DateTimeOffset.MinValue;
-
-        // If delta is larger than the distance to MinValue, just return MinValue
-        var distanceToMin = ts - DateTimeOffset.MinValue;
-
-        if (delta >= distanceToMin)
-            return DateTimeOffset.MinValue;
-
-        return ts - delta;
+        return _current;
     }
 }

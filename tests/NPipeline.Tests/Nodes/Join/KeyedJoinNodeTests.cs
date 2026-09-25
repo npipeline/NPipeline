@@ -14,6 +14,59 @@ namespace NPipeline.Tests.Nodes.Join;
 public sealed class KeyedJoinNodeTests
 {
     [Fact]
+    public void Constructing_JoinWithSameInputTypesTwice_Throws()
+    {
+        // C41: two identical input types cannot be told apart at run time, so every item would be
+        // routed to the left input and the join would silently emit nothing.
+        var act = () => new SameTypeJoin();
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*cannot be told apart*");
+    }
+
+    [Fact]
+    public void Constructing_JoinWithAssignableInputTypes_Throws()
+    {
+        var act = () => new InterfaceJoin();
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*cannot be told apart*");
+    }
+
+    [Fact]
+    public void Constructing_JoinWithDistinctInputTypes_Succeeds()
+    {
+        var act = () => new UserEnrichmentNode();
+
+        act.Should().NotThrow();
+    }
+
+    [KeySelector(typeof(Order), nameof(Order.Id))]
+    [KeySelector(typeof(Order), nameof(Order.Id))]
+    private sealed class SameTypeJoin() : KeyedJoinNode<int, Order, Order, (int Left, int Right)>
+    {
+        public override (int Left, int Right) CreateOutput(Order item1, Order item2) => (item1.Id, item2.Id);
+    }
+
+    private interface IEvent
+    {
+        int Id { get; }
+    }
+
+    private sealed record LeftEvent(int Id) : IEvent;
+
+    private sealed record RightEvent(int Id) : IEvent;
+
+    [KeySelector(typeof(IEvent), "Id")]
+    [KeySelector(typeof(RightEvent), nameof(RightEvent.Id))]
+    private sealed class InterfaceJoin() : KeyedJoinNode<int, IEvent, RightEvent, (int Left, int Right)>
+    {
+        public override (int Left, int Right) CreateOutput(IEvent item1, RightEvent item2) => (item1.Id, item2.Id);
+    }
+
+    private sealed record Order(int Id);
+
+    [Fact]
     public async Task Runner_WhenKeyedJoinNodeWithCompositeKey_CorrectlyJoinsStreams()
     {
         // Arrange

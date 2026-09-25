@@ -29,6 +29,13 @@ public abstract class BaseJoinNode<TKey, TIn1, TIn2, TOut> : IJoinNode where TKe
     /// </summary>
     protected BaseJoinNode()
     {
+        if (typeof(TIn1).IsAssignableFrom(typeof(TIn2)) || typeof(TIn2).IsAssignableFrom(typeof(TIn1)))
+        {
+            throw new InvalidOperationException(
+                $"Join inputs '{typeof(TIn1).Name}' and '{typeof(TIn2).Name}' cannot be told apart at run time. " +
+                "Use AddSelfJoin, or give the two inputs distinct types.");
+        }
+
         // Build lazily to ensure derived class attributes are available; still only once per node instance.
         _keySelectors = new Lazy<(Func<TIn1, TKey>, Func<TIn2, TKey>)>(GetKeySelectorsInternal, LazyThreadSafetyMode.ExecutionAndPublication);
     }

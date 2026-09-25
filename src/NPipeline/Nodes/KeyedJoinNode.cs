@@ -64,6 +64,16 @@ public abstract class KeyedJoinNode<TKey, TIn1, TIn2, TOut> : BaseJoinNode<TKey,
             if (item is TIn1 item1)
             {
                 var key = getKey1(item1);
+
+                // Null keys never match (C31). An outer join emits the row at once when its side is preserved.
+                if (key is null)
+                {
+                    if (emitUnmatchedLeft)
+                        yield return CreateOutputFromLeft(item1);
+
+                    continue;
+                }
+
                 var matched = false;
 
                 if (right.TryMatch(key, out var matches))
@@ -84,6 +94,15 @@ public abstract class KeyedJoinNode<TKey, TIn1, TIn2, TOut> : BaseJoinNode<TKey,
             else if (item is TIn2 item2)
             {
                 var key = getKey2(item2);
+
+                if (key is null)
+                {
+                    if (emitUnmatchedRight)
+                        yield return CreateOutputFromRight(item2);
+
+                    continue;
+                }
+
                 var matched = false;
 
                 if (left.TryMatch(key, out var matches))

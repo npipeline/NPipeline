@@ -64,15 +64,17 @@ public sealed record TimeWindow(DateTimeOffset Start, TimeSpan Duration) : IWind
 
     /// <summary>
     ///     Calculates the start time of the window that contains the specified timestamp.
+    ///     Windows are aligned on UTC ticks, so the same instant always lands in the same window
+    ///     regardless of the timestamp's offset.
     /// </summary>
     /// <param name="timestamp">The timestamp to find the window start for.</param>
     /// <param name="windowSize">The size of each window.</param>
-    /// <returns>The start time of the window that contains the timestamp.</returns>
+    /// <returns>The start time of the window that contains the timestamp, in the timestamp's offset.</returns>
     public static DateTimeOffset GetWindowStart(DateTimeOffset timestamp, TimeSpan windowSize)
     {
-        var ticksSinceEpoch = timestamp.Ticks;
-        var windowTicks = windowSize.Ticks;
-        var windowNumber = ticksSinceEpoch / windowTicks;
-        return new DateTimeOffset(windowNumber * windowTicks, timestamp.Offset);
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(windowSize, TimeSpan.Zero);
+        var utcTicks = timestamp.UtcTicks;
+        var startUtcTicks = utcTicks - (utcTicks % windowSize.Ticks);
+        return new DateTimeOffset(startUtcTicks, TimeSpan.Zero).ToOffset(timestamp.Offset);
     }
 }

@@ -1,8 +1,8 @@
-using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using NPipeline.Configuration;
 using NPipeline.DataFlow.Timestamping;
-using NPipeline.DataFlow.Watermarks;
 using NPipeline.DataFlow.Windowing;
 using NPipeline.Utils;
 
@@ -13,8 +13,15 @@ namespace NPipeline.Nodes;
 ///     within specific time windows. This class provides full control over the accumulator and result types.
 /// </summary>
 /// <remarks>
-///     This is an advanced base class that requires implementing four type parameters. For simpler
-///     aggregation scenarios where the accumulator and result types are the same, use <see cref="AggregateNode{TIn, TKey, TResult}" /> instead.
+///     <para>
+///         This is an advanced base class that requires implementing four type parameters. For simpler
+///         aggregation scenarios where the accumulator and result types are the same, use <see cref="AggregateNode{TIn, TKey, TResult}" /> instead.
+///     </para>
+///     <para>
+///         Windows are assigned in event time and closed by a watermark computed from the same timestamps, so
+///         historical, replayed or back-filled data aggregates correctly. Items that arrive after their window has
+///         been emitted are dropped and counted in <see cref="LateItemsDropped" />.
+///     </para>
 /// </remarks>
 /// <typeparam name="TIn">The type of the input data.</typeparam>
 /// <typeparam name="TKey">The type of the key used for grouping. Must be not-null.</typeparam>
@@ -22,11 +29,12 @@ namespace NPipeline.Nodes;
 /// <typeparam name="TResult">The type of the aggregation result.</typeparam>
 public abstract class AdvancedAggregateNode<TIn, TKey, TAccumulate, TResult> : IAggregateNode where TKey : notnull
 {
-    private readonly IDictionary<(IWindow Window, TKey Key), TAccumulate> _accumulators;
     private readonly TimeSpan _maxOutOfOrderness;
     private readonly TimestampExtractor<TIn>? _timestampExtractor;
     private readonly TimeSpan _watermarkInterval;
     private readonly WindowAssigner _windowAssigner;
+    private long _activeGroups;
+    private long _lateItemsDropped;
     private long _maxConcurrentWindows;
     private long _totalWindowsClosed;
     private long _totalWindowsProcessed;
@@ -44,10 +52,6 @@ public abstract class AdvancedAggregateNode<TIn, TKey, TAccumulate, TResult> : I
         _timestampExtractor = config.TimestampExtractor;
         _maxOutOfOrderness = config.EffectiveMaxOutOfOrderness;
         _watermarkInterval = config.EffectiveWatermarkInterval;
-
-        _accumulators = config.UseThreadSafeAccumulator
-            ? new ConcurrentDictionary<(IWindow Window, TKey Key), TAccumulate>()
-            : new Dictionary<(IWindow Window, TKey Key), TAccumulate>();
     }
 
     /// <inheritdoc />
@@ -55,24 +59,17 @@ public abstract class AdvancedAggregateNode<TIn, TKey, TAccumulate, TResult> : I
         IAsyncEnumerable<object?> inputStream,
         CancellationToken cancellationToken = default)
     {
-        var typedInputStream = ConvertToTypedAsyncEnumerable(inputStream);
+        ArgumentNullException.ThrowIfNull(inputStream);
+        var output = AggregateStreamAsync(inputStream, cancellationToken);
 
-        var watermarkAwareStream = typedInputStream.WithWatermarks(
-            new BoundedOutOfOrdernessWatermarkGenerator<TIn>(_maxOutOfOrderness),
-            _watermarkInterval,
-            cancellationToken);
+        // IAsyncEnumerable<T> is covariant: a reference-type TResult needs no re-yielding wrapper.
+        return ValueTask.FromResult<object?>(output as IAsyncEnumerable<object?> ?? Box(output, cancellationToken));
 
-        var outputStream = AggregateStreamAsync(watermarkAwareStream, cancellationToken);
-
-        return ValueTask.FromResult<object?>(ConvertStream(outputStream));
-
-        // Convert TResult stream to object? stream for the interface
-        async IAsyncEnumerable<object?> ConvertStream(IAsyncEnumerable<TResult> source)
+        static async IAsyncEnumerable<object?> Box(IAsyncEnumerable<TResult> source,
+            [EnumeratorCancellation] CancellationToken ct = default)
         {
-            await foreach (var item in source.WithCancellation(cancellationToken))
-            {
+            await foreach (var item in source.WithCancellation(ct).ConfigureAwait(false))
                 yield return item;
-            }
         }
     }
 
@@ -105,6 +102,11 @@ public abstract class AdvancedAggregateNode<TIn, TKey, TAccumulate, TResult> : I
     public abstract TResult GetResult(TAccumulate accumulator);
 
     /// <summary>
+    ///     Gets the number of items dropped because their window had already been emitted when they arrived.
+    /// </summary>
+    public long LateItemsDropped => Interlocked.Read(ref _lateItemsDropped);
+
+    /// <summary>
     ///     Gets metrics about the node's operation.
     /// </summary>
     /// <returns>A tuple containing metrics about windows processed, closed, and maximum concurrency.</returns>
@@ -115,108 +117,94 @@ public abstract class AdvancedAggregateNode<TIn, TKey, TAccumulate, TResult> : I
     ///     Gets the current number of active windows being tracked.
     /// </summary>
     /// <returns>The current number of active windows.</returns>
-    public int GetActiveWindowCount() => _accumulators.Count;
+    public int GetActiveWindowCount() => (int)Interlocked.Read(ref _activeGroups);
 
-    private async IAsyncEnumerable<TResult> AggregateStreamAsync(IAsyncEnumerable<StreamItem<TIn>> inputStream,
+    private async IAsyncEnumerable<TResult> AggregateStreamAsync(IAsyncEnumerable<object?> input,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        await foreach (var streamItem in inputStream.WithCancellation(cancellationToken))
+        // All state is local to one execution, so a node retry or a second run starts clean.
+        var windows = new Dictionary<IWindow, Dictionary<TKey, TAccumulate>>();
+        var expiry = new PriorityQueue<IWindow, DateTimeOffset>();
+        var maxTimestamp = DateTimeOffset.MinValue;
+        var watermark = DateTimeOffset.MinValue;
+        var lastWatermarkCheck = Stopwatch.GetTimestamp();
+
+        await foreach (var obj in input.WithCancellation(cancellationToken).ConfigureAwait(false))
         {
-            if (streamItem is StreamItem<TIn>.DataItem dataItem)
+            if (obj is not TIn item)
+                continue;
+
+            var timestamp = TimestampUtils.ResolveEventTime(item, _timestampExtractor);
+            if (timestamp > maxTimestamp)
+                maxTimestamp = timestamp;
+
+            var key = GetKey(item);
+
+            foreach (var window in _windowAssigner.AssignWindows(item, timestamp, _timestampExtractor))
             {
-                var item = dataItem.Value;
-                var timestamp = TimestampUtils.ExtractTimestamp(item, _timestampExtractor);
-                var key = GetKey(item);
-                var windows = _windowAssigner.AssignWindows(item, timestamp, _timestampExtractor);
-
-                foreach (var window in windows)
+                if (window.End <= watermark)
                 {
-                    var windowKey = (window, key);
-                    var isNewWindow = false;
+                    // Late: the window was already emitted. Reopening it would emit a second, partial result.
+                    _ = Interlocked.Increment(ref _lateItemsDropped);
+                    continue;
+                }
 
-                    if (_accumulators is ConcurrentDictionary<(IWindow, TKey), TAccumulate> concurrentDict)
-                    {
-                        concurrentDict.AddOrUpdate(
-                            windowKey,
-                            _ =>
-                            {
-                                isNewWindow = true;
-                                return Accumulate(CreateAccumulator(), item);
-                            },
-                            (_, current) => Accumulate(current, item));
-                    }
-                    else
-                    {
-                        if (_accumulators.TryGetValue(windowKey, out var current))
-                            _accumulators[windowKey] = Accumulate(current, item);
-                        else
-                        {
-                            isNewWindow = true;
-                            _accumulators[windowKey] = Accumulate(CreateAccumulator(), item);
-                        }
-                    }
+                ref var perKey = ref CollectionsMarshal.GetValueRefOrAddDefault(windows, window, out var windowExists);
+                if (!windowExists)
+                {
+                    perKey = new Dictionary<TKey, TAccumulate>();
+                    expiry.Enqueue(window, window.End);
+                }
 
-                    if (isNewWindow)
-                    {
-                        Interlocked.Increment(ref _totalWindowsProcessed);
-                        var currentCount = _accumulators.Count;
-                        var maxCount = Interlocked.Read(ref _maxConcurrentWindows);
+                ref var accumulator = ref CollectionsMarshal.GetValueRefOrAddDefault(perKey!, key, out var keyExists);
+                accumulator = Accumulate(keyExists ? accumulator! : CreateAccumulator(), item);
 
-                        if (currentCount > maxCount)
-                            _ = Interlocked.Exchange(ref _maxConcurrentWindows, currentCount);
-                    }
+                if (!keyExists)
+                {
+                    _ = Interlocked.Increment(ref _totalWindowsProcessed);
+                    var active = Interlocked.Increment(ref _activeGroups);
+                    if (active > Interlocked.Read(ref _maxConcurrentWindows))
+                        _ = Interlocked.Exchange(ref _maxConcurrentWindows, active);
                 }
             }
-            else if (streamItem is StreamItem<TIn>.WatermarkItem watermarkItem)
+
+            if (Stopwatch.GetElapsedTime(lastWatermarkCheck) < _watermarkInterval)
+                continue;
+
+            lastWatermarkCheck = Stopwatch.GetTimestamp();
+            var candidate = TimestampUtils.SafeSubtract(maxTimestamp, _maxOutOfOrderness);
+            if (candidate <= watermark)
+                continue;
+
+            watermark = candidate;
+
+            while (expiry.TryPeek(out var closing, out var end) && end <= watermark)
             {
-                var watermark = watermarkItem.Watermark;
+                _ = expiry.Dequeue();
+                if (!windows.Remove(closing, out var groups))
+                    continue;
 
-                // Close windows that end before this watermark
-                var windowsToClose = _accumulators.Keys
-                    .Where(k => k.Window.End <= watermark.Timestamp)
-                    .ToList();
-
-                foreach (var windowKey in windowsToClose)
+                foreach (var accumulator in groups.Values)
                 {
-                    var removed = false;
-                    TAccumulate? accumulator = default;
-
-                    if (_accumulators is ConcurrentDictionary<(IWindow, TKey), TAccumulate> concurrentDict)
-                    {
-                        removed = concurrentDict.TryRemove(windowKey, out var value);
-                        accumulator = value;
-                    }
-                    else
-                    {
-                        if (_accumulators.TryGetValue(windowKey, out var value))
-                        {
-                            removed = _accumulators.Remove(windowKey);
-                            accumulator = value;
-                        }
-                    }
-
-                    if (removed && accumulator != null)
-                    {
-                        _ = Interlocked.Increment(ref _totalWindowsClosed);
-                        yield return GetResult(accumulator);
-                    }
+                    _ = Interlocked.Increment(ref _totalWindowsClosed);
+                    _ = Interlocked.Decrement(ref _activeGroups);
+                    yield return GetResult(accumulator!);
                 }
             }
         }
 
-        // At end of stream, emit all remaining results
-        foreach (var kvp in _accumulators)
+        // End of stream: flush the remaining windows in window order. The state is then released.
+        while (expiry.TryDequeue(out var closing, out _))
         {
-            yield return GetResult(kvp.Value);
-        }
-    }
+            if (!windows.Remove(closing, out var groups))
+                continue;
 
-    private async IAsyncEnumerable<TIn> ConvertToTypedAsyncEnumerable(IAsyncEnumerable<object?> asyncEnumerable)
-    {
-        await foreach (var item in asyncEnumerable.ConfigureAwait(false))
-        {
-            if (item is TIn typedItem)
-                yield return typedItem;
+            foreach (var accumulator in groups.Values)
+            {
+                _ = Interlocked.Increment(ref _totalWindowsClosed);
+                _ = Interlocked.Decrement(ref _activeGroups);
+                yield return GetResult(accumulator!);
+            }
         }
     }
 }

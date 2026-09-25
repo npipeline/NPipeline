@@ -1,4 +1,6 @@
 using System.Runtime.CompilerServices;
+using NPipeline.DataFlow.Timestamping;
+using NPipeline.Utils;
 
 namespace NPipeline.DataFlow.Watermarks;
 
@@ -37,25 +39,24 @@ public static class WatermarkAwareStreamExtensions
     /// <param name="source">The source stream.</param>
     /// <param name="watermarkGenerator">The watermark generator to use.</param>
     /// <param name="watermarkInterval">The interval at which to emit watermarks.</param>
+    /// <param name="timestampExtractor">
+    ///     Optional extractor used to resolve event time for items that don't implement <see cref="ITimestamped" />.
+    ///     When null, arrival time is used for such items.</param>
     /// <param name="cancellationToken"></param>
     /// <returns>A watermark-aware stream.</returns>
     public static async IAsyncEnumerable<StreamItem<T>> WithWatermarks<T>(
         this IAsyncEnumerable<T> source,
         WatermarkGenerator<T> watermarkGenerator,
         TimeSpan watermarkInterval,
+        TimestampExtractor<T>? timestampExtractor = null,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var lastWatermarkTime = DateTimeOffset.UtcNow;
 
         await foreach (var item in source.WithCancellation(cancellationToken))
         {
-            // Extract timestamp from the item
-            DateTimeOffset timestamp;
-
-            if (item is ITimestamped timestamped)
-                timestamp = timestamped.Timestamp;
-            else
-                timestamp = DateTimeOffset.UtcNow;
+            // Resolve the item's event time: ITimestamped, else the extractor, else arrival time.
+            var timestamp = TimestampUtils.ResolveEventTime(item, timestampExtractor);
 
             watermarkGenerator.Update(timestamp);
 
@@ -111,10 +112,14 @@ public static class WatermarkAwareStreamExtensions
     /// </summary>
     /// <typeparam name="T">The type of the data items.</typeparam>
     /// <param name="source">The watermark-aware stream.</param>
+    /// <param name="timestampExtractor">
+    ///     Optional extractor used to resolve event time for items that don't implement <see cref="ITimestamped" />.
+    ///     When null, arrival time is used for such items.</param>
     /// <param name="cancellationToken"></param>
     /// <returns>A stream with late data filtered out.</returns>
     public static async IAsyncEnumerable<StreamItem<T>> FilterLateData<T>(
         this IAsyncEnumerable<StreamItem<T>> source,
+        TimestampExtractor<T>? timestampExtractor = null,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         Watermark? latestWatermark = null;
@@ -136,12 +141,7 @@ public static class WatermarkAwareStreamExtensions
                 else
                 {
                     // Check if data is late
-                    DateTimeOffset timestamp;
-
-                    if (dataItem.Value is ITimestamped timestamped)
-                        timestamp = timestamped.Timestamp;
-                    else
-                        timestamp = DateTimeOffset.UtcNow;
+                    var timestamp = TimestampUtils.ResolveEventTime(dataItem.Value, timestampExtractor);
 
                     if (!latestWatermark.IsEarlierThan(timestamp))
                         yield return item;

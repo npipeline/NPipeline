@@ -17,6 +17,10 @@ Aggregation groups [items](../reference/glossary.md#item) by a key and a time [w
 3. Each item updates its accumulator via `Accumulate`
 4. When a [watermark](../reference/glossary.md#watermark) closes a window, `GetResult` is called and the result is emitted downstream
 
+Watermarks use the same event time as window assignment: the item's `ITimestamped.Timestamp`, or the configured `TimestampExtractor`, or arrival time when neither is available. Historical, replayed or back-filled data therefore aggregates correctly, because window closing follows the data's own clock and not the wall clock.
+
+Items arriving after their window closes are dropped to prevent multiple partial results. The number of dropped items is reported by the node's `LateItemsDropped` property.
+
 ## Writing an Aggregate Node
 
 Extend `AggregateNode<TIn, TKey, TResult>` when the accumulator type is the same as the result:
@@ -101,11 +105,12 @@ var averages = builder.GroupItems<Measurement>()
 
 | Property | Default | Description |
 |----------|---------|-------------|
-| `WindowAssigner` | (required) | Tumbling or sliding window strategy |
-| `TimestampExtractor` | `null` | Extracts event time from items; uses `ITimestamped.Timestamp` if null |
+| `WindowAssigner` | (required) | Tumbling or sliding window strategy. Window sizes and slides must be positive |
+| `TimestampExtractor` | `null` | Extracts event time from items; uses arrival time for items that are neither `ITimestamped` nor extracted |
 | `MaxOutOfOrderness` | 5 minutes | How late an item can arrive and still be included |
 | `WatermarkInterval` | 30 seconds | How often watermarks advance |
-| `UseThreadSafeAccumulator` | `true` | Use concurrent data structures for parallel access |
+
+Windows are aligned on UTC ticks, so the same instant always lands in the same window regardless of the timestamp's UTC offset.
 
 ## Monitoring Aggregation
 
@@ -114,10 +119,10 @@ Call `GetMetrics()` on your aggregate node to inspect state:
 ```csharp
 var (totalProcessed, totalClosed, maxConcurrent) = aggregateNode.GetMetrics();
 int activeWindows = aggregateNode.GetActiveWindowCount();
+long lateItems = aggregateNode.LateItemsDropped;
 ```
 
 ## Next Steps
 
 - [Batching and Windowing](batching-and-windowing.md) - window types and watermark mechanics
 - [Streaming Large Datasets](streaming-large-datasets.md) - memory management for windowed aggregation
-- [Parallel Execution](parallel-execution.md) - thread-safe accumulation
