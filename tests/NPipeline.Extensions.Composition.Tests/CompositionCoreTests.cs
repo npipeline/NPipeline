@@ -510,6 +510,65 @@ public class CompositionCoreTests
         pipeline.Graph.ChildGraphs.Should().ContainKey(composite.Id);
     }
 
+    [Fact]
+    public void Build_WithCompositeNodes_DisposesTheChildsBuilderInstances()
+    {
+        // Arrange
+        CountingDisposableSink.Disposed = 0;
+
+        var builder = new PipelineBuilder();
+        var source = builder.AddSource<TestSource, int>("source");
+        var composite = builder.AddComposite<int, int, DisposingChildPipeline>("composite");
+        var sink = builder.AddSink<TestSink, int>("sink");
+
+        builder.Connect(source, composite);
+        builder.Connect(composite, sink);
+
+        // Act
+        _ = builder.Build();
+
+        // Assert - the child's instances are structural only and are released once its graph is captured
+        CountingDisposableSink.Disposed.Should().Be(1);
+    }
+
+    [Fact]
+    public void Build_WithAnInvalidChildComposite_AttachesNoChildGraph()
+    {
+        // Arrange - the child has no sink, so it fails validation
+        var builder = new PipelineBuilder();
+        var source = builder.AddSource<TestSource, int>("source");
+        var composite = builder.AddComposite<int, int, InvalidSubPipeline>("composite");
+        var sink = builder.AddSink<TestSink, int>("sink");
+
+        builder.Connect(source, composite);
+        builder.Connect(composite, sink);
+
+        // Act
+        var pipeline = builder.Build();
+
+        // Assert - the invalid child is dropped, with a trace warning, rather than attached
+        _ = (pipeline.Graph.ChildGraphs?.ContainsKey(composite.Id) ?? false).Should().BeFalse();
+    }
+
+    [Fact]
+    public void Build_WithASelfReferentialComposite_DoesNotRecurseForever()
+    {
+        // Arrange
+        var builder = new PipelineBuilder();
+        var source = builder.AddSource<TestSource, int>("source");
+        var composite = builder.AddComposite<int, int, SelfReferentialSubPipeline>("composite");
+        var sink = builder.AddSink<TestSink, int>("sink");
+
+        builder.Connect(source, composite);
+        builder.Connect(composite, sink);
+
+        // Act
+        var act = () => builder.Build();
+
+        // Assert
+        _ = act.Should().NotThrow("the recursion guard skips a composite that contains itself");
+    }
+
     #endregion
 
     #region Test Helpers
@@ -518,6 +577,50 @@ public class CompositionCoreTests
         context.Items.TryGetValue(key, out var value) && value is IReadOnlyList<int> items
             ? items
             : throw new InvalidOperationException($"Expected sink output under context key '{key}'.");
+
+    private sealed class CountingDisposableSink : ISinkNode<int>, IAsyncDisposable
+    {
+        public static int Disposed;
+
+        public ValueTask DisposeAsync()
+        {
+            Disposed++;
+            return ValueTask.CompletedTask;
+        }
+
+        public Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken cancellationToken) =>
+            Task.CompletedTask;
+    }
+
+    private sealed class DisposingChildPipeline : IPipelineDefinition
+    {
+        public void Define(PipelineBuilder builder, PipelineContext context)
+        {
+            var input = builder.AddSource<PipelineInputSource<int>, int>("input");
+            var output = builder.AddSink(new CountingDisposableSink(), "output");
+            _ = builder.Connect(input, output);
+        }
+    }
+
+    private sealed class InvalidSubPipeline : IPipelineDefinition
+    {
+        public void Define(PipelineBuilder builder, PipelineContext context)
+        {
+            // A transform with nothing downstream is invalid, so the child graph must not be attached.
+            _ = builder.AddTransform<DoubleTransform, int, int>("double");
+        }
+    }
+
+    private sealed class SelfReferentialSubPipeline : IPipelineDefinition
+    {
+        public void Define(PipelineBuilder builder, PipelineContext context)
+        {
+            var input = builder.AddSource<PipelineInputSource<int>, int>("input");
+            var nested = builder.AddComposite<int, int, SelfReferentialSubPipeline>("nested");
+            var output = builder.AddSink<PipelineOutputSink<int>, int>("output");
+            _ = builder.Connect(input, nested).Connect(nested, output);
+        }
+    }
 
     private sealed class TestSource : ISourceNode<int>, IAsyncDisposable
     {

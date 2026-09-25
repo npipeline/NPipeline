@@ -96,6 +96,143 @@ public sealed class BranchingTerminalDrainTests
         _ = await act.Should().ThrowAsync<Exception>("a terminal failure must surface even when terminals run together");
     }
 
+    private sealed class SlowDisposableSink : SinkNode<int>, IAsyncDisposable
+    {
+        public volatile bool Consuming;
+        public volatile bool DisposedWhileConsuming;
+
+        public override async Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken cancellationToken)
+        {
+            Consuming = true;
+
+            try
+            {
+                // Ignores the token on purpose: it stands for a non-cancellable flush, and exercises the shutdown grace.
+                await Task.Delay(500, CancellationToken.None);
+
+                await foreach (var _ in input.WithCancellation(cancellationToken))
+                {
+                }
+            }
+            finally
+            {
+                Consuming = false;
+            }
+        }
+
+        public ValueTask DisposeAsync()
+        {
+            DisposedWhileConsuming |= Consuming;
+            return ValueTask.CompletedTask;
+        }
+    }
+
+    [Fact]
+    public async Task FailingTerminal_CancelsSiblingsBeforeCleanupDisposesThem()
+    {
+        var (context, _) = CreateRun();
+        var slow = new SlowDisposableSink();
+        var contextRef = context;
+
+        var run = PipelineRunner.Create().RunAsync(new SlowAndThrowingPipeline(slow), contextRef, CancellationToken.None);
+        var finished = await Task.WhenAny(run, Task.Delay(DeadlockTimeout));
+
+        _ = finished.Should().BeSameAs(run, "a terminal failure must surface even when a sibling ignores cancellation");
+
+        var act = async () => await run;
+        _ = await act.Should().ThrowAsync<Exception>();
+        slow.DisposedWhileConsuming.Should().BeFalse("a sibling must be stopped before cleanup disposes it");
+    }
+
+    private sealed class SlowAndThrowingPipeline(SlowDisposableSink slow) : IPipelineDefinition
+    {
+        public void Define(PipelineBuilder builder, PipelineContext context)
+        {
+            var source = builder.AddSource<YieldingSource, int>("source");
+            var slowHandle = builder.AddSink<SlowDisposableSink, int>("slow");
+            var throwingHandle = builder.AddSink<ThrowingSink, int>("throwing");
+            _ = builder.AddPreconfiguredNodeInstance(slowHandle.Id, slow);
+            _ = builder.Connect(source, slowHandle);
+            _ = builder.Connect(source, throwingHandle);
+            _ = builder.WithBranchOptions("source", new BranchOptions(BranchBufferCapacity));
+        }
+    }
+
+    private sealed class CooperativeCancellationSink : SinkNode<int>, IAsyncDisposable
+    {
+        private readonly TaskCompletionSource _observedCancellation =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public Task ObservedCancellation => _observedCancellation.Task;
+
+        public volatile bool DisposedWhileConsuming;
+
+        public override async Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken cancellationToken)
+        {
+            try
+            {
+                await Task.Delay(Timeout.Infinite, cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                _ = _observedCancellation.TrySetResult();
+            }
+        }
+
+        public ValueTask DisposeAsync()
+        {
+            DisposedWhileConsuming = !ObservedCancellation.IsCompleted;
+            return ValueTask.CompletedTask;
+        }
+    }
+
+    [Fact]
+    public async Task FailingTerminal_CooperativeSiblingObservesCancellationBeforeRunReturns()
+    {
+        var (context, _) = CreateRun();
+        var cooperative = new CooperativeCancellationSink();
+
+        var run = PipelineRunner.Create().RunAsync(new CooperativeAndThrowingPipeline(cooperative), context, CancellationToken.None);
+
+        var act = async () => await run;
+        _ = await act.Should().ThrowAsync<Exception>();
+        _ = cooperative.ObservedCancellation.IsCompleted.Should().BeTrue();
+        cooperative.DisposedWhileConsuming.Should().BeFalse("the sibling must stop before cleanup disposes it");
+    }
+
+    private sealed class CooperativeAndThrowingPipeline(CooperativeCancellationSink cooperative) : IPipelineDefinition
+    {
+        public void Define(PipelineBuilder builder, PipelineContext context)
+        {
+            var source = builder.AddSource<SlowYieldingSource, int>("source");
+            var cooperativeHandle = builder.AddSink<CooperativeCancellationSink, int>("cooperative");
+            var throwingHandle = builder.AddSink<ThrowingSink, int>("throwing");
+            _ = builder.AddPreconfiguredNodeInstance(cooperativeHandle.Id, cooperative);
+            _ = builder.Connect(source, cooperativeHandle);
+            _ = builder.Connect(source, throwingHandle);
+            _ = builder.WithBranchOptions("source", new BranchOptions(BranchBufferCapacity));
+        }
+    }
+
+    /// <summary>
+    ///     A source whose first items flow so the throwing sink fails while the cooperative sibling is waiting.
+    /// </summary>
+    private sealed class SlowYieldingSource : SourceNode<int>
+    {
+        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken) =>
+            new DataStream<int>(Produce(cancellationToken), "slow-yielding-source");
+
+        private static async IAsyncEnumerable<int> Produce([EnumeratorCancellation] CancellationToken cancellationToken)
+        {
+            for (var i = 0; i < SourceItemCount; i++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                yield return i;
+                await Task.Delay(1, cancellationToken).ConfigureAwait(false);
+            }
+        }
+    }
+
     /// <summary>
     ///     Creates a context carrying its own recorder. The recorder used to be a process-wide static, which let a
     ///     sink still draining after one test finished record into the next test's counters.

@@ -20,10 +20,9 @@ public sealed class PersistenceService : IPersistenceService
     /// </summary>
     /// <param name="context">The pipeline context containing state management information.</param>
     /// <param name="completedEvent">The event containing node execution completion details.</param>
-    public void TryPersistAfterNode(PipelineContext context, NodeExecutionCompleted completedEvent)
-    {
-        _ = TryPersistAfterNodeAsync(context, completedEvent).AsTask();
-    }
+    /// <returns>A <see cref="ValueTask" /> that completes when the snapshot attempt has finished.</returns>
+    public ValueTask TryPersistAfterNode(PipelineContext context, NodeExecutionCompleted completedEvent) =>
+        TryPersistAfterNodeAsync(context, completedEvent);
 
     /// <summary>
     ///     Asynchronously attempts to persist state after node execution completion.

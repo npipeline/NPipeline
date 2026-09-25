@@ -1,3 +1,4 @@
+using System.Runtime.ExceptionServices;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.Execution.Caching;
@@ -6,6 +7,7 @@ using NPipeline.Graph;
 using NPipeline.Lineage;
 using NPipeline.Nodes;
 using NPipeline.Observability;
+using NPipeline.Observability.Logging;
 using NPipeline.Pipeline;
 
 namespace NPipeline.Execution.Orchestration;
@@ -90,21 +92,29 @@ internal sealed class PipelineExecutionOrchestrator : IPipelineExecutionOrchestr
         context.Lineage.Module = _lineage;
 
         Dictionary<string, IDataStream?> nodeOutputs = new();
-        Dictionary<string, INode>? nodeInstances = null;
+        OwnedNodeInstances? ownedNodeInstances = null;
         var pipelineCompleted = false;
+        Exception? failure = null;
+        List<Exception>? cleanupErrors = null;
 
         try
         {
             var pipeline = createPipeline(_pipelineFactory, context);
             graph = pipeline.Graph;
 
+            // The run owns the builder's disposable instances. They usually also arrive as preconfigured node
+            // instances; the set is reference-distinct, so each is tracked once. Seeding it before setup means even a
+            // throw before instantiation cannot leak them.
+            ownedNodeInstances = new OwnedNodeInstances();
+            ownedNodeInstances.AddRange(pipeline.BuilderDisposables);
+
             // A factory-built pipeline carries its definition's breakers, which outlive this run. Any other gets fresh ones.
             context.ExecutionConfiguration.CircuitBreakers = pipeline.CircuitBreakers ?? new CircuitBreakerRegistry();
 
-            var setupResult = await _setupStage.PrepareAsync(definitionType, graph, context, context.CancellationToken).ConfigureAwait(false);
-            graph = setupResult.Graph;
-            nodeInstances = setupResult.NodeInstances;
+            var setupResult = await _setupStage.PrepareAsync(definitionType, graph, context, ownedNodeInstances, context.CancellationToken)
+                .ConfigureAwait(false);
 
+            graph = setupResult.Graph;
             nodeOutputs.EnsureCapacity(graph.Nodes.Length);
 
             await _nodeExecutionStage.ExecuteAsync(setupResult, context, nodeOutputs).ConfigureAwait(false);
@@ -114,20 +124,45 @@ internal sealed class PipelineExecutionOrchestrator : IPipelineExecutionOrchestr
         }
         catch (Exception ex)
         {
-            await _failureStage.HandleAsync(definitionType, context, ex, pipelineActivity).ConfigureAwait(false);
+            failure = ex;
+
+            try
+            {
+                await _failureStage.HandleAsync(definitionType, context, ex, pipelineActivity).ConfigureAwait(false);
+            }
+            catch (Exception wrapped)
+            {
+                // Reported after cleanup, so a cleanup failure cannot replace the run's real error.
+                failure = wrapped;
+            }
         }
         finally
         {
-            await _cleanupStage.CleanupAsync(
+            cleanupErrors = await _cleanupStage.CleanupAsync(
                     definitionType,
                     context,
                     graph,
                     pipelineActivity,
                     nodeOutputs,
-                    nodeInstances,
+                    ownedNodeInstances,
                     pipelineCompleted)
                 .ConfigureAwait(false);
         }
+
+        if (cleanupErrors is { Count: > 0 })
+        {
+            // A cleanup failure while the run already failed is logged, not thrown: the real failure wins.
+            if (failure is null)
+                throw cleanupErrors.Count == 1 ? cleanupErrors[0] : new AggregateException(cleanupErrors);
+
+            var logger = context.Observability.LoggerFactory.CreateLogger(nameof(PipelineRunner));
+
+            foreach (var error in cleanupErrors)
+                PipelineRunnerLogMessages.CleanupFailed(logger, error, error.GetType().Name);
+        }
+
+        if (failure is not null)
+            ExceptionDispatchInfo.Capture(failure).Throw();
     }
 
     private static void InitializeExecutionContext(PipelineContext context)

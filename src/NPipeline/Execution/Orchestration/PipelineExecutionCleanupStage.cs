@@ -1,6 +1,5 @@
 using NPipeline.DataFlow;
 using NPipeline.Graph;
-using NPipeline.Nodes;
 using NPipeline.Observability;
 using NPipeline.Observability.Tracing;
 using NPipeline.Pipeline;
@@ -9,13 +8,18 @@ namespace NPipeline.Execution.Orchestration;
 
 internal sealed class PipelineExecutionCleanupStage(IObservabilitySurface observabilitySurface)
 {
-    public async Task CleanupAsync(
+    /// <summary>
+    ///     Releases everything the run owns, recording rather than propagating each failure so one bad disposal cannot
+    ///     stop the rest or replace the run's real error.
+    /// </summary>
+    /// <returns>The cleanup failures, or null when every disposal succeeded.</returns>
+    public async Task<List<Exception>?> CleanupAsync(
         Type definitionType,
         PipelineContext context,
         PipelineGraph? graph,
         IPipelineActivity pipelineActivity,
         Dictionary<string, IDataStream?> nodeOutputs,
-        Dictionary<string, INode>? nodeInstances,
+        OwnedNodeInstances? ownedNodeInstances,
         bool pipelineCompleted)
     {
         ArgumentNullException.ThrowIfNull(definitionType);
@@ -23,32 +27,42 @@ internal sealed class PipelineExecutionCleanupStage(IObservabilitySurface observ
         ArgumentNullException.ThrowIfNull(pipelineActivity);
         ArgumentNullException.ThrowIfNull(nodeOutputs);
 
+        List<Exception>? errors = null;
+
         if (pipelineCompleted && graph is not null)
-            await observabilitySurface.CompletePipeline(definitionType, context, graph, pipelineActivity).ConfigureAwait(false);
+            await Guard(() => new ValueTask(observabilitySurface.CompletePipeline(definitionType, context, graph, pipelineActivity))).ConfigureAwait(false);
 
         foreach (var kvp in nodeOutputs)
         {
-            if (kvp.Value is not null)
-                await kvp.Value.DisposeAsync().ConfigureAwait(false);
+            var output = kvp.Value;
+
+            if (output is not null)
+                await Guard(output.DisposeAsync).ConfigureAwait(false);
         }
 
         nodeOutputs.Clear();
 
-        if (nodeInstances is null)
-            return;
-
-        if (!context.NodeEnvironment.DiOwnedNodes)
+        if (ownedNodeInstances is not null)
         {
-            foreach (var node in nodeInstances.Values)
-            {
-                // A node is disposable only if it opted in: INode itself carries no lifecycle.
-                if (node is IAsyncDisposable asyncDisposable)
-                    await asyncDisposable.DisposeAsync().ConfigureAwait(false);
-                else if (node is IDisposable disposable)
-                    disposable.Dispose();
-            }
+            // The node instances were already disposed on a setup failure. A repeat call is a no-op.
+            var nodeErrors = await ownedNodeInstances.DisposeAllAsync().ConfigureAwait(false);
+
+            if (nodeErrors is { Count: > 0 })
+                (errors ??= []).AddRange(nodeErrors);
         }
 
-        nodeInstances.Clear();
+        return errors;
+
+        async ValueTask Guard(Func<ValueTask> action)
+        {
+            try
+            {
+                await action().ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                (errors ??= []).Add(ex);
+            }
+        }
     }
 }

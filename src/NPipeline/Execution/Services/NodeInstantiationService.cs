@@ -29,18 +29,30 @@ public sealed class NodeInstantiationService : INodeInstantiationService
         .GetMethod(nameof(CoerceStreamExecutionStrategy), BindingFlags.NonPublic | BindingFlags.Static)!;
 
     /// <inheritdoc />
-    public Dictionary<string, INode> InstantiateNodes(PipelineGraph graph, INodeFactory nodeFactory)
+    public Dictionary<string, INode> InstantiateNodes(
+        PipelineGraph graph,
+        INodeFactory nodeFactory,
+        OwnedNodeInstances ownedInstances)
     {
+        ArgumentNullException.ThrowIfNull(ownedInstances);
+
         var nodeInstances = new Dictionary<string, INode>(graph.Nodes.Length);
 
         foreach (var def in graph.Nodes)
         {
-            nodeInstances.Add(def.Id, nodeFactory.Create(def, graph));
+            var instance = nodeFactory.Create(def, graph);
+            nodeInstances.Add(def.Id, instance);
+
+            if (nodeFactory.IsOwnedByRun(def, instance))
+                _ = ownedInstances.Add(instance);
         }
 
         return nodeInstances;
     }
 
+    /// <summary>
+    ///     Registers stateful nodes with the state registry if available in the context.
+    /// </summary>
     /// <inheritdoc />
     public void RegisterStatefulNodes(Dictionary<string, INode> nodeInstances, PipelineContext context)
     {

@@ -38,7 +38,7 @@ public sealed class RuntimePipelineBinder : IRuntimePipelineBinder
         overriddenGraph = ApplyRuntimeLineageOptionsOverride(overriddenGraph, context);
         overriddenGraph = NormalizeRuntimeExecutionAnnotations(overriddenGraph);
 
-        var deadLetterSink = ResolveDeadLetterSink(overriddenGraph, context.ErrorHandlerFactory);
+        var deadLetterSink = ResolveDeadLetterSink(overriddenGraph, context.ErrorHandlerFactory, context);
         deadLetterSink = ApplyDeadLetterSinkDecorator(context, deadLetterSink);
         var resiliencePolicy = ResolveResiliencePolicy(overriddenGraph, context);
 
@@ -107,7 +107,11 @@ public sealed class RuntimePipelineBinder : IRuntimePipelineBinder
         }
 
         if (Activator.CreateInstance(graph.ErrorHandling.ResiliencePolicyType) is IResiliencePolicy policy)
+        {
+            // The caller owns instances created from a type, so register it for disposal with the run.
+            _ = context.RegisterIfAsyncDisposable(policy);
             return policy;
+        }
 
         throw new InvalidOperationException(
             $"Unable to create resilience policy instance for type '{graph.ErrorHandling.ResiliencePolicyType.FullName}'.");
@@ -312,15 +316,20 @@ public sealed class RuntimePipelineBinder : IRuntimePipelineBinder
         return lineageSink;
     }
 
-    private static IDeadLetterSink? ResolveDeadLetterSink(PipelineGraph graph, IErrorHandlerFactory errorHandlerFactory)
+    private static IDeadLetterSink? ResolveDeadLetterSink(PipelineGraph graph, IErrorHandlerFactory errorHandlerFactory, PipelineContext context)
     {
         if (graph.ErrorHandling.DeadLetterSink is not null)
             return graph.ErrorHandling.DeadLetterSink;
 
-        if (graph.ErrorHandling.DeadLetterSinkType is not null)
-            return errorHandlerFactory.CreateDeadLetterSink(graph.ErrorHandling.DeadLetterSinkType);
+        if (graph.ErrorHandling.DeadLetterSinkType is null)
+            return null;
 
-        return null;
+        var created = errorHandlerFactory.CreateDeadLetterSink(graph.ErrorHandling.DeadLetterSinkType);
+
+        if (created is not null && errorHandlerFactory.CallerOwnsCreatedInstance(created))
+            _ = context.RegisterIfAsyncDisposable(created);
+
+        return created;
     }
 
     private static ILineageSink? ResolveLineageSink(PipelineGraph graph, ILineageFactory lineageFactory, PipelineContext context)
@@ -329,7 +338,14 @@ public sealed class RuntimePipelineBinder : IRuntimePipelineBinder
             return graph.Lineage.LineageSink;
 
         if (graph.Lineage.LineageSinkType is not null)
-            return lineageFactory.CreateLineageSink(graph.Lineage.LineageSinkType);
+        {
+            var created = lineageFactory.CreateLineageSink(graph.Lineage.LineageSinkType);
+
+            if (created is not null && lineageFactory.CallerOwnsCreatedInstance(created))
+                _ = context.RegisterIfAsyncDisposable(created);
+
+            return created;
+        }
 
         if (context.Lineage.LineageSink is not null)
             return context.Lineage.LineageSink;
@@ -343,7 +359,14 @@ public sealed class RuntimePipelineBinder : IRuntimePipelineBinder
             return graph.Lineage.PipelineLineageSink;
 
         if (graph.Lineage.PipelineLineageSinkType is not null)
-            return lineageFactory.CreatePipelineLineageSink(graph.Lineage.PipelineLineageSinkType);
+        {
+            var created = lineageFactory.CreatePipelineLineageSink(graph.Lineage.PipelineLineageSinkType);
+
+            if (created is not null && lineageFactory.CallerOwnsCreatedInstance(created))
+                _ = context.RegisterIfAsyncDisposable(created);
+
+            return created;
+        }
 
         if (context.Lineage.PipelineLineageSink is not null)
             return context.Lineage.PipelineLineageSink;

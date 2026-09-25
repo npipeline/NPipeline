@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using NPipeline.ErrorHandling;
 using NPipeline.Execution.Annotations;
 using NPipeline.Execution.Caching;
@@ -21,11 +22,13 @@ internal sealed class PipelineExecutionSetupStage(
         Type definitionType,
         PipelineGraph graph,
         PipelineContext context,
+        OwnedNodeInstances ownedNodeInstances,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(definitionType);
         ArgumentNullException.ThrowIfNull(graph);
         ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(ownedNodeInstances);
 
         var runtimeBinding = await runtimePipelineBinder.BindAsync(graph, context).ConfigureAwait(false);
         graph = runtimeBinding.Graph;
@@ -33,24 +36,46 @@ internal sealed class PipelineExecutionSetupStage(
 
         await VisualizeIfConfiguredAsync(graph, cancellationToken).ConfigureAwait(false);
         ApplyResilienceOptions(graph, context);
-        EnsureDeadLetterSinkIfNeeded(graph, context);
 
-        var nodeInstances = nodeInstantiationService.InstantiateNodes(graph, nodeFactory);
-        context.NodeEnvironment.RegisterNodes(nodeInstances);
-        ApplyGlobalServices(graph, context);
+        try
+        {
+            // Every instance the run owns is added to the caller's set. Cleanup disposes that set once, whichever
+            // path the run takes to its end, so a partial instantiation cannot leak.
+            var nodeInstances = nodeInstantiationService.InstantiateNodes(graph, nodeFactory, ownedNodeInstances);
 
-        graph = graph.EnsureNodeDefinitionMapInitialized();
-        var nodeDefinitionMap = graph.NodeDefinitionMap;
-        var executionPlans = BuildExecutionPlans(definitionType, graph, nodeInstances);
+            // The dead-letter check runs after instantiation, so a misconfigured dead-letter policy is reported only
+            // after the nodes exist (and are then released by the catch below).
+            EnsureDeadLetterSinkIfNeeded(graph, context);
 
-        nodeInstantiationService.RegisterStatefulNodes(nodeInstances, context);
+            context.NodeEnvironment.RegisterNodes(nodeInstances);
+            ApplyGlobalServices(graph, context);
 
-        return new PipelineExecutionSetupResult(
-            graph,
-            nodeInstances,
-            nodeDefinitionMap,
-            executionPlans,
-            runtimeBinding.PipelineLineageSink);
+            graph = graph.EnsureNodeDefinitionMapInitialized();
+            var nodeDefinitionMap = graph.NodeDefinitionMap;
+            var executionPlans = BuildExecutionPlans(definitionType, graph, nodeInstances);
+
+            nodeInstantiationService.RegisterStatefulNodes(nodeInstances, context);
+
+            return new PipelineExecutionSetupResult(
+                graph,
+                nodeInstances,
+                nodeDefinitionMap,
+                executionPlans,
+                runtimeBinding.PipelineLineageSink);
+        }
+        catch
+        {
+            // Release what exists now and let the original error propagate. The caller's later disposal is a no-op.
+            var disposalErrors = await ownedNodeInstances.DisposeAllAsync().ConfigureAwait(false);
+
+            if (disposalErrors is { Count: > 0 })
+            {
+                foreach (var error in disposalErrors)
+                    Trace.TraceWarning($"[NPipeline] Disposing a node instance after a setup failure failed: {error.Message}");
+            }
+
+            throw;
+        }
     }
 
     private static async Task VisualizeIfConfiguredAsync(PipelineGraph graph, CancellationToken cancellationToken)

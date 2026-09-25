@@ -38,8 +38,8 @@ public sealed class PipelineRunnerLineageOverrideTests
 
         PipelineGraph? observedGraph = null;
 
-        _ = A.CallTo(() => nodeInstantiationService.InstantiateNodes(A<PipelineGraph>._, A<INodeFactory>._))
-            .Invokes((PipelineGraph graph, INodeFactory _) => observedGraph = graph)
+        _ = A.CallTo(() => nodeInstantiationService.InstantiateNodes(A<PipelineGraph>._, A<INodeFactory>._, A<OwnedNodeInstances>._))
+            .Invokes((PipelineGraph graph, INodeFactory _, OwnedNodeInstances _) => observedGraph = graph)
             .Returns(new Dictionary<string, INode>());
 
         _ = A.CallTo(() => nodeInstantiationService.BuildPlans(
@@ -104,8 +104,8 @@ public sealed class PipelineRunnerLineageOverrideTests
 
         PipelineGraph? observedGraph = null;
 
-        _ = A.CallTo(() => nodeInstantiationService.InstantiateNodes(A<PipelineGraph>._, A<INodeFactory>._))
-            .Invokes((PipelineGraph graph, INodeFactory _) => observedGraph = graph)
+        _ = A.CallTo(() => nodeInstantiationService.InstantiateNodes(A<PipelineGraph>._, A<INodeFactory>._, A<OwnedNodeInstances>._))
+            .Invokes((PipelineGraph graph, INodeFactory _, OwnedNodeInstances _) => observedGraph = graph)
             .Returns(new Dictionary<string, INode>());
 
         _ = A.CallTo(() => nodeInstantiationService.BuildPlans(

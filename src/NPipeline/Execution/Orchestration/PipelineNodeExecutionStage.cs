@@ -19,6 +19,11 @@ internal sealed class PipelineNodeExecutionStage(
     IObservabilitySurface observabilitySurface)
 {
     /// <summary>
+    ///     How long sibling terminals are given to observe cancellation before their outputs are detached from cleanup.
+    /// </summary>
+    private static readonly TimeSpan TerminalShutdownGrace = TimeSpan.FromSeconds(5);
+
+    /// <summary>
     ///     Executes every node in the graph.
     /// </summary>
     /// <remarks>
@@ -97,7 +102,7 @@ internal sealed class PipelineNodeExecutionStage(
 
         // Surface the first failure without waiting on the siblings. A terminal that throws before it starts
         // reading never drains its branch, so the multicast pump blocks on that branch and its siblings stop
-        // making progress. Cleanup disposes the streams, which cancels the pump and releases them.
+        // making progress.
         var pending = new List<Task>(tasks);
 
         while (pending.Count > 0)
@@ -108,8 +113,14 @@ internal sealed class PipelineNodeExecutionStage(
             if (finished.IsCompletedSuccessfully)
                 continue;
 
-            // Cleanup is about to iterate and dispose the node outputs; stragglers must stop touching them.
-            synchronizedOutputs.DetachFromInner();
+            // Stop the siblings before cleanup tears down their inputs and instances. A sibling that ignores
+            // cancellation is given a grace period, then its outputs are detached so cleanup can dispose them.
+            context.CancelRun();
+            var rest = Task.WhenAll(pending);
+
+            if (await Task.WhenAny(rest, Task.Delay(TerminalShutdownGrace, CancellationToken.None)).ConfigureAwait(false) != rest)
+                synchronizedOutputs.DetachFromInner();
+
             ObserveInBackground(pending);
             await finished.ConfigureAwait(false); // rethrows with the original stack
         }
@@ -159,7 +170,7 @@ internal sealed class PipelineNodeExecutionStage(
         {
             context.NodeEnvironment.SetNodeStatus(nodeDef.Id, NodeExecutionStatus.Failed);
             var failedEvent = observabilitySurface.CompleteNodeFailure(context, nodeScope, ex);
-            persistenceService.TryPersistAfterNode(context, failedEvent);
+            await persistenceService.TryPersistAfterNode(context, failedEvent).ConfigureAwait(false);
             HandleNodeExecutionException(nodeDef, context, ex);
         }
     }
@@ -237,7 +248,7 @@ internal sealed class PipelineNodeExecutionStage(
 
                 var completedEvent = observabilitySurface.CompleteNodeSuccess(context, nodeScope);
                 context.NodeEnvironment.SetNodeStatus(nodeDef.Id, NodeExecutionStatus.Completed);
-                persistenceService.TryPersistAfterNode(context, completedEvent);
+                await persistenceService.TryPersistAfterNode(context, completedEvent).ConfigureAwait(false);
             },
             context.CancellationToken).ConfigureAwait(false);
     }

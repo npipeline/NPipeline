@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Microsoft.Extensions.DependencyInjection;
 using NPipeline.Graph;
 
@@ -9,6 +10,7 @@ namespace NPipeline.Lineage;
 public sealed class DiLineageFactory : ILineageFactory
 {
     private readonly IServiceProvider _serviceProvider;
+    private readonly ConcurrentDictionary<object, byte> _containerOwned = new(ReferenceEqualityComparer.Instance);
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="DiLineageFactory" /> class.
@@ -18,6 +20,11 @@ public sealed class DiLineageFactory : ILineageFactory
     {
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
     }
+
+    /// <summary>
+    ///     The container owns whatever it resolves; anything the factory constructs itself stays with the caller.
+    /// </summary>
+    public bool CallerOwnsCreatedInstance(object instance) => !_containerOwned.ContainsKey(instance);
 
     /// <summary>
     ///     Creates an instance of the specified lineage sink type.
@@ -33,8 +40,15 @@ public sealed class DiLineageFactory : ILineageFactory
 
         try
         {
-            return (ILineageSink?)_serviceProvider.GetService(sinkType)
-                   ?? (ILineageSink?)ActivatorUtilities.CreateInstance(_serviceProvider, sinkType);
+            var resolved = (ILineageSink?)_serviceProvider.GetService(sinkType);
+
+            if (resolved is not null)
+            {
+                _ = _containerOwned.TryAdd(resolved, 0);
+                return resolved;
+            }
+
+            return (ILineageSink?)ActivatorUtilities.CreateInstance(_serviceProvider, sinkType);
         }
         catch
         {
@@ -60,8 +74,15 @@ public sealed class DiLineageFactory : ILineageFactory
 
         try
         {
-            return (IPipelineLineageSink?)_serviceProvider.GetService(sinkType)
-                   ?? (IPipelineLineageSink?)ActivatorUtilities.CreateInstance(_serviceProvider, sinkType);
+            var resolved = (IPipelineLineageSink?)_serviceProvider.GetService(sinkType);
+
+            if (resolved is not null)
+            {
+                _ = _containerOwned.TryAdd(resolved, 0);
+                return resolved;
+            }
+
+            return (IPipelineLineageSink?)ActivatorUtilities.CreateInstance(_serviceProvider, sinkType);
         }
         catch
         {

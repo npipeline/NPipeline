@@ -375,7 +375,64 @@ public class DiLineageFactoryTests
         sink.Should().BeOfType<TestPipelineLineageSink2>(); // Last registration wins
     }
 
+    [Fact]
+    public void CallerOwnsCreatedInstance_WithContainerResolvedSink_ReturnsFalse()
+    {
+        // Arrange - the container tracks what it resolves, so the run must leave it alone.
+        var services = new ServiceCollection();
+        services.AddSingleton<DisposableLineageSink>();
+        var serviceProvider = services.BuildServiceProvider();
+        var factory = new DiLineageFactory(serviceProvider);
+
+        // Act
+        var sink = factory.CreateLineageSink(typeof(DisposableLineageSink));
+
+        // Assert
+        _ = sink.Should().NotBeNull();
+        factory.CallerOwnsCreatedInstance(sink!).Should().BeFalse("the container tracks the instance it resolved");
+    }
+
+    [Fact]
+    public void CallerOwnsCreatedInstance_WithActivatorCreatedSink_ReturnsTrue()
+    {
+        // Arrange - the factory constructed the instance itself, so the caller owns it.
+        var services = new ServiceCollection();
+        var serviceProvider = services.BuildServiceProvider();
+        var factory = new DiLineageFactory(serviceProvider);
+
+        // Act
+        var sink = factory.CreateLineageSink(typeof(DisposableLineageSink));
+
+        // Assert
+        _ = sink.Should().NotBeNull();
+        factory.CallerOwnsCreatedInstance(sink!).Should().BeTrue("the factory constructed the instance itself");
+    }
+
+    [Fact]
+    public void CallerOwnsCreatedInstance_WithUnrelatedInstance_ReturnsTrue()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        services.AddSingleton<DisposableLineageSink>();
+        var serviceProvider = services.BuildServiceProvider();
+        var factory = new DiLineageFactory(serviceProvider);
+        _ = factory.CreateLineageSink(typeof(DisposableLineageSink)); // resolve the container-owned instance
+
+        // Act
+        var unrelated = new DisposableLineageSink();
+
+        // Assert
+        factory.CallerOwnsCreatedInstance(unrelated).Should().BeTrue("an instance the factory never handed out is the caller's");
+    }
+
     // Test implementations
+    private sealed class DisposableLineageSink : ILineageSink, IAsyncDisposable
+    {
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+
+        public Task RecordAsync(LineageRecord record, CancellationToken cancellationToken) => Task.CompletedTask;
+    }
+
     private sealed class TestLineageSink : ILineageSink
     {
         public Task RecordAsync(LineageRecord record, CancellationToken cancellationToken) => Task.CompletedTask;

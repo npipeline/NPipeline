@@ -24,16 +24,5 @@ public sealed class Pipeline
     /// </summary>
     internal CircuitBreakerRegistry? CircuitBreakers { get; set; }
 
-    internal IReadOnlyList<IAsyncDisposable> BuilderDisposables { get; set; } = Array.Empty<IAsyncDisposable>();
-
-    internal void TransferBuilderDisposables(PipelineContext context)
-    {
-        if (BuilderDisposables.Count == 0)
-            return;
-
-        foreach (var d in BuilderDisposables)
-        {
-            context.RegisterForDisposal(d);
-        }
-    }
+    internal IReadOnlyList<object> BuilderDisposables { get; set; } = Array.Empty<object>();
 }

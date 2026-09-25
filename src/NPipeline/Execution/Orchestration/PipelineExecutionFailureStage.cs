@@ -19,7 +19,14 @@ internal sealed class PipelineExecutionFailureStage(IObservabilitySurface observ
         ArgumentNullException.ThrowIfNull(ex);
         ArgumentNullException.ThrowIfNull(pipelineActivity);
 
-        await observabilitySurface.FailPipeline(definitionType, context, ex, pipelineActivity).ConfigureAwait(false);
+        try
+        {
+            await observabilitySurface.FailPipeline(definitionType, context, ex, pipelineActivity).ConfigureAwait(false);
+        }
+        catch
+        {
+            // A failing observer must not replace the pipeline error that is about to be thrown.
+        }
 
         // A cancellation of this run is preserved raw. A foreign OperationCanceledException, such as a client
         // timeout, is wrapped like any other failure.

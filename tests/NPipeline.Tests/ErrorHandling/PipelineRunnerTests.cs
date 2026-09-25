@@ -44,7 +44,7 @@ public sealed class PipelineRunnerTests
 
         A.CallTo(() => _nodeFactory.Create(A<NodeDefinition>._, A<PipelineGraph>._)).Returns(failingNode);
 
-        A.CallTo(() => _nodeInstantiationService.InstantiateNodes(A<PipelineGraph>._, A<INodeFactory>._))
+        A.CallTo(() => _nodeInstantiationService.InstantiateNodes(A<PipelineGraph>._, A<INodeFactory>._, A<OwnedNodeInstances>._))
             .Returns(new Dictionary<string, INode> { { nodeId, failingNode } });
 
         A.CallTo(() => _topologyService.BuildInputLookup(A<PipelineGraph>._)).Returns(A.Fake<ILookup<string, Edge>>());
@@ -98,7 +98,7 @@ public sealed class PipelineRunnerTests
         A.CallTo(() => _pipelineFactory.Create<PipelineRunnerTestHelpers.TestPipelineDefinition>(A<PipelineContext>._))
             .Returns(new NPipeline.Pipeline.Pipeline(graph));
 
-        A.CallTo(() => _nodeInstantiationService.InstantiateNodes(A<PipelineGraph>._, A<INodeFactory>._))
+        A.CallTo(() => _nodeInstantiationService.InstantiateNodes(A<PipelineGraph>._, A<INodeFactory>._, A<OwnedNodeInstances>._))
             .Returns(new Dictionary<string, INode> { { nodeId, A.Fake<INode>() } });
 
         A.CallTo(() => _topologyService.BuildInputLookup(A<PipelineGraph>._)).Returns(A.Fake<ILookup<string, Edge>>());
@@ -143,7 +143,7 @@ public sealed class PipelineRunnerTests
         A.CallTo(() => _pipelineFactory.Create<PipelineRunnerTestHelpers.TestPipelineDefinition>(A<PipelineContext>._))
             .Returns(new NPipeline.Pipeline.Pipeline(graph));
 
-        A.CallTo(() => _nodeInstantiationService.InstantiateNodes(A<PipelineGraph>._, A<INodeFactory>._))
+        A.CallTo(() => _nodeInstantiationService.InstantiateNodes(A<PipelineGraph>._, A<INodeFactory>._, A<OwnedNodeInstances>._))
             .Returns(new Dictionary<string, INode> { { nodeId, A.Fake<INode>() } });
 
         A.CallTo(() => _topologyService.BuildInputLookup(A<PipelineGraph>._)).Returns(A.Fake<ILookup<string, Edge>>());

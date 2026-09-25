@@ -24,8 +24,12 @@ namespace NPipeline.Pipeline;
 public sealed partial class PipelineBuilder
 {
     // Track disposables created during builder configuration so they can be transferred to the PipelineContext at execution time.
-    private readonly List<IAsyncDisposable> _builderDisposables = [];
+    private readonly List<object> _builderDisposables = [];
     private readonly List<IGraphRule> _customValidationRules = [];
+
+    // Guard passed down to child builders while BuildChildGraphs runs, so a composite that contains itself is skipped
+    // rather than recursing until the stack overflows.
+    private HashSet<Type>? _childGraphGuard { get; init; }
 
     // Flag to prevent builder reuse after Build() has been called
     private bool _built;
@@ -80,7 +84,8 @@ public sealed partial class PipelineBuilder
     /// </remarks>
     public INodeRegistrationPlanner RegistrationPlanner { get; }
 
-    internal IReadOnlyList<IAsyncDisposable> BuilderDisposables => _builderDisposables;
+    // Track disposables created during builder configuration so they can be transferred to the PipelineContext at execution time.
+    internal IReadOnlyList<object> BuilderDisposables => _builderDisposables;
     internal PipelineOptimizationProfile CurrentOptimizationProfile => _config.OptimizationProfile;
 
     // Internal properties for testing access to state objects
@@ -92,32 +97,8 @@ public sealed partial class PipelineBuilder
 
     internal void RegisterBuilderDisposable(object instance)
     {
-        switch (instance)
-        {
-            case IAsyncDisposable asyncDisp:
-                _builderDisposables.Add(asyncDisp);
-                break;
-            case IDisposable disp:
-                _builderDisposables.Add(new BuilderDisposableWrapper(disp));
-                break;
-        }
-    }
-
-    private sealed class BuilderDisposableWrapper(IDisposable inner) : IAsyncDisposable
-    {
-        public ValueTask DisposeAsync()
-        {
-            try
-            {
-                inner.Dispose();
-            }
-            catch
-            {
-                /* swallow builder-phase disposal errors */
-            }
-
-            return ValueTask.CompletedTask;
-        }
+        if (instance is IAsyncDisposable or IDisposable)
+            _builderDisposables.Add(instance);
     }
 
     internal sealed record BuilderConfig(

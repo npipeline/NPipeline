@@ -6,6 +6,7 @@ using NPipeline.Configuration;
 using NPipeline.Execution.Annotations;
 using NPipeline.Graph;
 using NPipeline.Graph.Validation;
+using NPipeline.Nodes;
 using NPipeline.Reliability;
 
 namespace NPipeline.Pipeline;
@@ -331,9 +332,15 @@ public sealed partial class PipelineBuilder
     ///     Scans for composite nodes with <see cref="NodeDefinition.ChildDefinitionType" /> set,
     ///     builds their child pipeline graphs, and attaches them to the parent graph.
     /// </summary>
+    /// <remarks>
+    ///     Child graphs are structural only: the instances a child's <c>Define</c> created are disposed here and are
+    ///     not carried on the child graph. A recursive composite is skipped with a trace warning rather than recursing
+    ///     until the stack overflows.
+    /// </remarks>
     private PipelineGraph BuildChildGraphs(PipelineGraph graph)
     {
         Dictionary<string, PipelineGraph>? childGraphs = null;
+        var inProgress = _childGraphGuard ?? new HashSet<Type>();
 
         foreach (var node in graph.Nodes)
         {
@@ -342,20 +349,57 @@ public sealed partial class PipelineBuilder
 
             try
             {
+                if (!inProgress.Add(node.ChildDefinitionType))
+                {
+                    Trace.TraceWarning(
+                        $"[NPipeline] Recursive composite definition '{node.ChildDefinitionType}' skipped when building child graphs.");
+                    continue;
+                }
+
                 var childDef = (IPipelineDefinition)Activator.CreateInstance(node.ChildDefinitionType)!;
 
                 // The child graph must be built with the same lineage module as its parent, otherwise its nodes get
                 // adapters from a different module than the one that will run them.
-                var childBuilder = new PipelineBuilder(Lineage, RegistrationPlanner);
+                var childBuilder = new PipelineBuilder(Lineage, RegistrationPlanner) { _childGraphGuard = inProgress };
 
                 // Child graph extraction is a build-time operation and uses an isolated default context.
                 // Child Define() implementations should remain side-effect free and fast.
-                childDef.Define(childBuilder, new PipelineContext());
+                var childContext = new PipelineContext();
 
-                if (childBuilder.TryBuild(out var childPipeline, out _) && childPipeline is not null)
+                try
                 {
-                    childGraphs ??= new Dictionary<string, PipelineGraph>();
-                    childGraphs[node.Id] = childPipeline.Graph;
+                    childDef.Define(childBuilder, childContext);
+
+                    if (childBuilder.TryBuild(out var childPipeline, out var childResult) && childPipeline is not null)
+                    {
+                        childGraphs ??= new Dictionary<string, PipelineGraph>();
+
+                        // The graph is kept for introspection only. Its instances belong to the child builder and are
+                        // disposed below, so a later run cannot be handed disposed objects.
+                        childGraphs[node.Id] = childPipeline.Graph with
+                        {
+                            PreconfiguredNodeInstances = FrozenDictionary<string, INode>.Empty,
+                        };
+                    }
+                    else
+                    {
+                        Trace.TraceWarning(
+                            $"[NPipeline] Child graph for composite '{node.Id}' is invalid: {string.Join("; ", childResult.Errors)}");
+                    }
+                }
+                finally
+                {
+                    _ = inProgress.Remove(node.ChildDefinitionType);
+                    DisposeBuilderInstances(childBuilder);
+
+                    try
+                    {
+                        childContext.DisposeAsync().AsTask().GetAwaiter().GetResult();
+                    }
+                    catch (Exception ex)
+                    {
+                        Trace.TraceWarning($"[NPipeline] Disposing a child-graph context failed: {ex.Message}");
+                    }
                 }
             }
             catch (Exception ex) when (ex is not OutOfMemoryException and not OperationCanceledException)
@@ -370,5 +414,38 @@ public sealed partial class PipelineBuilder
             return graph with { ChildGraphs = childGraphs.ToFrozenDictionary() };
 
         return graph;
+    }
+
+    /// <summary>
+    ///     Disposes the instances a child builder created, once each. The builder disposables and the preconfigured
+    ///     instances overlap, so both are visited with reference equality.
+    /// </summary>
+    private static void DisposeBuilderInstances(PipelineBuilder builder)
+    {
+        var seen = new HashSet<object>(ReferenceEqualityComparer.Instance);
+        var candidates = builder.BuilderDisposables.Concat(builder.NodeState.PreconfiguredNodeInstances.Values);
+
+        foreach (var candidate in candidates)
+        {
+            if (!seen.Add(candidate))
+                continue;
+
+            try
+            {
+                switch (candidate)
+                {
+                    case IAsyncDisposable asyncDisposable:
+                        asyncDisposable.DisposeAsync().AsTask().GetAwaiter().GetResult();
+                        break;
+                    case IDisposable disposable:
+                        disposable.Dispose();
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                Trace.TraceWarning($"[NPipeline] Disposing a child-graph instance failed: {ex.Message}");
+            }
+        }
     }
 }

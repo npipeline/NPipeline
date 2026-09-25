@@ -27,11 +27,6 @@ public sealed class PipelineNodeEnvironmentContext
     public Dictionary<string, INode> PreconfiguredNodeInstances { get; } = new();
 
     /// <summary>
-    ///     Indicates node lifetimes are owned externally (for example by DI container).
-    /// </summary>
-    public bool DiOwnedNodes { get; set; }
-
-    /// <summary>
     ///     Gets the id under which <paramref name="node" /> is running in this pipeline.
     /// </summary>
     /// <param name="node">The node asking, normally <c>this</c>.</param>
