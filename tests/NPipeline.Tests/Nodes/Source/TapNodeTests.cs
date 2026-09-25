@@ -2,53 +2,20 @@ using AwesomeAssertions;
 using NPipeline.DataFlow;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
+using NPipeline.Tests.Reliability.Behavior;
 
 namespace NPipeline.Tests.Nodes.Source;
 
 /// <summary>
 ///     Tests for TapNode&lt;T&gt; diagnostic node.
 ///     Validates that TapNode sends copies to sink while passing through original items unchanged.
-///     Covers 19 statements in TapNode&lt;T&gt;.
 /// </summary>
 public sealed class TapNodeTests
 {
     #region Core Functionality Tests
 
     [Fact]
-    public async Task TapNode_PassesItemThroughUnchanged()
-    {
-        // Arrange
-        const int testItem = 42;
-        DummySink<int> sink = new();
-        TapNode<int> tapNode = new(sink);
-        var context = PipelineContext.CreateDefault();
-
-        // Act
-        var result = await tapNode.TransformAsync(testItem, context, CancellationToken.None);
-
-        // Assert - item should pass through unchanged
-        _ = result.Should().Be(testItem);
-    }
-
-    [Fact]
-    public async Task TapNode_SendsCopyToSink()
-    {
-        // Arrange
-        const string testItem = "test_data";
-        DummySink<string> sink = new();
-        TapNode<string> tapNode = new(sink);
-        var context = PipelineContext.CreateDefault();
-
-        // Act
-        _ = await tapNode.TransformAsync(testItem, context, CancellationToken.None);
-
-        // Assert - sink should have received the item
-        _ = sink.ReceivedItems.Should().HaveCount(1);
-        _ = sink.ReceivedItems[0].Should().Be(testItem);
-    }
-
-    [Fact]
-    public async Task TapNode_WithMultipleItems_AllPassThroughUnchanged()
+    public async Task TransformAsync_PassesItemsThroughUnchanged()
     {
         // Arrange
         int[] testItems = [1, 2, 3, 4, 5];
@@ -57,20 +24,123 @@ public sealed class TapNodeTests
         var context = PipelineContext.CreateDefault();
 
         // Act
-        List<int> results = [];
-
-        foreach (var item in testItems)
-        {
-            results.Add(await tapNode.TransformAsync(item, context, CancellationToken.None));
-        }
+        var results = await tapNode.TransformAsync(testItems.ToAsyncEnumerable(), context, CancellationToken.None).ToListAsync();
 
         // Assert - all items pass through unchanged
         _ = results.Should().Equal(testItems);
-        _ = sink.ReceivedItems.Should().HaveCount(5);
+        _ = sink.ReceivedItems.Should().Equal(testItems);
     }
 
     [Fact]
-    public async Task TapNode_WithReferenceType_PassesByReference()
+    public async Task TransformAsync_WithinPipeline_CallsSinkOnceForTheWholeStream()
+    {
+        // Arrange
+        var tapSink = new DummySink<int>();
+        var mainSink = new DummySink<int>();
+
+        // Act
+        await BehaviorPipeline.RunAsync(b =>
+        {
+            var source = b.AddSource<StreamingSource<int>, int>("source");
+            _ = b.AddPreconfiguredNodeInstance(source.Id, StreamingSource<int>.Of([1, 2, 3]));
+            var tap = b.AddTap<int>(tapSink, "tap");
+            var sink = b.AddSink<DummySink<int>, int>("sink");
+            _ = b.AddPreconfiguredNodeInstance(sink.Id, mainSink);
+            _ = b.Connect(source, tap).Connect(tap, sink);
+        });
+
+        // Assert
+        tapSink.Calls.Should().Be(1);
+        tapSink.ReceivedItems.Should().Equal(1, 2, 3);
+        mainSink.ReceivedItems.Should().Equal(1, 2, 3);
+    }
+
+    [Fact]
+    public async Task TransformAsync_WithinPipeline_SinkExceptionPropagates()
+    {
+        // Arrange
+        var failingSink = new FailingSink<int>();
+
+        // Act
+        var act = async () => await BehaviorPipeline.RunAsync(b =>
+        {
+            var source = b.AddSource<StreamingSource<int>, int>("source");
+            _ = b.AddPreconfiguredNodeInstance(source.Id, StreamingSource<int>.Of([1, 2, 3]));
+            var tap = b.AddTap<int>(failingSink, "tap");
+            var sink = b.AddSink<DummySink<int>, int>("sink");
+            _ = b.AddPreconfiguredNodeInstance(sink.Id, new DummySink<int>());
+            _ = b.Connect(source, tap).Connect(tap, sink);
+        });
+
+        // Assert
+        await act.Should().ThrowAsync<Exception>().WithInnerException(typeof(InvalidOperationException));
+    }
+
+    [Fact]
+    public async Task TransformAsync_WithinPipeline_IgnoringSinkDoesNotBlockMainPath()
+    {
+        // Arrange
+        var mainSink = new DummySink<int>();
+
+        // Act
+        await BehaviorPipeline.RunAsync(b =>
+        {
+            var source = b.AddSource<StreamingSource<int>, int>("source");
+            _ = b.AddPreconfiguredNodeInstance(source.Id, StreamingSource<int>.Of(Enumerable.Range(0, 50)));
+            var tap = b.AddTap<int>(new IgnoringSink<int>(), "tap");
+            var sink = b.AddSink<DummySink<int>, int>("sink");
+            _ = b.AddPreconfiguredNodeInstance(sink.Id, mainSink);
+            _ = b.Connect(source, tap).Connect(tap, sink);
+        });
+
+        // Assert
+        mainSink.ReceivedItems.Should().Equal(Enumerable.Range(0, 50));
+    }
+
+    [Fact]
+    public async Task TransformAsync_WithinPipeline_CancellationIsPropagated()
+    {
+        // Arrange
+        var tapSink = new DummySink<int>();
+        using var cts = new CancellationTokenSource();
+
+        // Act
+        var run = BehaviorPipeline.RunAsync(b =>
+        {
+            var source = b.AddSource<StreamingSource<int>, int>("source");
+            _ = b.AddPreconfiguredNodeInstance(source.Id, StreamingSource<int>.Unbounded([1]));
+            var tap = b.AddTap<int>(tapSink, "tap");
+            var sink = b.AddSink<DummySink<int>, int>("sink");
+            _ = b.AddPreconfiguredNodeInstance(sink.Id, new DummySink<int>());
+            _ = b.Connect(source, tap).Connect(tap, sink);
+        }, cancellationToken: cts.Token);
+
+        await tapSink.FirstItemReceived.WaitAsync(TimeSpan.FromSeconds(5));
+        await cts.CancelAsync();
+
+        // Assert
+        var act = async () => await run;
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [Fact]
+    public async Task TransformAsync_CallsSinkOnceForTheWholeStream()
+    {
+        // Arrange
+        DummySink<int> sink = new();
+        TapNode<int> tapNode = new(sink);
+        var context = PipelineContext.CreateDefault();
+
+        // Act
+        _ = await tapNode.TransformAsync(Enumerable.Range(0, 3).ToAsyncEnumerable(), context, CancellationToken.None).ToListAsync();
+
+        // Assert
+        _ = sink.Calls.Should().Be(1);
+        _ = sink.ReceivedItems.Should().HaveCount(3);
+    }
+
+    [Fact]
+    public async Task TransformAsync_ReturnsSameReferenceForReferenceTypes()
     {
         // Arrange
         CustomData originalData = new(1, "original");
@@ -79,113 +149,41 @@ public sealed class TapNodeTests
         var context = PipelineContext.CreateDefault();
 
         // Act
-        var result = await tapNode.TransformAsync(originalData, context, CancellationToken.None);
+        var results = await tapNode.TransformAsync(new[] { originalData }.ToAsyncEnumerable(), context, CancellationToken.None).ToListAsync();
 
         // Assert - should return same reference
-        _ = result.Should().BeSameAs(originalData);
-        _ = sink.ReceivedItems.Should().HaveCount(1);
-        _ = sink.ReceivedItems[0].Should().BeSameAs(originalData);
+        _ = results.Should().ContainSingle().Which.Should().BeSameAs(originalData);
+        _ = sink.ReceivedItems.Should().ContainSingle().Which.Should().BeSameAs(originalData);
     }
 
     [Fact]
-    public async Task TapNode_SinkExceptionDoesNotAffectItemReturn()
+    public async Task TransformAsync_SinkExceptionPropagates()
     {
         // Arrange
-        const int testItem = 100;
         FailingSink<int> failingSink = new();
         TapNode<int> tapNode = new(failingSink);
         var context = PipelineContext.CreateDefault();
 
         // Act & Assert
-        // Even if sink fails, TapNode should propagate the exception
-        _ = await tapNode.Invoking(tn => tn.TransformAsync(testItem, context, CancellationToken.None).AsTask())
-            .Should().ThrowAsync<InvalidOperationException>();
+        var act = async () =>
+            await tapNode.TransformAsync(Enumerable.Range(0, 5).ToAsyncEnumerable(), context, CancellationToken.None).ToListAsync();
+
+        _ = await act.Should().ThrowAsync<InvalidOperationException>();
     }
 
-    #endregion
-
-    #region Data Type Variation Tests
-
     [Fact]
-    public async Task TapNode_WithInt_Works()
+    public async Task TransformAsync_SinkThatReturnsWithoutReading_DoesNotBlockMainPath()
     {
         // Arrange
-        DummySink<int> sink = new();
+        IgnoringSink<int> sink = new();
         TapNode<int> tapNode = new(sink);
         var context = PipelineContext.CreateDefault();
 
         // Act
-        var result = await tapNode.TransformAsync(999, context, CancellationToken.None);
+        var results = await tapNode.TransformAsync(Enumerable.Range(0, 10).ToAsyncEnumerable(), context, CancellationToken.None).ToListAsync();
 
-        // Assert
-        _ = result.Should().Be(999);
-        _ = sink.ReceivedItems.Should().ContainSingle(i => i == 999);
-    }
-
-    [Fact]
-    public async Task TapNode_WithDouble_Works()
-    {
-        // Arrange
-        DummySink<double> sink = new();
-        TapNode<double> tapNode = new(sink);
-        var context = PipelineContext.CreateDefault();
-
-        // Act
-        var result = await tapNode.TransformAsync(3.14, context, CancellationToken.None);
-
-        // Assert
-        _ = result.Should().Be(3.14);
-        _ = sink.ReceivedItems.Should().ContainSingle(d => d.Equals(3.14));
-    }
-
-    [Fact]
-    public async Task TapNode_WithComplexType_Works()
-    {
-        // Arrange
-        CustomData complexData = new(42, "complex");
-        DummySink<CustomData> sink = new();
-        TapNode<CustomData> tapNode = new(sink);
-        var context = PipelineContext.CreateDefault();
-
-        // Act
-        var result = await tapNode.TransformAsync(complexData, context, CancellationToken.None);
-
-        // Assert
-        _ = result.Should().Be(complexData);
-        _ = sink.ReceivedItems.Should().ContainSingle(cd => cd.Id == 42 && cd.Name == "complex");
-    }
-
-    [Fact]
-    public async Task TapNode_WithNullableValue_Works()
-    {
-        // Arrange
-        DummySink<int?> sink = new();
-        TapNode<int?> tapNode = new(sink);
-        var context = PipelineContext.CreateDefault();
-        int? nullableValue = 42;
-
-        // Act
-        var result = await tapNode.TransformAsync(nullableValue, context, CancellationToken.None);
-
-        // Assert
-        _ = result.Should().Be(42);
-        _ = sink.ReceivedItems.Should().ContainSingle(v => v == 42);
-    }
-
-    [Fact]
-    public async Task TapNode_WithNull_Works()
-    {
-        // Arrange
-        DummySink<string?> sink = new();
-        TapNode<string?> tapNode = new(sink);
-        var context = PipelineContext.CreateDefault();
-
-        // Act
-        var result = await tapNode.TransformAsync(null, context, CancellationToken.None);
-
-        // Assert
-        _ = result.Should().BeNull();
-        _ = sink.ReceivedItems.Should().ContainSingle(s => s == null);
+        // Assert - all items still pass through
+        _ = results.Should().Equal(Enumerable.Range(0, 10));
     }
 
     #endregion
@@ -193,24 +191,7 @@ public sealed class TapNodeTests
     #region Cancellation Tests
 
     [Fact]
-    public async Task TapNode_WithCancellationToken_PassesTokenToSink()
-    {
-        // Arrange
-        DummySink<int> sink = new();
-        TapNode<int> tapNode = new(sink);
-        var context = PipelineContext.CreateDefault();
-        using CancellationTokenSource cts = new();
-
-        // Act
-        var result = await tapNode.TransformAsync(123, context, cts.Token);
-
-        // Assert
-        _ = result.Should().Be(123);
-        _ = sink.ReceivedItems.Should().HaveCount(1);
-    }
-
-    [Fact]
-    public async Task TapNode_WithCancelledToken_PropagatesException()
+    public async Task TransformAsync_WithCancelledToken_PropagatesException()
     {
         // Arrange
         DummySink<int> sink = new();
@@ -220,8 +201,10 @@ public sealed class TapNodeTests
         cts.Cancel();
 
         // Act & Assert - should throw OperationCanceledException
-        _ = await tapNode.Invoking(tn => tn.TransformAsync(123, context, cts.Token).AsTask())
-            .Should().ThrowAsync<OperationCanceledException>();
+        var act = async () =>
+            await tapNode.TransformAsync(Enumerable.Range(0, 5).ToAsyncEnumerable(), context, cts.Token).ToListAsync();
+
+        _ = await act.Should().ThrowAsync<OperationCanceledException>();
     }
 
     #endregion
@@ -229,7 +212,7 @@ public sealed class TapNodeTests
     #region Disposal Tests
 
     [Fact]
-    public async Task TapNode_DisposeAsyncDisposesSink()
+    public async Task DisposeAsync_DisposesSink()
     {
         // Arrange
         DisposableSink<int> disposableSink = new();
@@ -243,7 +226,7 @@ public sealed class TapNodeTests
     }
 
     [Fact]
-    public async Task TapNode_DisposalDoesNotThrow()
+    public async Task DisposeAsync_DoesNotThrow()
     {
         // Arrange
         DummySink<int> sink = new();
@@ -259,16 +242,25 @@ public sealed class TapNodeTests
 
     private sealed class DummySink<T> : SinkNode<T>
     {
+        private readonly TaskCompletionSource _firstItem = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public int Calls { get; private set; }
+
         public List<T> ReceivedItems { get; } = [];
+
+        public Task FirstItemReceived => _firstItem.Task;
 
         public override async Task ConsumeAsync(
             IDataStream<T> input,
             PipelineContext context,
             CancellationToken cancellationToken)
         {
+            Calls++;
+
             await foreach (var item in input.WithCancellation(cancellationToken))
             {
                 ReceivedItems.Add(item);
+                _ = _firstItem.TrySetResult();
             }
         }
     }
@@ -280,6 +272,15 @@ public sealed class TapNodeTests
             PipelineContext context,
             CancellationToken cancellationToken) =>
             throw new InvalidOperationException("Sink failed intentionally");
+    }
+
+    private sealed class IgnoringSink<T> : SinkNode<T>
+    {
+        public override Task ConsumeAsync(
+            IDataStream<T> input,
+            PipelineContext context,
+            CancellationToken cancellationToken) =>
+            Task.CompletedTask;
     }
 
     private sealed class DisposableSink<T> : SinkNode<T>, IAsyncDisposable

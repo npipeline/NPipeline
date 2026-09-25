@@ -37,9 +37,16 @@ public static class AsyncEnumerableExtensions
     /// <typeparam name="T">The type of the elements in the source sequence.</typeparam>
     /// <param name="source">The source asynchronous sequence.</param>
     /// <param name="batchSize">The maximum number of elements in a batch.</param>
-    /// <param name="timespan">The maximum time to wait before emitting a batch.</param>
+    /// <param name="timespan">
+    ///     The maximum time to wait before emitting a batch, measured from the batch's first item.
+    ///     <see cref="TimeSpan.Zero" /> emits whatever is immediately available.
+    /// </param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>An asynchronous sequence of batches.</returns>
+    /// <remarks>
+    ///     The producer stops when the consumer leaves early, and a source failure surfaces as-is, including an
+    ///     <see cref="OperationCanceledException" /> that did not come from <paramref name="cancellationToken" />.
+    /// </remarks>
     public static async IAsyncEnumerable<IReadOnlyCollection<T>> BatchAsync<T>(
         this IAsyncEnumerable<T> source,
         int batchSize,
@@ -47,92 +54,92 @@ public static class AsyncEnumerableExtensions
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(source);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(batchSize);
+        ArgumentOutOfRangeException.ThrowIfLessThan(timespan, TimeSpan.Zero);
 
-        if (batchSize <= 0)
-            throw new ArgumentOutOfRangeException(nameof(batchSize), "Batch size must be greater than zero.");
-
-        var channel = Channel.CreateUnbounded<T>();
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var channel = Channel.CreateBounded<T>(new BoundedChannelOptions(Math.Max(batchSize * 2, 1))
+        {
+            SingleReader = true,
+            SingleWriter = true,
+            FullMode = BoundedChannelFullMode.Wait,
+        });
 
         var producer = Task.Run(async () =>
         {
+            Exception? error = null;
+
             try
             {
-                await foreach (var item in source.WithCancellation(cancellationToken))
-                {
-                    await channel.Writer.WriteAsync(item, cancellationToken).ConfigureAwait(false);
-                }
+                await foreach (var item in source.WithCancellation(cts.Token).ConfigureAwait(false))
+                    await channel.Writer.WriteAsync(item, cts.Token).ConfigureAwait(false);
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException) when (cts.IsCancellationRequested)
             {
-                // Expected when cancellation is requested.
+                // Stopped by the consumer or the caller.
+            }
+            catch (Exception ex)
+            {
+                error = ex; // includes foreign OperationCanceledExceptions
             }
             finally
             {
-                channel.Writer.Complete();
+                _ = channel.Writer.TryComplete(error);
             }
-        }, cancellationToken);
+        }, CancellationToken.None);
 
-        while (await channel.Reader.WaitToReadAsync(cancellationToken).ConfigureAwait(false))
+        try
         {
-            List<T> batch = new(batchSize);
+            var reader = channel.Reader;
 
-            // Acquire first item (blocking until available or cancellation)
-            if (!channel.Reader.TryRead(out var first))
+            while (await reader.WaitToReadAsync(cancellationToken).ConfigureAwait(false)) // throws the producer's error
             {
-                // If WaitToReadAsync returned true but no item (race), continue
-                continue;
-            }
+                var batch = new List<T>(batchSize);
 
-            batch.Add(first);
-            var deadline = DateTime.UtcNow + timespan;
-
-            // For very small windows (<=100ms) we flush immediately after first item to avoid scheduling variance across runtimes
-            // impacting expected 'first batch single item' semantics in tests.
-            if (timespan <= TimeSpan.FromMilliseconds(100))
-            {
-                yield return batch.ToArray();
-
-                continue;
-            }
-
-            // Collect until size limit or deadline reached
-            while (batch.Count < batchSize)
-            {
-                if (timespan > TimeSpan.Zero)
-                {
-                    var remaining = deadline - DateTime.UtcNow;
-
-                    if (remaining <= TimeSpan.Zero)
-                        break; // time window elapsed
-
-                    // Wait for either new data or deadline
-                    var waitTask = channel.Reader.WaitToReadAsync(cancellationToken).AsTask();
-                    var delayTask = Task.Delay(remaining, cancellationToken);
-                    var completed = await Task.WhenAny(waitTask, delayTask).ConfigureAwait(false);
-
-                    if (completed == delayTask)
-                        break; // deadline hit
-
-                    // else data available
-                    if (!await waitTask.ConfigureAwait(false))
-                        break; // channel closed
-                }
-                else
-                {
-                    if (!await channel.Reader.WaitToReadAsync(cancellationToken).ConfigureAwait(false))
-                        break;
-                }
-
-                while (batch.Count < batchSize && channel.Reader.TryRead(out var item))
-                {
+                while (batch.Count < batchSize && reader.TryRead(out var item))
                     batch.Add(item);
+
+                if (batch.Count == 0)
+                    continue;
+
+                // The time window starts at the batch's first item.
+                if (batch.Count < batchSize && timespan > TimeSpan.Zero)
+                {
+                    using var windowCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                    windowCts.CancelAfter(timespan);
+
+                    try
+                    {
+                        while (batch.Count < batchSize && await reader.WaitToReadAsync(windowCts.Token).ConfigureAwait(false))
+                        {
+                            while (batch.Count < batchSize && reader.TryRead(out var item))
+                                batch.Add(item);
+                        }
+                    }
+                    catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+                    {
+                        // The window elapsed.
+                    }
                 }
+
+                yield return batch; // List<T> is IReadOnlyCollection<T>; no ToArray copy
             }
 
-            yield return batch.ToArray();
+            await producer.ConfigureAwait(false);
         }
+        finally
+        {
+            cts.Cancel(); // stop the producer if the consumer left early
 
-        await producer.ConfigureAwait(false); // Ensure producer is finished and exceptions are propagated.
+            try
+            {
+                await producer.ConfigureAwait(false);
+            }
+            catch
+            {
+                // Already surfaced through the channel, or cancelled.
+            }
+        }
     }
 
     /// <summary>

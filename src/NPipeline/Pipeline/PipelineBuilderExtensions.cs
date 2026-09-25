@@ -25,7 +25,7 @@ public static class PipelineBuilderExtensions
     {
         ArgumentNullException.ThrowIfNull(sink);
 
-        var handle = builder.AddTransformWithKind<TapNode<T>, T, T>(NodeKind.Tap, name ?? "Tap");
+        var handle = builder.AddStreamTransformWithKind<TapNode<T>, T, T>(NodeKind.Tap, name ?? "Tap");
         var node = new TapNode<T>(sink);
         builder.RegisterBuilderDisposable(node);
         _ = builder.AddPreconfiguredNodeInstance(handle.Id, node);
@@ -46,7 +46,7 @@ public static class PipelineBuilderExtensions
     {
         ArgumentNullException.ThrowIfNull(sinkFactory);
 
-        var handle = builder.AddTransformWithKind<TapNode<T>, T, T>(NodeKind.Tap, name ?? "Tap");
+        var handle = builder.AddStreamTransformWithKind<TapNode<T>, T, T>(NodeKind.Tap, name ?? "Tap");
         var node = new TapNode<T>(sinkFactory());
         builder.RegisterBuilderDisposable(node);
         _ = builder.AddPreconfiguredNodeInstance(handle.Id, node);

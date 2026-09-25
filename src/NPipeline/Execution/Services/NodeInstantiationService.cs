@@ -90,7 +90,7 @@ public sealed class NodeInstantiationService : INodeInstantiationService
                         def.OutputType,
                         ExecuteTransform: BuildTransformDelegate(def)),
 
-                NodeKind.Transform or NodeKind.Route or NodeKind.StreamTransform or NodeKind.Batch
+                NodeKind.Transform or NodeKind.Route or NodeKind.StreamTransform or NodeKind.Batch or NodeKind.Tap
                     when instance is IStreamTransformNode streamTransformNode => new NodeExecutionPlan(
                         def.Id,
                         def.Kind,

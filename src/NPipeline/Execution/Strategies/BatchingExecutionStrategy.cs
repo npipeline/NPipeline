@@ -160,61 +160,54 @@ public sealed class BatchingExecutionStrategy : IExecutionStrategy, IStreamExecu
     {
         using var scope = observabilityScope;
 
-        var batch = new List<T>(batchSize);
-        var lastYieldTime = DateTime.UtcNow;
-
-#pragma warning disable CA2007
-
-        // CA2007 false positive: the enumerator comes from a ConfigureAwait(false) sequence, so its
-
-        // MoveNextAsync and DisposeAsync already return configured awaitables - the analyzer only
-
-        // recognises ConfigureAwait applied directly to the await using expression.
-
-        await using var inputEnumerator = input.WithCancellation(cancellationToken).ConfigureAwait(false).GetAsyncEnumerator();
-
-#pragma warning restore CA2007
-
-        while (true)
+        await foreach (var batch in Observe(input, scope, cancellationToken)
+                           .BatchAsync(batchSize, timespan, cancellationToken)
+                           .WithCancellation(cancellationToken).ConfigureAwait(false))
         {
-            T item;
-
-            try
-            {
-                if (!await inputEnumerator.MoveNextAsync())
-                    break;
-
-                item = inputEnumerator.Current;
-            }
-            catch (Exception ex)
-            {
-                scope.RecordFailure(ex);
-                throw;
-            }
-
-            // Track item processed
-            scope.IncrementProcessed();
-
-            batch.Add(item);
-
-            // Check if we should emit the batch
-            if (batch.Count >= batchSize || DateTime.UtcNow - lastYieldTime >= timespan)
-            {
-                // Track item emitted (one batch)
-                scope.IncrementEmitted();
-                yield return batch;
-
-                batch = new List<T>(batchSize);
-                lastYieldTime = DateTime.UtcNow;
-            }
-        }
-
-        // Emit any remaining items in the final batch
-        if (batch.Count > 0)
-        {
-            // Track item emitted (one batch)
             scope.IncrementEmitted();
             yield return batch;
+        }
+    }
+
+    /// <summary>
+    ///     Counts processed items and records input failures.
+    /// </summary>
+    /// <remarks>
+    ///     A try/catch cannot contain a yield, so the enumerator is driven by hand.
+    /// </remarks>
+    private static async IAsyncEnumerable<T> Observe<T>(
+        IAsyncEnumerable<T> source,
+        IAutoObservabilityScope scope,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var enumerator = source.GetAsyncEnumerator(cancellationToken);
+
+        try
+        {
+            while (true)
+            {
+                bool hasItem;
+
+                try
+                {
+                    hasItem = await enumerator.MoveNextAsync().ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    scope.RecordFailure(ex);
+                    throw;
+                }
+
+                if (!hasItem)
+                    yield break;
+
+                scope.IncrementProcessed();
+                yield return enumerator.Current;
+            }
+        }
+        finally
+        {
+            await enumerator.DisposeAsync().ConfigureAwait(false);
         }
     }
 }
