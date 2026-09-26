@@ -180,6 +180,27 @@ public sealed class ServiceCollectionExtensionsTests
     }
 
     [Fact]
+    public async Task RunPipelineAsync_DisposesTheContextItCreates()
+    {
+        // Arrange - a node registers a resource with the run's context, which only disposing the context releases.
+        var services = new ServiceCollection();
+        services.AddNPipeline(Assembly.GetExecutingAssembly());
+
+        var descriptor = services.Single(d => d.ServiceType == typeof(RegisteringSinkNode));
+        services.Remove(descriptor);
+        var sink = new RegisteringSinkNode();
+        services.AddSingleton(sink);
+
+        var serviceProvider = services.BuildServiceProvider();
+
+        // Act
+        await serviceProvider.RunPipelineAsync<RegisteringPipelineDefinition>();
+
+        // Assert
+        sink.Tracker.Disposed.Should().BeTrue("RunPipelineAsync creates the context, so it must dispose it");
+    }
+
+    [Fact]
     public void Lifetimes_ShouldBeScoped_ForRunnerAndFactories()
     {
         // Arrange
@@ -415,6 +436,41 @@ public sealed class ServiceCollectionExtensionsTests
             var source = builder.AddSource<InMemorySourceNode<string>, string>("source");
             var sink = builder.AddSink<TestSinkNode, string>("sink");
             builder.Connect(source, sink);
+        }
+    }
+
+    private sealed class RegisteringPipelineDefinition : IPipelineDefinition
+    {
+        public void Define(PipelineBuilder builder, PipelineContext context)
+        {
+            var source = builder.AddSource<InMemorySourceNode<string>, string>("source");
+            var sink = builder.AddSink<RegisteringSinkNode, string>("sink");
+            builder.Connect(source, sink);
+        }
+    }
+
+    public sealed class DisposalTracker : IAsyncDisposable
+    {
+        public bool Disposed { get; private set; }
+
+        public ValueTask DisposeAsync()
+        {
+            Disposed = true;
+            return ValueTask.CompletedTask;
+        }
+    }
+
+    public sealed class RegisteringSinkNode : SinkNode<string>
+    {
+        public DisposalTracker Tracker { get; } = new();
+
+        public override async Task ConsumeAsync(IDataStream<string> input, PipelineContext context, CancellationToken cancellationToken)
+        {
+            context.RegisterForDisposal(Tracker);
+
+            await foreach (var _ in input.WithCancellation(cancellationToken))
+            {
+            }
         }
     }
 

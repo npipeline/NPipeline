@@ -80,7 +80,7 @@ public sealed class OpenTelemetryPipelineTracerTests
     }
 
     [Fact]
-    public void StartActivity_ShouldSetCurrentActivity()
+    public void StartActivity_ShouldSetCurrentActivity_UntilItStops()
     {
         // Arrange
         var tracer = new OpenTelemetryPipelineTracer("TestService");
@@ -90,7 +90,32 @@ public sealed class OpenTelemetryPipelineTracerTests
 
         // Assert
         Assert.NotNull(tracer.CurrentActivity);
-        Assert.Same(activity, tracer.CurrentActivity);
+        Assert.Equal("TestActivity", Activity.Current?.OperationName);
+
+        activity.Dispose();
+        Assert.Null(tracer.CurrentActivity);
+    }
+
+    [Fact]
+    public async Task CurrentActivity_IsNotSharedWithAnUnrelatedAsyncFlow()
+    {
+        // Arrange - the activity started here must not be what another flow sees as current.
+        var tracer = new OpenTelemetryPipelineTracer("TestService");
+        using var activity = tracer.StartActivity("TestActivity");
+
+        // Act
+        Task<IPipelineActivity?> elsewhere;
+
+        using (ExecutionContext.SuppressFlow())
+        {
+            elsewhere = Task.Run(() => tracer.CurrentActivity);
+        }
+
+        var seenElsewhere = await elsewhere;
+
+        // Assert
+        Assert.NotNull(tracer.CurrentActivity);
+        Assert.Null(seenElsewhere);
     }
 
     [Fact]

@@ -453,4 +453,31 @@ public class LineageCollectorTests
         public int Id { get; set; }
         public string Name { get; set; } = string.Empty;
     }
+
+    [Fact]
+    public void ShouldCollectLineage_CorrelationIdHashingToIntMinValue_DoesNotThrow()
+    {
+        // Guid.GetHashCode XORs its four 32-bit words, so this id hashes to int.MinValue, where Math.Abs throws.
+        var id = new Guid(int.MinValue, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        id.GetHashCode().Should().Be(int.MinValue);
+
+        var collector = new LineageCollector();
+        var act = () => collector.ShouldCollectLineage(id, new LineageOptions(SampleEvery: 7, DeterministicSampling: true));
+
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void ShouldCollectLineage_Deterministic_AgreesWithThePipelinesSampling()
+    {
+        var collector = new LineageCollector();
+        var options = new LineageOptions(SampleEvery: 10, DeterministicSampling: true);
+
+        for (var i = 0; i < 10_000; i++)
+        {
+            var id = Guid.NewGuid();
+            collector.ShouldCollectLineage(id, options).Should().Be(LineageSampling.IsSampled(id, options));
+            collector.ShouldCollectLineage(id, options).Should().Be((id.GetHashCode() & int.MaxValue) % 10 == 0);
+        }
+    }
 }

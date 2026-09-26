@@ -1,3 +1,5 @@
+using NPipeline.Pipeline;
+
 namespace NPipeline.Extensions.Composition;
 
 /// <summary>
@@ -23,7 +25,7 @@ public static class CompositeContextKeys
     /// <summary>
     ///     Key for storing the parent pipeline identifier in sub-pipeline context.
     /// </summary>
-    public const string ParentPipelineId = "__Composite_ParentPipelineId";
+    public const string ParentPipelineId = PipelineContextKeys.ParentPipelineId;
 
     /// <summary>
     ///     Key for storing the parent pipeline name in sub-pipeline context.

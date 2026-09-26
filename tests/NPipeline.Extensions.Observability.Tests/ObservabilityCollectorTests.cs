@@ -627,6 +627,46 @@ public sealed class ObservabilityCollectorTests
     }
 
     [Fact]
+    public void CreatePipelineMetrics_IncludesOnlyTheRequestedPipelinesNodes()
+    {
+        // Arrange - one collector sees two pipeline runs, as in a DI scope that runs twice.
+        var collector = new ObservabilityCollector(s_defaultFactory);
+        var pipelineA = Guid.NewGuid();
+        var pipelineB = Guid.NewGuid();
+        var startTime = DateTimeOffset.UtcNow;
+
+        collector.RecordItemMetrics("a", 10, 10, pipelineA);
+        collector.RecordItemMetrics("b", 5, 5, pipelineB);
+
+        // Act
+        var metrics = collector.CreatePipelineMetrics("p", pipelineA, Guid.NewGuid(), startTime, startTime.AddSeconds(1), true);
+
+        // Assert
+        Assert.Single(metrics.NodeMetrics);
+        Assert.Equal("a", metrics.NodeMetrics[0].NodeId);
+        Assert.Equal(10, metrics.TotalItemsProcessed);
+    }
+
+    [Fact]
+    public void ReleasePipeline_DropsOnlyThatPipelinesMetrics()
+    {
+        // Arrange
+        var collector = new ObservabilityCollector(s_defaultFactory);
+        var parent = Guid.NewGuid();
+        var child = Guid.NewGuid();
+
+        collector.RecordItemMetrics("parent-node", 1, 1, parent);
+        collector.RecordItemMetrics("child-node", 1, 1, child);
+
+        // Act
+        collector.ReleasePipeline(child);
+
+        // Assert
+        Assert.NotNull(collector.GetNodeMetrics("parent-node", parent));
+        Assert.Null(collector.GetNodeMetrics("child-node", child));
+    }
+
+    [Fact]
     public void CreatePipelineMetrics_WithFailure_ShouldIncludeException()
     {
         // Arrange

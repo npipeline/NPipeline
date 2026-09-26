@@ -298,19 +298,7 @@ public sealed class LineageService : ILineage
         }
     }
 
-    private static bool ShouldCollect(Guid correlationId, LineageOptions? options)
-    {
-        if (options is null || options.SampleEvery <= 1)
-            return true;
-
-        var mod = options.SampleEvery;
-
-        if (mod <= 0)
-            return true;
-
-        var hash = correlationId.GetHashCode() & int.MaxValue;
-        return hash % mod == 0;
-    }
+    private static bool ShouldCollect(Guid correlationId, LineageOptions? options) => LineageSampling.IsSampled(correlationId, options);
 
     private static Func<object, string, Guid, string?, LineageOptions?, LineageOutcomeReason, CancellationToken, object> BuildWrapJoinOutputsDelegate(
         Type outType)

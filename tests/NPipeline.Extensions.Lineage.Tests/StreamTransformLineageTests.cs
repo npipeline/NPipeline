@@ -136,6 +136,28 @@ public sealed class StreamTransformLineageTests
         _ = probe.FirstItemTracked.Should().BeFalse();
     }
 
+    [Fact]
+    public async Task SlowSink_KeepsTheLineageAdapterFromReadingTheWholeUpstream()
+    {
+        // Arrange - the sink reads one item, then pauses while the source could run far ahead.
+        var context = new PipelineContext();
+        context.Items[LineageSinkKey] = new CollectingLineageSink();
+        var counter = new ProducedCounter();
+        context.Items[ProducedCounter.Key] = counter;
+
+        var services = new ServiceCollection();
+        services.AddNPipeline(typeof(StreamTransformLineageTests).Assembly);
+        services.AddNPipelineLineage();
+        await using var provider = services.BuildServiceProvider();
+
+        // Act
+        await provider.GetRequiredService<IPipelineRunner>().RunAsync<BackpressurePipeline>(context);
+
+        // Assert - a bounded adapter lets the source run only a few buffers ahead of the pausing sink.
+        _ = counter.ProducedDuringPause.Should().BeLessThan(1_000, "the lineage adapter must apply backpressure");
+        _ = counter.Produced.Should().Be(BackpressurePipeline.ItemCount);
+    }
+
     private static async Task<IReadOnlyList<LineageRecord>> RunAsync<TPipeline>()
         where TPipeline : IPipelineDefinition, new()
     {
@@ -233,6 +255,75 @@ public sealed class StreamTransformLineageTests
             var sink = builder.AddSink<ProbeSink, int>("sink");
 
             builder.Connect(source, tag).Connect(tag, sink);
+        }
+    }
+
+    private sealed class BackpressurePipeline : IPipelineDefinition
+    {
+        public const int ItemCount = 20_000;
+
+        public void Define(PipelineBuilder builder, PipelineContext context)
+        {
+            builder.EnableItemLevelLineage(o => o with { SampleEvery = 100 });
+            builder.AddLineageSink((ILineageSink)context.Items[LineageSinkKey]);
+
+            var source = builder.AddSource<CountingSource, int>("source");
+            var tag = builder.AddTransform<TimesTen, int, int>("tag");
+            var sink = builder.AddSink<PausingSink, int>("sink");
+
+            builder.Connect(source, tag).Connect(tag, sink);
+        }
+    }
+
+    private sealed class ProducedCounter
+    {
+        public const string Key = "test.produced";
+
+        private int _produced;
+
+        public int Produced => Volatile.Read(ref _produced);
+
+        public int ProducedDuringPause { get; set; }
+
+        public void Increment() => Interlocked.Increment(ref _produced);
+    }
+
+    private sealed class CountingSource : SourceNode<int>
+    {
+        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken) =>
+            new DataStream<int>(Produce((ProducedCounter)context.Items[ProducedCounter.Key], cancellationToken), "counting");
+
+        private static async IAsyncEnumerable<int> Produce(ProducedCounter counter, [EnumeratorCancellation] CancellationToken ct)
+        {
+            for (var i = 0; i < BackpressurePipeline.ItemCount; i++)
+            {
+                ct.ThrowIfCancellationRequested();
+                counter.Increment();
+
+                if (i % 256 == 0)
+                    await Task.Yield();
+
+                yield return i;
+            }
+        }
+    }
+
+    private sealed class PausingSink : SinkNode<int>
+    {
+        public override async Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken cancellationToken)
+        {
+            var counter = (ProducedCounter)context.Items[ProducedCounter.Key];
+            var first = true;
+
+            await foreach (var _ in input.WithCancellation(cancellationToken))
+            {
+                if (!first)
+                    continue;
+
+                first = false;
+                await Task.Delay(300, cancellationToken);
+                counter.ProducedDuringPause = counter.Produced;
+            }
         }
     }
 

@@ -1,3 +1,4 @@
+using NPipeline.Extensions.Observability.OpenTelemetry.DependencyInjection;
 using System.Runtime.CompilerServices;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -116,6 +117,86 @@ public sealed class IntegrationTests
     #endregion
 
     #region Real Pipeline Execution Tests
+
+    [Fact]
+    public async Task NodeExecuteSpans_AreStoppedAndSoExported()
+    {
+        // Arrange - listen to a source unique to this test and record every activity that stops.
+        const string serviceName = "NodeSpanTest.Service";
+        var stopped = new System.Collections.Concurrent.ConcurrentQueue<string>();
+
+        using var listener = new System.Diagnostics.ActivityListener
+        {
+            ShouldListenTo = source => source.Name == serviceName,
+            Sample = (ref _) => System.Diagnostics.ActivitySamplingResult.AllData,
+            ActivityStopped = activity => stopped.Enqueue(activity.OperationName),
+        };
+
+        System.Diagnostics.ActivitySource.AddActivityListener(listener);
+
+        var services = new ServiceCollection();
+        _ = services.AddNPipeline();
+        _ = services.AddNPipelineObservability();
+        _ = services.AddOpenTelemetryPipelineTracer(serviceName);
+        var provider = services.BuildServiceProvider();
+        await using var scope = provider.CreateAsyncScope();
+        var runner = scope.ServiceProvider.GetRequiredService<IPipelineRunner>();
+        var contextFactory = scope.ServiceProvider.GetRequiredService<IObservablePipelineContextFactory>();
+
+        // Act - the context factory picks up the tracer registered in the container.
+        await using (var context = contextFactory.Create())
+            await runner.RunAsync<TestPipelineWithObservability>(context);
+
+        // Assert - an unstopped span is never exported, and its children would point at a missing parent.
+        Assert.Contains("Node.Execute: source", stopped);
+        Assert.Contains("Node.Execute: transform", stopped);
+        Assert.Contains("Node.Execute: sink", stopped);
+        Assert.Single(stopped, name => name == "Node.Execute: transform");
+    }
+
+    [Fact]
+    public async Task TwoRunsInOneScope_EachEmissionReportsOnlyItsOwnNodes()
+    {
+        // Arrange - the collector is scoped, so both runs share it.
+        var services = new ServiceCollection();
+        _ = services.AddNPipeline();
+        _ = services.AddNPipelineObservability<RecordingMetricsSink, RecordingPipelineMetricsSink>();
+        var provider = services.BuildServiceProvider();
+        await using var scope = provider.CreateAsyncScope();
+        var runner = scope.ServiceProvider.GetRequiredService<IPipelineRunner>();
+        var contextFactory = scope.ServiceProvider.GetRequiredService<IObservablePipelineContextFactory>();
+        var pipelineSink = (RecordingPipelineMetricsSink)scope.ServiceProvider.GetRequiredService<IPipelineMetricsSink>();
+
+        // Act
+        await using (var first = contextFactory.Create())
+            await runner.RunAsync<TestPipelineWithObservability>(first);
+
+        await using (var second = contextFactory.Create())
+            await runner.RunAsync<TestPipelineWithObservability>(second);
+
+        // Assert
+        Assert.Equal(2, pipelineSink.Emitted.Count);
+        Assert.Equal(3, pipelineSink.Emitted[1].NodeMetrics.Count);
+        Assert.Equal(pipelineSink.Emitted[0].TotalItemsProcessed, pipelineSink.Emitted[1].TotalItemsProcessed);
+    }
+
+    private sealed class RecordingMetricsSink : IMetricsSink
+    {
+        public Task RecordAsync(INodeMetrics nodeMetrics, CancellationToken cancellationToken) => Task.CompletedTask;
+    }
+
+    private sealed class RecordingPipelineMetricsSink : IPipelineMetricsSink
+    {
+        public List<IPipelineMetrics> Emitted { get; } = [];
+
+        public Task RecordAsync(IPipelineMetrics pipelineMetrics, CancellationToken cancellationToken)
+        {
+            lock (Emitted)
+                Emitted.Add(pipelineMetrics);
+
+            return Task.CompletedTask;
+        }
+    }
 
     [Fact]
     public async Task RealPipelineExecution_WithObservability_ShouldCollectItemCounts()

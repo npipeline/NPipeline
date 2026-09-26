@@ -83,6 +83,11 @@ namespace NPipeline.Configuration;
 ///     Emits non-terminal records for intermediate node outcomes.
 ///     Default is true.
 /// </param>
+/// <param name="AdapterBufferSize">
+///     How many items a transform's lineage adapter may read ahead of the transform, when the node's lineage mapping
+///     streams. Bounds memory and keeps backpressure working with item-level lineage on. Mappings that materialize the
+///     node's input hold what they need regardless. Values below 1 are treated as 1. Default is 64.
+/// </param>
 public sealed record LineageOptions(
     bool Strict = false,
     bool WarnOnMismatch = true,
@@ -101,7 +106,8 @@ public sealed record LineageOptions(
     bool EnsurePerInputTerminalRecord = true,
     bool EmitBackpressureDropRecords = true,
     bool IncludeContributorCorrelationIds = true,
-    bool EmitIntermediateNodeRecords = true)
+    bool EmitIntermediateNodeRecords = true,
+    int AdapterBufferSize = 64)
 {
     /// <summary>
     ///     Default lineage profile for production throughput.

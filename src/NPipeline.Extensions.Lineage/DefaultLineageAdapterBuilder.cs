@@ -27,14 +27,32 @@ internal sealed class DefaultLineageAdapterBuilder
             // The node executor starts the node's lineage state, knowing whether its strategy reports provenance.
             var nodeLineage = LineageNodeOutcomeRegistry.GetOrBeginNode(pipelineId, nodeId);
 
-            // Read typed input once and fan out packets + raw values via channels.
-            var dataChannel = Channel.CreateUnbounded<TIn>(new UnboundedChannelOptions { SingleWriter = true });
+            // A strategy that reports each output's input is mapped by index; a declared mapper still wins, and any
+            // other node is mapped by position. Chosen now, because it decides how far the pump may read ahead.
+            var strategy = nodeLineage.ReportsProvenance && lineageMapperType is null
+                ? ProvenanceMappingStrategy<TIn, TOut>.Instance
+                : cachedStrategy ??= SelectLineageMappingStrategy<TIn, TOut>(lineageMapperType, declaredCardinality, options);
 
-            var packetChannel = Channel.CreateUnbounded<LineagePacket<TIn>>(new UnboundedChannelOptions { SingleWriter = true });
+            // Read typed input once and fan out packets + raw values via channels. The data channel is bounded, so the
+            // pump runs at most a buffer ahead of the transform and backpressure reaches the upstream. The packet channel
+            // stays unbounded: a strategy drains packets only as outputs arrive, so a filter that drops a long run of
+            // items would otherwise block the pump on packets while the transform waits for data.
+            var dataChannel = DataChannelCapacity(strategy, options) is { } capacity
+                ? Channel.CreateBounded<TIn>(new BoundedChannelOptions(capacity)
+                {
+                    SingleWriter = true,
+                    SingleReader = true,
+                    FullMode = BoundedChannelFullMode.Wait,
+                })
+                : Channel.CreateUnbounded<TIn>(new UnboundedChannelOptions { SingleWriter = true, SingleReader = true });
 
-            _ = PumpInputAsync(typedInput, dataChannel.Writer, packetChannel.Writer, nodeLineage, cancellationToken);
+            var packetChannel = Channel.CreateUnbounded<LineagePacket<TIn>>(new UnboundedChannelOptions { SingleWriter = true, SingleReader = true });
 
-            var unwrappedPipe = new DataStream<TIn>(dataChannel.Reader.ReadAllAsync(cancellationToken), $"Unwrapped_{typedInput.StreamName}");
+            // The pump stops when the transform stops reading, or it would stay blocked on a full data channel.
+            var pumpCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            _ = PumpInputAsync(typedInput, dataChannel.Writer, packetChannel.Writer, nodeLineage, pumpCts);
+
+            var unwrappedPipe = new DataStream<TIn>(ReadDataAsync(dataChannel.Reader, pumpCts, cancellationToken), $"Unwrapped_{typedInput.StreamName}");
 
             return (unwrappedPipe, RewrapFunc);
 
@@ -42,7 +60,7 @@ internal sealed class DefaultLineageAdapterBuilder
             {
                 var typedOutputPipe = (IDataStream<TOut>)outputPipe;
 
-                var rewrappedStream = RewrapStrategy(
+                var rewrappedStream = strategy.MapAsync(
                     packetChannel.Reader.ReadAllAsync(cancellationToken),
                     typedOutputPipe,
                     nodeId,
@@ -50,39 +68,12 @@ internal sealed class DefaultLineageAdapterBuilder
                     pipelineName,
                     declaredCardinality,
                     options,
+                    lineageMapperType,
+                    cachedMapper,
                     cancellationToken);
 
                 var cleanupStream = CleanupOnComplete(rewrappedStream, pipelineId, nodeId, cancellationToken);
                 return new DataStream<LineagePacket<TOut>>(cleanupStream, $"Rewrapped_{outputPipe.StreamName}");
-            }
-
-            IAsyncEnumerable<LineagePacket<TOut>> RewrapStrategy(
-                IAsyncEnumerable<LineagePacket<TIn>> inputStream,
-                IAsyncEnumerable<TOut> outputStream,
-                string currentId,
-                Guid currentPipelineId,
-                string? currentPipelineName,
-                TransformCardinality transformCardinality,
-                LineageOptions? lineageOptions,
-                CancellationToken ct)
-            {
-                // A strategy that reports each output's input is mapped by index; a declared mapper still wins, and
-                // any other node is mapped by position.
-                var strategy = nodeLineage.ReportsProvenance && lineageMapperType is null
-                    ? ProvenanceMappingStrategy<TIn, TOut>.Instance
-                    : cachedStrategy ??= SelectLineageMappingStrategy<TIn, TOut>(lineageMapperType, transformCardinality, lineageOptions);
-
-                return strategy.MapAsync(
-                    inputStream,
-                    outputStream,
-                    currentId,
-                    currentPipelineId,
-                    currentPipelineName,
-                    transformCardinality,
-                    lineageOptions,
-                    lineageMapperType,
-                    cachedMapper,
-                    ct);
             }
 
             static async IAsyncEnumerable<LineagePacket<TOut>> CleanupOnComplete(
@@ -105,13 +96,39 @@ internal sealed class DefaultLineageAdapterBuilder
             }
         };
 
+        static async IAsyncEnumerable<TIn> ReadDataAsync(
+            ChannelReader<TIn> reader,
+            CancellationTokenSource pumpCts,
+            [EnumeratorCancellation] CancellationToken ct = default)
+        {
+            try
+            {
+                await foreach (var item in reader.ReadAllAsync(ct).ConfigureAwait(false))
+                    yield return item;
+            }
+            finally
+            {
+                // Harmless when the pump already finished; stops it when the transform left early.
+                try
+                {
+                    pumpCts.Cancel();
+                }
+                catch (ObjectDisposedException)
+                {
+                    // The pump finished and disposed its token source.
+                }
+            }
+        }
+
         static async Task PumpInputAsync(
             IDataStream<LineagePacket<TIn>> source,
             ChannelWriter<TIn> dataWriter,
             ChannelWriter<LineagePacket<TIn>> packetWriter,
             LineageNodeOutcomeWriter nodeLineage,
-            CancellationToken ct)
+            CancellationTokenSource pumpCts)
         {
+            var ct = pumpCts.Token;
+
             try
             {
                 long inputIndex = 0;
@@ -151,7 +168,30 @@ internal sealed class DefaultLineageAdapterBuilder
                 packetWriter.TryComplete(ex);
                 dataWriter.TryComplete(ex);
             }
+            finally
+            {
+                pumpCts.Dispose();
+            }
         }
+    }
+
+    /// <summary>
+    ///     How many items the pump may run ahead of the transform, or null for no bound. Streaming strategies read
+    ///     input and output together, so a small buffer suffices. A cap-aware strategy reads up to its cap of input
+    ///     before any output, so its buffer must hold the cap. Strategies that materialize the whole input need it all.
+    /// </summary>
+    private static int? DataChannelCapacity<TIn, TOut>(ILineageMappingStrategy<TIn, TOut> strategy, LineageOptions? options)
+    {
+        var buffer = Math.Max(1, options?.AdapterBufferSize ?? LineageOptions.Default.AdapterBufferSize);
+
+        return strategy switch
+        {
+            StreamingOneToOneStrategy<TIn, TOut> or ProvenanceMappingStrategy<TIn, TOut> => buffer,
+            CapAwareMaterializingStrategy<TIn, TOut> when options is { MaterializationCap: > 0 and var cap }
+                                                          && options.OverflowPolicy != LineageOverflowPolicy.WarnContinue
+                => (int)Math.Min(int.MaxValue, (long)cap + buffer),
+            _ => null,
+        };
     }
 
     public SinkLineageUnwrapDelegate? BuildSinkLineageUnwrapDelegate<TIn>()

@@ -141,6 +141,13 @@ When the `MaterializationCap` is reached:
 | `Strict` | Throws immediately | Memory limits are critical |
 | `WarnContinue` | Logs a warning and continues | Development / debugging |
 
+### Backpressure
+
+With item-level lineage on, each transform's lineage adapter reads its input ahead of the transform. For streaming
+mappings it reads at most `AdapterBufferSize` items ahead (default 64), so a slow sink still slows the source. A
+cap-aware mapping may read `MaterializationCap + AdapterBufferSize` ahead. A mapping that materializes the whole input
+(no cap, or `WarnContinue`) holds the node's whole input by design.
+
 ### Emission Options
 
 | Setting | Default | Description |

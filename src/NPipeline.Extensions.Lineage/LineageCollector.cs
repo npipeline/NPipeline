@@ -60,27 +60,7 @@ public sealed class LineageCollector : ILineageCollector
     /// <param name="correlationId">The unique ID of the item.</param>
     /// <param name="options">The lineage options containing sampling configuration.</param>
     /// <returns>True if lineage should be collected for this item.</returns>
-    public bool ShouldCollectLineage(Guid correlationId, LineageOptions? options)
-    {
-        // If no options provided, default to collecting all lineage
-        if (options == null)
-            return true;
-
-        // SampleEvery of 1 means collect all items
-        if (options.SampleEvery <= 1)
-            return true;
-
-        // Use deterministic sampling if enabled
-        if (options.DeterministicSampling)
-        {
-            // Hash the correlation ID and use modulo to determine if this item should be sampled
-            var hash = correlationId.GetHashCode();
-            return Math.Abs(hash) % options.SampleEvery == 0;
-        }
-
-        // Non-deterministic random sampling
-        return Random.Shared.Next(options.SampleEvery) == 0;
-    }
+    public bool ShouldCollectLineage(Guid correlationId, LineageOptions? options) => LineageSampling.IsSampled(correlationId, options);
 
     /// <summary>
     ///     Gets event history for a specific correlation.
