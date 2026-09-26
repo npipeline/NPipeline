@@ -45,6 +45,18 @@ public interface IObservabilityCollector
     void RecordItemMetrics(string nodeId, long itemsProcessed, long itemsEmitted, Guid pipelineId, string? pipelineName = null);
 
     /// <summary>
+    ///     Records the items a node restart read again after they had already been processed once. They are not
+    ///     included in the items processed.
+    /// </summary>
+    /// <param name="nodeId">The unique identifier of the node.</param>
+    /// <param name="itemsReplayed">The number of items replayed.</param>
+    /// <param name="pipelineId">The unique pipeline identity this node belongs to.</param>
+    /// <param name="pipelineName">The name of the pipeline this node belongs to. Null for top-level pipelines.</param>
+    void RecordItemsReplayed(string nodeId, long itemsReplayed, Guid pipelineId, string? pipelineName = null)
+    {
+    }
+
+    /// <summary>
     ///     Records a retry attempt for a node, at any of the three retry layers. Every call is one retry event;
     ///     <paramref name="retryCount" /> is the attempt number, and the node's <see cref="INodeMetrics.RetryCount" />
     ///     keeps the highest one seen.

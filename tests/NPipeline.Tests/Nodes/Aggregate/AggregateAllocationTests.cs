@@ -21,7 +21,7 @@ public sealed class AggregateAllocationTests
     }
 
     private sealed class CountingNode() : AggregateNode<Reading, int, int>(new AggregateNodeConfiguration<Reading>(
-        WindowAssigner.Tumbling(TimeSpan.FromMinutes(1)), MaxOutOfOrderness: TimeSpan.Zero, WatermarkInterval: TimeSpan.Zero))
+        WindowAssigner.Tumbling(TimeSpan.FromMinutes(1)), MaxOutOfOrderness: TimeSpan.Zero))
     {
         public override int GetKey(Reading item) => item.Key;
 

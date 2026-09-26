@@ -147,7 +147,7 @@ public sealed class DropOldestParallelStrategy : ParallelExecutionStrategyBase
 
                     if (queue.Writer.TryWrite(indexedItem))
                     {
-                        observabilityScope?.IncrementProcessed();
+                        observabilityScope?.IncrementProcessed(indexedItem.Sequence);
                         metrics.IncrementEnqueued();
                     }
                     else
@@ -180,7 +180,7 @@ public sealed class DropOldestParallelStrategy : ParallelExecutionStrategyBase
 
                             if (queue.Writer.TryWrite(indexedItem))
                             {
-                                observabilityScope?.IncrementProcessed();
+                                observabilityScope?.IncrementProcessed(indexedItem.Sequence);
                                 metrics.IncrementEnqueued();
 
                                 break; // Success, exit the loop

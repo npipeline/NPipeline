@@ -147,7 +147,7 @@ public sealed class DropNewestParallelStrategy : ParallelExecutionStrategyBase
 
                     if (queue.Writer.TryWrite(indexedItem))
                     {
-                        observabilityScope?.IncrementProcessed();
+                        observabilityScope?.IncrementProcessed(indexedItem.Sequence);
                         metrics.IncrementEnqueued();
                     }
                     else

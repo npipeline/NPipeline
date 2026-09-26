@@ -48,6 +48,34 @@ public sealed class NodeExecutionScopeRegistryTests
     }
 
     [Fact]
+    public void IncrementProcessedByIndex_AcrossAttempts_CountsEachIndexOnceAndReportsReplays()
+    {
+        // Arrange - a restart re-reads indexes 3 and 4 under a new handle on the same registration.
+        var registry = new NodeExecutionScopeRegistry();
+        var scope = new RecordingScope();
+        registry.RegisterNodeObservabilityScope("node-a", scope);
+
+        using var outer = registry.BeginNodeScope("node-a");
+
+        // Act
+        using (var first = registry.BeginNodeScope("node-a"))
+        {
+            for (var i = 0; i < 5; i++)
+                first.IncrementProcessed(i);
+        }
+
+        using (var second = registry.BeginNodeScope("node-a"))
+        {
+            for (var i = 3; i < 10; i++)
+                second.IncrementProcessed(i);
+        }
+
+        // Assert
+        _ = scope.Processed.Should().Be(10);
+        _ = scope.Replayed.Should().Be(2);
+    }
+
+    [Fact]
     public void RecordNodeFailureAndDispose_RecordsFailureAndDisposesScope()
     {
         // Arrange
@@ -282,6 +310,13 @@ public sealed class NodeExecutionScopeRegistryTests
         public void IncrementEmitted()
         {
             Emitted++;
+        }
+
+        public int Replayed { get; private set; }
+
+        public void IncrementReplayed()
+        {
+            Replayed++;
         }
 
         public void RecordFailure(Exception exception)

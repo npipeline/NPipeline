@@ -11,7 +11,7 @@ namespace NPipeline.Observability.Metrics;
 ///     WallDurationMs for wall-clock comparisons.
 /// </param>
 /// <param name="Success">Whether the node execution was successful.</param>
-/// <param name="ItemsProcessed">The number of items processed by this node.</param>
+/// <param name="ItemsProcessed">The number of items processed by this node. Items a node restart replays are counted once.</param>
 /// <param name="ItemsEmitted">The number of items emitted by this node.</param>
 /// <param name="Exception">Any exception that occurred during execution.</param>
 /// <param name="RetryCount">The highest retry attempt number recorded for this node, at any retry layer.</param>
@@ -29,6 +29,7 @@ namespace NPipeline.Observability.Metrics;
 /// <param name="RetryEvents">The number of retries recorded for this node, across item retry, node restart, and node retry.</param>
 /// <param name="RetriesExhausted">The number of times a retry layer gave up on this node after retrying it.</param>
 /// <param name="CircuitBreakerTrips">The number of times this node's circuit breaker opened.</param>
+/// <param name="ItemsReplayed">The number of items a node restart read again after they had already been processed once.</param>
 public sealed record NodeMetrics(
     string NodeId,
     DateTimeOffset? StartTime,
@@ -52,4 +53,5 @@ public sealed record NodeMetrics(
     double? WallDurationMs = null,
     long RetryEvents = 0,
     long RetriesExhausted = 0,
-    long CircuitBreakerTrips = 0) : INodeMetrics;
+    long CircuitBreakerTrips = 0,
+    long ItemsReplayed = 0) : INodeMetrics;

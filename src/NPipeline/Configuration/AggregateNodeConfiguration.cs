@@ -15,26 +15,16 @@ namespace NPipeline.Configuration;
 ///     Default is null.
 /// </param>
 /// <param name="MaxOutOfOrderness">
-///     Maximum time span for out-of-order items. Events arriving later than this relative to the current watermark
-///     may be treated as late. Default is 5 minutes.
-/// </param>
-/// <param name="WatermarkInterval">
-///     Interval for watermark updates. Watermarks advance event time and trigger window cleanup.
-///     Default is 30 seconds.
+///     How far behind the latest event time an item may arrive and still be counted. The watermark trails the latest
+///     event time by this much, and is re-evaluated on every item. Must not be negative. Default is 5 minutes.
 /// </param>
 public sealed record AggregateNodeConfiguration<TIn>(
     WindowAssigner WindowAssigner,
     TimestampExtractor<TIn>? TimestampExtractor = null,
-    TimeSpan? MaxOutOfOrderness = null,
-    TimeSpan? WatermarkInterval = null)
+    TimeSpan? MaxOutOfOrderness = null)
 {
     /// <summary>
     ///     Gets the effective maximum out-of-orderness value, using the default if not specified.
     /// </summary>
     public TimeSpan EffectiveMaxOutOfOrderness => MaxOutOfOrderness ?? TimeSpan.FromMinutes(5);
-
-    /// <summary>
-    ///     Gets the effective watermark interval value, using the default if not specified.
-    /// </summary>
-    public TimeSpan EffectiveWatermarkInterval => WatermarkInterval ?? TimeSpan.FromSeconds(30);
 }

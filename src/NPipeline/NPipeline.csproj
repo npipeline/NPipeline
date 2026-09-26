@@ -59,6 +59,7 @@
         <InternalsVisibleTo Include="NPipeline.Extensions.Lineage.Tests"/>
         <InternalsVisibleTo Include="NPipeline.Extensions.Observability"/>
         <InternalsVisibleTo Include="NPipeline.Extensions.Observability.Tests"/>
+        <InternalsVisibleTo Include="NPipeline.Extensions.Testing"/>
     </ItemGroup>
 
 </Project>

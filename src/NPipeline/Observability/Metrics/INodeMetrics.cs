@@ -88,6 +88,12 @@ public interface INodeMetrics
     long CircuitBreakerTrips => 0;
 
     /// <summary>
+    ///     The number of items a node restart read again after they had already been processed once. They are not
+    ///     included in <see cref="ItemsProcessed" />.
+    /// </summary>
+    long ItemsReplayed => 0;
+
+    /// <summary>
     ///     The peak memory usage in megabytes during node execution.
     /// </summary>
     double? PeakMemoryUsageMb { get; }

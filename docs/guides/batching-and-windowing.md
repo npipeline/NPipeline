@@ -96,12 +96,13 @@ Configure watermark behavior:
 new AggregateNodeConfiguration<SensorReading>(
     WindowAssigner.Tumbling(TimeSpan.FromMinutes(5)),
     TimestampExtractor: reading => reading.EventTime,
-    MaxOutOfOrderness: TimeSpan.FromMinutes(2),   // default: 5 min
-    WatermarkInterval: TimeSpan.FromSeconds(15));  // default: 30 sec
+    MaxOutOfOrderness: TimeSpan.FromMinutes(2));  // default: 5 min
 ```
 
 - **`MaxOutOfOrderness`** - how late an item can arrive and still be assigned to its window
-- **`WatermarkInterval`** - how often watermarks are generated
+
+The watermark is re-evaluated on every item, so a historical replay closes each window as soon as the data passes it,
+however fast the replay runs.
 
 Items arriving after a window closes are dropped to prevent multiple partial results. Window sizes and slides must be positive. Window starts align on UTC ticks, ensuring the same instant always lands in the same window regardless of the timestamp's UTC offset.
 

@@ -145,8 +145,7 @@ public sealed class TimeWindowedJoinNodeTests
     private sealed class WindowedOrderCustomerJoin()
         : TimeWindowedJoinNode<int, TimedCustomer, TimedOrder, Result>(
             new TumblingWindowAssigner(TimeSpan.FromMinutes(1)),
-            maxOutOfOrderness: TimeSpan.Zero,
-            watermarkInterval: TimeSpan.Zero)
+            maxOutOfOrderness: TimeSpan.Zero)
     {
         public override Result CreateOutput(TimedCustomer item1, TimedOrder item2) => new(item2.OrderId, item1.Name);
 
@@ -295,8 +294,7 @@ public sealed class TimeWindowedJoinNodeTests
             new TumblingWindowAssigner(TimeSpan.FromMinutes(1)),
             timestampExtractor1: c => c.At,
             timestampExtractor2: o => o.At,
-            maxOutOfOrderness: TimeSpan.Zero,
-            watermarkInterval: TimeSpan.Zero)
+            maxOutOfOrderness: TimeSpan.Zero)
     {
         public override Result CreateOutput(UntimedCustomer item1, UntimedOrder item2) => new(item2.OrderId, item1.Name);
 
@@ -389,8 +387,7 @@ public sealed class TimeWindowedJoinNodeTests
     private sealed class NullableKeyWindowedJoin()
         : TimeWindowedJoinNode<string, NullableKeyCustomer, NullableKeyOrder, Result>(
             new TumblingWindowAssigner(TimeSpan.FromMinutes(1)),
-            maxOutOfOrderness: TimeSpan.Zero,
-            watermarkInterval: TimeSpan.Zero)
+            maxOutOfOrderness: TimeSpan.Zero)
     {
         public override Result CreateOutput(NullableKeyCustomer item1, NullableKeyOrder item2) => new(item2.OrderId, item1.Name);
 
@@ -464,8 +461,7 @@ public sealed class TimeWindowedJoinNodeTests
     private sealed class SlidingWindowedJoin()
         : TimeWindowedJoinNode<int, TimedCustomer, TimedOrder, Result>(
             new SlidingWindowAssigner(TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(5)),
-            maxOutOfOrderness: TimeSpan.Zero,
-            watermarkInterval: TimeSpan.Zero)
+            maxOutOfOrderness: TimeSpan.Zero)
     {
         public override Result CreateOutput(TimedCustomer item1, TimedOrder item2) => new(item2.OrderId, item1.Name);
 

@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
+using NPipeline.Reliability;
 
 namespace NPipeline.Extensions.Testing.Tests;
 
@@ -34,6 +35,25 @@ public class PipelineTestHarnessTests
         // With ResilienceDecision.Skip (default), the failed item is skipped at the item level,
         // the node completes successfully, and the downstream sink receives an empty stream.
         result.Errors.Should().HaveCount(1);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CaptureErrors_WhenThePipelineRegistersItsOwnPolicy_StillCapturesAndRunsThatPolicy(bool nodeLevel)
+    {
+        // A pipeline-registered policy (graph-level or node-level) outranks a context policy, so capturing must wrap
+        // whichever policy the run resolves rather than compete with it.
+        OwnPolicyPipeline.Policy = new CountingFailPolicy();
+        OwnPolicyPipeline.NodeLevel = nodeLevel;
+
+        var result = await new PipelineTestHarness<OwnPolicyPipeline>()
+            .CaptureErrors()
+            .RunAsync();
+
+        result.Success.Should().BeTrue();
+        result.Errors.Should().ContainSingle().Which.Should().BeOfType<InvalidOperationException>();
+        OwnPolicyPipeline.Policy.ItemDecisions.Should().Be(1, "the pipeline's own policy still runs inside the capture");
     }
 
     [Fact]
@@ -162,6 +182,39 @@ public class PipelineTestHarnessTests
 
             builder.Connect(source, failing);
             builder.Connect(failing, sink);
+        }
+    }
+
+    private sealed class CountingFailPolicy : ResiliencePolicyBase
+    {
+        public int ItemDecisions;
+
+        public override ValueTask<ResilienceDecision> DecideItemFailureAsync<TIn>(ItemFailure<TIn> failure, CancellationToken cancellationToken)
+        {
+            _ = Interlocked.Increment(ref ItemDecisions);
+            return ValueTask.FromResult(ResilienceDecision.Fail);
+        }
+    }
+
+    private sealed class OwnPolicyPipeline : IPipelineDefinition
+    {
+        public static CountingFailPolicy Policy = new();
+
+        public static bool NodeLevel;
+
+        public void Define(PipelineBuilder builder, PipelineContext context)
+        {
+            var source = builder.AddInMemorySource(new[] { 1 });
+            var failing = builder.AddTransform<AlwaysFailsTransform, int, int>();
+            var sink = builder.AddInMemorySink<int>(context);
+
+            builder.Connect(source, failing);
+            builder.Connect(failing, sink);
+
+            if (NodeLevel)
+                builder.AddResiliencePolicy(failing, Policy);
+            else
+                builder.AddResiliencePolicy(Policy);
         }
     }
 

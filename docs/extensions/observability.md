@@ -48,7 +48,8 @@ await using var context = contextFactory.Create();
 | `OutputBlockDurationMs` | `double?` | Time blocked by downstream/backpressure in milliseconds |
 | `WallDurationMs` | `double?` | Total elapsed node dataflow wall-clock duration in milliseconds |
 | `Success` | `bool` | Whether execution succeeded |
-| `ItemsProcessed` | `long` | Items consumed, including items a node restart replays |
+| `ItemsProcessed` | `long` | Items consumed, each counted once even when a node restart reads it again |
+| `ItemsReplayed` | `long` | Items a node restart read again after they had already been processed |
 | `ItemsEmitted` | `long` | Items produced |
 | `Exception` | `Exception?` | Error, if any |
 | `RetryCount` | `int` | Highest retry attempt number seen, at any retry layer |

@@ -198,6 +198,12 @@ public sealed class NodeExecutionScopeRegistry
         /// </summary>
         public int Handles;
 
+        /// <summary>
+        ///     The highest input index recorded as processed. It spans every attempt that shares the registration, so
+        ///     an item a node restart replays is not counted as processed twice.
+        /// </summary>
+        public long HighestInputIndex = -1;
+
         public IAutoObservabilityScope Scope { get; } = scope;
 
         public Action<IAutoObservabilityScope, Exception?>? OnDisposed { get; } = onDisposed;
@@ -235,12 +241,45 @@ public sealed class NodeExecutionScopeRegistry
             _inner.IncrementProcessed();
         }
 
+        public void IncrementProcessed(long inputIndex)
+        {
+            if (Volatile.Read(ref _disposed) == 1)
+                return;
+
+            if (TryAdvance(ref _registration.HighestInputIndex, inputIndex))
+                _inner.IncrementProcessed();
+            else
+                _inner.IncrementReplayed();
+        }
+
+        public void IncrementReplayed()
+        {
+            if (Volatile.Read(ref _disposed) == 1)
+                return;
+
+            _inner.IncrementReplayed();
+        }
+
         public void IncrementEmitted()
         {
             if (Volatile.Read(ref _disposed) == 1)
                 return;
 
             _inner.IncrementEmitted();
+        }
+
+        private static bool TryAdvance(ref long highest, long index)
+        {
+            while (true)
+            {
+                var current = Volatile.Read(ref highest);
+
+                if (index <= current)
+                    return false;
+
+                if (Interlocked.CompareExchange(ref highest, index, current) == current)
+                    return true;
+            }
         }
 
         public void RecordFailure(Exception exception)

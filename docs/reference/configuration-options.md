@@ -256,8 +256,7 @@ Controls windowed aggregation behavior. Passed when configuring aggregate nodes.
 |----------|------|---------|-------------|
 | `WindowAssigner` | `WindowAssigner` | *(required)* | Window strategy (tumbling, sliding). Window sizes and slides must be positive. |
 | `TimestampExtractor` | `TimestampExtractor<TIn>?` | `null` | Extracts event time from items. `null` = use arrival time for items that are not `ITimestamped`. |
-| `MaxOutOfOrderness` | `TimeSpan?` | 5 min | Grace period for late-arriving events. |
-| `WatermarkInterval` | `TimeSpan?` | 30 sec | How often watermarks advance. |
+| `MaxOutOfOrderness` | `TimeSpan?` | 5 min | Grace period for late-arriving events. Must not be negative. The watermark is re-evaluated on every item. |
 
 ## PipelineContextConfiguration
 

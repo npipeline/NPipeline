@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using NPipeline.Configuration;
@@ -31,7 +30,6 @@ public abstract class AdvancedAggregateNode<TIn, TKey, TAccumulate, TResult> : I
 {
     private readonly TimeSpan _maxOutOfOrderness;
     private readonly TimestampExtractor<TIn>? _timestampExtractor;
-    private readonly TimeSpan _watermarkInterval;
     private readonly WindowAssigner _windowAssigner;
     private long _activeGroups;
     private long _lateItemsDropped;
@@ -51,11 +49,9 @@ public abstract class AdvancedAggregateNode<TIn, TKey, TAccumulate, TResult> : I
         _windowAssigner = config.WindowAssigner;
         _timestampExtractor = config.TimestampExtractor;
         _maxOutOfOrderness = config.EffectiveMaxOutOfOrderness;
-        _watermarkInterval = config.EffectiveWatermarkInterval;
 
         // A negative lateness would push the watermark ahead of the data and close windows before their items arrive.
         ArgumentOutOfRangeException.ThrowIfLessThan(_maxOutOfOrderness, TimeSpan.Zero, nameof(config.MaxOutOfOrderness));
-        ArgumentOutOfRangeException.ThrowIfLessThan(_watermarkInterval, TimeSpan.Zero, nameof(config.WatermarkInterval));
     }
 
     /// <inheritdoc />
@@ -132,7 +128,6 @@ public abstract class AdvancedAggregateNode<TIn, TKey, TAccumulate, TResult> : I
         var expiry = new PriorityQueue<IWindow, DateTimeOffset>();
         var maxTimestamp = DateTimeOffset.MinValue;
         var watermark = DateTimeOffset.MinValue;
-        var lastWatermarkCheck = Stopwatch.GetTimestamp();
 
         // Groups this execution added to _activeGroups and has not emitted yet, returned in the finally when the
         // consumer stops early or the input fails, so the instance-level count stays accurate.
@@ -176,10 +171,8 @@ public abstract class AdvancedAggregateNode<TIn, TKey, TAccumulate, TResult> : I
                 if (!landedInLiveWindow)
                     _ = Interlocked.Increment(ref _lateItemsDropped);
 
-                if (Stopwatch.GetElapsedTime(lastWatermarkCheck) < _watermarkInterval)
-                    continue;
-
-                lastWatermarkCheck = Stopwatch.GetTimestamp();
+                // The watermark is re-evaluated on every item: the check is a subtraction, a comparison and a queue
+                // peek, so throttling it on the wall clock saved nothing and held every window of a fast replay.
                 var candidate = TimestampUtils.SafeSubtract(maxTimestamp, _maxOutOfOrderness);
                 if (candidate <= watermark)
                     continue;

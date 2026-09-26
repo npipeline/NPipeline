@@ -54,6 +54,16 @@ public sealed class ObservabilityCollector : IObservabilityCollector
     }
 
     /// <inheritdoc />
+    public void RecordItemsReplayed(string nodeId, long itemsReplayed, Guid pipelineId, string? pipelineName = null)
+    {
+        ArgumentNullException.ThrowIfNull(nodeId);
+
+        var builder = GetOrCreateBuilder(nodeId, pipelineId, pipelineName);
+        builder.TrySetPipelineName(pipelineName);
+        builder.RecordItemsReplayed(itemsReplayed);
+    }
+
+    /// <inheritdoc />
     public void RecordRetry(string nodeId, int retryCount, Guid pipelineId, string? reason = null, string? pipelineName = null)
     {
         ArgumentNullException.ThrowIfNull(nodeId);
@@ -220,6 +230,7 @@ public sealed class ObservabilityCollector : IObservabilityCollector
         private double? _inputWaitDurationMs;
         private long _itemsEmitted;
         private long _itemsProcessed;
+        private long _itemsReplayed;
         private double? _outputBlockDurationMs;
         private double? _peakMemoryUsageMb;
         private double? _processorTimeMs;
@@ -311,6 +322,11 @@ public sealed class ObservabilityCollector : IObservabilityCollector
         {
             _ = Interlocked.Add(ref _itemsProcessed, itemsProcessed);
             _ = Interlocked.Add(ref _itemsEmitted, itemsEmitted);
+        }
+
+        public void RecordItemsReplayed(long itemsReplayed)
+        {
+            _ = Interlocked.Add(ref _itemsReplayed, itemsReplayed);
         }
 
         public void RecordRetry(int retryCount)
@@ -430,7 +446,8 @@ public sealed class ObservabilityCollector : IObservabilityCollector
                     wallDurationMs,
                     Interlocked.Read(ref _retryEvents),
                     Interlocked.Read(ref _retriesExhausted),
-                    Interlocked.Read(ref _circuitBreakerTrips));
+                    Interlocked.Read(ref _circuitBreakerTrips),
+                    Interlocked.Read(ref _itemsReplayed));
             }
         }
     }

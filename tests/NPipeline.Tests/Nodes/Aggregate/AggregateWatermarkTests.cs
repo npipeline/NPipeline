@@ -17,9 +17,9 @@ public sealed class AggregateWatermarkTests
 
     public sealed record Sale(string Cat, int Amount, DateTime At);
 
-    private sealed class SumNode(TimeSpan? watermarkInterval, TimestampExtractor<Sale>? extractor)
+    private sealed class SumNode(TimestampExtractor<Sale>? extractor)
         : AggregateNode<Sale, string, int>(new AggregateNodeConfiguration<Sale>(
-            WindowAssigner.Tumbling(TimeSpan.FromMinutes(1)), extractor, TimeSpan.Zero, watermarkInterval))
+            WindowAssigner.Tumbling(TimeSpan.FromMinutes(1)), extractor, TimeSpan.Zero))
     {
         public override string GetKey(Sale s) => s.Cat;
         public override int CreateAccumulator() => 0;
@@ -37,7 +37,7 @@ public sealed class AggregateWatermarkTests
     [Fact]
     public async Task Aggregate_WithExtractor_UsesEventTimeForWatermarks()
     {
-        var res = await RunAggregate(new SumNode(TimeSpan.Zero, s => s.At),
+        var res = await RunAggregate(new SumNode(s => s.At),
             new Sale("a", 1, T0), new Sale("a", 2, T0.AddSeconds(10)), new Sale("a", 3, T0.AddSeconds(20)));
         res.Should().Equal(6);
     }
@@ -45,7 +45,7 @@ public sealed class AggregateWatermarkTests
     [Fact]
     public async Task Aggregate_WithoutExtractor_FallsBackToArrivalTime()
     {
-        var act = () => RunAggregate(new SumNode(null, null), new Sale("a", 1, T0), new Sale("a", 2, T0));
+        var act = () => RunAggregate(new SumNode(null), new Sale("a", 1, T0), new Sale("a", 2, T0));
         await act.Should().NotThrowAsync();
     }
 
@@ -56,7 +56,7 @@ public sealed class AggregateWatermarkTests
 
     private sealed class TSumNode()
         : AggregateNode<TSale, string, int>(new AggregateNodeConfiguration<TSale>(
-            WindowAssigner.Tumbling(TimeSpan.FromMinutes(1)), null, TimeSpan.Zero, TimeSpan.Zero))
+            WindowAssigner.Tumbling(TimeSpan.FromMinutes(1)), null, TimeSpan.Zero))
     {
         public override string GetKey(TSale s) => s.Cat;
         public override int CreateAccumulator() => 0;
@@ -81,7 +81,7 @@ public sealed class AggregateWatermarkTests
         // Sliding(2 min, 1 min): an item at t belongs to every window of size 2 min, slid by 1 min, containing t.
         // Items at t0 (1) and t0+10s (2) land in [t0-1, t0+1) and [t0, t0+2).
         // The item at t0+90s (4) lands in [t0, t0+2) and [t0+1, t0+3).
-        var node = new SlidingSumNode(TimeSpan.Zero, s => s.At);
+        var node = new SlidingSumNode(s => s.At);
         var res = await RunSliding(node,
             new Sale("a", 1, T0),
             new Sale("a", 2, T0.AddSeconds(10)),
@@ -89,9 +89,9 @@ public sealed class AggregateWatermarkTests
         res.Should().BeEquivalentTo([3, 7, 4]);
     }
 
-    private sealed class SlidingSumNode(TimeSpan? watermarkInterval, TimestampExtractor<Sale>? extractor)
+    private sealed class SlidingSumNode(TimestampExtractor<Sale>? extractor)
         : AggregateNode<Sale, string, int>(new AggregateNodeConfiguration<Sale>(
-            WindowAssigner.Sliding(TimeSpan.FromMinutes(2), TimeSpan.FromMinutes(1)), extractor, TimeSpan.Zero, watermarkInterval))
+            WindowAssigner.Sliding(TimeSpan.FromMinutes(2), TimeSpan.FromMinutes(1)), extractor, TimeSpan.Zero))
     {
         public override string GetKey(Sale s) => s.Cat;
         public override int CreateAccumulator() => 0;
@@ -109,7 +109,7 @@ public sealed class AggregateWatermarkTests
     [Fact]
     public async Task Aggregate_EventTimeDrivesWindowClosing()
     {
-        // With WatermarkInterval = 0 and MaxOutOfOrderness = 0, a window closes as soon as an item
+        // With MaxOutOfOrderness = 0, a window closes as soon as an item
         // from a strictly later window arrives. Pull items one at a time to observe it.
         var node = new TSumNode();
         var items = new List<TSale>
@@ -128,9 +128,9 @@ public sealed class AggregateWatermarkTests
         (await enumerator.MoveNextAsync()).Should().BeFalse();
     }
 
-    private sealed class NullAccumulatorNode(TimeSpan? watermarkInterval, TimestampExtractor<Sale>? extractor)
+    private sealed class NullAccumulatorNode(TimestampExtractor<Sale>? extractor)
         : AdvancedAggregateNode<Sale, string, string?, string?>(new AggregateNodeConfiguration<Sale>(
-            WindowAssigner.Tumbling(TimeSpan.FromMinutes(1)), extractor, TimeSpan.Zero, watermarkInterval))
+            WindowAssigner.Tumbling(TimeSpan.FromMinutes(1)), extractor, TimeSpan.Zero))
     {
         public override string GetKey(Sale s) => s.Cat;
         public override string? CreateAccumulator() => null;
@@ -142,14 +142,15 @@ public sealed class AggregateWatermarkTests
     public async Task Aggregate_NullAccumulator_EmittedSameForWatermarkAndEndOfStream()
     {
         // C40: a group whose accumulator is legitimately null is emitted the same way whether a
-        // watermark closes it or the end of the stream does, and it never silently disappears.
-        var watermarkClosed = new NullAccumulatorNode(TimeSpan.Zero, s => s.At);
+        // watermark closes it (a later item moves the watermark past its window) or the end of the stream does,
+        // and it never silently disappears.
+        var watermarkClosed = new NullAccumulatorNode(s => s.At);
         var byWatermark = await RunNulls(watermarkClosed,
             new Sale("a", 1, T0), new Sale("b", 2, T0), new Sale("c", 3, T0.AddMinutes(2)));
 
         byWatermark.Should().Equal(null, null, null);
 
-        var streamClosed = new NullAccumulatorNode(null, s => s.At);
+        var streamClosed = new NullAccumulatorNode(s => s.At);
         var byStreamEnd = await RunNulls(streamClosed, new Sale("a", 1, T0), new Sale("b", 2, T0));
 
         byStreamEnd.Should().Equal(null, null);
@@ -167,7 +168,7 @@ public sealed class AggregateWatermarkTests
     [Fact]
     public async Task Aggregate_StateIsClearedAfterDrain()
     {
-        var node = new SumNode(TimeSpan.Zero, s => s.At);
+        var node = new SumNode(s => s.At);
         await RunAggregate(node, new Sale("a", 1, T0), new Sale("a", 2, T0.AddMinutes(2)));
         node.GetActiveWindowCount().Should().Be(0);
     }
@@ -192,7 +193,7 @@ public sealed class AggregateWatermarkTests
     [Fact]
     public async Task Aggregate_ConsumerLeavingEarly_ReleasesItsActiveWindows()
     {
-        var node = new SumNode(TimeSpan.Zero, s => s.At);
+        var node = new SumNode(s => s.At);
 
         var input = new[]
         {
@@ -229,5 +230,31 @@ public sealed class AggregateWatermarkTests
         await foreach (var r in output) results.Add((int)r!);
 
         results.Should().Equal(1);
+    }
+
+    [Fact]
+    public async Task Aggregate_FastReplay_ClosesWindowsAsItGoes()
+    {
+        // 10,000 items over 100 one-minute windows, read in well under a second. The watermark follows event time on
+        // every item, so windows close as the replay passes them instead of all being held until the stream ends.
+        var node = new SumNode(s => s.At);
+        var input = Enumerable.Range(0, 10_000)
+            .Select(i => (object?)new Sale("a", 1, T0.AddMilliseconds(i * 600)))
+            .ToAsyncEnumerable();
+
+        var output = (IAsyncEnumerable<object?>)(await node.ExecuteAsync(input))!;
+        var results = new List<int>();
+        var maxActiveMidway = 0;
+
+        await foreach (var r in output)
+        {
+            results.Add((int)r!);
+
+            if (results.Count < 99)
+                maxActiveMidway = Math.Max(maxActiveMidway, node.GetActiveWindowCount());
+        }
+
+        results.Should().HaveCount(100).And.AllSatisfy(sum => sum.Should().Be(100));
+        maxActiveMidway.Should().BeLessThanOrEqualTo(2);
     }
 }
