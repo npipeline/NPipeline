@@ -50,6 +50,10 @@ PipelineGraph.PreconfiguredNodeInstances: Dictionary<string, INode>
 
 When the DI extension resolves nodes, it creates instances from the container and stores them here. At execution time, the factory returns the pre-configured instance instead of creating a new one.
 
+A run owns the pre-configured instances it is given, including those supplied through
+`context.NodeEnvironment.PreconfiguredNodeInstances`, and disposes each one once when it ends. Instances the DI container
+resolves are the exception: the container owns them, so the run leaves them alone.
+
 ### Activator Fallback
 
 If no compiled factory is possible and no pre-configured instance exists, the factory falls back to `Activator.CreateInstance()`. This is intentionally slow - it's a safety net, not a recommended path.

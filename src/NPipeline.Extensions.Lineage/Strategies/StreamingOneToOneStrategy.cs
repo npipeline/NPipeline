@@ -17,10 +17,10 @@ internal sealed class StreamingOneToOneStrategy<TIn, TOut> : LineageMappingStrat
     public async IAsyncEnumerable<LineagePacket<TOut>> MapAsync(IAsyncEnumerable<LineagePacket<TIn>> inputStream, IAsyncEnumerable<TOut> outputStream,
         string nodeId, Guid pipelineId, string? pipelineName, TransformCardinality cardinality, LineageOptions? options, Type? lineageMapperType,
         ILineageMapper? mapperInstance,
+        LineageNodeOutcomeWriter lineage,
         [EnumeratorCancellation] CancellationToken ct)
     {
         // Fast streaming 1:1 path (original second half of BuildLineageAdapter)
-        var lineage = LineageNodeOutcomeRegistry.GetWriter(pipelineId, nodeId);
         var inputEnumerator2 = inputStream.GetAsyncEnumerator(ct);
         await using var inputEnumerator2Scope = inputEnumerator2.ConfigureAwait(false);
         var outputEnumerator2 = outputStream.GetAsyncEnumerator(ct);
@@ -39,7 +39,7 @@ internal sealed class StreamingOneToOneStrategy<TIn, TOut> : LineageMappingStrat
                 var outputData = outputEnumerator2.Current;
                 var traversalPath = inputPacket.TraversalPath.Add(QualifyNodeId(nodeId, pipelineId));
                 var lineageRecords = inputPacket.LineageRecords;
-                var (effectiveOutcome, retryCount) = ResolveRecordedOutcome(pipelineId, nodeId, matchedInputCount2, LineageOutcomeReason.Emitted);
+                var (effectiveOutcome, retryCount) = ResolveRecordedOutcome(lineage, matchedInputCount2, LineageOutcomeReason.Emitted);
 
                 if (inputPacket.Collect)
                 {

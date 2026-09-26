@@ -726,7 +726,7 @@ public sealed class ResourceDisposalTests : IAsyncLifetime
             var sink = builder.AddSink(new CountingDisposableSink(), "sink");
             _ = builder.Connect(source, transform).Connect(transform, sink);
 
-            // Dead-lettering with no dead-letter sink makes setup throw after the nodes are instantiated.
+            // Dead-lettering with no dead-letter sink makes setup throw, before any node is instantiated.
             _ = builder.WithResilience(o => o with { OnItemFailure = ItemFailureAction.DeadLetter });
         }
     }
@@ -745,8 +745,8 @@ public sealed class ResourceDisposalTests : IAsyncLifetime
 
         // Assert
         _ = await act.Should().ThrowAsync<DeadLetterSinkNotConfiguredException>();
-        CountingDisposableTransform.Disposed.Should().Be(1, "instances created before the setup failure must be disposed");
-        CountingDisposableSink.Disposed.Should().Be(1, "instances created before the setup failure must be disposed");
+        CountingDisposableTransform.Disposed.Should().Be(0, "configuration is validated before any node is constructed");
+        CountingDisposableSink.Disposed.Should().Be(1, "an instance the builder created must be disposed even though setup failed");
     }
 
     private sealed class MismatchedSink : SinkNode<string>

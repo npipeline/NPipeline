@@ -84,6 +84,7 @@ NPipeline ships 20+ Roslyn analyzers in `NPipeline.Analyzers`. They run during e
 | NP9203 | Warning | `CancellationToken` parameter not forwarded to async calls or checked in loops |
 | NP9204 | Error | `ItemRetry`, `NodeRestart`, or `CircuitBreaker` set for a source, sink, aggregate, or join node |
 | NP9205 | Warning | Resilience policy returns `Retry` without consulting `failure.CanRetry` |
+| NP9206 | Warning | Async iterator in a node has no `CancellationToken` parameter, so it can't observe cancellation |
 
 ### Data Integrity & Correctness
 

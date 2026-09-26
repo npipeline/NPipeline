@@ -37,9 +37,9 @@ internal sealed class ProvenanceMappingStrategy<TIn, TOut> : LineageMappingStrat
     public async IAsyncEnumerable<LineagePacket<TOut>> MapAsync(IAsyncEnumerable<LineagePacket<TIn>> inputStream, IAsyncEnumerable<TOut> outputStream,
         string nodeId, Guid pipelineId, string? pipelineName, TransformCardinality cardinality, LineageOptions? options, Type? lineageMapperType,
         ILineageMapper? mapperInstance,
+        LineageNodeOutcomeWriter lineage,
         [EnumeratorCancellation] CancellationToken ct)
     {
-        var lineage = LineageNodeOutcomeRegistry.GetWriter(pipelineId, nodeId);
         var inputs = new PendingInputs(inputStream.GetAsyncEnumerator(ct));
         var warnedUnknown = false;
 
@@ -87,7 +87,7 @@ internal sealed class ProvenanceMappingStrategy<TIn, TOut> : LineageMappingStrat
 
                 if (packet.Collect)
                 {
-                    var (outcome, retryCount) = ResolveRecordedOutcome(pipelineId, nodeId, index, LineageOutcomeReason.Emitted);
+                    var (outcome, retryCount) = ResolveRecordedOutcome(lineage, index, LineageOutcomeReason.Emitted);
 
                     lineageRecords = MaybeAppendHop(lineageRecords, packet.CorrelationId, traversalPath, nodeId, pipelineId, pipelineName, options,
                         isOnlyOutput
@@ -128,7 +128,7 @@ internal sealed class ProvenanceMappingStrategy<TIn, TOut> : LineageMappingStrat
 
         if (recorded && packet.Collect && lineage.Sink is { } sink)
         {
-            var (outcome, retryCount) = ResolveRecordedOutcome(pipelineId, nodeId, report.InputIndex, report.Outcome);
+            var (outcome, retryCount) = ResolveRecordedOutcome(lineage, report.InputIndex, report.Outcome);
             var traversalPath = packet.TraversalPath.Add(QualifyNodeId(nodeId, pipelineId));
 
             var records = AppendTerminalHop(packet.LineageRecords, packet.CorrelationId, traversalPath, nodeId, pipelineId, pipelineName, options,

@@ -49,7 +49,7 @@ internal sealed class PipelineExecutionCleanupStage(IObservabilitySurface observ
         {
             await Guard(() =>
             {
-                LineageNodeOutcomeRegistry.ClearPipeline(context.RunIdentity.PipelineId);
+                context.Lineage.Outcomes.Clear();
                 return ValueTask.CompletedTask;
             }).ConfigureAwait(false);
         }

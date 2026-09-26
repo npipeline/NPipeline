@@ -88,7 +88,30 @@ public sealed class StreamTransformLineageTests
         _ = await act.Should().ThrowAsync<Exception>();
 
         // Assert - a node whose output was never pulled left no state behind for this run.
-        LineageNodeOutcomeRegistry.IsTracking(context.RunIdentity.PipelineId, "tag").Should().BeFalse();
+        context.Lineage.Outcomes.IsTracking("tag").Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ReusedContext_StartsEachRunWithItsOwnLineageState()
+    {
+        // Arrange - the lineage state lives on the run, not in a process-wide registry keyed by pipeline id.
+        var context = new PipelineContext();
+        context.Items[LineageSinkKey] = new CollectingLineageSink();
+
+        var services = new ServiceCollection();
+        services.AddNPipeline(typeof(StreamTransformLineageTests).Assembly);
+        services.AddNPipelineLineage();
+        await using var provider = services.BuildServiceProvider();
+        var runner = provider.GetRequiredService<IPipelineRunner>();
+
+        // Act
+        await runner.RunAsync<FilterPipeline>(context);
+        var firstRun = context.Lineage.Outcomes;
+        await runner.RunAsync<FilterPipeline>(context);
+
+        // Assert
+        context.Lineage.Outcomes.Should().NotBeSameAs(firstRun);
+        firstRun.IsTracking("filter").Should().BeFalse("the first run released its state when it ended");
     }
 
     [Fact]
@@ -405,7 +428,7 @@ public sealed class StreamTransformLineageTests
         public override async Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken cancellationToken)
         {
             var state = (ProbeState)context.Items[ProbeKey];
-            var writer = LineageNodeOutcomeRegistry.GetWriter(context.RunIdentity.PipelineId, "tag");
+            var writer = context.Lineage.Outcomes.GetWriter("tag");
             var read = 0;
 
             await foreach (var item in input.WithCancellation(cancellationToken))

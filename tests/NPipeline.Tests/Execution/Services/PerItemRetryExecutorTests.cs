@@ -42,7 +42,7 @@ public sealed class PerItemRetryExecutorTests
                 Options(3),
                 true,
                 0,
-                LineageNodeOutcomeRegistry.GetWriter(pipelineId, NodeId),
+                context.Lineage.Outcomes.GetWriter(NodeId),
                 activity,
                 CancellationToken.None);
 
@@ -53,13 +53,13 @@ public sealed class PerItemRetryExecutorTests
             _ = deadLetterSink.Envelopes.Should().BeEmpty();
             _ = activity.Exceptions.Should().HaveCount(1);
 
-            _ = LineageNodeOutcomeRegistry.TryGet(pipelineId, NodeId, 0, out var outcome).Should().BeTrue();
+            _ = context.Lineage.Outcomes.GetWriter(NodeId).TryGetOutcome(0, out var outcome).Should().BeTrue();
             _ = outcome.OutcomeReason.Should().Be(LineageOutcomeReason.FilteredOut);
             _ = outcome.RetryCount.Should().Be(0);
         }
         finally
         {
-            LineageNodeOutcomeRegistry.ClearNode(pipelineId, NodeId);
+            context.Lineage.Outcomes.ClearNode(NodeId);
         }
     }
 
@@ -86,7 +86,7 @@ public sealed class PerItemRetryExecutorTests
                 Options(2),
                 true,
                 0,
-                LineageNodeOutcomeRegistry.GetWriter(pipelineId, NodeId),
+                context.Lineage.Outcomes.GetWriter(NodeId),
                 null,
                 CancellationToken.None);
 
@@ -97,13 +97,13 @@ public sealed class PerItemRetryExecutorTests
             _ = deadLetterSink.Envelopes[0].Error.Should().BeSameAs(transformException);
             _ = deadLetterSink.Envelopes[0].Attribution.DecisionNodeId.Should().Be(NodeId);
 
-            _ = LineageNodeOutcomeRegistry.TryGet(pipelineId, NodeId, 0, out var outcome).Should().BeTrue();
+            _ = context.Lineage.Outcomes.GetWriter(NodeId).TryGetOutcome(0, out var outcome).Should().BeTrue();
             _ = outcome.OutcomeReason.Should().Be(LineageOutcomeReason.DeadLettered);
             _ = outcome.RetryCount.Should().Be(0);
         }
         finally
         {
-            LineageNodeOutcomeRegistry.ClearNode(pipelineId, NodeId);
+            context.Lineage.Outcomes.ClearNode(NodeId);
         }
     }
 
@@ -128,7 +128,7 @@ public sealed class PerItemRetryExecutorTests
                 Options(3),
                 true,
                 0,
-                LineageNodeOutcomeRegistry.GetWriter(pipelineId, NodeId),
+                context.Lineage.Outcomes.GetWriter(NodeId),
                 activity,
                 CancellationToken.None);
 
@@ -142,13 +142,13 @@ public sealed class PerItemRetryExecutorTests
             _ = activity.Tags.Should().ContainKey("retry.attempt");
             _ = activity.Tags["retry.attempt"].Should().Be("1");
 
-            _ = LineageNodeOutcomeRegistry.TryGet(pipelineId, NodeId, 0, out var outcome).Should().BeTrue();
+            _ = context.Lineage.Outcomes.GetWriter(NodeId).TryGetOutcome(0, out var outcome).Should().BeTrue();
             _ = outcome.OutcomeReason.Should().Be(LineageOutcomeReason.Emitted);
             _ = outcome.RetryCount.Should().Be(1);
         }
         finally
         {
-            LineageNodeOutcomeRegistry.ClearNode(pipelineId, NodeId);
+            context.Lineage.Outcomes.ClearNode(NodeId);
         }
     }
 
@@ -165,7 +165,7 @@ public sealed class PerItemRetryExecutorTests
         context.ExecutionConfiguration.ResiliencePolicy = resiliencePolicy;
         context.Properties[PipelineContextKeys.SampleRecorder] = recorder;
         var correlationId = Guid.NewGuid();
-        LineageNodeOutcomeRegistry.GetWriter(pipelineId, NodeId).RegisterInput(0, correlationId, [1, 2]);
+        context.Lineage.Outcomes.GetWriter(NodeId).RegisterInput(0, correlationId, [1, 2]);
 
         try
         {
@@ -177,7 +177,7 @@ public sealed class PerItemRetryExecutorTests
                 Options(0),
                 true,
                 0,
-                LineageNodeOutcomeRegistry.GetWriter(pipelineId, NodeId),
+                context.Lineage.Outcomes.GetWriter(NodeId),
                 null,
                 CancellationToken.None);
 
@@ -190,13 +190,13 @@ public sealed class PerItemRetryExecutorTests
             _ = recorder.Errors[0].RetryCount.Should().Be(0);
             _ = recorder.Errors[0].ErrorMessage.Should().Contain("terminal");
 
-            _ = LineageNodeOutcomeRegistry.TryGet(pipelineId, NodeId, 0, out var outcome).Should().BeTrue();
+            _ = context.Lineage.Outcomes.GetWriter(NodeId).TryGetOutcome(0, out var outcome).Should().BeTrue();
             _ = outcome.OutcomeReason.Should().Be(LineageOutcomeReason.Error);
             _ = outcome.RetryCount.Should().Be(0);
         }
         finally
         {
-            LineageNodeOutcomeRegistry.ClearNode(pipelineId, NodeId);
+            context.Lineage.Outcomes.ClearNode(NodeId);
         }
     }
 
@@ -213,7 +213,7 @@ public sealed class PerItemRetryExecutorTests
         var (context, pipelineId) = CreateTrackedContext();
         context.ExecutionConfiguration.ResiliencePolicy = resiliencePolicy;
         context.Properties[PipelineContextKeys.SampleRecorder] = recorder;
-        LineageNodeOutcomeRegistry.GetWriter(pipelineId, NodeId).RegisterInput(0, Guid.NewGuid(), [4]);
+        context.Lineage.Outcomes.GetWriter(NodeId).RegisterInput(0, Guid.NewGuid(), [4]);
 
         try
         {
@@ -225,7 +225,7 @@ public sealed class PerItemRetryExecutorTests
                 Options(1),
                 true,
                 0,
-                LineageNodeOutcomeRegistry.GetWriter(pipelineId, NodeId),
+                context.Lineage.Outcomes.GetWriter(NodeId),
                 null,
                 CancellationToken.None);
 
@@ -239,13 +239,13 @@ public sealed class PerItemRetryExecutorTests
             _ = recorder.Errors.Should().HaveCount(1);
             _ = recorder.Errors[0].RetryCount.Should().Be(1);
 
-            _ = LineageNodeOutcomeRegistry.TryGet(pipelineId, NodeId, 0, out var outcome).Should().BeTrue();
+            _ = context.Lineage.Outcomes.GetWriter(NodeId).TryGetOutcome(0, out var outcome).Should().BeTrue();
             _ = outcome.OutcomeReason.Should().Be(LineageOutcomeReason.Error);
             _ = outcome.RetryCount.Should().Be(1);
         }
         finally
         {
-            LineageNodeOutcomeRegistry.ClearNode(pipelineId, NodeId);
+            context.Lineage.Outcomes.ClearNode(NodeId);
         }
     }
 
@@ -297,7 +297,7 @@ public sealed class PerItemRetryExecutorTests
         }
         finally
         {
-            LineageNodeOutcomeRegistry.ClearNode(pipelineId, NodeId);
+            context.Lineage.Outcomes.ClearNode(NodeId);
         }
     }
 
@@ -311,7 +311,7 @@ public sealed class PerItemRetryExecutorTests
 
         context.RunIdentity.PipelineId = pipelineId;
         context.RunIdentity.RunId = Guid.NewGuid();
-        LineageNodeOutcomeRegistry.BeginNode(pipelineId, NodeId);
+        context.Lineage.Outcomes.BeginNode(NodeId);
 
         return (context, pipelineId);
     }

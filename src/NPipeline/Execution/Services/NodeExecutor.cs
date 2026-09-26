@@ -103,11 +103,11 @@ public sealed class NodeExecutor(
             // Started here, not by the adapter, because only the executor knows the strategy the node runs under. A
             // declared mapper wins in the adapter, so the strategy's provenance reports are not used in that case, and
             // claiming them would leave the strategy's Inputs and Outcomes without the Forget that releases them.
-            LineageNodeOutcomeRegistry.BeginNode(context.RunIdentity.PipelineId, plan.NodeId,
+            context.Lineage.Outcomes.BeginNode(plan.NodeId,
                 LineageProvenanceSupport.Reports(strategy, instance) && nodeDef.LineageMapperType is null, context.Lineage.LineageSink);
 
-            var (unwrapped, rewrap) = adapter(input, plan.NodeId, context.RunIdentity.PipelineId, context.RunIdentity.PipelineName,
-                nodeDef.DeclaredCardinality ?? TransformCardinality.OneToOne, graph.Lineage.LineageOptions, context.CancellationToken);
+            var (unwrapped, rewrap) = adapter(input, plan.NodeId, context, nodeDef.DeclaredCardinality ?? TransformCardinality.OneToOne,
+                graph.Lineage.LineageOptions);
 
             var transformTask = plan.ExecuteTransform!(instance, strategy, unwrapped, context, context.CancellationToken);
 

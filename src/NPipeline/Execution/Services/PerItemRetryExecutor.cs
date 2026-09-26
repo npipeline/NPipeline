@@ -266,7 +266,7 @@ internal sealed class PerItemRetryExecutor : IPerItemRetryExecutor
             return;
         }
 
-        LineageNodeOutcomeRegistry.Record(context.RunIdentity.PipelineId, nodeId, lineageInputIndex, outcomeReason, retryCount);
+        context.Lineage.Outcomes.Record(nodeId, lineageInputIndex, outcomeReason, retryCount);
     }
 
     private static async Task DispatchDeadLetterAsync<TIn>(

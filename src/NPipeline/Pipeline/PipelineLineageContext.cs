@@ -1,3 +1,4 @@
+using NPipeline.Execution.Lineage;
 using NPipeline.Lineage;
 
 namespace NPipeline.Pipeline;
@@ -41,4 +42,15 @@ public sealed class PipelineLineageContext
     ///     Item-level lineage collector resolved for the current run.
     /// </summary>
     public ILineageCollector? LineageCollector { get; internal set; }
+
+    /// <summary>
+    ///     Per-node item lineage state for the current run. Replaced at the start of each run, so a context reused for
+    ///     several runs never mixes their state.
+    /// </summary>
+    internal LineageNodeOutcomeRegistry Outcomes { get; private set; } = new();
+
+    /// <summary>
+    ///     Starts a fresh outcome registry for a new run.
+    /// </summary>
+    internal void ResetOutcomes() => Outcomes = new LineageNodeOutcomeRegistry();
 }

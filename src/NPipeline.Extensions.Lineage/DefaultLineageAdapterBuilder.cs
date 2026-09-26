@@ -20,12 +20,17 @@ internal sealed class DefaultLineageAdapterBuilder
         if (lineageMapperType is not null)
             cachedMapper = (ILineageMapper)Activator.CreateInstance(lineageMapperType)!;
 
-        return (transformInput, nodeId, pipelineId, pipelineName, declaredCardinality, options, cancellationToken) =>
+        return (transformInput, nodeId, context, declaredCardinality, options) =>
         {
             var typedInput = (IDataStream<LineagePacket<TIn>>)transformInput;
+            var pipelineId = context.RunIdentity.PipelineId;
+            var pipelineName = context.RunIdentity.PipelineName;
+            var cancellationToken = context.CancellationToken;
 
-            // The node executor starts the node's lineage state, knowing whether its strategy reports provenance.
-            var nodeLineage = LineageNodeOutcomeRegistry.GetOrBeginNode(pipelineId, nodeId);
+            // The node executor starts the node's lineage state in the run's registry, knowing whether its strategy
+            // reports provenance.
+            var outcomes = context.Lineage.Outcomes;
+            var nodeLineage = outcomes.GetOrBeginNode(nodeId);
 
             // A strategy that reports each output's input is mapped by index; a declared mapper still wins, and any
             // other node is mapped by position. Chosen now, because it decides how far the pump may read ahead.
@@ -70,15 +75,16 @@ internal sealed class DefaultLineageAdapterBuilder
                     options,
                     lineageMapperType,
                     cachedMapper,
+                    nodeLineage,
                     cancellationToken);
 
-                var cleanupStream = CleanupOnComplete(rewrappedStream, pipelineId, nodeId, cancellationToken);
+                var cleanupStream = CleanupOnComplete(rewrappedStream, outcomes, nodeId, cancellationToken);
                 return new DataStream<LineagePacket<TOut>>(cleanupStream, $"Rewrapped_{outputPipe.StreamName}");
             }
 
             static async IAsyncEnumerable<LineagePacket<TOut>> CleanupOnComplete(
                 IAsyncEnumerable<LineagePacket<TOut>> source,
-                Guid currentPipelineId,
+                LineageNodeOutcomeRegistry outcomes,
                 string currentNodeId,
                 [EnumeratorCancellation] CancellationToken ct = default)
             {
@@ -91,7 +97,7 @@ internal sealed class DefaultLineageAdapterBuilder
                 }
                 finally
                 {
-                    LineageNodeOutcomeRegistry.ClearNode(currentPipelineId, currentNodeId);
+                    outcomes.ClearNode(currentNodeId);
                 }
             }
         };

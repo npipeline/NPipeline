@@ -1,0 +1,67 @@
+name: Concurrency Stress
+
+# Runs the tests of the concurrent machinery (stream merging, fan-out pumps, batching, taps, disposal races and
+# resumable input) many times in a row. A timing-dependent defect, or a test that cannot fail or fails only
+# sometimes, shows up here long before it would on a single CI run.
+
+on:
+  schedule:
+    - cron: "0 3 * * *" # nightly, 03:00 UTC
+  workflow_dispatch:
+    inputs:
+      iterations:
+        description: "How many times to run the suite"
+        required: false
+        default: "50"
+        type: string
+
+env:
+  DOTNET_VERSION: |
+    8.0.x
+    9.0.x
+    10.0.x
+  ITERATIONS: ${{ github.event.inputs.iterations || '50' }}
+  CORE_FILTER: >-
+    FullyQualifiedName~MergeStrategyTests|FullyQualifiedName~BranchingTerminalDrainTests|FullyQualifiedName~CountingMulticastDataStreamTests|FullyQualifiedName~RouteNodeIntegrationTests|FullyQualifiedName~BatchingExecutionStrategyTests|FullyQualifiedName~BatchingTests|FullyQualifiedName~TapNodeTests|FullyQualifiedName~ResumableInputTests|FullyQualifiedName~NodeExecutionScopeRegistryTests|FullyQualifiedName~ResourceDisposalTests
+  LINEAGE_FILTER: FullyQualifiedName~StreamTransformLineageTests
+
+jobs:
+  stress:
+    name: Concurrency Stress
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Build
+        run: |
+          dotnet build tests/NPipeline.Tests/NPipeline.Tests.csproj --configuration Release -f net10.0
+          dotnet build tests/NPipeline.Extensions.Lineage.Tests/NPipeline.Extensions.Lineage.Tests.csproj --configuration Release -f net10.0
+
+      - name: Run the suite repeatedly
+        run: |
+          set -euo pipefail
+
+          for i in $(seq 1 "$ITERATIONS"); do
+            echo "::group::Iteration $i of $ITERATIONS"
+            dotnet test tests/NPipeline.Tests/NPipeline.Tests.csproj --no-build --configuration Release -f net10.0 \
+              --filter "$CORE_FILTER" --logger "trx;LogFileName=core-$i.trx" --results-directory TestResults
+            dotnet test tests/NPipeline.Extensions.Lineage.Tests/NPipeline.Extensions.Lineage.Tests.csproj --no-build --configuration Release -f net10.0 \
+              --filter "$LINEAGE_FILTER" --logger "trx;LogFileName=lineage-$i.trx" --results-directory TestResults
+            echo "::endgroup::"
+          done
+
+      - name: Upload results of a failing run
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: concurrency-stress-results
+          path: TestResults/*.trx
+          retention-days: 14

@@ -138,11 +138,13 @@ public sealed class MergeStrategyTests
     }
 
     /// <summary>
-    ///     The global <c>merge.capacity</c> annotation must bound the merge buffer, so a fast source feeding a slow
+    ///     A merge capacity, set globally or for the node, must bound the merge buffer, so a fast source feeding a slow
     ///     multi-input sink cannot buffer the whole stream in memory.
     /// </summary>
-    [Fact]
-    public async Task GlobalMergeCapacity_AnnotationIsHonoured()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task MergeCapacity_IsHonoured(bool perNode)
     {
         var source = new CountingYieldSource();
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
@@ -157,7 +159,7 @@ public sealed class MergeStrategyTests
                 .AddPreconfiguredNodeInstance(c.Id, StreamingSource<int>.Of(Array.Empty<int>()))
                 .AddPreconfiguredNodeInstance(k.Id, slowSink);
             _ = b.Connect(a, k).Connect(c, k);
-            _ = b.SetGlobalAnnotation(ExecutionAnnotationKeys.GlobalMergeCapacityKey, 4);
+            _ = perNode ? b.WithMergeCapacity(k.Id, 4) : b.WithGlobalMergeCapacity(4);
         }, cancellationToken: cts.Token);
 
         // Let the fast source run ahead of the slow sink for a moment, then measure its lead.

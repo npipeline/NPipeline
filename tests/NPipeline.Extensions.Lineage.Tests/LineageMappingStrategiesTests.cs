@@ -16,6 +16,8 @@ namespace NPipeline.Extensions.Lineage.Tests;
 /// </summary>
 public sealed class LineageMappingStrategiesTests
 {
+    private readonly LineageNodeOutcomeRegistry _outcomes = new();
+
     private static readonly Guid s_pipelineId = Guid.Parse("11111111-1111-1111-1111-111111111111");
 
     #region Helper Methods
@@ -106,7 +108,7 @@ public sealed class LineageMappingStrategiesTests
 
         await foreach (var packet in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null,
                            null,
-                           CancellationToken.None))
+                           _outcomes.GetWriter("test_node"), CancellationToken.None))
         {
             results.Add(packet);
         }
@@ -134,7 +136,7 @@ public sealed class LineageMappingStrategiesTests
         {
             await foreach (var _ in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null,
                                null,
-                               CancellationToken.None))
+                               _outcomes.GetWriter("test_node"), CancellationToken.None))
             {
                 // Enumerate to trigger mismatch
             }
@@ -158,7 +160,7 @@ public sealed class LineageMappingStrategiesTests
         {
             await foreach (var _ in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null,
                                null,
-                               CancellationToken.None))
+                               _outcomes.GetWriter("test_node"), CancellationToken.None))
             {
                 // Enumerate to trigger mismatch
             }
@@ -182,7 +184,7 @@ public sealed class LineageMappingStrategiesTests
 
         await foreach (var packet in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToMany, options, null,
                            null,
-                           CancellationToken.None))
+                           _outcomes.GetWriter("test_node"), CancellationToken.None))
         {
             results.Add(packet);
         }
@@ -205,7 +207,7 @@ public sealed class LineageMappingStrategiesTests
 
         await foreach (var packet in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null,
                            null,
-                           CancellationToken.None))
+                           _outcomes.GetWriter("test_node"), CancellationToken.None))
         {
             results.Add(packet);
         }
@@ -239,7 +241,7 @@ public sealed class LineageMappingStrategiesTests
 
         await foreach (var packet in strategy.MapAsync(inputPackets, outputData, "transform_node", s_pipelineId, null, TransformCardinality.OneToOne, options,
                            null, null,
-                           CancellationToken.None))
+                           _outcomes.GetWriter("transform_node"), CancellationToken.None))
         {
             results.Add(packet);
         }
@@ -264,7 +266,7 @@ public sealed class LineageMappingStrategiesTests
 
         await foreach (var packet in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null,
                            null,
-                           CancellationToken.None))
+                           _outcomes.GetWriter("test_node"), CancellationToken.None))
         {
             results.Add(packet);
         }
@@ -288,7 +290,7 @@ public sealed class LineageMappingStrategiesTests
 
         await foreach (var packet in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null,
                            null,
-                           CancellationToken.None))
+                           _outcomes.GetWriter("test_node"), CancellationToken.None))
         {
             results.Add(packet);
         }
@@ -307,8 +309,8 @@ public sealed class LineageMappingStrategiesTests
     public async Task StreamingOneToOneStrategy_ShouldPropagateRecordedRetryOutcome()
     {
         // Arrange
-        LineageNodeOutcomeRegistry.BeginNode(s_pipelineId, "test_node");
-        LineageNodeOutcomeRegistry.Record(s_pipelineId, "test_node", 0, LineageOutcomeReason.Emitted, 3);
+        _outcomes.BeginNode("test_node");
+        _outcomes.Record("test_node", 0, LineageOutcomeReason.Emitted, 3);
 
         var inputPackets = CreatePacketStream(1);
         var outputData = CreateDataStream("a");
@@ -319,7 +321,7 @@ public sealed class LineageMappingStrategiesTests
         List<LineagePacket<string>> results = [];
 
         await foreach (var packet in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options,
-                           null, null, CancellationToken.None))
+                           null, null, _outcomes.GetWriter("test_node"), CancellationToken.None))
         {
             results.Add(packet);
         }
@@ -331,7 +333,7 @@ public sealed class LineageMappingStrategiesTests
         _ = results[0].LineageRecords[0].RetryCount.Should().Be(3);
 
         // Cleanup for isolation
-        LineageNodeOutcomeRegistry.ClearNode(s_pipelineId, "test_node");
+        _outcomes.ClearNode("test_node");
     }
 
     [Fact]
@@ -339,8 +341,8 @@ public sealed class LineageMappingStrategiesTests
     {
         // Arrange
         const string nodeId = "test_node_non_retry";
-        LineageNodeOutcomeRegistry.BeginNode(s_pipelineId, nodeId);
-        LineageNodeOutcomeRegistry.Record(s_pipelineId, nodeId, 0, LineageOutcomeReason.DeadLettered, 0);
+        _outcomes.BeginNode(nodeId);
+        _outcomes.Record(nodeId, 0, LineageOutcomeReason.DeadLettered, 0);
 
         var inputPackets = CreatePacketStream(1);
         var outputData = CreateDataStream("a");
@@ -351,7 +353,7 @@ public sealed class LineageMappingStrategiesTests
         List<LineagePacket<string>> results = [];
 
         await foreach (var packet in strategy.MapAsync(inputPackets, outputData, nodeId, s_pipelineId, null, TransformCardinality.OneToOne, options,
-                           null, null, CancellationToken.None))
+                           null, null, _outcomes.GetWriter(nodeId), CancellationToken.None))
         {
             results.Add(packet);
         }
@@ -364,7 +366,7 @@ public sealed class LineageMappingStrategiesTests
         _ = results[0].LineageRecords[0].RetryCount.Should().BeNull();
 
         // Cleanup for isolation
-        LineageNodeOutcomeRegistry.ClearNode(s_pipelineId, nodeId);
+        _outcomes.ClearNode(nodeId);
     }
 
     #endregion
@@ -385,7 +387,7 @@ public sealed class LineageMappingStrategiesTests
 
         await foreach (var packet in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null,
                            null,
-                           CancellationToken.None))
+                           _outcomes.GetWriter("test_node"), CancellationToken.None))
         {
             results.Add(packet);
         }
@@ -409,7 +411,7 @@ public sealed class LineageMappingStrategiesTests
         {
             await foreach (var _ in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null,
                                null,
-                               CancellationToken.None))
+                               _outcomes.GetWriter("test_node"), CancellationToken.None))
             {
                 // Enumerate to trigger
             }
@@ -432,7 +434,7 @@ public sealed class LineageMappingStrategiesTests
 
         await foreach (var packet in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null,
                            null,
-                           CancellationToken.None))
+                           _outcomes.GetWriter("test_node"), CancellationToken.None))
         {
             results.Add(packet);
         }
@@ -459,7 +461,7 @@ public sealed class LineageMappingStrategiesTests
 
         await foreach (var packet in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null,
                            null,
-                           CancellationToken.None))
+                           _outcomes.GetWriter("test_node"), CancellationToken.None))
         {
             results.Add(packet);
         }
@@ -483,7 +485,7 @@ public sealed class LineageMappingStrategiesTests
 
         await foreach (var packet in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null,
                            null,
-                           CancellationToken.None))
+                           _outcomes.GetWriter("test_node"), CancellationToken.None))
         {
             results.Add(packet);
         }
@@ -497,8 +499,8 @@ public sealed class LineageMappingStrategiesTests
     {
         // Arrange
         const string nodeId = "test_node_materialized_non_retry";
-        LineageNodeOutcomeRegistry.BeginNode(s_pipelineId, nodeId);
-        LineageNodeOutcomeRegistry.Record(s_pipelineId, nodeId, 0, LineageOutcomeReason.DeadLettered, 0);
+        _outcomes.BeginNode(nodeId);
+        _outcomes.Record(nodeId, 0, LineageOutcomeReason.DeadLettered, 0);
 
         var inputPackets = CreatePacketStream(1);
         var outputData = CreateDataStream("a");
@@ -509,7 +511,7 @@ public sealed class LineageMappingStrategiesTests
         List<LineagePacket<string>> results = [];
 
         await foreach (var packet in strategy.MapAsync(inputPackets, outputData, nodeId, s_pipelineId, null, TransformCardinality.OneToOne, options,
-                           null, null, CancellationToken.None))
+                           null, null, _outcomes.GetWriter(nodeId), CancellationToken.None))
         {
             results.Add(packet);
         }
@@ -522,7 +524,7 @@ public sealed class LineageMappingStrategiesTests
         _ = results[0].LineageRecords[0].RetryCount.Should().BeNull();
 
         // Cleanup for isolation
-        LineageNodeOutcomeRegistry.ClearNode(s_pipelineId, nodeId);
+        _outcomes.ClearNode(nodeId);
     }
 
     [Fact]
@@ -541,7 +543,7 @@ public sealed class LineageMappingStrategiesTests
 
         await foreach (var packet in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null,
                            null,
-                           CancellationToken.None))
+                           _outcomes.GetWriter("test_node"), CancellationToken.None))
         {
             results.Add(packet);
         }
@@ -566,7 +568,7 @@ public sealed class LineageMappingStrategiesTests
         {
             await foreach (var _ in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null,
                                null,
-                               CancellationToken.None))
+                               _outcomes.GetWriter("test_node"), CancellationToken.None))
             {
                 // Enumerate to trigger
             }
@@ -588,7 +590,7 @@ public sealed class LineageMappingStrategiesTests
         List<LineagePacket<string>> results = [];
 
         await foreach (var packet in strategy.MapAsync(inputPackets, outputData, "fanout_node", s_pipelineId, null, TransformCardinality.OneToMany, options,
-                           typeof(OneToThreeMapper), new OneToThreeMapper(), CancellationToken.None))
+                           typeof(OneToThreeMapper), new OneToThreeMapper(), _outcomes.GetWriter("fanout_node"), CancellationToken.None))
         {
             results.Add(packet);
         }
@@ -618,7 +620,7 @@ public sealed class LineageMappingStrategiesTests
         List<LineagePacket<string>> results = [];
 
         await foreach (var packet in strategy.MapAsync(inputPackets, outputData, "conflict_node", s_pipelineId, null, TransformCardinality.OneToMany, options,
-                           typeof(ConflictingFanOutMapper), new ConflictingFanOutMapper(), CancellationToken.None))
+                           typeof(ConflictingFanOutMapper), new ConflictingFanOutMapper(), _outcomes.GetWriter("conflict_node"), CancellationToken.None))
         {
             results.Add(packet);
         }
@@ -651,7 +653,7 @@ public sealed class LineageMappingStrategiesTests
 
         await foreach (var packet in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null,
                            null,
-                           CancellationToken.None))
+                           _outcomes.GetWriter("test_node"), CancellationToken.None))
         {
             results.Add(packet);
         }
@@ -674,7 +676,7 @@ public sealed class LineageMappingStrategiesTests
 
         await foreach (var packet in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null,
                            null,
-                           CancellationToken.None))
+                           _outcomes.GetWriter("test_node"), CancellationToken.None))
         {
             results.Add(packet);
         }
@@ -703,7 +705,7 @@ public sealed class LineageMappingStrategiesTests
 
         await foreach (var packet in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null,
                            null,
-                           CancellationToken.None))
+                           _outcomes.GetWriter("test_node"), CancellationToken.None))
         {
             results.Add(packet);
         }
@@ -732,7 +734,7 @@ public sealed class LineageMappingStrategiesTests
         {
             await foreach (var _ in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null,
                                null,
-                               CancellationToken.None))
+                               _outcomes.GetWriter("test_node"), CancellationToken.None))
             {
                 // Enumerate to trigger
             }
@@ -762,7 +764,7 @@ public sealed class LineageMappingStrategiesTests
 
         await foreach (var packet in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null,
                            null,
-                           CancellationToken.None))
+                           _outcomes.GetWriter("test_node"), CancellationToken.None))
         {
             results.Add(packet);
         }
@@ -792,7 +794,7 @@ public sealed class LineageMappingStrategiesTests
 
         await foreach (var packet in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null,
                            null,
-                           CancellationToken.None))
+                           _outcomes.GetWriter("test_node"), CancellationToken.None))
         {
             results.Add(packet);
         }
@@ -828,7 +830,7 @@ public sealed class LineageMappingStrategiesTests
             List<LineagePacket<string>> strategyResults = [];
 
             await foreach (var packet in strategy.MapAsync(packets, data, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null, null,
-                               CancellationToken.None))
+                               _outcomes.GetWriter("test_node"), CancellationToken.None))
             {
                 strategyResults.Add(packet);
             }
@@ -880,7 +882,7 @@ public sealed class LineageMappingStrategiesTests
 
         await foreach (var packet in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null,
                            null,
-                           CancellationToken.None))
+                           _outcomes.GetWriter("test_node"), CancellationToken.None))
         {
             results.Add(packet);
         }
