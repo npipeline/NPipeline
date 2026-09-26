@@ -96,6 +96,62 @@ public sealed class BranchingTerminalDrainTests
         _ = await act.Should().ThrowAsync<Exception>("a terminal failure must surface even when terminals run together");
     }
 
+    private sealed class IgnoringSink : SinkNode<int>
+    {
+        public override Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken cancellationToken) =>
+            Task.CompletedTask;
+    }
+
+    private sealed class DisposeBeforeReadSink : SinkNode<int>
+    {
+        public override async Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken cancellationToken)
+        {
+            await using var e = input.GetAsyncEnumerator(cancellationToken);
+        }
+    }
+
+    private sealed class IgnoringBranchPipeline : IPipelineDefinition
+    {
+        public void Define(PipelineBuilder builder, PipelineContext context)
+        {
+            var source = builder.AddSource<YieldingSource, int>("source");
+            _ = builder.Connect(source, builder.AddSink<FirstSink, int>("first"));
+            _ = builder.Connect(source, builder.AddSink<IgnoringSink, int>("ignoring"));
+            _ = builder.WithBranchOptions("source", new BranchOptions(BranchBufferCapacity));
+        }
+    }
+
+    private sealed class DisposeBeforeReadBranchPipeline : IPipelineDefinition
+    {
+        public void Define(PipelineBuilder builder, PipelineContext context)
+        {
+            var source = builder.AddSource<YieldingSource, int>("source");
+            _ = builder.Connect(source, builder.AddSink<FirstSink, int>("first"));
+            _ = builder.Connect(source, builder.AddSink<DisposeBeforeReadSink, int>("dispose-before-read"));
+            _ = builder.WithBranchOptions("source", new BranchOptions(BranchBufferCapacity));
+        }
+    }
+
+    [Fact]
+    public async Task SinkThatIgnoresItsInput_DoesNotStallSiblings()
+    {
+        var (context, recorder) = CreateRun();
+        var run = PipelineRunner.Create().RunAsync<IgnoringBranchPipeline>(context, CancellationToken.None);
+        (await Task.WhenAny(run, Task.Delay(DeadlockTimeout))).Should().BeSameAs(run);
+        await run;
+        recorder.FirstSinkCount.Should().Be(SourceItemCount);
+    }
+
+    [Fact]
+    public async Task SinkThatDisposesBeforeFirstMoveNext_DoesNotStallSiblings()
+    {
+        var (context, recorder) = CreateRun();
+        var run = PipelineRunner.Create().RunAsync<DisposeBeforeReadBranchPipeline>(context, CancellationToken.None);
+        (await Task.WhenAny(run, Task.Delay(DeadlockTimeout))).Should().BeSameAs(run);
+        await run;
+        recorder.FirstSinkCount.Should().Be(SourceItemCount);
+    }
+
     private sealed class SlowDisposableSink : SinkNode<int>, IAsyncDisposable
     {
         public volatile bool Consuming;

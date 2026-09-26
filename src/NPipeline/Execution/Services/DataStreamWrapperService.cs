@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Microsoft.Extensions.Logging;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.Branching;
 using NPipeline.DataFlow.DataStreams;
@@ -55,10 +56,12 @@ public sealed class DataStreamWrapperService
         var metrics = new BranchMetrics();
         context.NodeEnvironment.NodeExecutionScopeRegistry.SetRuntimeAnnotation(ExecutionAnnotationKeys.BranchMetricsForNode(nodeId), metrics);
 
-        if (useConditionalRouting)
-            return wrapper.WrapConditionalMulticast(pipe, counter, outgoingEdges, options, routeOptions!, metrics);
+        var logger = context.Observability.LoggerFactory.CreateLogger("CountingMulticastDataStream");
 
-        return wrapper.WrapMulticast(pipe, counter, branchCount, options, metrics);
+        if (useConditionalRouting)
+            return wrapper.WrapConditionalMulticast(pipe, counter, outgoingEdges, options, routeOptions!, metrics, logger);
+
+        return wrapper.WrapMulticast(pipe, counter, branchCount, options, metrics, outgoingEdges, logger);
     }
 
     private static BranchOptions? GetBranchOptions(PipelineGraph graph, string nodeId) =>
@@ -79,7 +82,15 @@ public sealed class DataStreamWrapperService
     private interface IOptimizedWrapper
     {
         IDataStream WrapPassthrough(IDataStream pipe, StatsCounter counter);
-        IDataStream WrapMulticast(IDataStream pipe, StatsCounter counter, int subscribers, BranchOptions? options, BranchMetrics metrics);
+
+        IDataStream WrapMulticast(
+            IDataStream pipe,
+            StatsCounter counter,
+            int subscribers,
+            BranchOptions? options,
+            BranchMetrics metrics,
+            IReadOnlyList<Edge> outgoingEdges,
+            ILogger logger);
 
         IDataStream WrapConditionalMulticast(
             IDataStream pipe,
@@ -87,7 +98,8 @@ public sealed class DataStreamWrapperService
             IReadOnlyList<Edge> outgoingEdges,
             BranchOptions? options,
             object routeOptions,
-            BranchMetrics metrics);
+            BranchMetrics metrics,
+            ILogger logger);
 
         static IOptimizedWrapper Create(Type t)
         {
@@ -104,10 +116,17 @@ public sealed class DataStreamWrapperService
             return new CountingPassthroughDataStream<T>(typed, counter);
         }
 
-        public IDataStream WrapMulticast(IDataStream pipe, StatsCounter counter, int subscribers, BranchOptions? options, BranchMetrics metrics)
+        public IDataStream WrapMulticast(
+            IDataStream pipe,
+            StatsCounter counter,
+            int subscribers,
+            BranchOptions? options,
+            BranchMetrics metrics,
+            IReadOnlyList<Edge> outgoingEdges,
+            ILogger logger)
         {
             var typed = (IDataStream<T>)pipe;
-            return new CountingMulticastDataStream<T>(typed, counter, subscribers, options?.PerSubscriberBufferCapacity, metrics);
+            return new CountingMulticastDataStream<T>(typed, counter, subscribers, options?.PerSubscriberBufferCapacity, metrics, outgoingEdges, logger);
         }
 
         public IDataStream WrapConditionalMulticast(
@@ -116,7 +135,8 @@ public sealed class DataStreamWrapperService
             IReadOnlyList<Edge> outgoingEdges,
             BranchOptions? options,
             object routeOptions,
-            BranchMetrics metrics)
+            BranchMetrics metrics,
+            ILogger logger)
         {
             var typed = (IDataStream<T>)pipe;
 
@@ -136,7 +156,8 @@ public sealed class DataStreamWrapperService
                 outgoingEdges,
                 options?.PerSubscriberBufferCapacity,
                 typedRouteOptions,
-                metrics);
+                metrics,
+                logger);
         }
     }
 }
