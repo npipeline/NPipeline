@@ -76,48 +76,51 @@ internal sealed class LineageNodeState(bool reportsProvenance = false, ILineageS
     public ILineageSink? Sink { get; } = sink;
 }
 
-internal static class LineageNodeOutcomeRegistry
+/// <summary>
+///     One run's lineage state, per transform node. Owned by the run's <see cref="Pipeline.PipelineContext" />: a fresh
+///     registry per run, so nothing outlives the run or crosses into another.
+/// </summary>
+internal sealed class LineageNodeOutcomeRegistry
 {
-    private static readonly ConcurrentDictionary<(Guid PipelineId, string NodeId), LineageNodeState> Nodes = new();
-
-    private static readonly ConcurrentDictionary<Guid, ConcurrentDictionary<string, byte>> NodesByPipeline = new();
+    private readonly ConcurrentDictionary<string, LineageNodeState> _nodes = new(StringComparer.Ordinal);
 
     /// <summary>
-    ///     Starts a node's lineage state for a run, replacing any left from an earlier run.
+    ///     Starts a node's lineage state, replacing any left from an earlier attempt.
     /// </summary>
-    public static void BeginNode(Guid pipelineId, string nodeId, bool reportsProvenance = false, ILineageSink? sink = null)
-    {
-        Nodes[(pipelineId, nodeId)] = new LineageNodeState(reportsProvenance, sink);
-        Track(pipelineId, nodeId);
-    }
+    public void BeginNode(string nodeId, bool reportsProvenance = false, ILineageSink? sink = null) =>
+        _nodes[nodeId] = new LineageNodeState(reportsProvenance, sink);
 
     /// <summary>
     ///     Returns the node's lineage state, starting one without provenance if the node has none.
     /// </summary>
-    public static LineageNodeOutcomeWriter GetOrBeginNode(Guid pipelineId, string nodeId)
-    {
-        var node = Nodes.GetOrAdd((pipelineId, nodeId), static _ => new LineageNodeState());
-        Track(pipelineId, nodeId);
-        return new LineageNodeOutcomeWriter(node);
-    }
+    public LineageNodeOutcomeWriter GetOrBeginNode(string nodeId) =>
+        new(_nodes.GetOrAdd(nodeId, static _ => new LineageNodeState()));
 
-    public static void Record(Guid pipelineId, string nodeId, long inputIndex, LineageOutcomeReason outcomeReason, int retryCount)
-    {
-        var node = Nodes.GetOrAdd((pipelineId, nodeId), static _ => new LineageNodeState());
-        Track(pipelineId, nodeId);
-        RecordInto(node.Outcomes, inputIndex, outcomeReason, retryCount);
-    }
+    public void Record(string nodeId, long inputIndex, LineageOutcomeReason outcomeReason, int retryCount) =>
+        RecordInto(_nodes.GetOrAdd(nodeId, static _ => new LineageNodeState()).Outcomes, inputIndex, outcomeReason, retryCount);
 
     /// <summary>
-    ///     Resolves a writer bound to a single node's outcome store so the per-item hot path can record
-    ///     outcomes without repeating the outer (pipeline, node) dictionary lookup. This lookup is otherwise
-    ///     multiplied by the degree of parallelism on parallel execution paths. Returns an inactive writer
-    ///     when the node is not currently tracking lineage.
+    ///     Resolves a writer bound to a single node's outcome store so the per-item hot path can record outcomes without
+    ///     a dictionary lookup per item, which is multiplied by the degree of parallelism on parallel execution paths.
+    ///     Returns an inactive writer when the node is not tracking lineage.
     /// </summary>
-    public static LineageNodeOutcomeWriter GetWriter(Guid pipelineId, string nodeId) =>
-        Nodes.TryGetValue((pipelineId, nodeId), out var node)
+    public LineageNodeOutcomeWriter GetWriter(string nodeId) =>
+        _nodes.TryGetValue(nodeId, out var node)
             ? new LineageNodeOutcomeWriter(node)
             : default;
+
+    public bool IsTracking(string nodeId) => _nodes.ContainsKey(nodeId);
+
+    /// <summary>
+    ///     Releases a node's state once its output has been fully mapped.
+    /// </summary>
+    public void ClearNode(string nodeId) => _ = _nodes.TryRemove(nodeId, out _);
+
+    /// <summary>
+    ///     Releases every node's state when the run ends, including nodes whose output was never enumerated and so never
+    ///     reached their own release.
+    /// </summary>
+    public void Clear() => _nodes.Clear();
 
     internal static void RecordInto(ConcurrentDictionary<long, LineageItemOutcome> nodeOutcomes, long inputIndex,
         LineageOutcomeReason outcomeReason, int retryCount)
@@ -156,54 +159,11 @@ internal static class LineageNodeOutcomeRegistry
             _ => 100,
         };
     }
-
-    public static bool TryGet(Guid pipelineId, string nodeId, long inputIndex, out LineageItemOutcome outcome)
-    {
-        if (Nodes.TryGetValue((pipelineId, nodeId), out var node) && node.Outcomes.TryGetValue(inputIndex, out outcome))
-            return true;
-
-        outcome = default;
-        return false;
-    }
-
-    public static bool IsTracking(Guid pipelineId, string nodeId) => Nodes.ContainsKey((pipelineId, nodeId));
-
-    public static void ClearNode(Guid pipelineId, string nodeId)
-    {
-        if (Nodes.TryRemove((pipelineId, nodeId), out _))
-            Untrack(pipelineId, nodeId);
-    }
-
-    /// <summary>
-    ///     Drops every node's state for a finished run. A node whose output was never enumerated never reaches its own
-    ///     early release, so without this its state - including the lineage sink - would stay in the process-wide
-    ///     dictionary forever.
-    /// </summary>
-    public static void ClearPipeline(Guid pipelineId)
-    {
-        if (!NodesByPipeline.TryRemove(pipelineId, out var nodeIds))
-            return;
-
-        foreach (var nodeId in nodeIds.Keys)
-            _ = Nodes.TryRemove((pipelineId, nodeId), out _);
-    }
-
-    /// <summary>
-    ///     Remembers which nodes a run tracks, so clearing it does not walk every other run's entries.
-    /// </summary>
-    private static void Track(Guid pipelineId, string nodeId) =>
-        _ = NodesByPipeline.GetOrAdd(pipelineId, static _ => new ConcurrentDictionary<string, byte>()).TryAdd(nodeId, 0);
-
-    private static void Untrack(Guid pipelineId, string nodeId)
-    {
-        if (NodesByPipeline.TryGetValue(pipelineId, out var nodeIds))
-            _ = nodeIds.TryRemove(nodeId, out _);
-    }
 }
 
 /// <summary>
 ///     A lightweight handle bound to a single node's lineage outcome store, resolved once per node
-///     execution. Recording through this handle skips the per-item outer (pipeline, node) lookup that
+///     execution. Recording through this handle skips the per-item node lookup that
 ///     <see cref="LineageNodeOutcomeRegistry.Record" /> performs, which is significant on parallel hot
 ///     paths where the call is multiplied by the degree of parallelism.
 /// </summary>
@@ -230,6 +190,18 @@ internal readonly struct LineageNodeOutcomeWriter
             return;
 
         LineageNodeOutcomeRegistry.RecordInto(_node.Outcomes, inputIndex, outcomeReason, retryCount);
+    }
+
+    /// <summary>
+    ///     Gets the outcome recorded for the input item at <paramref name="inputIndex" />, if any.
+    /// </summary>
+    public bool TryGetOutcome(long inputIndex, out LineageItemOutcome outcome)
+    {
+        if (_node is not null && _node.Outcomes.TryGetValue(inputIndex, out outcome))
+            return true;
+
+        outcome = default;
+        return false;
     }
 
     /// <summary>

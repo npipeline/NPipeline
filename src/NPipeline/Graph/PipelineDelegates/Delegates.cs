@@ -3,6 +3,7 @@ using NPipeline.Configuration;
 using NPipeline.DataFlow;
 using NPipeline.Lineage;
 using NPipeline.Nodes;
+using NPipeline.Pipeline;
 
 namespace NPipeline.Graph.PipelineDelegates;
 
@@ -35,17 +36,16 @@ public delegate IDataStream SinkLineageUnwrapDelegate(IDataStream lineageInput, 
 /// </summary>
 /// <param name="transformInput">Original (lineage-wrapped) transform input pipe.</param>
 /// <param name="nodeId">Node id for traversal path extension.</param>
-/// <param name="pipelineId">The unique pipeline identity for this execution context.</param>
-/// <param name="pipelineName">The logical pipeline name for this execution context.</param>
+/// <param name="context">
+///     The run's context: its identity names the lineage, its cancellation token stops enumeration, and it holds the
+///     run's per-node lineage state.
+/// </param>
 /// <param name="declaredCardinality">Declared transform cardinality.</param>
 /// <param name="options">Lineage options (strict / warn config).</param>
-/// <param name="cancellationToken">Cancellation token for downstream enumeration.</param>
 /// <returns>Tuple of (unwrappedInput, rewrapOutputFunc).</returns>
 public delegate (IDataStream unwrappedInput, Func<IDataStream, IDataStream> rewrapOutput) LineageAdapterDelegate(
     IDataStream transformInput,
     string nodeId,
-    Guid pipelineId,
-    string? pipelineName,
+    PipelineContext context,
     TransformCardinality declaredCardinality,
-    LineageOptions? options,
-    CancellationToken cancellationToken);
+    LineageOptions? options);

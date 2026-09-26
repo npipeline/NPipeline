@@ -42,8 +42,8 @@ public sealed class SequentialExecutionStrategyValueTaskTests
 
         context.Properties[PipelineContextKeys.SampleRecorder] = recorder;
         context.RunIdentity.PipelineId = Guid.NewGuid();
-        LineageNodeOutcomeRegistry.BeginNode(context.RunIdentity.PipelineId, "transform");
-        LineageNodeOutcomeRegistry.GetWriter(context.RunIdentity.PipelineId, "transform").RegisterInput(0, correlationId, [2, 4]);
+        context.Lineage.Outcomes.BeginNode("transform");
+        context.Lineage.Outcomes.GetWriter("transform").RegisterInput(0, correlationId, [2, 4]);
 
         try
         {
@@ -60,7 +60,7 @@ public sealed class SequentialExecutionStrategyValueTaskTests
         }
         finally
         {
-            LineageNodeOutcomeRegistry.ClearNode(context.RunIdentity.PipelineId, "transform");
+            context.Lineage.Outcomes.ClearNode("transform");
         }
 
         _ = recorder.Errors.Should().HaveCount(1);

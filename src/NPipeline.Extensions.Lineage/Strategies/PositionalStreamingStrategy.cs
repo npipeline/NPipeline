@@ -1,5 +1,6 @@
 using NPipeline.Attributes.Lineage;
 using NPipeline.Configuration;
+using NPipeline.Execution.Lineage;
 
 namespace NPipeline.Lineage;
 
@@ -13,6 +14,6 @@ internal sealed class PositionalStreamingStrategy<TIn, TOut> : LineageMappingStr
 
     public IAsyncEnumerable<LineagePacket<TOut>> MapAsync(IAsyncEnumerable<LineagePacket<TIn>> inputStream, IAsyncEnumerable<TOut> outputStream,
         string nodeId, Guid pipelineId, string? pipelineName, TransformCardinality cardinality, LineageOptions? options, Type? lineageMapperType,
-        ILineageMapper? mapperInstance, CancellationToken ct) =>
-        PositionalStreamingMap(inputStream, outputStream, nodeId, pipelineId, pipelineName, cardinality, options, ct);
+        ILineageMapper? mapperInstance, LineageNodeOutcomeWriter lineage, CancellationToken ct) =>
+        PositionalStreamingMap(inputStream, outputStream, nodeId, pipelineId, pipelineName, cardinality, options, lineage, ct);
 }

@@ -1,5 +1,6 @@
 using NPipeline.Attributes.Lineage;
 using NPipeline.Configuration;
+using NPipeline.Execution.Lineage;
 
 namespace NPipeline.Lineage;
 
@@ -25,5 +26,6 @@ internal interface ILineageMappingStrategy<TIn, TOut>
         LineageOptions? options,
         Type? lineageMapperType,
         ILineageMapper? mapperInstance,
+        LineageNodeOutcomeWriter lineage,
         CancellationToken ct);
 }

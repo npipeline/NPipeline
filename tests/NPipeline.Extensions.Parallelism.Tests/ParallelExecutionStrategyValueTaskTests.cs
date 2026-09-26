@@ -100,8 +100,8 @@ public sealed class ParallelExecutionStrategyValueTaskTests
 
         context.Properties[PipelineContextKeys.SampleRecorder] = recorder;
         context.RunIdentity.PipelineId = Guid.NewGuid();
-        LineageNodeOutcomeRegistry.BeginNode(context.RunIdentity.PipelineId, "transform");
-        LineageNodeOutcomeRegistry.GetWriter(context.RunIdentity.PipelineId, "transform").RegisterInput(0, correlationId, [1]);
+        context.Lineage.Outcomes.BeginNode("transform");
+        context.Lineage.Outcomes.GetWriter("transform").RegisterInput(0, correlationId, [1]);
 
         try
         {
@@ -124,7 +124,7 @@ public sealed class ParallelExecutionStrategyValueTaskTests
         }
         finally
         {
-            LineageNodeOutcomeRegistry.ClearNode(context.RunIdentity.PipelineId, "transform");
+            context.Lineage.Outcomes.ClearNode("transform");
         }
 
         _ = recorder.Errors.Should().HaveCount(1);

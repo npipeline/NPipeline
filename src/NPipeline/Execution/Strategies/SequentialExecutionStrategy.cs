@@ -86,7 +86,7 @@ public sealed class SequentialExecutionStrategy : IResumableExecutionStrategy, I
         {
             var tracer = context.Observability.Tracer;
             var nodeId = cached.NodeId;
-            var lineageTrackingEnabled = LineageNodeOutcomeRegistry.IsTracking(context.RunIdentity.PipelineId, nodeId);
+            var lineageTrackingEnabled = context.Lineage.Outcomes.IsTracking(nodeId);
 
             // The index in the node's input of the last item read. A resumed run starts part-way through the input.
             // Lineage is keyed by this index, so a replayed item finds its own lineage.

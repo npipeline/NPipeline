@@ -51,6 +51,6 @@ internal static class LineageProvenanceSupport
     /// </summary>
     public static LineageNodeOutcomeWriter WriterFor(INode node, PipelineContext context) =>
         context.NodeEnvironment.TryGetNodeId(node, out var nodeId)
-            ? LineageNodeOutcomeRegistry.GetWriter(context.RunIdentity.PipelineId, nodeId)
+            ? context.Lineage.Outcomes.GetWriter(nodeId)
             : default;
 }

@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Linq.Expressions;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
+using NPipeline.Execution.Caching;
 using NPipeline.Graph;
 using NPipeline.Nodes;
 
@@ -16,12 +17,36 @@ public sealed class PipeMergeService(IMergeStrategySelector strategySelector) : 
         Func<IMergeStrategySelector, IEnumerable<IDataStream>, int?, CancellationToken, IDataStream>> MergeDelegateCache = new();
 
     /// <inheritdoc />
+    /// <remarks>
+    ///     Argument errors throw at once. Every other failure, such as a missing input or mismatched input types, is
+    ///     returned as a faulted task, as an asynchronous method would report it.
+    /// </remarks>
     public Task<IDataStream> MergeAsync(
         NodeDefinition nodeDef,
         INode nodeInstance,
         IEnumerable<IDataStream> inputPipes,
         int? mergeCapacity,
         CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(nodeDef);
+        ArgumentNullException.ThrowIfNull(inputPipes);
+
+        try
+        {
+            return Merge(nodeDef, nodeInstance, inputPipes, mergeCapacity, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            return Task.FromException<IDataStream>(ex);
+        }
+    }
+
+    private Task<IDataStream> Merge(
+        NodeDefinition nodeDef,
+        INode nodeInstance,
+        IEnumerable<IDataStream> inputPipes,
+        int? mergeCapacity,
+        CancellationToken cancellationToken)
     {
         var materializedInputPipes = inputPipes as IReadOnlyList<IDataStream> ?? inputPipes.ToList();
 
@@ -51,7 +76,8 @@ public sealed class PipeMergeService(IMergeStrategySelector strategySelector) : 
 
         var cacheKey = (DataType: dataType, MergeType: mergeType);
 
-        var mergeDelegate = MergeDelegateCache.GetOrAdd(cacheKey, static k => BuildMergeDelegate(k.DataType, k.MergeType));
+        var mergeDelegate = CollectibleAwareCache.GetOrAdd(MergeDelegateCache, cacheKey, dataType.IsCollectible,
+            static k => BuildMergeDelegate(k.DataType, k.MergeType));
         return Task.FromResult(mergeDelegate(strategySelector, materializedInputPipes, mergeCapacity, cancellationToken));
     }
 

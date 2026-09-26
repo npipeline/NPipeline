@@ -12,6 +12,18 @@ namespace NPipeline.Tests.Execution.Services;
 public sealed class PipeMergeServiceTests
 {
     [Fact]
+    public void MergeAsync_NoInputStreams_ReturnsAFaultedTaskRatherThanThrowing()
+    {
+        var service = new PipeMergeService(new MergeStrategySelector());
+        var nodeDefinition = new NodeDefinition("aggregate", "orders", typeof(object), NodeKind.Aggregate, typeof(int), typeof(int));
+
+        var task = service.MergeAsync(nodeDefinition, new NullNode(), [], null);
+
+        _ = task.IsFaulted.Should().BeTrue();
+        _ = task.Exception!.InnerException.Should().BeOfType<InvalidOperationException>();
+    }
+
+    [Fact]
     public async Task MergeAsync_NoInputStreams_ThrowsActionableError()
     {
         var service = new PipeMergeService(new MergeStrategySelector());

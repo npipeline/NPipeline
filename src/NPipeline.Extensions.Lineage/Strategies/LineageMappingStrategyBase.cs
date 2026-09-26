@@ -242,12 +242,11 @@ internal abstract class LineageMappingStrategyBase
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     protected static (LineageOutcomeReason Outcome, int? RetryCount) ResolveRecordedOutcome(
-        Guid pipelineId,
-        string nodeId,
+        LineageNodeOutcomeWriter lineage,
         long inputIndex,
         LineageOutcomeReason baseOutcome)
     {
-        if (!LineageNodeOutcomeRegistry.TryGet(pipelineId, nodeId, inputIndex, out var recorded))
+        if (!lineage.TryGetOutcome(inputIndex, out var recorded))
             return (baseOutcome, null);
 
         var retryCount = recorded.RetryCount > 0
@@ -263,8 +262,7 @@ internal abstract class LineageMappingStrategyBase
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static (LineageOutcomeReason Outcome, int? RetryCount) ResolveRecordedOutcome(
-        Guid pipelineId,
-        string nodeId,
+        LineageNodeOutcomeWriter lineage,
         IReadOnlyList<int>? contributorIndices,
         LineageOutcomeReason baseOutcome)
     {
@@ -276,7 +274,7 @@ internal abstract class LineageMappingStrategyBase
 
         foreach (var contributorIndex in contributorIndices)
         {
-            if (!LineageNodeOutcomeRegistry.TryGet(pipelineId, nodeId, contributorIndex, out var recorded))
+            if (!lineage.TryGetOutcome(contributorIndex, out var recorded))
                 continue;
 
             // The registry already resolves each replayed item's recorded outcome; merging keeps the highest-priority
@@ -353,7 +351,8 @@ internal abstract class LineageMappingStrategyBase
         TransformCardinality card,
         LineageOptions? opts,
         Type? mapperType,
-        ILineageMapper? mapperInstance)
+        ILineageMapper? mapperInstance,
+        LineageNodeOutcomeWriter lineage)
     {
         Dictionary<int, IReadOnlyList<int>>? recordsByOutput = null;
         Dictionary<int, int>? outputCountByInput = null;
@@ -485,7 +484,7 @@ internal abstract class LineageMappingStrategyBase
                 ? LineageOutcomeReason.Aggregated
                 : LineageOutcomeReason.Emitted;
 
-            var (effectiveOutcome, retryCount) = ResolveRecordedOutcome(pipelineId, nodeId, contributorsForEmission, outcomeReason);
+            var (effectiveOutcome, retryCount) = ResolveRecordedOutcome(lineage, contributorsForEmission, outcomeReason);
 
             var cardinalityObserved = ancestry is null
                 ? ObservedCardinality.Unknown
@@ -573,9 +572,9 @@ internal abstract class LineageMappingStrategyBase
         string? pipelineName,
         TransformCardinality card,
         LineageOptions? opts,
+        LineageNodeOutcomeWriter lineage,
         [EnumeratorCancellation] CancellationToken token)
     {
-        var lineage = LineageNodeOutcomeRegistry.GetWriter(pipelineId, nodeId);
         var inputEnumerator = inAll.GetAsyncEnumerator(token);
         await using var inputEnumeratorScope = inputEnumerator.ConfigureAwait(false);
         var outputEnumerator = outAll.GetAsyncEnumerator(token);
@@ -594,7 +593,7 @@ internal abstract class LineageMappingStrategyBase
                 var outputData = outputEnumerator.Current;
                 var traversalPath = inputPacket.TraversalPath.Add(QualifyNodeId(nodeId, pipelineId));
                 var lineageRecords = inputPacket.LineageRecords;
-                var (effectiveOutcome, retryCount) = ResolveRecordedOutcome(pipelineId, nodeId, matchedInputCount, LineageOutcomeReason.Emitted);
+                var (effectiveOutcome, retryCount) = ResolveRecordedOutcome(lineage, matchedInputCount, LineageOutcomeReason.Emitted);
 
                 if (inputPacket.Collect)
                 {

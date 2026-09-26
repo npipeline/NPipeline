@@ -5,7 +5,8 @@ namespace NPipeline.DataFlow.Branching;
 
 /// <summary>
 ///     Options controlling branching (multicast) behavior when a node feeds multiple downstream targets.
-///     Prefer configuring a global default via PipelineBuilderExtensions.WithGlobalBranchingCapacity, and override per node with WithBranchOptions.
+///     Configure a global default with <c>builder.SetGlobalAnnotation(ExecutionAnnotationKeys.GlobalBranchingCapacityKey, capacity)</c>,
+///     and override it per node with <see cref="BranchingPipelineBuilderExtensions.WithBranchOptions" />.
 /// </summary>
 /// <param name="PerSubscriberBufferCapacity">Optional bounded buffer size per subscriber. Null = unbounded (default).</param>
 public sealed record BranchOptions(int? PerSubscriberBufferCapacity = null);

@@ -24,6 +24,16 @@ public sealed class PipelineNodeEnvironmentContext
     /// <summary>
     ///     Optional preconfigured node instances to seed graph construction.
     /// </summary>
+    /// <remarks>
+    ///     <para>
+    ///         Keys are node ids, the sanitized, lower-case form of the node's name; an unknown id fails the build. An
+    ///         instance supplied here replaces the one the pipeline definition registered for that node.
+    ///     </para>
+    ///     <para>
+    ///         The run owns these instances: it disposes each one when the run ends, however it ends. Supply a fresh
+    ///         instance for each run; one reused across runs is already disposed on the second.
+    ///     </para>
+    /// </remarks>
     public Dictionary<string, INode> PreconfiguredNodeInstances { get; } = new();
 
     /// <summary>

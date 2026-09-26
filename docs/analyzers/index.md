@@ -68,6 +68,7 @@ Rules NP9103–NP9107 are **profile-gated**: they only fire when the [optimizati
 | NP9203 | Warning | Method should respect cancellation token | Pass `CancellationToken` to async methods that accept it. |
 | NP9204 | **Error** | Transform-only resilience setting on a non-transform node | `ItemRetry`, `NodeRestart`, and `CircuitBreaker` apply only to transform nodes; if set on a source, sink, aggregate, or join handle, building the pipeline fails. Retry reads and writes in the connector, or use `NodeRetry` to execute the node again before it has consumed input. |
 | NP9205 | Warning | Resilience policy returns Retry without consulting the retry budget | A policy's `Retry` is never overridden, so guard it with `failure.CanRetry` (which combines the classifier, the node's `MaxRetries`, and the circuit breaker), or defer to `base.DecideItemFailureAsync` / `base.DecideNodeFailureAsync`. |
+| NP9206 | Warning | Async iterator in a node cannot observe cancellation | Give every async iterator in a node a `[EnumeratorCancellation] CancellationToken cancellationToken = default` parameter and pass it to its awaits. The pipeline stops a stream by cancelling its enumerator (a failed merge input, a consumer that leaves early, a released fan-out branch, or run cancellation) and then waits for the iterator to stop. |
 
 ## NP93xx - Data Integrity and Correctness
 

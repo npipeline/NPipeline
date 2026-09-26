@@ -194,7 +194,7 @@ public readonly struct CachedNodeExecutionContext
             resilience,
             tracingEnabled,
             loggingEnabled,
-            LineageNodeOutcomeRegistry.GetWriter(context.RunIdentity.PipelineId, nodeId),
+            context.Lineage.Outcomes.GetWriter(nodeId),
             context.ExecutionConfiguration.CircuitBreakers.Resolve(nodeId, resilience),
             context.CancellationToken);
     }

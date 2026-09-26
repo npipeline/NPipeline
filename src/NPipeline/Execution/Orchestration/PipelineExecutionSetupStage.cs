@@ -40,13 +40,12 @@ internal sealed class PipelineExecutionSetupStage(
         await VisualizeIfConfiguredAsync(graph, cancellationToken).ConfigureAwait(false);
         ApplyResilienceOptions(graph, context);
 
+        // Configuration is checked before any node is constructed, so a misconfigured run fails fast and cheaply.
+        EnsureDeadLetterSinkIfNeeded(graph, context);
+
         // Every instance the run owns is added to the caller's set. The orchestrator disposes that set once, whichever
         // path the run takes to its end, and logs any disposal failure, so a partial instantiation cannot leak.
         var nodeInstances = nodeInstantiationService.InstantiateNodes(graph, nodeFactory, ownedNodeInstances);
-
-        // The dead-letter check runs after instantiation, so a misconfigured dead-letter policy is reported only
-        // after the nodes exist; the orchestrator's cleanup releases them.
-        EnsureDeadLetterSinkIfNeeded(graph, context);
 
         context.NodeEnvironment.RegisterNodes(nodeInstances);
         ApplyGlobalServices(graph, context);

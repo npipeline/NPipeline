@@ -109,6 +109,17 @@ builder.Connect(nyse, processor);
 builder.Connect(nasdaq, processor);
 ```
 
+The merge reads every input concurrently. If one input fails, the node fails at once, and the other inputs are
+stopped. The merge buffer is bounded (1,024 items by default), so a slow node applies backpressure to its inputs
+instead of buffering them in memory. Change the bound for every fan-in node, or for one node:
+
+```csharp
+builder.WithGlobalMergeCapacity(256);          // every node with several inputs
+builder.WithMergeCapacity(sink.Id, 64);        // this node only; overrides the global value
+```
+
+Joins use the same bound for their two inputs.
+
 All inbound streams must share a single runtime item type. When item-level lineage is enabled, the runtime item type is `LineagePacket<T>` - the merge operates on `LineagePacket<Trade>` streams and produces a merged `LineagePacket<Trade>` stream, preserving lineage context. No conversion or reflection is involved.
 
 A mismatch between inbound stream types for a non-join node is a hard error.

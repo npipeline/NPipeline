@@ -181,6 +181,7 @@ internal sealed class PipelineExecutionOrchestrator : IPipelineExecutionOrchestr
             runIdentity.RunId = Guid.NewGuid();
 
         observability.ProcessedItemsCounter = new StatsCounter();
+        context.Lineage.ResetOutcomes();
         execution.ResetResilienceOptions();
         nodeEnvironment.NodeExecutionScopeRegistry.Clear();
     }

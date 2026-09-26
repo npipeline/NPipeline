@@ -119,7 +119,7 @@ public sealed class PerItemRetryDelayTests
             options,
             false,
             0,
-            LineageNodeOutcomeRegistry.GetWriter(context.RunIdentity.PipelineId, NodeId),
+            context.Lineage.Outcomes.GetWriter(NodeId),
             null,
             cancellationToken);
 
