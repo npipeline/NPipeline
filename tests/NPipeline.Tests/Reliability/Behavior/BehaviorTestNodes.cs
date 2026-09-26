@@ -105,6 +105,31 @@ internal sealed class FailsToOpenOnceSource(IEnumerable<int> items) : SourceNode
 }
 
 /// <summary>
+///     A source that opens its connection lazily, on the first read, and whose read throws a transient exception.
+///     Each start of the stream is one open, so a downstream node that re-enumerates the source is observable.
+/// </summary>
+internal sealed class FailsOnFirstReadSource : SourceNode<int>
+{
+    private int _opens;
+
+    public int Opens => _opens;
+
+    public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken) =>
+        new DataStream<int>(Produce(cancellationToken), "fails-on-first-read");
+
+    private async IAsyncEnumerable<int> Produce([EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        _ = Interlocked.Increment(ref _opens);
+
+        await Task.CompletedTask.ConfigureAwait(false);
+
+        yield return Throw();
+
+        static int Throw() => throw new TimeoutException("transient failure reading the source");
+    }
+}
+
+/// <summary>
 ///     Records the resilience events raised to an <see cref="IExecutionObserver" />.
 /// </summary>
 internal sealed class RecordingObserver : IExecutionObserver

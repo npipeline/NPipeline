@@ -121,7 +121,7 @@ public sealed class BranchNode<T> : TransformNode<T, T>
                 {
                     await handler(item).ConfigureAwait(false);
                 }
-                catch (Exception ex) when (ex is not OperationCanceledException)
+                catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
                 {
                     var branchException = new BranchHandlerException(ResolveNodeId(context), index, item, ex);
 
@@ -158,7 +158,7 @@ public sealed class BranchNode<T> : TransformNode<T, T>
             {
                 await handler(item).ConfigureAwait(false);
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
             {
                 await HandleBranchExceptionAsync(ex, branchIndex, item, context, cancellationToken).ConfigureAwait(false);
             }

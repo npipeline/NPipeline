@@ -127,7 +127,6 @@ public sealed class DataStreamWrapperServiceRouteOptionsTests
             Nodes = [routeNode],
             Edges = [.. edges],
             PreconfiguredNodeInstances = FrozenDictionary<string, INode>.Empty,
-            NodeDefinitionMap = new Dictionary<string, NodeDefinition> { [nodeId] = routeNode }.ToFrozenDictionary(),
             ExecutionOptions = new ExecutionOptionsConfiguration
             {
                 NodeExecutionAnnotations = ImmutableDictionary<string, object>.Empty

@@ -107,6 +107,52 @@ public sealed class PipelineContextDictionaryTests
     }
 
     [Fact]
+    public async Task DefaultProfile_ConcurrentWritesToCallerSuppliedDictionariesShouldNotThrow()
+    {
+        var exceptions = new List<Exception>();
+
+        for (var iteration = 0; iteration < 20; iteration++)
+        {
+            var parameters = new Dictionary<string, object>();
+            var items = new Dictionary<string, object>();
+            var properties = new Dictionary<string, object>();
+
+            await using var context = new PipelineContext(new PipelineContextConfiguration(
+                parameters,
+                items,
+                properties,
+                OptimizationProfile: PipelineOptimizationProfile.Default));
+
+            var tasks = Enumerable.Range(0, 10_000)
+                .Select(i => Task.Run(() =>
+                {
+                    try
+                    {
+                        context.Parameters[$"p-{i}"] = i;
+                        context.Items[$"i-{i}"] = i;
+                        context.Properties[$"x-{i}"] = i;
+
+                        _ = context.Parameters[$"p-{i}"];
+                        _ = context.Items[$"i-{i}"];
+                        _ = context.Properties[$"x-{i}"];
+                    }
+                    catch (Exception ex)
+                    {
+                        lock (exceptions)
+                        {
+                            exceptions.Add(ex);
+                        }
+                    }
+                }))
+                .ToArray();
+
+            await Task.WhenAll(tasks);
+        }
+
+        exceptions.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task DisposeAsync_WithDefaultProfileOwnedDictionaries_ShouldClearEntries()
     {
         var context = new PipelineContext(new PipelineContextConfiguration

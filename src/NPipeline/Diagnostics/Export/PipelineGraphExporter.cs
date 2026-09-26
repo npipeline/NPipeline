@@ -20,19 +20,25 @@ public static class PipelineGraphExporter
         var sb = new StringBuilder();
         sb.AppendLine("graph TD");
 
+        // Mermaid ids are generated rather than derived from node ids: node ids may contain characters Mermaid reads
+        // as syntax, may collide after sanitization (for example "a-b" and "a_b"), and may be a reserved word such as
+        // "end".
+        var ids = new Dictionary<string, string>(StringComparer.Ordinal);
+        string MermaidId(string nodeId) => ids.TryGetValue(nodeId, out var mapped) ? mapped : ids[nodeId] = $"n{ids.Count}";
+
         // Nodes: id[Name : Kind]
         foreach (var n in graph.Nodes)
         {
             var label = $"{n.Name} : {n.Kind}";
-            var nodeDecl = EscapeId(n.Id);
+            var nodeDecl = MermaidId(n.Id);
             sb.AppendLine($"    {nodeDecl}[\"{EscapeText(label)}\"]");
         }
 
         // Edges: source --> target
         foreach (var e in graph.Edges)
         {
-            var src = EscapeId(e.SourceNodeId);
-            var dst = EscapeId(e.TargetNodeId);
+            var src = MermaidId(e.SourceNodeId);
+            var dst = MermaidId(e.TargetNodeId);
             var edgeLabel = BuildEdgeLabel(e);
 
             if (edgeLabel is null)
@@ -91,7 +97,5 @@ public static class PipelineGraphExporter
         return e.TargetInputName;
     }
 
-    private static string EscapeId(string id) => id.Replace('-', '_').Replace(':', '_');
-
-    private static string EscapeText(string text) => text.Replace("\"", "\\\"");
+    private static string EscapeText(string text) => text.Replace("\"", "#quot;", StringComparison.Ordinal);
 }

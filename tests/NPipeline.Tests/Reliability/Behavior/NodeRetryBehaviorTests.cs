@@ -221,7 +221,7 @@ public sealed class NodeRetryBehaviorTests
     [Fact]
     public async Task NodeRetry_DoesNotReExecuteASinkThatHasConsumedInput()
     {
-        // C15: a sink that fails mid-stream cannot be executed again. Its forward-only input has already been partly
+        // A sink that fails mid-stream cannot be executed again. Its forward-only input has already been partly
         // read, so a second execution would lose the items consumed so far or read them twice.
         var sink = new FailsAfterItemsSink(2);
         var observer = new RecordingObserver();
@@ -240,6 +240,30 @@ public sealed class NodeRetryBehaviorTests
         sink.Executions.Should().Be(1, "node retry covers setup only; a sink that has read input is not run again");
         sink.Items.Should().Equal(1, 2);
         observer.Retries.Should().BeEmpty();
+    }
+
+    /// <summary>
+    ///     An upstream failure thrown from the sink's first read is attributed to the sink's already-consumed input, so
+    ///     the sink's own node retry does not execute it again and re-run the upstream chain.
+    /// </summary>
+    [Fact]
+    public async Task NodeRetry_OfASink_DoesNotReRunAnUpstreamFailure()
+    {
+        var source = new FailsOnFirstReadSource();
+        var sink = new CollectingSink<int>();
+
+        var act = () => BehaviorPipeline.RunAsync(b =>
+        {
+            var s = b.AddSource<FailsOnFirstReadSource, int>("source");
+            var k = b.AddSink<CollectingSink<int>, int>("sink");
+            _ = b.AddPreconfiguredNodeInstance(s.Id, source).AddPreconfiguredNodeInstance(k.Id, sink).Connect(s, k);
+
+            // Retry only the sink.
+            _ = b.WithResilience(k, o => o with { NodeRetry = new NodeRetryOptions { MaxRetries = 1, Backoff = RetryBackoff.None } });
+        });
+
+        _ = await act.Should().ThrowAsync<Exception>();
+        source.Opens.Should().Be(1, "the source has no retry of its own, so its failure must not be retried by the sink");
     }
 
     [Fact]

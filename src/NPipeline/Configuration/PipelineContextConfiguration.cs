@@ -18,6 +18,13 @@ namespace NPipeline.Configuration;
 ///         <see cref="PipelineContextConfiguration" /> is immutable (record type) and thread-safe.
 ///         However, the dictionaries passed to it (Parameters, Items, Properties) should be considered
 ///         as becoming owned by the context, and their thread-safety depends on the context's usage.
+///         Under <see cref="PipelineOptimizationProfile.Default" />, <see cref="NPipeline.Pipeline.PipelineContext" />
+///         copies <c>Parameters</c> and wraps non-concurrent <c>Items</c> and <c>Properties</c> so writes stay safe.
+///     </para>
+///     <para>
+///         <strong>Record Semantics:</strong>
+///         Because this is a record, a <c>with</c> expression copies the dictionary references rather than the
+///         dictionaries. Two configurations derived from one another therefore share the same instances.
 ///     </para>
 ///     <para>
 ///         <strong>Resilience Policy:</strong>

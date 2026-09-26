@@ -139,14 +139,10 @@ public sealed partial class PipelineBuilder
         // Create the immutable nodes array, with node restart applied to the transforms that configure it
         var nodesList = WithNodeRestart(NodeState.Nodes.Values, errorHandlingConfig);
 
-        // Create a cached frozen dictionary for O(1) node lookups during execution
-        var nodeDefinitionMap = nodesList.ToFrozenDictionary(n => n.Id);
-
         var graph = PipelineGraphBuilder.Create()
             .WithNodes(nodesList)
             .WithEdges(ConnectionState.Edges.ToImmutableArray())
             .WithPreconfiguredNodeInstances(NodeState.PreconfiguredNodeInstances.ToFrozenDictionary())
-            .WithNodeDefinitionMap(nodeDefinitionMap)
             .WithErrorHandlingConfiguration(errorHandlingConfig)
             .WithLineageConfiguration(lineageConfig)
             .WithExecutionOptionsConfiguration(executionConfig)

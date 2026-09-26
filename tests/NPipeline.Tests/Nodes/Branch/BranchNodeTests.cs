@@ -461,6 +461,64 @@ public sealed class BranchNodeTests
     }
 
     [Fact]
+    public async Task BranchNode_ForeignCancellation_WithLogAndContinueMode_IsSwallowed()
+    {
+        // A client timeout (TaskCanceledException) is not a cancellation of the run, so the error mode applies.
+        BranchNode<int> node = new() { ErrorHandlingMode = BranchErrorHandlingMode.LogAndContinue };
+        node.AddOutput(_ => throw new TaskCanceledException("http timeout"));
+
+        var result = await node.TransformAsync(5, PipelineContext.CreateDefault(), CancellationToken.None);
+
+        _ = result.Should().Be(5);
+    }
+
+    [Fact]
+    public async Task BranchNode_ForeignCancellation_WithRouteToErrorHandlerMode_IsRouted()
+    {
+        var errorHandlerCalled = false;
+        BranchNode<int> node = new();
+        node.AddOutput(_ => throw new TaskCanceledException("http timeout"));
+
+        var config = new PipelineContextConfiguration(
+            ResiliencePolicy: new ContinueResiliencePolicy(() => errorHandlerCalled = true));
+
+        var ctx = new PipelineContext(config);
+
+        var result = await node.TransformAsync(5, ctx, CancellationToken.None);
+
+        _ = result.Should().Be(5);
+        _ = errorHandlerCalled.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task BranchNode_ForeignCancellation_WithCollectAndThrowMode_IsCollected()
+    {
+        BranchNode<int> node = new() { ErrorHandlingMode = BranchErrorHandlingMode.CollectAndThrow };
+        node.AddOutput(_ => throw new TaskCanceledException("http timeout"));
+
+        var ex = await Assert.ThrowsAsync<AggregateException>(async () =>
+            await node.TransformAsync(5, PipelineContext.CreateDefault(), CancellationToken.None));
+
+        _ = ex.InnerExceptions.Should().ContainSingle().Which.Should().BeOfType<BranchHandlerException>();
+    }
+
+    [Fact]
+    public async Task BranchNode_RealTokenCancellation_PropagatesAsOperationCanceled()
+    {
+        BranchNode<int> node = new() { ErrorHandlingMode = BranchErrorHandlingMode.LogAndContinue };
+        using var cts = new CancellationTokenSource();
+        node.AddOutput(_ =>
+        {
+            cts.Cancel();
+            throw new OperationCanceledException(cts.Token);
+        });
+
+        var act = async () => await node.TransformAsync(5, PipelineContext.CreateDefault(), cts.Token);
+
+        _ = await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [Fact]
     public async Task BranchNode_BranchHandlerException_ContainsFailedItem()
     {
         // Arrange

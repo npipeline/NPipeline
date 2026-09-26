@@ -24,12 +24,14 @@ Output:
 
 ```mermaid
 graph TD
-    source["source : Source"]
-    transform["transform : Transform"]
-    sink["sink : Sink"]
-    source --> transform
-    transform --> sink
+    n0["source : Source"]
+    n1["transform : Transform"]
+    n2["sink : Sink"]
+    n0 --> n1
+    n1 --> n2
 ```
+
+Node ids are generated (`n0`, `n1`, ...) rather than derived from node names, so a name containing Mermaid syntax, a duplicate after sanitization, or a reserved word such as `end` cannot break the diagram.
 
 Paste the output into any Mermaid renderer (GitHub Markdown, VS Code preview, mermaid.live) to see the visual graph.
 

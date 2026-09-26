@@ -137,12 +137,17 @@ public static class PipelineBuilderValidationExtensions
     /// Console.WriteLine(mermaid);
     /// // Output:
     /// // graph TD
-    /// //     source["source : Source"]
-    /// //     transform["transform : Transform"]
-    /// //     sink["sink : Sink"]
-    /// //     source --> transform
-    /// //     transform --> sink
+    /// //     n0["source : Source"]
+    /// //     n1["transform : Transform"]
+    /// //     n2["sink : Sink"]
+    /// //     n0 --> n1
+    /// //     n1 --> n2
     /// </code>
+    /// <para>
+    ///     Node ids are generated (<c>n0</c>, <c>n1</c>, ...) rather than derived from node names, so a name
+    ///     containing Mermaid syntax, a duplicate after sanitization, or a reserved word such as <c>end</c> cannot
+    ///     break the diagram.
+    /// </para>
     /// </remarks>
     public static string ToMermaidDiagram(this PipelineBuilder builder)
     {
@@ -188,7 +193,6 @@ public static class PipelineBuilderValidationExtensions
             .WithNodes(nodesList)
             .WithEdges(builder.ConnectionState.Edges.ToImmutableArray())
             .WithPreconfiguredNodeInstances(builder.NodeState.PreconfiguredNodeInstances.ToFrozenDictionary())
-            .WithNodeDefinitionMap(nodesList.ToFrozenDictionary(n => n.Id))
             .Build();
     }
 

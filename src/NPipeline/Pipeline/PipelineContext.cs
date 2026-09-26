@@ -26,7 +26,10 @@ namespace NPipeline.Pipeline;
 ///                 <description>
 ///                     <see cref="PipelineOptimizationProfile.Default" /> uses
 ///                     <see cref="ConcurrentDictionary{TKey,TValue}" /> for <see cref="Parameters" />,
-///                     <see cref="Items" />, and <see cref="Properties" />.
+///                     <see cref="Items" />, and <see cref="Properties" />. A caller-supplied dictionary that is not
+///                     already concurrent is copied for <see cref="Parameters" /> and wrapped in a synchronized
+///                     wrapper for <see cref="Items" /> and <see cref="Properties" />, so the caller still observes
+///                     its entries.
 ///                 </description>
 ///             </item>
 ///             <item>
@@ -140,16 +143,28 @@ public sealed class PipelineContext : IAsyncDisposable
         config ??= PipelineContextConfiguration.Default;
         var profileBehavior = OptimizationProfileBehaviorRegistry.For(config.OptimizationProfile);
 
-        if (config.Parameters is not null)
+        if (config.Parameters is not null && profileBehavior.UsesThreadSafeContextDictionaries)
+        {
+            // Parameters are inputs, so nothing depends on getting the caller's instance back. Copying them into an
+            // owned concurrent dictionary keeps the documented thread-safety guarantee.
+            Parameters = new ConcurrentDictionary<string, object>(config.Parameters);
+            _ownsParametersDictionary = true;
+        }
+        else if (config.Parameters is not null)
+        {
             Parameters = config.Parameters;
+        }
         else
         {
             Parameters = CreateOwnedDictionary(profileBehavior);
             _ownsParametersDictionary = true;
         }
 
+        // Items and Properties are the caller's bags: existing behaviour expects entries written through the context to
+        // be visible on the supplied instance. A non-concurrent instance is wrapped so those writes stay safe under the
+        // Default profile, while the caller keeps observing them.
         if (config.Items is not null)
-            Items = config.Items;
+            Items = WrapIfNeeded(config.Items, profileBehavior);
         else
         {
             Items = CreateOwnedDictionary(profileBehavior);
@@ -157,7 +172,7 @@ public sealed class PipelineContext : IAsyncDisposable
         }
 
         if (config.Properties is not null)
-            Properties = config.Properties;
+            Properties = WrapIfNeeded(config.Properties, profileBehavior);
         else
         {
             Properties = CreateOwnedDictionary(profileBehavior);
@@ -407,6 +422,17 @@ public sealed class PipelineContext : IAsyncDisposable
         profileBehavior.UsesThreadSafeContextDictionaries
             ? new ConcurrentDictionary<string, object>()
             : new Dictionary<string, object>(DefaultContextDictionaryCapacity);
+
+    /// <summary>
+    ///     Wraps a caller-supplied dictionary in a <see cref="SynchronizedDictionary" /> when the profile promises
+    ///     thread safety and the instance does not already provide it. The caller keeps observing writes either way.
+    /// </summary>
+    private static IDictionary<string, object> WrapIfNeeded(
+        IDictionary<string, object> supplied,
+        IOptimizationProfileBehavior profileBehavior) =>
+        profileBehavior.UsesThreadSafeContextDictionaries && supplied is not ConcurrentDictionary<string, object>
+            ? new SynchronizedDictionary(supplied)
+            : supplied;
 
     /// <summary>
     ///     Creates a new pipeline context with all default values.
