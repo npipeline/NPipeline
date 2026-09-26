@@ -45,6 +45,13 @@ public interface IAutoObservabilityScope : IDisposable
     Exception? GetFailureException();
 
     /// <summary>
+    ///     Clears a previously recorded failure, so an attempt that recovers is no longer reported as failed.
+    /// </summary>
+    void ClearFailure()
+    {
+    }
+
+    /// <summary>
     ///     Adds node-owned work duration.
     /// </summary>
     /// <param name="duration">The work duration segment to add.</param>

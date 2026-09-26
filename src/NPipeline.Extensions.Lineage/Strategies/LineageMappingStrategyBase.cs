@@ -254,6 +254,7 @@ internal abstract class LineageMappingStrategyBase
             ? recorded.RetryCount
             : (int?)null;
 
+        // The registry already resolves a replayed item's recorded outcome, so the recorded value is trusted here.
         var outcome = MergeOutcomeReason(baseOutcome, recorded.OutcomeReason);
 
         return (outcome, retryCount);
@@ -277,6 +278,7 @@ internal abstract class LineageMappingStrategyBase
             if (!LineageNodeOutcomeRegistry.TryGet(pipelineId, nodeId, contributorIndex, out var recorded))
                 continue;
 
+            // The registry already resolves a replayed item's recorded outcome, so the recorded value is trusted here.
             outcome = MergeOutcomeReason(outcome, recorded.OutcomeReason);
             maxRetryCount = Math.Max(maxRetryCount, recorded.RetryCount);
         }
@@ -571,6 +573,7 @@ internal abstract class LineageMappingStrategyBase
         LineageOptions? opts,
         [EnumeratorCancellation] CancellationToken token)
     {
+        var lineage = LineageNodeOutcomeRegistry.GetWriter(pipelineId, nodeId);
         var inputEnumerator = inAll.GetAsyncEnumerator(token);
         await using var inputEnumeratorScope = inputEnumerator.ConfigureAwait(false);
         var outputEnumerator = outAll.GetAsyncEnumerator(token);
@@ -610,6 +613,10 @@ internal abstract class LineageMappingStrategyBase
 
                 yield return new LineagePacket<TOut>(outputData, inputPacket.CorrelationId, traversalPath)
                     { Collect = inputPacket.Collect, LineageRecords = lineageRecords };
+
+                // Reached once the consumer asks for the next item, so the item's lineage can be released. Without
+                // this a 1:1 node holds one entry per item for the whole stream.
+                lineage.Forget(matchedInputCount);
 
                 matchedInputCount++;
                 matchedOutputCount++;

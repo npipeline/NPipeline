@@ -115,6 +115,16 @@ public sealed class AutoObservabilityScope : IAutoObservabilityScope
     public Exception? GetFailureException() => _exception;
 
     /// <inheritdoc />
+    public void ClearFailure()
+    {
+        if (Volatile.Read(ref _disposed) == 1)
+            return;
+
+        _success = true;
+        _exception = null;
+    }
+
+    /// <inheritdoc />
     public void AddWork(TimeSpan duration)
     {
         if (Volatile.Read(ref _disposed) == 1)

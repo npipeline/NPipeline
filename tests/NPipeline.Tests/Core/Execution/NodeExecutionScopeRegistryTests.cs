@@ -177,6 +177,89 @@ public sealed class NodeExecutionScopeRegistryTests
         _ = callbackSawDispose.Should().BeTrue();
     }
 
+    [Fact]
+    public void BeginNodeScope_NestedHandles_KeepScopeAliveUntilOuterDisposed()
+    {
+        // Arrange
+        var registry = new NodeExecutionScopeRegistry();
+        var scope = new RecordingScope();
+        registry.RegisterNodeObservabilityScope("node-nested", scope);
+
+        // Act - a restart opens a second handle without the first having gone.
+        var outer = registry.BeginNodeScope("node-nested");
+        var inner = registry.BeginNodeScope("node-nested");
+
+        inner.Dispose();
+
+        // Assert - the inner handle going must not unregister or dispose the scope the outer handle still holds.
+        _ = scope.DisposeCount.Should().Be(0);
+
+        outer.Dispose();
+
+        _ = scope.DisposeCount.Should().Be(1);
+    }
+
+    [Fact]
+    public void BeginNodeScope_AfterNestedOuterDisposed_DoesNotAllowFurtherMutationsOnStaleHandle()
+    {
+        // Arrange
+        var registry = new NodeExecutionScopeRegistry();
+        var scope = new RecordingScope();
+        registry.RegisterNodeObservabilityScope("node-nested-dispose", scope);
+
+        var outer = registry.BeginNodeScope("node-nested-dispose");
+        var inner = registry.BeginNodeScope("node-nested-dispose");
+
+        outer.Dispose();
+        inner.Dispose();
+
+        // Assert - disposed exactly once, even though both handles went, and the stale handles no longer mutate.
+        _ = scope.DisposeCount.Should().Be(1);
+
+        outer.IncrementProcessed();
+        inner.IncrementEmitted();
+        outer.AddInputWait(TimeSpan.FromSeconds(1));
+
+        _ = scope.Processed.Should().Be(0);
+        _ = scope.Emitted.Should().Be(0);
+        _ = scope.InputWaitCalls.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task DisposeAllNodeScopes_RacingHandleDispose_DisposesEachScopeOnce()
+    {
+        // Arrange
+        var iterations = 10_000;
+        var registry = new NodeExecutionScopeRegistry();
+        var disposeCallbacks = 0;
+
+        for (var i = 0; i < iterations; i++)
+        {
+            var nodeId = $"node-race-{i}";
+            registry.RegisterNodeObservabilityScope(nodeId, new RecordingScope(), (_, _) => Interlocked.Increment(ref disposeCallbacks));
+            var handle = registry.BeginNodeScope(nodeId);
+
+            using var barrier = new Barrier(2);
+
+            var disposeHandle = Task.Run(() =>
+            {
+                barrier.SignalAndWait();
+                handle.Dispose();
+            });
+
+            var disposeAll = Task.Run(() =>
+            {
+                barrier.SignalAndWait();
+                registry.DisposeAllNodeScopes();
+            });
+
+            await Task.WhenAll(disposeHandle, disposeAll);
+        }
+
+        // Assert - the callback fires for every registration exactly once, never twice and never zero times.
+        _ = disposeCallbacks.Should().Be(iterations);
+    }
+
     private sealed class RecordingScope : IAutoObservabilityScope
     {
         public int Processed { get; private set; }

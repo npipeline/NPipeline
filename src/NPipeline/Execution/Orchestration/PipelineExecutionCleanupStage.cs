@@ -1,4 +1,5 @@
 using NPipeline.DataFlow;
+using NPipeline.Execution.Lineage;
 using NPipeline.Graph;
 using NPipeline.Observability;
 using NPipeline.Observability.Tracing;
@@ -41,6 +42,17 @@ internal sealed class PipelineExecutionCleanupStage(IObservabilitySurface observ
         }
 
         nodeOutputs.Clear();
+
+        // A node whose output was never pulled never released its own lineage state, so the run drops all of it here.
+        // Guarded like the other cleanup steps, so a failure here cannot replace the run's real error.
+        if (graph?.Lineage.ItemLevelLineageEnabled == true)
+        {
+            await Guard(() =>
+            {
+                LineageNodeOutcomeRegistry.ClearPipeline(context.RunIdentity.PipelineId);
+                return ValueTask.CompletedTask;
+            }).ConfigureAwait(false);
+        }
 
         if (ownedNodeInstances is not null)
         {

@@ -1,17 +1,20 @@
 using System.Runtime.CompilerServices;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using NPipeline.Configuration;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.ErrorHandling;
 using NPipeline.Execution;
 using NPipeline.Extensions.DependencyInjection;
+using NPipeline.Lineage;
 using NPipeline.Nodes;
 using NPipeline.Observability;
 using NPipeline.Observability.Configuration;
 using NPipeline.Observability.DependencyInjection;
 using NPipeline.Observability.Metrics;
 using NPipeline.Pipeline;
+using NPipeline.Reliability;
 
 namespace NPipeline.Extensions.Observability.Tests;
 
@@ -1236,6 +1239,102 @@ public sealed class IntegrationTests
         Assert.True(transformMetrics.ItemsProcessed >= 0);
     }
 
+    [Fact]
+    public async Task TransformRestart_WithObservability_ReportsSuccessAndFullEmittedCount()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        _ = services.AddNPipeline();
+        _ = services.AddNPipelineObservability();
+        var provider = services.BuildServiceProvider();
+        await using var scope = provider.CreateAsyncScope();
+        var runner = scope.ServiceProvider.GetRequiredService<IPipelineRunner>();
+        var contextFactory = scope.ServiceProvider.GetRequiredService<IObservablePipelineContextFactory>();
+
+        await using var context = contextFactory.Create();
+
+        // Act - the transform fails once mid-stream and the node is restarted.
+        await runner.RunAsync<TestPipelineWithRestartingTransform>(context);
+
+        // Assert
+        var collector = scope.ServiceProvider.GetRequiredService<IObservabilityCollector>();
+        var transformMetrics = GetNodeMetricsById(collector, "transform");
+
+        Assert.NotNull(transformMetrics);
+        Assert.True(transformMetrics.Success, "a node that recovered after a restart was not a failure");
+        Assert.Equal(10, transformMetrics.ItemsEmitted);
+    }
+
+    [Fact]
+    public async Task SinkRetry_WithObservability_ReportsSuccess()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        _ = services.AddNPipeline();
+        _ = services.AddNPipelineObservability();
+        var provider = services.BuildServiceProvider();
+        await using var scope = provider.CreateAsyncScope();
+        var runner = scope.ServiceProvider.GetRequiredService<IPipelineRunner>();
+        var contextFactory = scope.ServiceProvider.GetRequiredService<IObservablePipelineContextFactory>();
+
+        await using var context = contextFactory.Create();
+
+        // Act - the sink throws before reading anything, then succeeds on the retry.
+        await runner.RunAsync<TestPipelineWithRetryingSink>(context);
+
+        // Assert
+        var collector = scope.ServiceProvider.GetRequiredService<IObservabilityCollector>();
+        var sinkMetrics = GetNodeMetricsById(collector, "sink");
+
+        Assert.NotNull(sinkMetrics);
+        Assert.True(sinkMetrics.Success);
+    }
+
+    [Fact]
+    public async Task SinkRetry_WithObservability_EndsNodeMetricsAtSinkCompletion()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        _ = services.AddNPipeline();
+        _ = services.AddNPipelineObservability();
+        var provider = services.BuildServiceProvider();
+        await using var scope = provider.CreateAsyncScope();
+        var runner = scope.ServiceProvider.GetRequiredService<IPipelineRunner>();
+        var contextFactory = scope.ServiceProvider.GetRequiredService<IObservablePipelineContextFactory>();
+
+        await using var context = contextFactory.Create();
+
+        // Two disjoint chains. Both sinks are terminals, so they drain concurrently: the slow sibling keeps the
+        // pipeline running long after the retried sink completed, which separates the retried sink's completion
+        // from the pipeline's end.
+        var sinkNode = new TestRetryOnceSinkNode();
+        var pipelineDefinition = new TestPipelineWithRetryingSinkAndSlowSibling(sinkNode);
+
+        // Act - the retried sink throws before reading anything, then succeeds; its slow sibling is still draining.
+        await runner.RunAsync(pipelineDefinition, context);
+
+        // Assert - the retried sink's scope must end at the sink's completion, not at the pipeline's.
+        var collector = scope.ServiceProvider.GetRequiredService<IObservabilityCollector>();
+        var sinkMetrics = GetNodeMetricsById(collector, "retried-sink");
+        var slowSinkMetrics = GetNodeMetricsById(collector, "slow-sink-a");
+
+        Assert.NotNull(sinkMetrics);
+        Assert.True(sinkMetrics.Success);
+        Assert.NotNull(sinkNode.CompletedAt);
+        Assert.NotNull(sinkMetrics.EndTime);
+
+        var gap = sinkMetrics.EndTime.Value - sinkNode.CompletedAt.Value;
+        Assert.True(gap < TimeSpan.FromMilliseconds(150),
+            $"sink EndTime must be stamped at sink completion, but was {gap.TotalMilliseconds:F0} ms after it " +
+            "(a retried attempt leaked its scope handle, stretching the node's timing to the pipeline's end).");
+
+        // The slow sibling outlives the retried sink by far, so a leak large enough to matter would have shown up.
+        Assert.NotNull(slowSinkMetrics);
+        Assert.NotNull(slowSinkMetrics.WallDurationMs);
+        Assert.True(slowSinkMetrics.WallDurationMs.Value >= 300,
+            "the slow sibling must still be draining when the retried sink completes, or the test proves nothing");
+    }
+
     #endregion
 
     #region Additional Test Pipeline Definitions
@@ -1400,6 +1499,86 @@ public sealed class IntegrationTests
         }
     }
 
+    private sealed class TestPipelineWithRestartingTransform : IPipelineDefinition
+    {
+        public void Define(PipelineBuilder builder, PipelineContext context)
+        {
+            var source = builder.AddSource<TestSourceNode, int>("source")
+                .WithObservability(builder);
+
+            var transform = builder.AddTransform<TestRestartOnceTransformNode, int, int>("transform")
+                .WithObservability(builder);
+
+            var sink = builder.AddSink<TestSinkNode<int>, int>("sink")
+                .WithObservability(builder);
+
+            _ = builder.Connect(source, transform);
+            _ = builder.Connect(transform, sink);
+
+            builder.WithResilience(transform, o => o with
+            {
+                NodeRestart = new NodeRestartOptions { MaxRestarts = 2, MaxReplayWindow = 128, Backoff = RetryBackoff.None },
+            });
+        }
+    }
+
+    private sealed class TestPipelineWithRetryingSink : IPipelineDefinition
+    {
+        public void Define(PipelineBuilder builder, PipelineContext context)
+        {
+            var source = builder.AddSource<TestSourceNodeSmall, int>("source")
+                .WithObservability(builder);
+
+            var sink = builder.AddSink<TestRetryOnceSinkNode, int>("sink")
+                .WithObservability(builder);
+
+            _ = builder.Connect(source, sink);
+
+            builder.WithResilience(sink, o => o with { NodeRetry = new NodeRetryOptions { MaxRetries = 1 } });
+        }
+    }
+
+    /// <summary>
+    ///     A retrying sink on its own chain, plus a slow fan-out chain whose two sinks keep draining long after the
+    ///     retried sink completed. The fan-out makes every sink a deferred terminal, so all three drain concurrently.
+    /// </summary>
+    private sealed class TestPipelineWithRetryingSinkAndSlowSibling(TestRetryOnceSinkNode sinkNode) : IPipelineDefinition
+    {
+        public void Define(PipelineBuilder builder, PipelineContext context)
+        {
+            var fastSource = builder.AddSource<TestSourceNodeSmall, int>("fast-source")
+                .WithObservability(builder);
+
+            var retriedSink = builder.AddSink<int>(sinkNode, "retried-sink")
+                .WithObservability(builder);
+
+            _ = builder.Connect(fastSource, retriedSink);
+
+            var slowSource = builder.AddSource<TestSourceNodeSmall, int>("slow-source")
+                .WithObservability(builder);
+
+            var slowSinkA = builder.AddSink<TestSlowSinkNode, int>("slow-sink-a")
+                .WithObservability(builder);
+
+            var slowSinkB = builder.AddSink<TestSlowSinkNode, int>("slow-sink-b")
+                .WithObservability(builder);
+
+            _ = builder.Connect(slowSource, slowSinkA);
+            _ = builder.Connect(slowSource, slowSinkB);
+
+            builder.WithResilience(retriedSink, o => o with { NodeRetry = new NodeRetryOptions { MaxRetries = 1, Backoff = RetryBackoff.None } });
+        }
+    }
+
+    private sealed class TestSlowSinkNode : SinkNode<int>
+    {
+        public override async Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken cancellationToken)
+        {
+            await foreach (var _ in input.WithCancellation(cancellationToken))
+                await Task.Delay(80, cancellationToken);
+        }
+    }
+
     #endregion
 
     #region Additional Test Node Implementations
@@ -1422,6 +1601,40 @@ public sealed class IntegrationTests
                 return ValueTask.FromResult(item * 2);
 
             throw new InvalidOperationException("Intentional failure on 4th item");
+        }
+    }
+
+    private sealed class TestRestartOnceTransformNode : TransformNode<int, int>
+    {
+        private int _failures;
+
+        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        {
+            // Fail exactly once, on item 5, so the node restarts and replays from the checkpoint.
+            if (item == 5 && Interlocked.Exchange(ref _failures, 1) == 0)
+                throw new InvalidOperationException("restart the node");
+
+            return ValueTask.FromResult(item * 2);
+        }
+    }
+
+    private sealed class TestRetryOnceSinkNode : SinkNode<int>
+    {
+        private int _attempts;
+
+        public DateTimeOffset? CompletedAt { get; private set; }
+
+        public override async Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken cancellationToken)
+        {
+            // Throw a transient failure before reading anything, so node retry is allowed and the retry succeeds.
+            if (Interlocked.Increment(ref _attempts) == 1)
+                throw new TimeoutException("sink setup timed out");
+
+            await foreach (var _ in input.WithCancellation(cancellationToken))
+            {
+            }
+
+            CompletedAt = DateTimeOffset.UtcNow;
         }
     }
 

@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using NPipeline.Attributes.Lineage;
 using NPipeline.Configuration;
+using NPipeline.Execution.Lineage;
 
 namespace NPipeline.Lineage;
 
@@ -19,6 +20,7 @@ internal sealed class StreamingOneToOneStrategy<TIn, TOut> : LineageMappingStrat
         [EnumeratorCancellation] CancellationToken ct)
     {
         // Fast streaming 1:1 path (original second half of BuildLineageAdapter)
+        var lineage = LineageNodeOutcomeRegistry.GetWriter(pipelineId, nodeId);
         var inputEnumerator2 = inputStream.GetAsyncEnumerator(ct);
         await using var inputEnumerator2Scope = inputEnumerator2.ConfigureAwait(false);
         var outputEnumerator2 = outputStream.GetAsyncEnumerator(ct);
@@ -58,6 +60,10 @@ internal sealed class StreamingOneToOneStrategy<TIn, TOut> : LineageMappingStrat
 
                 yield return new LineagePacket<TOut>(outputData, inputPacket.CorrelationId, traversalPath)
                     { Collect = inputPacket.Collect, LineageRecords = lineageRecords };
+
+                // Reached once the consumer asks for the next item, so the item's lineage can be released. Without
+                // this a 1:1 node holds one entry per item for the whole stream.
+                lineage.Forget(matchedInputCount2);
 
                 matchedInputCount2++;
                 matchedOutputCount2++;

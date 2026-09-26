@@ -52,9 +52,6 @@ internal sealed class ResilientExecutionStrategy(IExecutionStrategy? innerStrate
         if (inner is not IResumableExecutionStrategy resumable)
             throw new InvalidOperationException(ErrorMessages.NodeRestartRequiresResumableStrategy(nodeId, inner.GetType().Name));
 
-        using var resilientActivity = context.Observability.Tracer.StartActivity("Node.Resilience");
-        resilientActivity.SetTag("resilience.enabled", true);
-
         // Captured now: the stream is enumerated by a downstream consumer, long after this call returned.
         var options = context.ExecutionConfiguration.GetResilienceOptions(nodeId);
         var policy = ResilienceRuntime.ResolvePolicy(context, nodeId);
@@ -71,7 +68,14 @@ internal sealed class ResilientExecutionStrategy(IExecutionStrategy? innerStrate
         ITransformNode<TIn, TOut> node, PipelineContext context, string nodeId, PipelineResilienceOptions options, IResiliencePolicy policy,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var activity = context.Observability.Tracer.CurrentActivity;
+        // Spans the whole run, so the restart activity ends after the node's last item rather than when ExecuteAsync
+        // returns. The null tracer returns a no-op activity, so this needs no null check.
+        using var resilientActivity = context.Observability.Tracer.StartActivity("Node.Resilience");
+        resilientActivity.SetTag("resilience.enabled", true);
+
+        // Held across every attempt, so a failed attempt's disposal does not unregister the scope the restart needs.
+        using var nodeScope = context.NodeEnvironment.NodeExecutionScopeRegistry.BeginNodeScope(nodeId);
+
         var logger = context.Observability.LoggerFactory.CreateLogger(nameof(ResilientExecutionStrategy));
         var restartOptions = options.NodeRestart;
 
@@ -126,7 +130,7 @@ internal sealed class ResilientExecutionStrategy(IExecutionStrategy? innerStrate
                     }
                     catch (Exception ex)
                     {
-                        activity?.RecordException(ex);
+                        resilientActivity.RecordException(ex);
 
                         // The input itself failed. It cannot be read again, so restarting the node cannot help.
                         if (input.InputFault is { } inputFault)
@@ -176,6 +180,10 @@ internal sealed class ResilientExecutionStrategy(IExecutionStrategy? innerStrate
                         }
 
                         ResilienceRuntime.ReportRetry(context, nodeId, RetryKind.NodeRestart, restarts, ex);
+
+                        // The attempt failed, but the node is being restarted; a successful replay must not be
+                        // reported as failed just because the first attempt threw.
+                        nodeScope.ClearFailure();
 
                         restart = true;
                         break;

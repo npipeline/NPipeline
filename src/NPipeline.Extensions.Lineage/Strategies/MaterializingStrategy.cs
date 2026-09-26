@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 using NPipeline.Attributes.Lineage;
 using NPipeline.Configuration;
+using NPipeline.Execution.Lineage;
 
 namespace NPipeline.Lineage;
 
@@ -36,5 +37,8 @@ internal sealed class MaterializingStrategy<TIn, TOut> : LineageMappingStrategyB
         {
             yield return packet;
         }
+
+        // Every item has been mapped, so the node's per-item state can be released for the rest of the run.
+        LineageNodeOutcomeRegistry.GetWriter(pipelineId, nodeId).ClearAll();
     }
 }
