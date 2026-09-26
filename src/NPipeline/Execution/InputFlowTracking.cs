@@ -55,9 +55,14 @@ internal static class InputFlowTracking
     private static async IAsyncEnumerable<T> Enumerate<T>(IDataStream<T> input, InputFlow flow,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        // The input is read as soon as the consumer asks for its first item, which is what runs this body. Mark that
+        // before the first item is yielded: a failure thrown by the upstream enumerator (a source timeout, or an
+        // upstream transform with no retry of its own) is then attributed to this node's already-consumed input,
+        // rather than letting node retry execute this node again and re-run the whole upstream chain.
+        flow.MarkFlowed();
+
         await foreach (var item in input.WithCancellation(cancellationToken).ConfigureAwait(false))
         {
-            flow.MarkFlowed();
             yield return item;
         }
     }

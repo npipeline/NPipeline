@@ -236,7 +236,7 @@ public sealed class PipelineValidationTests
         var join = new NodeDefinition("join", "join", typeof(TestJoinNode), NodeKind.Join, typeof(Left), typeof(int), IsJoin: true, SecondInputType: typeof(Right));
         var sink = new NodeDefinition("sink", "sink", typeof(CollectingSink<int>), NodeKind.Sink, typeof(int));
 
-        // No WithNodeDefinitionMap call: the validator must still read the join's input types from Nodes.
+        // The validator reads the join's input types from Nodes, not from a separately supplied definition map.
         var graph = new PipelineGraph
         {
             Nodes = [leftSource, rightSource, join, sink],

@@ -14,6 +14,9 @@ namespace NPipeline.Graph;
 /// </summary>
 public sealed record PipelineGraph
 {
+    private readonly ImmutableArray<NodeDefinition> _nodes;
+    private FrozenDictionary<string, NodeDefinition>? _nodeDefinitionMap;
+
     /// <summary>
     ///     Creates a new PipelineGraph with the specified core parameters.
     /// </summary>
@@ -41,7 +44,18 @@ public sealed record PipelineGraph
     /// <summary>
     ///     The collection of all node definitions in the graph.
     /// </summary>
-    public required ImmutableArray<NodeDefinition> Nodes { get; init; }
+    public required ImmutableArray<NodeDefinition> Nodes
+    {
+        get => _nodes;
+        init
+        {
+            _nodes = value;
+
+            // The map is derived from Nodes, so assigning new nodes must invalidate it. A with-expression that does
+            // not set Nodes copies the cached map and reuses it.
+            _nodeDefinitionMap = null;
+        }
+    }
 
     /// <summary>
     ///     The collection of all edges connecting the nodes.
@@ -55,10 +69,10 @@ public sealed record PipelineGraph
 
     /// <summary>
     ///     A cached frozen dictionary mapping node IDs to their definitions for O(1) lookups during execution.
-    ///     This eliminates repeated conversions from the immutable list to mutable dictionaries at runtime.
-    ///     If not explicitly set, it is automatically computed from the Nodes collection.
+    ///     It is computed from <see cref="Nodes" /> on first access, and recomputed whenever <see cref="Nodes" /> is set.
     /// </summary>
-    public FrozenDictionary<string, NodeDefinition> NodeDefinitionMap { get; init; } = FrozenDictionary<string, NodeDefinition>.Empty;
+    public FrozenDictionary<string, NodeDefinition> NodeDefinitionMap =>
+        _nodeDefinitionMap ??= _nodes.ToFrozenDictionary(n => n.Id);
 
     /// <summary>
     ///     The error handling configuration.
@@ -80,20 +94,6 @@ public sealed record PipelineGraph
     ///     Null for pipelines without composite nodes.
     /// </summary>
     public FrozenDictionary<string, PipelineGraph>? ChildGraphs { get; init; }
-
-    /// <summary>
-    ///     Called after the record is initialized to ensure NodeDefinitionMap is populated from Nodes if needed.
-    ///     This method should be called after object initialization, or use the factory method CreateAndInitialize.
-    /// </summary>
-    /// <returns>A new PipelineGraph with NodeDefinitionMap populated if it was empty.</returns>
-    public PipelineGraph EnsureNodeDefinitionMapInitialized()
-    {
-        // If NodeDefinitionMap is empty but Nodes is not, create it from Nodes
-        if (NodeDefinitionMap.Count == 0 && Nodes.Length > 0)
-            return this with { NodeDefinitionMap = Nodes.ToFrozenDictionary(n => n.Id) };
-
-        return this;
-    }
 }
 
 /// <summary>
@@ -108,7 +108,6 @@ public sealed class PipelineGraphBuilder
     private LineageOptions? _lineageOptions;
     private ILineageSink? _lineageSink;
     private Type? _lineageSinkType;
-    private FrozenDictionary<string, NodeDefinition> _nodeDefinitionMap = FrozenDictionary<string, NodeDefinition>.Empty;
     private ImmutableDictionary<string, object> _nodeExecutionAnnotations = ImmutableDictionary<string, object>.Empty;
     private ImmutableDictionary<string, PipelineResilienceOptions> _nodeResilience = ImmutableDictionary<string, PipelineResilienceOptions>.Empty;
     private ImmutableArray<NodeDefinition> _nodes = [];
@@ -196,17 +195,6 @@ public sealed class PipelineGraphBuilder
     public PipelineGraphBuilder WithPreconfiguredNodeInstances(IReadOnlyDictionary<string, INode> instances)
     {
         _preconfiguredNodeInstances = instances.ToFrozenDictionary();
-        return this;
-    }
-
-    /// <summary>
-    ///     Sets the cached node definition map for O(1) lookups during execution.
-    /// </summary>
-    /// <param name="nodeDefinitionMap">The frozen dictionary mapping node IDs to their definitions.</param>
-    /// <returns>The builder instance for method chaining.</returns>
-    public PipelineGraphBuilder WithNodeDefinitionMap(FrozenDictionary<string, NodeDefinition> nodeDefinitionMap)
-    {
-        _nodeDefinitionMap = nodeDefinitionMap;
         return this;
     }
 
@@ -439,7 +427,6 @@ public sealed class PipelineGraphBuilder
             Nodes = _nodes,
             Edges = _edges,
             PreconfiguredNodeInstances = _preconfiguredNodeInstances,
-            NodeDefinitionMap = _nodeDefinitionMap,
             ErrorHandling = new ErrorHandlingConfiguration
             {
                 ResiliencePolicy = _resiliencePolicy,

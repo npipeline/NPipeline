@@ -50,7 +50,6 @@ internal sealed class PipelineExecutionSetupStage(
             context.NodeEnvironment.RegisterNodes(nodeInstances);
             ApplyGlobalServices(graph, context);
 
-            graph = graph.EnsureNodeDefinitionMapInitialized();
             var nodeDefinitionMap = graph.NodeDefinitionMap;
             var executionPlans = BuildExecutionPlans(definitionType, graph, nodeInstances);
 

@@ -1,6 +1,9 @@
+using System.Collections.Frozen;
 using System.Collections.Immutable;
 using AwesomeAssertions;
 using NPipeline.Configuration;
+using NPipeline.Graph;
+using NPipeline.Nodes;
 using NPipeline.Reliability;
 
 namespace NPipeline.Tests.Graph;
@@ -10,6 +13,35 @@ namespace NPipeline.Tests.Graph;
 /// </summary>
 public class PipelineGraphTests
 {
+    #region NodeDefinitionMap Tests
+
+    [Fact]
+    public void WithNodes_RecomputesNodeDefinitionMap()
+    {
+        var first = NewDefinition("first");
+        var second = NewDefinition("second");
+
+        var graph = new PipelineGraph
+        {
+            Nodes = [first],
+            Edges = [],
+            PreconfiguredNodeInstances = FrozenDictionary<string, INode>.Empty,
+        };
+
+        _ = graph.NodeDefinitionMap["first"].Should().BeSameAs(first);
+
+        var rewritten = graph with { Nodes = [second] };
+
+        _ = rewritten.NodeDefinitionMap.Should().ContainKey("second");
+        _ = rewritten.NodeDefinitionMap.Should().NotContainKey("first");
+        _ = rewritten.NodeDefinitionMap["second"].Should().BeSameAs(second);
+    }
+
+    private static NPipeline.Graph.NodeDefinition NewDefinition(string id) =>
+        new(id, id, typeof(object), NPipeline.Graph.NodeKind.Transform, typeof(int), typeof(int));
+
+    #endregion
+
     #region ErrorHandlingConfiguration Tests
 
     [Fact]
