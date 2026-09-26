@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using AwesomeAssertions;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
@@ -543,11 +544,38 @@ public class CompositionCoreTests
         builder.Connect(source, composite);
         builder.Connect(composite, sink);
 
-        // Act
-        var pipeline = builder.Build();
+        // Act - the trace is process-wide, so assert on this composite's specific message
+        var listener = new CapturingTraceListener();
+        Trace.Listeners.Add(listener);
+        NPipeline.Pipeline.Pipeline pipeline;
+
+        try
+        {
+            pipeline = builder.Build();
+        }
+        finally
+        {
+            Trace.Listeners.Remove(listener);
+        }
 
         // Assert - the invalid child is dropped, with a trace warning, rather than attached
         _ = (pipeline.Graph.ChildGraphs?.ContainsKey(composite.Id) ?? false).Should().BeFalse();
+        _ = listener.Messages.Should().Contain(m => m.Contains($"Child graph for composite '{composite.Id}' is invalid", StringComparison.Ordinal));
+    }
+
+    private sealed class CapturingTraceListener : TraceListener
+    {
+        private readonly System.Collections.Concurrent.ConcurrentQueue<string> _messages = new();
+
+        public IEnumerable<string> Messages => _messages;
+
+        public override void Write(string? message)
+        {
+            if (message is not null)
+                _messages.Enqueue(message);
+        }
+
+        public override void WriteLine(string? message) => Write(message);
     }
 
     [Fact]

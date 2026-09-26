@@ -97,5 +97,12 @@ public static class PipelineGraphExporter
         return e.TargetInputName;
     }
 
-    private static string EscapeText(string text) => text.Replace("\"", "#quot;", StringComparison.Ordinal);
+    // Mermaid reads "#name;" and "#123;" inside a label as an entity, so '#' is escaped first, then the quote. A line
+    // break would end the declaration, so it becomes a space.
+    private static string EscapeText(string text) => text
+        .Replace("#", "#35;", StringComparison.Ordinal)
+        .Replace("\"", "#quot;", StringComparison.Ordinal)
+        .Replace("\r\n", " ", StringComparison.Ordinal)
+        .Replace('\r', ' ')
+        .Replace('\n', ' ');
 }

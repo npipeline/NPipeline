@@ -32,22 +32,25 @@ public sealed class RuntimePipelineBinder : IRuntimePipelineBinder
         private readonly object _lock = new();
         private NormalizedAnnotationEntry? _entry;
 
-        public ImmutableDictionary<string, object> GetOrAdd(bool lineageEnabled,
-            Func<ImmutableDictionary<string, object>> compute)
+        public ImmutableDictionary<string, object> GetOrAdd(PipelineGraph graph, bool lineageEnabled)
         {
             lock (_lock)
             {
-                if (_entry is { } existing && existing.LineageEnabled == lineageEnabled)
+                // ImmutableArray equality compares the backing array, so a graph copied with new nodes misses the cache.
+                if (_entry is { } existing && existing.LineageEnabled == lineageEnabled && existing.Nodes == graph.Nodes)
                     return existing.Annotations;
 
-                var annotations = compute();
-                _entry = new NormalizedAnnotationEntry(lineageEnabled, annotations);
+                var annotations = ComputeNormalizedAnnotations(graph, lineageEnabled);
+                _entry = new NormalizedAnnotationEntry(lineageEnabled, graph.Nodes, annotations);
                 return annotations;
             }
         }
     }
 
-    private sealed record NormalizedAnnotationEntry(bool LineageEnabled, ImmutableDictionary<string, object> Annotations);
+    private sealed record NormalizedAnnotationEntry(
+        bool LineageEnabled,
+        ImmutableArray<NodeDefinition> Nodes,
+        ImmutableDictionary<string, object> Annotations);
 
     /// <summary>
     ///     Shared singleton instance for the stateless runtime binder.
@@ -55,23 +58,49 @@ public sealed class RuntimePipelineBinder : IRuntimePipelineBinder
     public static RuntimePipelineBinder Instance { get; } = new();
 
     /// <inheritdoc />
-    public Task<RuntimePipelineBindingResult> BindAsync(PipelineGraph graph, PipelineContext context)
+    public async Task<RuntimePipelineBindingResult> BindAsync(PipelineGraph graph, PipelineContext context)
     {
         ArgumentNullException.ThrowIfNull(graph);
         ArgumentNullException.ThrowIfNull(context);
 
+        // Instances created from a configured type belong to this run, not to the context, which a caller may reuse
+        // for many runs. They are handed to the run's owned-instance set, or released here if binding fails.
+        var runOwned = new List<object>();
+
+        try
+        {
+            return Bind(graph, context, runOwned);
+        }
+        catch
+        {
+            await DisposeCreatedAsync(runOwned).ConfigureAwait(false);
+            throw;
+        }
+    }
+
+    private static async ValueTask DisposeCreatedAsync(List<object> created)
+    {
+        var owned = new OwnedNodeInstances();
+        owned.AddRange(created);
+
+        // Best effort: the binding failure is the error worth reporting.
+        _ = await owned.DisposeAllAsync().ConfigureAwait(false);
+    }
+
+    private static RuntimePipelineBindingResult Bind(PipelineGraph graph, PipelineContext context, List<object> runOwned)
+    {
         var overriddenGraph = ApplyRuntimeItemLevelLineageOverride(graph, context);
         overriddenGraph = ApplyRuntimeLineageOptionsOverride(overriddenGraph, context);
         overriddenGraph = NormalizeRuntimeExecutionAnnotations(overriddenGraph);
 
-        var deadLetterSink = ResolveDeadLetterSink(overriddenGraph, context.ErrorHandlerFactory, context);
+        var deadLetterSink = ResolveDeadLetterSink(overriddenGraph, context.ErrorHandlerFactory, runOwned);
         deadLetterSink = ApplyDeadLetterSinkDecorator(context, deadLetterSink);
-        var resiliencePolicy = ResolveResiliencePolicy(overriddenGraph, context);
+        var resiliencePolicy = ResolveResiliencePolicy(overriddenGraph, context, runOwned);
 
         var itemLevelLineageEnabled = overriddenGraph.Lineage.ItemLevelLineageEnabled;
 
         var lineageSink = itemLevelLineageEnabled
-            ? ResolveLineageSink(overriddenGraph, context.Lineage.LineageFactory, context)
+            ? ResolveLineageSink(overriddenGraph, context.Lineage.LineageFactory, context, runOwned)
             : null;
 
         if (!itemLevelLineageEnabled)
@@ -89,15 +118,16 @@ public sealed class RuntimePipelineBinder : IRuntimePipelineBinder
         if (lineageCollector is not null)
             lineageSink = new CollectorTeeingLineageSink(lineageCollector, lineageSink);
 
-        var pipelineLineageSink = ResolvePipelineLineageSink(overriddenGraph, context.Lineage.LineageFactory, context);
+        var pipelineLineageSink = ResolvePipelineLineageSink(overriddenGraph, context.Lineage.LineageFactory, context, runOwned);
 
-        return Task.FromResult(new RuntimePipelineBindingResult(
+        return new RuntimePipelineBindingResult(
             overriddenGraph,
             deadLetterSink,
             lineageSink,
             pipelineLineageSink,
             resiliencePolicy,
-            lineageCollector));
+            lineageCollector,
+            runOwned);
     }
 
     /// <summary>
@@ -118,7 +148,7 @@ public sealed class RuntimePipelineBinder : IRuntimePipelineBinder
         RuntimePipelineBinderLogMessages.ItemLevelLineageSinkIgnored(logger, configuredSink);
     }
 
-    private static IResiliencePolicy ResolveResiliencePolicy(PipelineGraph graph, PipelineContext context)
+    private static IResiliencePolicy ResolveResiliencePolicy(PipelineGraph graph, PipelineContext context, List<object> runOwned)
     {
         if (graph.ErrorHandling.ResiliencePolicy is not null)
             return graph.ErrorHandling.ResiliencePolicy;
@@ -134,8 +164,8 @@ public sealed class RuntimePipelineBinder : IRuntimePipelineBinder
 
         if (Activator.CreateInstance(graph.ErrorHandling.ResiliencePolicyType) is IResiliencePolicy policy)
         {
-            // The caller owns instances created from a type, so register it for disposal with the run.
-            _ = context.RegisterIfAsyncDisposable(policy);
+            // The caller owns instances created from a type, so the run disposes it.
+            runOwned.Add(policy);
             return policy;
         }
 
@@ -201,15 +231,9 @@ public sealed class RuntimePipelineBinder : IRuntimePipelineBinder
 
     // The normalised annotations depend only on the annotations bag, the node definitions and the lineage flag, all of
     // which are fixed for a cached graph. Recomputing builds a generic lineage type per node on every run, so the
-    // result is memoised against the configuration instance and reused until the lineage flag changes.
-    private static ImmutableDictionary<string, object> GetNormalizedAnnotations(PipelineGraph graph)
-    {
-        var source = graph.ExecutionOptions;
-        var lineageEnabled = graph.Lineage.ItemLevelLineageEnabled;
-
-        var cache = NormalizedAnnotations.GetOrCreateValue(source);
-        return cache.GetOrAdd(lineageEnabled, () => ComputeNormalizedAnnotations(graph, lineageEnabled));
-    }
+    // result is memoised against the configuration instance and reused while the nodes and the lineage flag match.
+    private static ImmutableDictionary<string, object> GetNormalizedAnnotations(PipelineGraph graph) =>
+        NormalizedAnnotations.GetOrCreateValue(graph.ExecutionOptions).GetOrAdd(graph, graph.Lineage.ItemLevelLineageEnabled);
 
     private static ImmutableDictionary<string, object> ComputeNormalizedAnnotations(PipelineGraph graph, bool lineageEnabled)
     {
@@ -359,7 +383,7 @@ public sealed class RuntimePipelineBinder : IRuntimePipelineBinder
         return lineageSink;
     }
 
-    private static IDeadLetterSink? ResolveDeadLetterSink(PipelineGraph graph, IErrorHandlerFactory errorHandlerFactory, PipelineContext context)
+    private static IDeadLetterSink? ResolveDeadLetterSink(PipelineGraph graph, IErrorHandlerFactory errorHandlerFactory, List<object> runOwned)
     {
         if (graph.ErrorHandling.DeadLetterSink is not null)
             return graph.ErrorHandling.DeadLetterSink;
@@ -370,12 +394,13 @@ public sealed class RuntimePipelineBinder : IRuntimePipelineBinder
         var created = errorHandlerFactory.CreateDeadLetterSink(graph.ErrorHandling.DeadLetterSinkType);
 
         if (created is not null && errorHandlerFactory.CallerOwnsCreatedInstance(created))
-            _ = context.RegisterIfAsyncDisposable(created);
+            runOwned.Add(created);
 
         return created;
     }
 
-    private static ILineageSink? ResolveLineageSink(PipelineGraph graph, ILineageFactory lineageFactory, PipelineContext context)
+    private static ILineageSink? ResolveLineageSink(PipelineGraph graph, ILineageFactory lineageFactory, PipelineContext context,
+        List<object> runOwned)
     {
         if (graph.Lineage.LineageSink is not null)
             return graph.Lineage.LineageSink;
@@ -385,7 +410,7 @@ public sealed class RuntimePipelineBinder : IRuntimePipelineBinder
             var created = lineageFactory.CreateLineageSink(graph.Lineage.LineageSinkType);
 
             if (created is not null && lineageFactory.CallerOwnsCreatedInstance(created))
-                _ = context.RegisterIfAsyncDisposable(created);
+                runOwned.Add(created);
 
             return created;
         }
@@ -396,7 +421,8 @@ public sealed class RuntimePipelineBinder : IRuntimePipelineBinder
         return null;
     }
 
-    private static IPipelineLineageSink? ResolvePipelineLineageSink(PipelineGraph graph, ILineageFactory lineageFactory, PipelineContext context)
+    private static IPipelineLineageSink? ResolvePipelineLineageSink(PipelineGraph graph, ILineageFactory lineageFactory, PipelineContext context,
+        List<object> runOwned)
     {
         if (graph.Lineage.PipelineLineageSink is not null)
             return graph.Lineage.PipelineLineageSink;
@@ -406,7 +432,7 @@ public sealed class RuntimePipelineBinder : IRuntimePipelineBinder
             var created = lineageFactory.CreatePipelineLineageSink(graph.Lineage.PipelineLineageSinkType);
 
             if (created is not null && lineageFactory.CallerOwnsCreatedInstance(created))
-                _ = context.RegisterIfAsyncDisposable(created);
+                runOwned.Add(created);
 
             return created;
         }

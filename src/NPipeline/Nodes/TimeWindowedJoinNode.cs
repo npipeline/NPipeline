@@ -73,6 +73,10 @@ public abstract class TimeWindowedJoinNode<TKey, TIn1, TIn2, TOut> : BaseJoinNod
         _timestampExtractor2 = timestampExtractor2;
         _maxOutOfOrderness = maxOutOfOrderness ?? TimeSpan.FromMinutes(5);
         _watermarkInterval = watermarkInterval ?? TimeSpan.FromSeconds(30);
+
+        // A negative lateness would push the watermark ahead of the data and close windows before their items arrive.
+        ArgumentOutOfRangeException.ThrowIfLessThan(_maxOutOfOrderness, TimeSpan.Zero, nameof(maxOutOfOrderness));
+        ArgumentOutOfRangeException.ThrowIfLessThan(_watermarkInterval, TimeSpan.Zero, nameof(watermarkInterval));
         JoinType = JoinType.Inner; // Time-windowed joins typically use inner join semantics
     }
 
@@ -82,7 +86,9 @@ public abstract class TimeWindowedJoinNode<TKey, TIn1, TIn2, TOut> : BaseJoinNod
     public JoinType JoinType { get; set; }
 
     /// <summary>
-    ///     Gets the number of items dropped because their window had already been emitted when they arrived.
+    ///     Gets the number of items dropped because every window they belong to had already been emitted when they
+    ///     arrived. An item that still lands in an open window, or that an outer join emits at once as unmatched, is not
+    ///     counted.
     /// </summary>
     public long LateItemsDropped => Interlocked.Read(ref _lateItemsDropped);
 
@@ -110,151 +116,181 @@ public abstract class TimeWindowedJoinNode<TKey, TIn1, TIn2, TOut> : BaseJoinNod
 
         var (getKey1, getKey2) = GetKeySelectors();
 
-        await foreach (var item in inputStream.WithCancellation(cancellationToken).ConfigureAwait(false))
+        try
         {
-            if (item is TIn1 item1)
+            await foreach (var item in inputStream.WithCancellation(cancellationToken).ConfigureAwait(false))
             {
-                var timestamp1 = TimestampUtils.ResolveEventTime(item1, _timestampExtractor1);
-                sawLeft = true;
-                if (timestamp1 > maxTs1)
-                    maxTs1 = timestamp1;
-
-                var key1 = getKey1(item1);
-
-                // Null keys never match (C31). An outer join emits the row at once when its side is preserved.
-                if (key1 is null)
+                if (item is TIn1 item1)
                 {
-                    if (emitUnmatchedLeft)
-                        yield return CreateOutputFromLeft(item1);
+                    var timestamp1 = TimestampUtils.ResolveEventTime(item1, _timestampExtractor1);
+                    sawLeft = true;
+                    if (timestamp1 > maxTs1)
+                        maxTs1 = timestamp1;
+
+                    var key1 = getKey1(item1);
+
+                    // Null keys never match. An outer join emits the row at once when its side is preserved.
+                    if (key1 is null)
+                    {
+                        if (emitUnmatchedLeft)
+                            yield return CreateOutputFromLeft(item1);
+                    }
+                    else
+                    {
+                        var assigned1 = _windowAssigner.AssignWindows(item1, timestamp1, _timestampExtractor1);
+
+                        var landedInLiveWindow = false;
+
+                        foreach (var window in assigned1)
+                        {
+                            // Late: the window was already emitted. Pairing with a recreated window would emit a
+                            // second partial result, so the item is dropped (or emitted at once when preserved).
+                            if (window.End <= watermark)
+                                continue;
+
+                            landedInLiveWindow = true;
+
+                            var state = GetOrAddWindow(windows, expiry, window);
+                            var matched = false;
+
+                            if (state.Right.TryMatch(key1, out var matches))
+                            {
+                                matched = true;
+
+                                for (var i = 0; i < matches.Count; i++)
+                                {
+                                    yield return CreateOutput(item1, matches[i]);
+                                }
+                            }
+
+                            state.Left.Add(key1, item1, matched);
+                            TrackMax(ref _maxWaitingItems1, Interlocked.Increment(ref _waitingItems1));
+                        }
+
+                        // An item that lands in no live window is emitted at once as unmatched when its side is
+                        // preserved by the join type, and dropped otherwise.
+                        if (!landedInLiveWindow)
+                        {
+                            if (emitUnmatchedLeft)
+                                yield return CreateOutputFromLeft(item1);
+                            else
+                                _ = Interlocked.Increment(ref _lateItemsDropped);
+                        }
+                    }
+                }
+                else if (item is TIn2 item2)
+                {
+                    var timestamp2 = TimestampUtils.ResolveEventTime(item2, _timestampExtractor2);
+                    sawRight = true;
+                    if (timestamp2 > maxTs2)
+                        maxTs2 = timestamp2;
+
+                    var key2 = getKey2(item2);
+
+                    if (key2 is null)
+                    {
+                        if (emitUnmatchedRight)
+                            yield return CreateOutputFromRight(item2);
+                    }
+                    else
+                    {
+                        var assigned2 = _windowAssigner.AssignWindows(item2, timestamp2, _timestampExtractor2);
+
+                        var landedInLiveWindow = false;
+
+                        foreach (var window in assigned2)
+                        {
+                            if (window.End <= watermark)
+                                continue;
+
+                            landedInLiveWindow = true;
+
+                            var state = GetOrAddWindow(windows, expiry, window);
+                            var matched = false;
+
+                            if (state.Left.TryMatch(key2, out var matches))
+                            {
+                                matched = true;
+
+                                for (var i = 0; i < matches.Count; i++)
+                                {
+                                    yield return CreateOutput(matches[i], item2);
+                                }
+                            }
+
+                            state.Right.Add(key2, item2, matched);
+                            TrackMax(ref _maxWaitingItems2, Interlocked.Increment(ref _waitingItems2));
+                        }
+
+                        if (!landedInLiveWindow)
+                        {
+                            if (emitUnmatchedRight)
+                                yield return CreateOutputFromRight(item2);
+                            else
+                                _ = Interlocked.Increment(ref _lateItemsDropped);
+                        }
+                    }
                 }
                 else
                 {
-                    var assigned1 = _windowAssigner.AssignWindows(item1, timestamp1, _timestampExtractor1);
-
-                    var landedInLiveWindow = false;
-
-                    foreach (var window in assigned1)
-                    {
-                        // Late: the window was already emitted. Pairing with a recreated window would emit a
-                        // second partial result, so the item is dropped (or emitted at once when preserved).
-                        if (window.End <= watermark)
-                        {
-                            _ = Interlocked.Increment(ref _lateItemsDropped);
-                            continue;
-                        }
-
-                        landedInLiveWindow = true;
-
-                        var state = GetOrAddWindow(windows, expiry, window);
-                        var matched = false;
-
-                        if (state.Right.TryMatch(key1, out var matches))
-                        {
-                            matched = true;
-
-                            for (var i = 0; i < matches.Count; i++)
-                            {
-                                yield return CreateOutput(item1, matches[i]);
-                            }
-                        }
-
-                        state.Left.Add(key1, item1, matched);
-                        TrackMax(ref _maxWaitingItems1, Interlocked.Increment(ref _waitingItems1));
-                    }
-
-                    // An item that lands in no live window is emitted at once as unmatched when its side is
-                    // preserved by the join type, and dropped otherwise.
-                    if (!landedInLiveWindow && emitUnmatchedLeft)
-                        yield return CreateOutputFromLeft(item1);
+                    continue;
                 }
-            }
-            else if (item is TIn2 item2)
-            {
-                var timestamp2 = TimestampUtils.ResolveEventTime(item2, _timestampExtractor2);
-                sawRight = true;
-                if (timestamp2 > maxTs2)
-                    maxTs2 = timestamp2;
 
-                var key2 = getKey2(item2);
-
-                if (key2 is null)
-                {
-                    if (emitUnmatchedRight)
-                        yield return CreateOutputFromRight(item2);
-                }
-                else
-                {
-                    var assigned2 = _windowAssigner.AssignWindows(item2, timestamp2, _timestampExtractor2);
-
-                    var landedInLiveWindow = false;
-
-                    foreach (var window in assigned2)
-                    {
-                        if (window.End <= watermark)
-                        {
-                            _ = Interlocked.Increment(ref _lateItemsDropped);
-                            continue;
-                        }
-
-                        landedInLiveWindow = true;
-
-                        var state = GetOrAddWindow(windows, expiry, window);
-                        var matched = false;
-
-                        if (state.Left.TryMatch(key2, out var matches))
-                        {
-                            matched = true;
-
-                            for (var i = 0; i < matches.Count; i++)
-                            {
-                                yield return CreateOutput(matches[i], item2);
-                            }
-                        }
-
-                        state.Right.Add(key2, item2, matched);
-                        TrackMax(ref _maxWaitingItems2, Interlocked.Increment(ref _waitingItems2));
-                    }
-
-                    if (!landedInLiveWindow && emitUnmatchedRight)
-                        yield return CreateOutputFromRight(item2);
-                }
-            }
-            else
-            {
-                continue;
-            }
-
-            if (Stopwatch.GetElapsedTime(lastWatermarkCheck) < _watermarkInterval)
-                continue;
-
-            lastWatermarkCheck = Stopwatch.GetTimestamp();
-            var candidate = sawLeft && sawRight
-                ? TimestampUtils.SafeSubtract(maxTs1 <= maxTs2 ? maxTs1 : maxTs2, _maxOutOfOrderness)
-                : DateTimeOffset.MinValue;
-            if (candidate <= watermark)
-                continue;
-
-            watermark = candidate;
-
-            // Release state for windows that have passed, emitting their unmatched items for outer joins
-            while (expiry.TryPeek(out var window, out var windowEnd) && windowEnd <= watermark)
-            {
-                _ = expiry.Dequeue();
-                if (!windows.Remove(window, out var state))
+                if (Stopwatch.GetElapsedTime(lastWatermarkCheck) < _watermarkInterval)
                     continue;
 
-                Interlocked.Add(ref _waitingItems1, -state.Left.Count);
-                Interlocked.Add(ref _waitingItems2, -state.Right.Count);
+                lastWatermarkCheck = Stopwatch.GetTimestamp();
+                var candidate = sawLeft && sawRight
+                    ? TimestampUtils.SafeSubtract(maxTs1 <= maxTs2 ? maxTs1 : maxTs2, _maxOutOfOrderness)
+                    : DateTimeOffset.MinValue;
+                if (candidate <= watermark)
+                    continue;
 
-                if (emitUnmatchedLeft)
+                watermark = candidate;
+
+                // Release state for windows that have passed, emitting their unmatched items for outer joins
+                while (expiry.TryPeek(out var window, out var windowEnd) && windowEnd <= watermark)
+                {
+                    _ = expiry.Dequeue();
+                    if (!windows.Remove(window, out var state))
+                        continue;
+
+                    Interlocked.Add(ref _waitingItems1, -state.Left.Count);
+                    Interlocked.Add(ref _waitingItems2, -state.Right.Count);
+
+                    if (emitUnmatchedLeft)
+                    {
+                        foreach (var unmatchedLeft in state.Left.Unmatched())
+                        {
+                            yield return CreateOutputFromLeft(unmatchedLeft);
+                        }
+                    }
+
+                    if (emitUnmatchedRight)
+                    {
+                        foreach (var unmatchedRight in state.Right.Unmatched())
+                        {
+                            yield return CreateOutputFromRight(unmatchedRight);
+                        }
+                    }
+                }
+            }
+
+            // Handle unmatched items for outer joins at the end of the streams. The state is then released.
+            if (emitUnmatchedLeft)
+            {
+                foreach (var state in windows.Values)
                 {
                     foreach (var unmatchedLeft in state.Left.Unmatched())
                     {
                         yield return CreateOutputFromLeft(unmatchedLeft);
                     }
                 }
+            }
 
-                if (emitUnmatchedRight)
+            if (emitUnmatchedRight)
+            {
+                foreach (var state in windows.Values)
                 {
                     foreach (var unmatchedRight in state.Right.Unmatched())
                     {
@@ -263,31 +299,13 @@ public abstract class TimeWindowedJoinNode<TKey, TIn1, TIn2, TOut> : BaseJoinNod
                 }
             }
         }
-
-        // Handle unmatched items for outer joins at the end of the streams. The state is then released.
-        if (emitUnmatchedLeft)
+        finally
         {
-            foreach (var state in windows.Values)
-            {
-                foreach (var unmatchedLeft in state.Left.Unmatched())
-                {
-                    yield return CreateOutputFromLeft(unmatchedLeft);
-                }
-            }
+            // The state is released, however the execution ended; the waiting counts describe live state only.
+            windows.Clear();
+            Volatile.Write(ref _waitingItems1, 0);
+            Volatile.Write(ref _waitingItems2, 0);
         }
-
-        if (emitUnmatchedRight)
-        {
-            foreach (var state in windows.Values)
-            {
-                foreach (var unmatchedRight in state.Right.Unmatched())
-                {
-                    yield return CreateOutputFromRight(unmatchedRight);
-                }
-            }
-        }
-
-        windows.Clear();
     }
 
     private static WindowState GetOrAddWindow(Dictionary<IWindow, WindowState> windows,

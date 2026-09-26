@@ -43,6 +43,19 @@ public sealed class PipelineGraphExporterTests
     }
 
     [Fact]
+    public void ToMermaid_NameWithHashEntity_IsNotReadAsAnEntity()
+    {
+        var b = new PipelineBuilder().WithoutExtendedValidation();
+        _ = b.AddSource<InMemorySourceNode<int>, int>("item#35;");
+
+        var pipeline = b.Build();
+        var mermaid = PipelineGraphExporter.ToMermaid(pipeline.Graph);
+
+        // '#' is escaped before anything else, so the literal text "#35;" renders as written.
+        mermaid.Should().Contain("item#35;35;");
+    }
+
+    [Fact]
     public void ToMermaid_NameWithQuote_UsesEntityForm()
     {
         var b = new PipelineBuilder().WithoutExtendedValidation();

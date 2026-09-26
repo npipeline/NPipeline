@@ -73,7 +73,7 @@ public sealed class PipelineValidationTests
 
         var act = () => builder.Build();
 
-        act.Should().Throw<PipelineValidationException>();
+        act.Should().Throw<PipelineValidationException>().WithMessage("*Isolated nodes*");
     }
 
     [Fact]
@@ -86,7 +86,7 @@ public sealed class PipelineValidationTests
 
         var act = () => builder.Build();
 
-        act.Should().Throw<PipelineValidationException>();
+        act.Should().Throw<PipelineValidationException>().WithMessage("*Isolated nodes*");
     }
 
     [Fact]
@@ -155,9 +155,8 @@ public sealed class PipelineValidationTests
             _ = b.AddPreconfiguredNodeInstance(source.Id, StreamingSource<int>.Of(Enumerable.Range(1, 200)));
             var a = b.AddTransform<T, int, int>("a");
             var d = b.AddTransform<T, int, int>("d");
-            var first = b.AddSink<CollectingSink<int>, int>("first");
-            var second = b.AddSink<CollectingSink<int>, int>("second");
-            _ = b.Connect(source, a).Connect(source, d).Connect(a, first).Connect(d, second);
+            var sink = b.AddSink<CollectingSink<int>, int>("k");
+            _ = b.Connect(source, a).Connect(source, d).Connect(a, sink).Connect(d, sink);
             _ = b.WithBranchOptions(source.Id, new BranchOptions(4));
         });
 
@@ -179,7 +178,7 @@ public sealed class PipelineValidationTests
 
         act.Should()
             .Throw<PipelineValidationException>()
-            .WithMessage("*must have both its left and right inputs connected*");
+            .WithMessage("*missing its right input (Right); connected upstream types: Left*");
     }
 
     [Fact]
@@ -195,7 +194,7 @@ public sealed class PipelineValidationTests
 
         act.Should()
             .Throw<PipelineValidationException>()
-            .WithMessage("*must have both its left and right inputs connected*");
+            .WithMessage("*missing its left input (Left); connected upstream types: Right*");
     }
 
     [Fact]
@@ -292,11 +291,42 @@ public sealed class PipelineValidationTests
         _ = builder.Connect(source, sink);
         _ = builder.WithResilience(options => options with { ItemRetry = new ItemRetryOptions { MaxRetries = -1 } });
 
-        var validate = () => builder.Validate();
-        validate.Should().Throw<InvalidOperationException>().WithMessage("*resilience options for the pipeline are invalid*");
+        // Configuration that cannot become a graph is reported, not thrown, by both.
+        var validation = builder.Validate();
+        validation.IsValid.Should().BeFalse();
+        validation.Errors.Should().ContainMatch("*resilience options for the pipeline are invalid*");
 
-        var tryBuild = () => builder.TryBuild(out _, out _);
-        tryBuild.Should().Throw<InvalidOperationException>().WithMessage("*resilience options for the pipeline are invalid*");
+        builder.TryBuild(out var pipeline, out var tryBuildResult).Should().BeFalse();
+        pipeline.Should().BeNull();
+        tryBuildResult.Errors.Should().ContainMatch("*resilience options for the pipeline are invalid*");
+    }
+
+    [Fact]
+    public void Validate_And_TryBuild_Agree_OnResilienceOptionsRule()
+    {
+        // Validate() used to build a graph without the error-handling configuration, so this rule could never fire.
+        var builder = new PipelineBuilder();
+        var source = builder.AddSource<StreamingSource<int>, int>("s");
+        var sink = builder.AddSink<CollectingSink<int>, int>("k");
+        _ = builder.Connect(source, sink);
+        _ = builder.WithResilience(sink, o => o with { ItemRetry = o.ItemRetry with { MaxRetries = o.ItemRetry.MaxRetries + 4 } });
+
+        var validation = builder.Validate();
+        validation.IsValid.Should().BeFalse();
+        validation.Errors.Should().ContainMatch("*only transform nodes use*");
+
+        builder.TryBuild(out _, out var tryBuildResult).Should().BeFalse();
+        tryBuildResult.Errors.Should().ContainMatch("*only transform nodes use*");
+    }
+
+    [Fact]
+    public void Validate_And_TryBuild_Agree_OnAnEmptyBuilder()
+    {
+        var builder = new PipelineBuilder();
+
+        builder.Validate().Errors.Should().Contain("A pipeline must have at least one node.");
+        builder.TryBuild(out _, out var tryBuildResult).Should().BeFalse();
+        tryBuildResult.Errors.Should().Contain("A pipeline must have at least one node.");
     }
 
     [Fact]

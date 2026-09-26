@@ -38,7 +38,6 @@ internal sealed class MaterializingStrategy<TIn, TOut> : LineageMappingStrategyB
             yield return packet;
         }
 
-        // Every item has been mapped, so the node's per-item state can be released for the rest of the run.
-        LineageNodeOutcomeRegistry.GetWriter(pipelineId, nodeId).ClearAll();
+        // The node's per-item state is released by the adapter's cleanup once this stream completes.
     }
 }

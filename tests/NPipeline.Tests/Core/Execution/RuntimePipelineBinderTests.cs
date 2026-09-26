@@ -394,18 +394,19 @@ public sealed class RuntimePipelineBinderTests
     public async Task BindAsync_DeadLetterSinkCreatedFromType_IsRegisteredForDisposal()
     {
         // Arrange
+        DisposableDeadLetterSink.Disposed = 0;
         var graph = CreateGraph(deadLetterSinkType: typeof(DisposableDeadLetterSink));
         var context = new PipelineContext();
 
         // Act
         var result = await _binder.BindAsync(graph, context);
 
-        // Assert - created by the default factory, which hands ownership to the caller
+        // Assert - created by the default factory, which hands ownership to the caller, so the run disposes it.
+        // It is not tied to the context, which a caller may reuse for many runs.
         _ = result.DeadLetterSink.Should().BeOfType<DisposableDeadLetterSink>();
-
-        // The run's context disposes it; the pipeline must register it for disposal.
+        result.RunOwnedInstances.Should().ContainSingle().Which.Should().BeSameAs(result.DeadLetterSink);
         await context.DisposeAsync();
-        DisposableDeadLetterSink.Disposed.Should().Be(1);
+        DisposableDeadLetterSink.Disposed.Should().Be(0);
     }
 
     [Fact]
@@ -422,8 +423,7 @@ public sealed class RuntimePipelineBinderTests
 
         // Assert
         _ = result.DeadLetterSink.Should().BeSameAs(instance);
-        await context.DisposeAsync();
-        DisposableDeadLetterSink.Disposed.Should().Be(0, "the user owns an instance passed directly");
+        result.RunOwnedInstances.Should().BeEmpty("the user owns an instance passed directly");
     }
 
     [Fact]
@@ -440,8 +440,7 @@ public sealed class RuntimePipelineBinderTests
 
         // Assert
         _ = result.DeadLetterSink.Should().BeSameAs(factory.Sink);
-        await context.DisposeAsync();
-        DisposableDeadLetterSink.Disposed.Should().Be(0, "the container owns created instances when the factory says so");
+        result.RunOwnedInstances.Should().BeEmpty("the container owns created instances when the factory says so");
     }
 
     [Fact]
@@ -457,11 +456,9 @@ public sealed class RuntimePipelineBinderTests
 
         // Act
         var containerResult = await _binder.BindAsync(graph, context);
-        await context.DisposeAsync();
-        DisposableDeadLetterSink.Disposed.Should().Be(0, "the container tracks the instance the factory resolved");
+        containerResult.RunOwnedInstances.Should().BeEmpty("the container tracks the instance the factory resolved");
 
         // A second run through the same factory constructs a fresh instance, which the caller owns.
-        DisposableDeadLetterSink.Disposed = 0;
         factory.ResolveFromContainer = false;
         var secondContext = new PipelineContext(new PipelineContextConfiguration(ErrorHandlerFactory: factory));
         var constructedResult = await _binder.BindAsync(graph, secondContext);
@@ -469,8 +466,8 @@ public sealed class RuntimePipelineBinderTests
         // Assert
         _ = containerResult.DeadLetterSink.Should().BeSameAs(containerSink);
         _ = constructedResult.DeadLetterSink.Should().NotBeSameAs(containerSink);
-        await secondContext.DisposeAsync();
-        DisposableDeadLetterSink.Disposed.Should().Be(1, "an instance the factory constructed is the caller's to release");
+        constructedResult.RunOwnedInstances.Should().ContainSingle("an instance the factory constructed is the run's to release")
+            .Which.Should().BeSameAs(constructedResult.DeadLetterSink);
     }
 
     [Fact]
@@ -487,8 +484,7 @@ public sealed class RuntimePipelineBinderTests
 
         // Assert
         _ = result.LineageSink.Should().BeSameAs(factory.Sink);
-        await context.DisposeAsync();
-        DisposableLineageSink.Disposed.Should().Be(0, "the container owns created instances when the factory says so");
+        result.RunOwnedInstances.Should().BeEmpty("the container owns created instances when the factory says so");
     }
 
     [Fact]
@@ -504,8 +500,7 @@ public sealed class RuntimePipelineBinderTests
 
         // Assert
         _ = result.LineageSink.Should().BeOfType<DisposableLineageSink>();
-        await context.DisposeAsync();
-        DisposableLineageSink.Disposed.Should().Be(1);
+        result.RunOwnedInstances.Should().ContainSingle().Which.Should().BeOfType<DisposableLineageSink>();
     }
 
     [Fact]
@@ -521,8 +516,23 @@ public sealed class RuntimePipelineBinderTests
 
         // Assert
         _ = result.ResiliencePolicy.Should().BeOfType<DisposableResiliencePolicy>();
-        await context.DisposeAsync();
-        DisposableResiliencePolicy.Disposed.Should().Be(1);
+        result.RunOwnedInstances.Should().ContainSingle().Which.Should().BeSameAs(result.ResiliencePolicy);
+    }
+
+    [Fact]
+    public async Task RunAsync_DeadLetterSinkCreatedFromType_IsDisposedByEachRunOfAReusedContext()
+    {
+        // Arrange - a long-lived context reused for several runs must not accumulate one sink per run.
+        DisposableDeadLetterSink.Disposed = 0;
+        await using var context = new PipelineContext();
+        var runner = PipelineRunner.Create();
+
+        // Act
+        await runner.RunAsync<DeadLetterSinkPipelineDefinition>(context);
+        await runner.RunAsync<DeadLetterSinkPipelineDefinition>(context);
+
+        // Assert - released by each run, before the context is disposed
+        DisposableDeadLetterSink.Disposed.Should().Be(2);
     }
 
     [Fact]
@@ -625,6 +635,33 @@ public sealed class RuntimePipelineBinderTests
 
         _ = second.Graph.ExecutionOptions.NodeExecutionAnnotations
             .Should().BeSameAs(first.Graph.ExecutionOptions.NodeExecutionAnnotations);
+    }
+
+    [Fact]
+    public async Task BindAsync_GraphCopiedWithDifferentNodes_RecomputesAnnotations()
+    {
+        // A with-expression keeps the ExecutionOptions instance the memo is keyed on, but changes the nodes the
+        // annotations are computed from.
+        var graph = PipelineGraphBuilder.Create()
+            .WithNodes([new NodeDefinition("node", "node", typeof(object), NodeKind.Join, typeof(int), typeof(int))])
+            .WithEdges(ImmutableArray<Edge>.Empty)
+            .WithPreconfiguredNodeInstances(ImmutableDictionary<string, INode>.Empty)
+            .WithItemLevelLineageEnabled(false)
+            .Build();
+
+        var copy = graph with
+        {
+            Nodes = [new NodeDefinition("node", "node", typeof(object), NodeKind.Join, typeof(int), typeof(string))],
+        };
+
+        var context = new PipelineContext();
+        _ = await _binder.BindAsync(graph, context);
+        var result = await _binder.BindAsync(copy, context);
+
+        var contract = (RuntimeNodeStreamContract)result.Graph.ExecutionOptions.NodeExecutionAnnotations![
+            ExecutionAnnotationKeys.RuntimeStreamContractForNode("node")];
+
+        _ = contract.EffectiveOutputItemType.Should().Be<string>();
     }
 
     private sealed class DisposableDeadLetterSink : IDeadLetterSink, IAsyncDisposable

@@ -1,5 +1,4 @@
 using System.Runtime.CompilerServices;
-using NPipeline.DataFlow.Branching;
 
 namespace NPipeline.DataFlow.DataStreams;
 
@@ -16,7 +15,7 @@ internal sealed class AsyncEnumerableDataStream<T>(IAsyncEnumerable<T> source, s
 
     public async IAsyncEnumerable<object?> ToAsyncEnumerable([EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        await foreach (var item in source.WithCancellation(cancellationToken))
+        await foreach (var item in source.WithCancellation(cancellationToken).ConfigureAwait(false))
         {
             yield return item;
         }
@@ -27,12 +26,4 @@ internal sealed class AsyncEnumerableDataStream<T>(IAsyncEnumerable<T> source, s
         if (source is IAsyncDisposable disposable)
             await disposable.DisposeAsync().ConfigureAwait(false);
     }
-}
-
-/// <summary>
-///     Implemented by data streams that expose <see cref="BranchMetrics" /> for a fan-out (branch or route) wrapper.
-/// </summary>
-internal interface IHasBranchMetrics
-{
-    BranchMetrics Metrics { get; }
 }

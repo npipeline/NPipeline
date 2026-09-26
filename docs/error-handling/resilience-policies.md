@@ -179,10 +179,11 @@ The policy applies as soon as it's registered. There's nothing to enable on each
 You can also supply a policy through the context instead of the builder, with
 `PipelineContextConfiguration.WithResilience(policy)`. The full precedence at run time is:
 
-1. The graph's policy instance (`builder.AddResiliencePolicy(policy)`).
-2. The graph's policy type (`builder.AddResiliencePolicy<T>()`).
-3. The context's policy (`PipelineContextConfiguration.WithResilience(policy)`).
-4. `DefaultResiliencePolicy.Instance`.
+1. The node's own policy (`builder.AddResiliencePolicy(handle, policy)`).
+2. The graph's policy instance (`builder.AddResiliencePolicy(policy)`).
+3. The graph's policy type (`builder.AddResiliencePolicy<T>()`).
+4. The context's policy (`PipelineContextConfiguration.WithResilience(policy)`).
+5. `DefaultResiliencePolicy.Instance`.
 
 A graph-level policy therefore takes precedence over a context-level one.
 

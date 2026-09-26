@@ -122,7 +122,8 @@ builder.Connect(source, lookup);
 
 ### Custom Lookup Nodes
 
-For dynamic lookups (database, API), extend `LookupNode`:
+For dynamic lookups (database, API), extend `LookupNode`. `LookupAsync` returns a `ValueTask`, so a lookup that
+completes synchronously, such as a cache hit, costs no allocation:
 
 ```csharp
 public class CustomerLookup : LookupNode<Order, int, Customer, EnrichedOrder>
@@ -130,7 +131,7 @@ public class CustomerLookup : LookupNode<Order, int, Customer, EnrichedOrder>
     protected override int ExtractKey(Order input, PipelineContext context)
         => input.CustomerId;
 
-    protected override async Task<Customer?> LookupAsync(
+    protected override async ValueTask<Customer?> LookupAsync(
         int key, PipelineContext context, CancellationToken ct)
         => await _db.FindCustomerAsync(key, ct);
 

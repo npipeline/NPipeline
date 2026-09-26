@@ -42,8 +42,7 @@ public sealed class BranchNode<T> : TransformNode<T, T>
     private readonly List<Func<T, Task>> _outputHandlers = [];
     private readonly object _syncLock = new();
     private volatile Func<T, Task>[]? _frozen;
-    private volatile string[]? _activityNames;
-    private volatile string? _activityNodeId;
+    private volatile ActivityNameCache? _activityNames;
 
     /// <summary>
     ///     Gets or sets the error handling mode for branch handler exceptions.
@@ -66,7 +65,6 @@ public sealed class BranchNode<T> : TransformNode<T, T>
 
             _outputHandlers.Add(outputHandler);
             _activityNames = null;
-            _activityNodeId = null;
         }
     }
 
@@ -196,11 +194,11 @@ public sealed class BranchNode<T> : TransformNode<T, T>
         // The hot path takes no lock: the cached arrays are only replaced, never mutated, and the node id is fixed for
         // a run. A mismatch rebuilds outside the lock and publishes the new array with a single reference store.
         var nodeId = ResolveNodeId(context);
-        var cachedNames = _activityNames;
-        var cachedNodeId = _activityNodeId;
 
-        if (cachedNames is not null && cachedNodeId == nodeId)
-            return cachedNames;
+        // One immutable holder, read once: two runs sharing this instance under different node ids cannot pair one
+        // run's id with the other run's names.
+        if (_activityNames is { } cached && cached.NodeId == nodeId)
+            return cached.Names;
 
         var count = _frozen?.Length ?? _outputHandlers.Count;
         var built = new string[count];
@@ -208,8 +206,7 @@ public sealed class BranchNode<T> : TransformNode<T, T>
         for (var i = 0; i < count; i++)
             built[i] = $"Branch_{nodeId}_{i}";
 
-        _activityNodeId = nodeId;
-        _activityNames = built;
+        _activityNames = new ActivityNameCache(nodeId, built);
         return built;
     }
 
@@ -314,6 +311,8 @@ public sealed class BranchNode<T> : TransformNode<T, T>
                 branchException.NodeId);
         }
     }
+
+    private sealed record ActivityNameCache(string NodeId, string[] Names);
 }
 
 /// <summary>

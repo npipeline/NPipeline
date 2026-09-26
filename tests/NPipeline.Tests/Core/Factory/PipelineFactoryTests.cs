@@ -59,6 +59,26 @@ public sealed class PipelineFactoryTests
         _ = pipeline.Graph.PreconfiguredNodeInstances["sink"].Should().BeSameAs(overrideSink);
     }
 
+    [Fact]
+    public void Create_ThatFailsAfterDefine_DisposesTheDefinitionsInstancesButNotTheCallers()
+    {
+        // Arrange: the definition creates a sink instance, then an unknown context id fails the build.
+        var factory = new PipelineFactory();
+        var context = PipelineContext.CreateDefault();
+        var callerSink = new DisposableSinkNode();
+        var definition = new DisposableSinkPipelineDefinition();
+
+        context.NodeEnvironment.PreconfiguredNodeInstances["Unknown"] = callerSink;
+
+        // Act
+        var act = () => factory.Create(definition, context);
+
+        // Assert
+        _ = act.Should().Throw<InvalidOperationException>();
+        _ = definition.Sink!.DisposeCount.Should().Be(1, "no pipeline reaches the run, so the factory must release it");
+        _ = callerSink.DisposeCount.Should().Be(0, "the caller still owns what it supplied");
+    }
+
     // Test Node Implementations
     private sealed class TestSourceNode : SourceNode<string>
     {
@@ -77,6 +97,29 @@ public sealed class PipelineFactoryTests
         {
             var source = builder.AddSource<TestSourceNode, string>("source");
             var sink = builder.AddSink<TestSinkNode, string>("sink");
+            builder.Connect(source, sink);
+        }
+    }
+
+    private sealed class DisposableSinkNode : SinkNode<string>, IDisposable
+    {
+        public int DisposeCount { get; private set; }
+
+        public override Task ConsumeAsync(IDataStream<string> input, PipelineContext context, CancellationToken cancellationToken) =>
+            Task.CompletedTask;
+
+        public void Dispose() => DisposeCount++;
+    }
+
+    private sealed class DisposableSinkPipelineDefinition : IPipelineDefinition
+    {
+        public DisposableSinkNode? Sink { get; private set; }
+
+        public void Define(PipelineBuilder builder, PipelineContext context)
+        {
+            Sink = new DisposableSinkNode();
+            var source = builder.AddSource<TestSourceNode, string>("source");
+            var sink = builder.AddSink(Sink, "sink");
             builder.Connect(source, sink);
         }
     }

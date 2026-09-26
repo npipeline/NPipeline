@@ -15,7 +15,7 @@ namespace NPipeline.Graph;
 public sealed record PipelineGraph
 {
     private readonly ImmutableArray<NodeDefinition> _nodes;
-    private FrozenDictionary<string, NodeDefinition>? _nodeDefinitionMap;
+    private readonly NodeDefinitionMapCache _nodeDefinitionMap = new();
 
     /// <summary>
     ///     Creates a new PipelineGraph with the specified core parameters.
@@ -52,8 +52,8 @@ public sealed record PipelineGraph
             _nodes = value;
 
             // The map is derived from Nodes, so assigning new nodes must invalidate it. A with-expression that does
-            // not set Nodes copies the cached map and reuses it.
-            _nodeDefinitionMap = null;
+            // not set Nodes shares the cache and reuses its map.
+            _nodeDefinitionMap = new NodeDefinitionMapCache();
         }
     }
 
@@ -72,7 +72,7 @@ public sealed record PipelineGraph
     ///     It is computed from <see cref="Nodes" /> on first access, and recomputed whenever <see cref="Nodes" /> is set.
     /// </summary>
     public FrozenDictionary<string, NodeDefinition> NodeDefinitionMap =>
-        _nodeDefinitionMap ??= _nodes.ToFrozenDictionary(n => n.Id);
+        _nodeDefinitionMap.Map ??= _nodes.ToFrozenDictionary(n => n.Id);
 
     /// <summary>
     ///     The error handling configuration.
@@ -94,6 +94,19 @@ public sealed record PipelineGraph
     ///     Null for pipelines without composite nodes.
     /// </summary>
     public FrozenDictionary<string, PipelineGraph>? ChildGraphs { get; init; }
+
+    /// <summary>
+    ///     Holds the lazily built node map. Record equality compares every field, so the holder always compares equal:
+    ///     building the map on first access must not change the graph's equality or hash code.
+    /// </summary>
+    private sealed class NodeDefinitionMapCache
+    {
+        public FrozenDictionary<string, NodeDefinition>? Map;
+
+        public override bool Equals(object? obj) => obj is NodeDefinitionMapCache;
+
+        public override int GetHashCode() => 0;
+    }
 }
 
 /// <summary>

@@ -44,7 +44,7 @@ public sealed class DiLineageFactory : ILineageFactory
 
             if (resolved is not null)
             {
-                _ = _containerOwned.TryAdd(resolved, 0);
+                MarkContainerOwned(resolved);
                 return resolved;
             }
 
@@ -78,7 +78,7 @@ public sealed class DiLineageFactory : ILineageFactory
 
             if (resolved is not null)
             {
-                _ = _containerOwned.TryAdd(resolved, 0);
+                MarkContainerOwned(resolved);
                 return resolved;
             }
 
@@ -112,4 +112,14 @@ public sealed class DiLineageFactory : ILineageFactory
     /// </summary>
     public PipelineLineageReport? CreateLineageReport(string pipelineName, Guid pipelineId, PipelineGraph graph, Guid runId)
         => LineageGenerator.Generate(pipelineName, pipelineId, graph, runId);
+
+    /// <summary>
+    ///     Remembers an instance the container owns. Only disposable instances matter to the ownership check, so the
+    ///     others are not held for the factory's lifetime.
+    /// </summary>
+    private void MarkContainerOwned(object instance)
+    {
+        if (instance is IDisposable or IAsyncDisposable)
+            _ = _containerOwned.TryAdd(instance, 0);
+    }
 }

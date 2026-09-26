@@ -84,9 +84,10 @@ public sealed class ResilienceConfigurationRuleTests
 
         builder.WithResilience(transform, o => o with { NodeRestart = new NodeRestartOptions { MaxRestarts = 3, MaxReplayWindow = 0 } });
 
-        var act = () => builder.TryBuild(out _, out _);
-
-        act.Should().Throw<InvalidOperationException>().WithMessage("*node 'transform'*");
+        // TryBuild reports configuration that cannot become a graph instead of throwing.
+        builder.TryBuild(out var pipeline, out var result).Should().BeFalse();
+        pipeline.Should().BeNull();
+        result.Errors.Should().ContainMatch("*node 'transform'*");
     }
 
     [Theory]

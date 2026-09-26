@@ -19,7 +19,8 @@ internal sealed class SynchronizedDictionary : IDictionary<string, object>
 
     public SynchronizedDictionary(IDictionary<string, object> inner)
     {
-        _inner = inner ?? throw new ArgumentNullException(nameof(inner));
+        ArgumentNullException.ThrowIfNull(inner);
+        _inner = inner;
     }
 
     public object this[string key]

@@ -1,6 +1,8 @@
 using System.Runtime.ExceptionServices;
+using Microsoft.Extensions.Logging;
 using NPipeline.ErrorHandling;
 using NPipeline.Observability;
+using NPipeline.Observability.Logging;
 using NPipeline.Observability.Tracing;
 using NPipeline.Pipeline;
 
@@ -23,9 +25,18 @@ internal sealed class PipelineExecutionFailureStage(IObservabilitySurface observ
         {
             await observabilitySurface.FailPipeline(definitionType, context, ex, pipelineActivity).ConfigureAwait(false);
         }
-        catch
+        catch (Exception observerFailure)
         {
             // A failing observer must not replace the pipeline error that is about to be thrown.
+            try
+            {
+                PipelineRunnerLogMessages.FailureReportingFailed(
+                    context.Observability.LoggerFactory.CreateLogger(nameof(PipelineRunner)), observerFailure, observerFailure.GetType().Name);
+            }
+            catch
+            {
+                // A failing logger has nowhere to report to.
+            }
         }
 
         // A cancellation of this run is preserved raw. A foreign OperationCanceledException, such as a client

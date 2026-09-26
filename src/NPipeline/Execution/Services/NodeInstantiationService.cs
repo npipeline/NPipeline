@@ -3,6 +3,7 @@ using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using NPipeline.DataFlow;
+using NPipeline.Execution.Caching;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.Execution.Plans;
 using NPipeline.Graph;
@@ -211,9 +212,12 @@ public sealed class NodeInstantiationService : INodeInstantiationService
         MethodInfo strategyCoercion,
         Type nodeInterfaceDefinition)
     {
-        var cacheKey = (inType, outType, strategyInterface, nodeInterfaceDefinition);
-        var cached = StrategyDelegates.GetOrAdd(cacheKey,
-            _ => CompileStrategyDelegate(inType, outType, strategyInterface, executeMethodName, strategyCoercion, nodeInterfaceDefinition));
+        (Type In, Type Out, Type Strategy, Type Node) cacheKey = (inType, outType, strategyInterface, nodeInterfaceDefinition);
+        var cached = CollectibleAwareCache.GetOrAdd(StrategyDelegates, cacheKey,
+            inType.IsCollectible || outType.IsCollectible,
+            static (key, arg) => CompileStrategyDelegate(key.In, key.Out, key.Strategy, arg.executeMethodName,
+                arg.strategyCoercion, key.Node),
+            (executeMethodName, strategyCoercion));
 
         return (node, strategy, pipe, ctx, ct) => cached(node, strategy, pipe, ctx, nodeId, ct);
     }
@@ -311,7 +315,7 @@ public sealed class NodeInstantiationService : INodeInstantiationService
                 $"Source node '{def.Id}' does not implement {sourceInterface.Name}.");
         }
 
-        return SourceDelegates.GetOrAdd(outputType, static type => CompileSourceDelegate(type));
+        return CollectibleAwareCache.GetOrAdd(SourceDelegates, outputType, outputType.IsCollectible, static type => CompileSourceDelegate(type));
     }
 
     private static Func<INode, PipelineContext, CancellationToken, Task<IDataStream>> CompileSourceDelegate(Type outputType)
@@ -368,7 +372,7 @@ public sealed class NodeInstantiationService : INodeInstantiationService
                 $"Sink node '{def.Id}' does not implement {sinkInterface.Name}.");
         }
 
-        return SinkDelegates.GetOrAdd(inputType, static type => CompileSinkDelegate(type));
+        return CollectibleAwareCache.GetOrAdd(SinkDelegates, inputType, inputType.IsCollectible, static type => CompileSinkDelegate(type));
     }
 
     private static Func<INode, IDataStream, PipelineContext, CancellationToken, Task> CompileSinkDelegate(Type inputType)
@@ -455,7 +459,7 @@ public sealed class NodeInstantiationService : INodeInstantiationService
         if (outputType is null)
             return null;
 
-        return OutputAdapters.GetOrAdd(outputType, static type => CompileAdapter(type));
+        return CollectibleAwareCache.GetOrAdd(OutputAdapters, outputType, outputType.IsCollectible, static type => CompileAdapter(type));
     }
 
     private static Func<IDataStream, string, IDataStream> CompileAdapter(Type outputType)

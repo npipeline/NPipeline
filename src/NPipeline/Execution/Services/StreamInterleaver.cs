@@ -7,6 +7,10 @@ namespace NPipeline.Execution.Services;
 ///     Merges several async streams into one, in arrival order. The first failure surfaces at once with its original
 ///     type and stops the other producers. Consumer exit also stops them. Buffering is bounded.
 /// </summary>
+/// <remarks>
+///     Disposing the merged enumerator waits for every producer to stop, so each source must observe the enumerator
+///     cancellation token. A source that ignores it delays disposal until its next item arrives.
+/// </remarks>
 internal static class StreamInterleaver
 {
     public const int DefaultCapacity = 1024;

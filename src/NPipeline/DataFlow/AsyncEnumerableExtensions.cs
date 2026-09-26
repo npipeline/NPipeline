@@ -116,9 +116,10 @@ public static class AsyncEnumerableExtensions
                                 batch.Add(item);
                         }
                     }
-                    catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+                    catch (Exception) when (!cancellationToken.IsCancellationRequested)
                     {
-                        // The window elapsed.
+                        // The window elapsed, or the producer failed. Emit the partial batch either way; a producer
+                        // failure is rethrown by the next WaitToReadAsync on the faulted channel.
                     }
                 }
 

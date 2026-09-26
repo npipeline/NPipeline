@@ -94,23 +94,25 @@ public sealed class MergeStrategyTests
     public async Task Interleave_EarlyConsumerExit_StopsTheProducers()
     {
         const int capacity = 4;
-        var yielded = 0;
+        var yielded = new YieldCounter();
 
         var merged = MergeStrategies.InterleaveBounded<int>(
-            [CountingSource("a", () => yielded), CountingSource("b", () => yielded)], capacity, CancellationToken.None);
+            [CountingSource("a", yielded), CountingSource("b", yielded)], capacity, CancellationToken.None);
 
         var enumerator = merged.GetAsyncEnumerator();
         _ = await enumerator.MoveNextAsync();
         await enumerator.DisposeAsync();
 
         await Task.Delay(200);
-        Volatile.Read(ref yielded).Should().BeLessThanOrEqualTo(capacity + 4,
+        // Slack: the item handed to the consumer, plus one pending write and one counted-but-not-yet-written item per
+        // producer.
+        yielded.Count.Should().BeLessThanOrEqualTo(capacity + 5,
             "the producers must stop once the consumer leaves");
 
         // And they stay stopped.
-        var afterSecondWait = Volatile.Read(ref yielded);
+        var afterSecondWait = yielded.Count;
         await Task.Delay(200);
-        Volatile.Read(ref yielded).Should().Be(afterSecondWait, "the producers must stay stopped once the consumer leaves");
+        yielded.Count.Should().Be(afterSecondWait, "the producers must stay stopped once the consumer leaves");
     }
 
     /// <summary>
@@ -166,19 +168,19 @@ public sealed class MergeStrategyTests
         try { await run; } catch { /* cancelled */ }
     }
 
-    private static IDataStream CountingSource(string name, Func<int> yielded) =>
+    private static IDataStream CountingSource(string name, YieldCounter yielded) =>
         new DataStream<int>(ProduceForever(yielded), name);
 
     private static IDataStream RecordingSource(string name, DisposeFlag flag) =>
         new DataStream<int>(ProduceRecording(flag), name);
 
     private static async IAsyncEnumerable<int> ProduceForever(
-        Func<int> yielded, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        YieldCounter yielded, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         for (var i = 0; ; i++)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            _ = yielded();
+            yielded.Increment();
             await Task.Yield();
             yield return i;
         }
@@ -205,6 +207,15 @@ public sealed class MergeStrategyTests
     private sealed class DisposeFlag
     {
         public volatile bool Disposed;
+    }
+
+    private sealed class YieldCounter
+    {
+        private int _count;
+
+        public int Count => Volatile.Read(ref _count);
+
+        public void Increment() => Interlocked.Increment(ref _count);
     }
 
     private sealed class CountingYieldSource : SourceNode<int>

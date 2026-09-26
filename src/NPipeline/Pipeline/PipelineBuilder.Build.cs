@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Collections.Frozen;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using NPipeline.Configuration;
 using NPipeline.Execution.Annotations;
@@ -111,27 +112,11 @@ public sealed partial class PipelineBuilder
             return false;
         }
 
-        if (NodeState.Nodes.Count == 0)
+        if (!TryCreateGraph(includeChildGraphs: true, out var graph, out var preBuildIssue))
         {
-            validationResult = new PipelineValidationResult(
-                ImmutableList.Create(new ValidationIssue(ValidationSeverity.Error, "A pipeline must have at least one node.", "Structure")));
-
+            validationResult = new PipelineValidationResult(ImmutableList.Create(preBuildIssue));
             return false;
         }
-
-        if (_config.ItemLevelLineageEnabled && !Lineage.SupportsItemLevelLineage)
-        {
-            validationResult = new PipelineValidationResult(
-                ImmutableList.Create(new ValidationIssue(ValidationSeverity.Error,
-                    "Item-level lineage requires NPipeline.Extensions.Lineage. " +
-                    "Install the NPipeline.Extensions.Lineage package and call services.AddNPipelineLineage() " +
-                    "in your DI configuration.",
-                    "Lineage")));
-
-            return false;
-        }
-
-        var graph = CreateGraph(includeChildGraphs: true);
 
         validationResult = _config.GraphValidationMode == GraphValidationMode.Off
             ? PipelineValidationResult.Success
@@ -142,6 +127,50 @@ public sealed partial class PipelineBuilder
 
         _built = true;
         pipeline = new Pipeline(graph) { BuilderDisposables = BuilderDisposables };
+        return true;
+    }
+
+    /// <summary>
+    ///     Assembles the pipeline graph, reporting the problems that stop a graph being created at all (no nodes, lineage
+    ///     without its extension, invalid resilience configuration) as a validation issue instead of throwing.
+    /// </summary>
+    /// <param name="includeChildGraphs">Whether to build and attach child graphs for composite nodes.</param>
+    /// <param name="graph">The assembled graph, when one could be created.</param>
+    /// <param name="issue">The reason no graph could be created, otherwise null.</param>
+    /// <returns>Whether a graph was created.</returns>
+    internal bool TryCreateGraph(bool includeChildGraphs, [NotNullWhen(true)] out PipelineGraph? graph, [NotNullWhen(false)] out ValidationIssue? issue)
+    {
+        graph = null;
+
+        if (NodeState.Nodes.Count == 0)
+        {
+            issue = new ValidationIssue(ValidationSeverity.Error, "A pipeline must have at least one node.", "Structure");
+            return false;
+        }
+
+        if (_config.ItemLevelLineageEnabled && !Lineage.SupportsItemLevelLineage)
+        {
+            issue = new ValidationIssue(ValidationSeverity.Error,
+                "Item-level lineage requires NPipeline.Extensions.Lineage. " +
+                "Install the NPipeline.Extensions.Lineage package and call services.AddNPipelineLineage() " +
+                "in your DI configuration.",
+                "Lineage");
+
+            return false;
+        }
+
+        try
+        {
+            graph = CreateGraph(includeChildGraphs);
+        }
+        catch (InvalidOperationException ex)
+        {
+            // Configuration that cannot be turned into a graph, such as invalid resilience options.
+            issue = new ValidationIssue(ValidationSeverity.Error, ex.Message, "Configuration");
+            return false;
+        }
+
+        issue = null;
         return true;
     }
 
@@ -295,7 +324,7 @@ public sealed partial class PipelineBuilder
 
         // Warn once per assembly and runtime profile, so a graph built on every run (and every item of a composite)
         // does not flood the trace.
-        if (!ProfileMismatchWarned.TryAdd((declaringAssembly, _config.OptimizationProfile), 0))
+        if (!declaringAssembly.IsCollectible && !ProfileMismatchWarned.TryAdd((declaringAssembly, _config.OptimizationProfile), 0))
             return;
 
         Trace.TraceWarning(
@@ -303,8 +332,6 @@ public sealed partial class PipelineBuilder
             $"and compile-time analyzer profile '{compileTimeProfile}'. " +
             "Align PipelineBuilder.WithOptimizationProfile(...) and <NPipelineOptimizationProfile> to avoid analyzer/runtime drift.");
     }
-
-    private static Assembly? EntryAssembly => Assembly.GetEntryAssembly();
 
     private bool TryResolveCompileTimeOptimizationProfile(out PipelineOptimizationProfile compileTimeProfile, out Assembly declaringAssembly)
     {
@@ -326,7 +353,7 @@ public sealed partial class PipelineBuilder
     {
         var seen = new HashSet<Assembly>();
 
-        var entryAssembly = EntryAssembly;
+        var entryAssembly = Assembly.GetEntryAssembly();
 
         if (entryAssembly is not null && seen.Add(entryAssembly))
             yield return entryAssembly;
@@ -347,7 +374,10 @@ public sealed partial class PipelineBuilder
         }
 
         var resolved = ReadOptimizationProfileMetadata(assembly);
-        _ = CompileTimeProfileByAssembly.TryAdd(assembly, resolved);
+
+        // A static entry would keep a collectible (plugin) assembly loaded for the life of the process.
+        if (!assembly.IsCollectible)
+            _ = CompileTimeProfileByAssembly.TryAdd(assembly, resolved);
 
         compileTimeProfile = resolved ?? default;
         return resolved is not null;
@@ -463,12 +493,14 @@ public sealed partial class PipelineBuilder
     }
 
     /// <summary>
-    ///     Disposes the instances a child builder created, once each. The builder disposables and the preconfigured
-    ///     instances overlap, so both are visited with reference equality.
+    ///     Disposes the instances a builder created, once each. The builder disposables and the preconfigured instances
+    ///     overlap, so both are visited with reference equality.
     /// </summary>
-    private static void DisposeBuilderInstances(PipelineBuilder builder)
+    /// <param name="builder">The builder whose instances are disposed.</param>
+    /// <param name="exclude">Instances the caller supplied and still owns, which are left alone.</param>
+    internal static void DisposeBuilderInstances(PipelineBuilder builder, IEnumerable<object>? exclude = null)
     {
-        var seen = new HashSet<object>(ReferenceEqualityComparer.Instance);
+        var seen = new HashSet<object>(exclude ?? [], ReferenceEqualityComparer.Instance);
         var candidates = builder.BuilderDisposables.Concat(builder.NodeState.PreconfiguredNodeInstances.Values);
 
         foreach (var candidate in candidates)
@@ -490,7 +522,7 @@ public sealed partial class PipelineBuilder
             }
             catch (Exception ex)
             {
-                Trace.TraceWarning($"[NPipeline] Disposing a child-graph instance failed: {ex.Message}");
+                Trace.TraceWarning($"[NPipeline] Disposing a builder-created instance failed: {ex.Message}");
             }
         }
     }

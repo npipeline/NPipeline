@@ -77,12 +77,14 @@ public sealed record CircuitBreakerOptions
     public int MinimumCalls { get; init; } = 20;
 
     /// <summary>
-    ///     The period <see cref="FailureRate" /> is measured over. Default: 30 seconds.
+    ///     The period <see cref="FailureRate" /> is measured over. Must be positive and at most
+    ///     <see cref="int.MaxValue" /> milliseconds (about 24.8 days). Default: 30 seconds.
     /// </summary>
     public TimeSpan Window { get; init; } = TimeSpan.FromSeconds(30);
 
     /// <summary>
-    ///     How long the breaker stays open before it lets a probe through. Default: 30 seconds.
+    ///     How long the breaker stays open before it lets a probe through. Must be positive and at most
+    ///     <see cref="int.MaxValue" /> milliseconds (about 24.8 days). Default: 30 seconds.
     /// </summary>
     public TimeSpan OpenDuration { get; init; } = TimeSpan.FromSeconds(30);
 
@@ -104,7 +106,8 @@ public sealed record CircuitBreakerOptions
 
     /// <summary>
     ///     With <see cref="BreakerOpenBehavior.Pause" />, the longest one attempt waits for the breaker before it fails.
-    ///     Ignored with <see cref="BreakerOpenBehavior.Fail" />. Default: 5 minutes.
+    ///     Not used with <see cref="BreakerOpenBehavior.Fail" />, but still validated: it must be positive and at most
+    ///     <see cref="int.MaxValue" /> milliseconds (about 24.8 days). Default: 5 minutes.
     /// </summary>
     public TimeSpan MaxPause { get; init; } = TimeSpan.FromMinutes(5);
 

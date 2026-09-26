@@ -47,7 +47,8 @@ public sealed class ExecutionTracingTests
         // Assert - exactly one resilience span, and the restart's exception is recorded on it.
         var resilience = tracer.Spans.Should().ContainSingle(static s => s.Name == "Node.Resilience").Which;
         _ = resilience.Exceptions.Should().ContainSingle().Which.Should().BeOfType<InvalidOperationException>();
-        _ = resilience.Duration.Should().BeGreaterThan(TimeSpan.Zero, "the span must stay open across the run");
+        var lastItemAt = (DateTimeOffset)context.Items[DrainSinkNode.LastItemKey];
+        _ = resilience.Stopped.Should().BeOnOrAfter(lastItemAt, "the span must stay open until the node's last item");
     }
 
     private sealed class SlowDownstreamPipeline : IPipelineDefinition
@@ -114,10 +115,15 @@ public sealed class ExecutionTracingTests
 
     private sealed class DrainSinkNode : SinkNode<int>
     {
+        public const string LastItemKey = "test.drain.last-item";
+
         public override async Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken cancellationToken)
         {
             await foreach (var _ in input.WithCancellation(cancellationToken))
             {
+                // A short delay per item, so a span that ended early would clearly end before the last item.
+                await Task.Delay(5, cancellationToken);
+                context.Items[LastItemKey] = DateTimeOffset.UtcNow;
             }
         }
     }

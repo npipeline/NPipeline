@@ -416,6 +416,19 @@ public sealed class PipelineContext : IAsyncDisposable
         {
             // The run already ended; there is nothing left to cancel.
         }
+        catch (AggregateException ex)
+        {
+            // A user callback registered on the run's token threw. The run is being cancelled because of another
+            // failure, which must not be replaced by this one.
+            try
+            {
+                PipelineRunnerLogMessages.CancellationCallbackFailed(Observability.LoggerFactory.CreateLogger("PipelineContext"), ex);
+            }
+            catch
+            {
+                // A failing logger has nowhere to report to.
+            }
+        }
     }
 
     private static IDictionary<string, object> CreateOwnedDictionary(IOptimizationProfileBehavior profileBehavior) =>
@@ -430,7 +443,7 @@ public sealed class PipelineContext : IAsyncDisposable
     private static IDictionary<string, object> WrapIfNeeded(
         IDictionary<string, object> supplied,
         IOptimizationProfileBehavior profileBehavior) =>
-        profileBehavior.UsesThreadSafeContextDictionaries && supplied is not ConcurrentDictionary<string, object>
+        profileBehavior.UsesThreadSafeContextDictionaries && supplied is not (ConcurrentDictionary<string, object> or SynchronizedDictionary)
             ? new SynchronizedDictionary(supplied)
             : supplied;
 

@@ -254,7 +254,8 @@ internal abstract class LineageMappingStrategyBase
             ? recorded.RetryCount
             : (int?)null;
 
-        // The registry already resolves a replayed item's recorded outcome, so the recorded value is trusted here.
+        // The registry already resolves a replayed item's recorded outcome; merging with the base keeps the
+        // higher-priority of the two.
         var outcome = MergeOutcomeReason(baseOutcome, recorded.OutcomeReason);
 
         return (outcome, retryCount);
@@ -278,7 +279,8 @@ internal abstract class LineageMappingStrategyBase
             if (!LineageNodeOutcomeRegistry.TryGet(pipelineId, nodeId, contributorIndex, out var recorded))
                 continue;
 
-            // The registry already resolves a replayed item's recorded outcome, so the recorded value is trusted here.
+            // The registry already resolves each replayed item's recorded outcome; merging keeps the highest-priority
+            // outcome across the node's inputs.
             outcome = MergeOutcomeReason(outcome, recorded.OutcomeReason);
             maxRetryCount = Math.Max(maxRetryCount, recorded.RetryCount);
         }

@@ -163,7 +163,7 @@ public sealed class MyNodeFactory(IServiceProvider serviceProvider) : INodeFacto
 ```
 
 > [!WARNING]
-> Returning `true` for a container-owned instance disposes it twice: once by the run, once when the scope ends. Because a run instantiates nodes concurrently, back the collection with a thread-safe type or guard it with a lock.
+> Returning `true` for a container-owned instance disposes it twice: once by the run, once when the scope ends. Concurrent runs can share one factory (for example, a scoped factory used by several runs at once), so back the collection with a thread-safe type or guard it with a lock.
 
 A single factory can mix both. Track only the instances the container resolves and let everything the factory constructs itself be disposed by the run.
 

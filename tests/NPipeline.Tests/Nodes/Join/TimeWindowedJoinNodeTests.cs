@@ -229,17 +229,57 @@ public sealed class TimeWindowedJoinNodeTests
     [Fact]
     public async Task TimeWindowedJoin_InputThatNeverProduces_HoldsStateUntilEndOfStream()
     {
-        // The watermark stays at MinValue until both inputs have produced an item, so a left item
-        // whose window would otherwise be "late" is retained and matched at the end of the stream.
-        var node = new WindowedOrderCustomerJoin();
+        // The watermark stays at MinValue until both inputs have produced an item. Left items spanning several
+        // windows would otherwise close their windows as the left input advances; here they are all held until the
+        // stream ends, then emitted as unmatched.
+        var node = new WindowedOrderCustomerJoin { JoinType = JoinType.LeftOuter };
+        var inputCompleted = false;
 
-        var results = await RunAsync(node,
-            new TimedCustomer(1, "Alice", BaseTime.AddSeconds(5)),
-            new TimedOrder(10, 1, BaseTime.AddSeconds(10)));
+        async IAsyncEnumerable<object?> LeftOnly()
+        {
+            yield return new TimedCustomer(1, "A", BaseTime);
+            yield return new TimedCustomer(2, "B", BaseTime.AddMinutes(3));
+            yield return new TimedCustomer(3, "C", BaseTime.AddMinutes(10));
+            await Task.Yield();
+            inputCompleted = true;
+        }
 
+        var output = await node.ExecuteAsync(LeftOnly(), PipelineContext.CreateDefault());
+        var results = new List<Result>();
+        var emittedBeforeEnd = 0;
+
+        await foreach (var item in output)
+        {
+            if (!inputCompleted)
+                emittedBeforeEnd++;
+
+            results.Add((Result)item!);
+        }
+
+        emittedBeforeEnd.Should().Be(0, "no window may close while the right input has produced nothing");
         results.Should().BeEquivalentTo([
-            new Result(10, "Alice"),
+            new Result(null, "A"),
+            new Result(null, "B"),
+            new Result(null, "C"),
         ]);
+    }
+
+    [Fact]
+    public void TimeWindowedJoin_NegativeMaxOutOfOrderness_Throws()
+    {
+        var act = () => new NegativeLatenessJoin();
+
+        act.Should().Throw<ArgumentOutOfRangeException>();
+    }
+
+    [KeySelector(typeof(TimedCustomer), nameof(TimedCustomer.CustomerId))]
+    [KeySelector(typeof(TimedOrder), nameof(TimedOrder.CustomerId))]
+    private sealed class NegativeLatenessJoin()
+        : TimeWindowedJoinNode<int, TimedCustomer, TimedOrder, Result>(
+            new TumblingWindowAssigner(TimeSpan.FromMinutes(1)),
+            maxOutOfOrderness: TimeSpan.FromMinutes(-1))
+    {
+        public override Result CreateOutput(TimedCustomer item1, TimedOrder item2) => new(item2.OrderId, item1.Name);
     }
 
     // ---------- C01: windows and watermarks use the extractors' event time ----------
@@ -310,7 +350,7 @@ public sealed class TimeWindowedJoinNodeTests
             new Result(null, "Late"),
         ]);
         results.Count(r => r.CustomerName == "Late").Should().Be(1);
-        node.LateItemsDropped.Should().BeGreaterThan(0);
+        node.LateItemsDropped.Should().Be(0, "a late item the outer join emits as unmatched is not dropped");
     }
 
     [Fact]
@@ -329,7 +369,7 @@ public sealed class TimeWindowedJoinNodeTests
             new Result(10, "Alice"),
             new Result(99, "Carol"),
         ]);
-        node.LateItemsDropped.Should().BeGreaterThan(0);
+        node.LateItemsDropped.Should().Be(1);
     }
 
     // ---------- C31: null keys never match ----------

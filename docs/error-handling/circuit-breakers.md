@@ -84,7 +84,8 @@ A breaker only guards transform nodes. Setting one on a source, sink, aggregate,
 | `MaxPause` | 5 minutes | With `WhenOpen = Pause`, the longest one attempt waits before it fails. |
 
 The breaker trips when **any** configured condition is met. At least one of `ConsecutiveFailures` and `FailureRate` must
-be set.
+be set. `Window`, `OpenDuration` and `MaxPause` must each be positive and at most `int.MaxValue` milliseconds (about
+24.8 days). `MaxPause` is validated even when `WhenOpen` is `Fail`.
 
 ### Trip on a failure rate
 

@@ -122,10 +122,10 @@ public sealed class BranchNodeIntegrationTests
         metrics.SubscribersCompleted.Should().Be(2);
         metrics.Faulted.Should().Be(0);
 
-        // Terminals drain concurrently (see DrainTerminalsAsync), and backlog is now sampled periodically from the
-        // channels themselves rather than tracked per item, so two fast, evenly-paced sinks may never observe a
-        // backlog at all. This only asserts the metric is well-formed; CountingMulticastDataStreamTests covers the
-        // "a slow consumer accumulates backlog" case with a consumer built to lag behind on purpose.
+        // Terminals drain concurrently (see DrainTerminalsAsync), and backlog is sampled periodically from the channels
+        // themselves rather than tracked per item, so two fast, evenly-paced sinks may never observe a backlog at all.
+        // This only asserts the metric is well-formed; CountingMulticastDataStreamTests.SlowSubscriber_ReportsBacklog
+        // covers a consumer built to lag behind on purpose.
         metrics.MaxAggregateBacklog.Should().BeGreaterThanOrEqualTo(0);
     }
 
