@@ -11,6 +11,7 @@ using NPipeline.Reliability;
 
 namespace NPipeline.Tests.Core.Builder;
 
+[Collection("ProcessWideCounters")]
 public sealed class PipelineBuilderOptimizationProfileTests
 {
     [Fact]
@@ -48,6 +49,8 @@ public sealed class PipelineBuilderOptimizationProfileTests
     [Fact]
     public void Build_ShouldWarn_WhenRuntimeAndCompileTimeProfilesDiffer()
     {
+        PipelineBuilder.ResetOptimizationProfileCaches();
+
         var builder = new PipelineBuilder()
             .WithoutExtendedValidation()
             .WithOptimizationProfile(PipelineOptimizationProfile.HighThroughput);

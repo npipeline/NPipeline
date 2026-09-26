@@ -140,31 +140,30 @@ public abstract class AdvancedAggregateNode<TIn, TKey, TAccumulate, TResult> : I
 
             var key = GetKey(item);
 
-            foreach (var window in _windowAssigner.AssignWindows(item, timestamp, _timestampExtractor))
+            if (_windowAssigner.TryGetSingleWindow(timestamp, out var singleWindow))
             {
-                if (window.End <= watermark)
+                if (singleWindow.End <= watermark)
                 {
                     // Late: the window was already emitted. Reopening it would emit a second, partial result.
                     _ = Interlocked.Increment(ref _lateItemsDropped);
-                    continue;
                 }
-
-                ref var perKey = ref CollectionsMarshal.GetValueRefOrAddDefault(windows, window, out var windowExists);
-                if (!windowExists)
+                else
                 {
-                    perKey = new Dictionary<TKey, TAccumulate>();
-                    expiry.Enqueue(window, window.End);
+                    AccumulateWindow(singleWindow, key, item);
                 }
-
-                ref var accumulator = ref CollectionsMarshal.GetValueRefOrAddDefault(perKey!, key, out var keyExists);
-                accumulator = Accumulate(keyExists ? accumulator! : CreateAccumulator(), item);
-
-                if (!keyExists)
+            }
+            else
+            {
+                foreach (var window in _windowAssigner.AssignWindows(item, timestamp, _timestampExtractor))
                 {
-                    _ = Interlocked.Increment(ref _totalWindowsProcessed);
-                    var active = Interlocked.Increment(ref _activeGroups);
-                    if (active > Interlocked.Read(ref _maxConcurrentWindows))
-                        _ = Interlocked.Exchange(ref _maxConcurrentWindows, active);
+                    if (window.End <= watermark)
+                    {
+                        // Late: the window was already emitted. Reopening it would emit a second, partial result.
+                        _ = Interlocked.Increment(ref _lateItemsDropped);
+                        continue;
+                    }
+
+                    AccumulateWindow(window, key, item);
                 }
             }
 
@@ -204,6 +203,27 @@ public abstract class AdvancedAggregateNode<TIn, TKey, TAccumulate, TResult> : I
                 _ = Interlocked.Increment(ref _totalWindowsClosed);
                 _ = Interlocked.Decrement(ref _activeGroups);
                 yield return GetResult(accumulator!);
+            }
+        }
+
+        void AccumulateWindow(IWindow window, TKey key, TIn item)
+        {
+            ref var perKey = ref CollectionsMarshal.GetValueRefOrAddDefault(windows, window, out var windowExists);
+            if (!windowExists)
+            {
+                perKey = new Dictionary<TKey, TAccumulate>();
+                expiry.Enqueue(window, window.End);
+            }
+
+            ref var accumulator = ref CollectionsMarshal.GetValueRefOrAddDefault(perKey!, key, out var keyExists);
+            accumulator = Accumulate(keyExists ? accumulator! : CreateAccumulator(), item);
+
+            if (!keyExists)
+            {
+                _ = Interlocked.Increment(ref _totalWindowsProcessed);
+                var active = Interlocked.Increment(ref _activeGroups);
+                if (active > Interlocked.Read(ref _maxConcurrentWindows))
+                    _ = Interlocked.Exchange(ref _maxConcurrentWindows, active);
             }
         }
     }

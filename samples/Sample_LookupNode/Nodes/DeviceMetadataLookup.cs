@@ -27,7 +27,7 @@ public class DeviceMetadataLookup : LookupNode<SensorReading, string, DeviceMeta
     /// <param name="context">The current pipeline context.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>A task that represents the asynchronous lookup operation.</returns>
-    protected override async Task<DeviceMetadata?> LookupAsync(string key, PipelineContext context, CancellationToken cancellationToken)
+    protected override async ValueTask<DeviceMetadata?> LookupAsync(string key, PipelineContext context, CancellationToken cancellationToken)
     {
         // Simulate async lookup delay (e.g., database or API call)
         await Task.Delay(Random.Shared.Next(10, 50), cancellationToken);

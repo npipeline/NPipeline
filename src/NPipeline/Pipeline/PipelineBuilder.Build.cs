@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Collections.Frozen;
 using System.Collections.Immutable;
 using System.Diagnostics;
@@ -17,6 +18,28 @@ namespace NPipeline.Pipeline;
 public sealed partial class PipelineBuilder
 {
     private const string OptimizationProfileMetadataKey = "NPipelineOptimizationProfile";
+
+    // Resolved compile-time profile per assembly, and the (assembly, runtime profile) pairs already warned about.
+    private static readonly ConcurrentDictionary<Assembly, PipelineOptimizationProfile?> CompileTimeProfileByAssembly = new();
+
+    private static readonly ConcurrentDictionary<(Assembly Assembly, PipelineOptimizationProfile Profile), byte> ProfileMismatchWarned = new();
+
+    /// <summary>
+    ///     Number of times assembly metadata has been read while resolving the compile-time profile. Test-only; a
+    ///     second resolution of the same assembly must not read its attributes again.
+    /// </summary>
+    internal static int AssemblyMetadataReadCount;
+
+    /// <summary>
+    ///     Clears the process-wide profile caches. Test-only: the cache is intentionally permanent in production so a
+    ///     mismatch is warned about once per process.
+    /// </summary>
+    internal static void ResetOptimizationProfileCaches()
+    {
+        CompileTimeProfileByAssembly.Clear();
+        ProfileMismatchWarned.Clear();
+        _ = Interlocked.Exchange(ref AssemblyMetadataReadCount, 0);
+    }
 
     /// <summary>
     ///     Builds the pipeline with the configured nodes, edges, and settings.
@@ -264,10 +287,15 @@ public sealed partial class PipelineBuilder
 
     private void WarnIfCompileTimeOptimizationProfileDiffers()
     {
-        if (!TryResolveCompileTimeOptimizationProfile(out var compileTimeProfile))
+        if (!TryResolveCompileTimeOptimizationProfile(out var compileTimeProfile, out var declaringAssembly))
             return;
 
         if (compileTimeProfile == _config.OptimizationProfile)
+            return;
+
+        // Warn once per assembly and runtime profile, so a graph built on every run (and every item of a composite)
+        // does not flood the trace.
+        if (!ProfileMismatchWarned.TryAdd((declaringAssembly, _config.OptimizationProfile), 0))
             return;
 
         Trace.TraceWarning(
@@ -276,15 +304,21 @@ public sealed partial class PipelineBuilder
             "Align PipelineBuilder.WithOptimizationProfile(...) and <NPipelineOptimizationProfile> to avoid analyzer/runtime drift.");
     }
 
-    private bool TryResolveCompileTimeOptimizationProfile(out PipelineOptimizationProfile compileTimeProfile)
+    private static Assembly? EntryAssembly => Assembly.GetEntryAssembly();
+
+    private bool TryResolveCompileTimeOptimizationProfile(out PipelineOptimizationProfile compileTimeProfile, out Assembly declaringAssembly)
     {
         foreach (var assembly in GetOptimizationProfileMetadataCandidates())
         {
             if (TryReadOptimizationProfileMetadata(assembly, out compileTimeProfile))
+            {
+                declaringAssembly = assembly;
                 return true;
+            }
         }
 
         compileTimeProfile = default;
+        declaringAssembly = typeof(PipelineBuilder).Assembly;
         return false;
     }
 
@@ -292,7 +326,7 @@ public sealed partial class PipelineBuilder
     {
         var seen = new HashSet<Assembly>();
 
-        var entryAssembly = Assembly.GetEntryAssembly();
+        var entryAssembly = EntryAssembly;
 
         if (entryAssembly is not null && seen.Add(entryAssembly))
             yield return entryAssembly;
@@ -306,6 +340,23 @@ public sealed partial class PipelineBuilder
 
     private static bool TryReadOptimizationProfileMetadata(Assembly assembly, out PipelineOptimizationProfile compileTimeProfile)
     {
+        if (CompileTimeProfileByAssembly.TryGetValue(assembly, out var cached))
+        {
+            compileTimeProfile = cached ?? default;
+            return cached is not null;
+        }
+
+        var resolved = ReadOptimizationProfileMetadata(assembly);
+        _ = CompileTimeProfileByAssembly.TryAdd(assembly, resolved);
+
+        compileTimeProfile = resolved ?? default;
+        return resolved is not null;
+    }
+
+    private static PipelineOptimizationProfile? ReadOptimizationProfileMetadata(Assembly assembly)
+    {
+        _ = Interlocked.Increment(ref AssemblyMetadataReadCount);
+
         foreach (var metadata in assembly.GetCustomAttributes<AssemblyMetadataAttribute>())
         {
             if (!string.Equals(metadata.Key, OptimizationProfileMetadataKey, StringComparison.Ordinal))
@@ -316,12 +367,11 @@ public sealed partial class PipelineBuilder
             if (string.IsNullOrWhiteSpace(value))
                 continue;
 
-            if (Enum.TryParse(value, true, out compileTimeProfile))
-                return true;
+            if (Enum.TryParse(value, true, out PipelineOptimizationProfile compileTimeProfile))
+                return compileTimeProfile;
         }
 
-        compileTimeProfile = default;
-        return false;
+        return null;
     }
 
     /// <summary>

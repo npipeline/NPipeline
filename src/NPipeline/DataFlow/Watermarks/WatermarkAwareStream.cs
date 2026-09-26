@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using NPipeline.DataFlow.Timestamping;
 using NPipeline.Utils;
@@ -51,7 +52,8 @@ public static class WatermarkAwareStreamExtensions
         TimestampExtractor<T>? timestampExtractor = null,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var lastWatermarkTime = DateTimeOffset.UtcNow;
+        var lastWatermarkCheck = Stopwatch.GetTimestamp();
+        var intervalTicks = watermarkInterval <= TimeSpan.Zero ? 0 : watermarkInterval.Ticks;
 
         await foreach (var item in source.WithCancellation(cancellationToken))
         {
@@ -60,12 +62,23 @@ public static class WatermarkAwareStreamExtensions
 
             watermarkGenerator.Update(timestamp);
 
-            // Check if it's time to emit a watermark
-            var currentTime = DateTimeOffset.UtcNow;
+            // Check if it's time to emit a watermark. The interval is measured with the monotonic stopwatch so that
+            // no clock reads are needed once it is satisfied.
+            var emit = intervalTicks == 0;
 
-            if (currentTime - lastWatermarkTime >= watermarkInterval)
+            if (!emit)
             {
-                lastWatermarkTime = currentTime;
+                var elapsed = Stopwatch.GetElapsedTime(lastWatermarkCheck);
+
+                if (elapsed >= watermarkInterval)
+                {
+                    lastWatermarkCheck = Stopwatch.GetTimestamp();
+                    emit = true;
+                }
+            }
+
+            if (emit)
+            {
                 var watermark = watermarkGenerator.GetCurrentWatermark();
                 yield return new StreamItem<T>.WatermarkItem(watermark);
             }

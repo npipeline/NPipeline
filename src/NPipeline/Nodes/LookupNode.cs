@@ -27,8 +27,8 @@ public abstract class LookupNode<TIn, TKey, TValue, TOut> : TransformNode<TIn, T
     /// <param name="key">The key to look up.</param>
     /// <param name="context">The current pipeline context.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
-    /// <returns>A task that represents the asynchronous lookup operation. The task result contains the looked-up value, or null if not found.</returns>
-    protected abstract Task<TValue?> LookupAsync(TKey key, PipelineContext context, CancellationToken cancellationToken);
+    /// <returns>A value task representing the asynchronous lookup operation. The result contains the looked-up value, or null if not found.</returns>
+    protected abstract ValueTask<TValue?> LookupAsync(TKey key, PipelineContext context, CancellationToken cancellationToken);
 
     /// <summary>
     ///     Creates the final output item by combining the original input with the value retrieved from the lookup.
@@ -47,10 +47,17 @@ public abstract class LookupNode<TIn, TKey, TValue, TOut> : TransformNode<TIn, T
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The transformed output item.</returns>
-    public override async ValueTask<TOut> TransformAsync(TIn item, PipelineContext context, CancellationToken cancellationToken)
+    public override ValueTask<TOut> TransformAsync(TIn item, PipelineContext context, CancellationToken cancellationToken)
     {
         var key = ExtractKey(item, context);
-        var lookupValue = await LookupAsync(key, context, cancellationToken).ConfigureAwait(false);
-        return CreateOutput(item, lookupValue, context);
+        var lookup = LookupAsync(key, context, cancellationToken);
+
+        // A synchronous lookup (the common in-memory case) needs no async state machine or Task allocation.
+        return lookup.IsCompletedSuccessfully
+            ? new ValueTask<TOut>(CreateOutput(item, lookup.Result, context))
+            : CompleteSlowAsync(lookup, item, context);
+
+        async ValueTask<TOut> CompleteSlowAsync(ValueTask<TValue?> lookup, TIn item, PipelineContext context) =>
+            CreateOutput(item, await lookup.ConfigureAwait(false), context);
     }
 }

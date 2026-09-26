@@ -41,8 +41,9 @@ public sealed class BranchNode<T> : TransformNode<T, T>
 {
     private readonly List<Func<T, Task>> _outputHandlers = [];
     private readonly object _syncLock = new();
-    private List<Func<T, Task>>? _cachedHandlers;
-    private bool _handlersFinalized;
+    private volatile Func<T, Task>[]? _frozen;
+    private volatile string[]? _activityNames;
+    private volatile string? _activityNodeId;
 
     /// <summary>
     ///     Gets or sets the error handling mode for branch handler exceptions.
@@ -56,91 +57,109 @@ public sealed class BranchNode<T> : TransformNode<T, T>
     /// <param name="outputHandler">An async function that processes the data item.</param>
     public void AddOutput(Func<T, Task> outputHandler)
     {
+        ArgumentNullException.ThrowIfNull(outputHandler);
+
         lock (_syncLock)
         {
-            if (_handlersFinalized)
+            if (_frozen is not null)
                 throw new InvalidOperationException("Cannot add handlers after execution has begun.");
 
             _outputHandlers.Add(outputHandler);
+            _activityNames = null;
+            _activityNodeId = null;
         }
     }
 
     /// <inheritdoc />
     public override async ValueTask<T> TransformAsync(T item, PipelineContext context, CancellationToken cancellationToken)
     {
-        // Lazily cache handlers on first execute - handlers list is finalized after this point
-        List<Func<T, Task>> handlers;
+        var handlers = _frozen ?? Freeze();
 
-        lock (_syncLock)
+        if (handlers.Length == 0)
+            return item;
+
+        if (ErrorHandlingMode == BranchErrorHandlingMode.CollectAndThrow)
         {
-            if (!_handlersFinalized)
-            {
-                _cachedHandlers = new List<Func<T, Task>>(_outputHandlers);
-                _handlersFinalized = true;
-            }
-
-            handlers = _cachedHandlers!;
+            // For CollectAndThrow, we need to collect all exceptions and throw them as an AggregateException
+            await ExecuteWithCollectedExceptionsAsync(handlers, item, context, cancellationToken).ConfigureAwait(false);
         }
-
-        if (handlers.Count > 0)
+        else if (handlers.Length == 1)
         {
-            if (ErrorHandlingMode == BranchErrorHandlingMode.CollectAndThrow)
-            {
-                // For CollectAndThrow, we need to collect all exceptions and throw them as an AggregateException
-                await ExecuteWithCollectedExceptionsAsync(handlers, item, context, cancellationToken).ConfigureAwait(false);
-            }
-            else
-            {
-                var branchTasks = handlers.Select((handler, index) =>
-                    BranchHandlerAsync(handler, index, item, context, cancellationToken)).ToArray();
+            await BranchHandlerAsync(handlers[0], 0, item, context, cancellationToken).ConfigureAwait(false);
+        }
+        else
+        {
+            var branchTasks = new Task[handlers.Length];
 
-                await Task.WhenAll(branchTasks).ConfigureAwait(false);
-            }
+            for (var i = 0; i < handlers.Length; i++)
+                branchTasks[i] = BranchHandlerAsync(handlers[i], i, item, context, cancellationToken);
+
+            await Task.WhenAll(branchTasks).ConfigureAwait(false);
         }
 
         // Return the original item unchanged to the main pipeline
         return item;
     }
 
+    private Func<T, Task>[] Freeze()
+    {
+        lock (_syncLock)
+        {
+            // AddOutput refuses to run once _frozen is set, so this is the only place the array is built.
+            return _frozen ??= [.. _outputHandlers];
+        }
+    }
+
     private async Task ExecuteWithCollectedExceptionsAsync(
-        List<Func<T, Task>> handlers,
+        Func<T, Task>[] handlers,
         T item,
         PipelineContext context,
         CancellationToken cancellationToken)
     {
         var exceptions = new List<BranchHandlerException>();
         var syncLock = new object();
+        var branchTasks = new Task[handlers.Length];
 
-        var branchTasks = handlers.Select(async (handler, index) =>
-        {
-            var branchActivity = context.Observability.Tracer.StartActivity($"Branch_{ResolveNodeId(context)}_{index}");
-
-            try
-            {
-                try
-                {
-                    await handler(item).ConfigureAwait(false);
-                }
-                catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
-                {
-                    var branchException = new BranchHandlerException(ResolveNodeId(context), index, item, ex);
-
-                    lock (syncLock)
-                    {
-                        exceptions.Add(branchException);
-                    }
-                }
-            }
-            finally
-            {
-                branchActivity.Dispose();
-            }
-        }).ToArray();
+        for (var i = 0; i < handlers.Length; i++)
+            branchTasks[i] = ExecuteCollectedBranchAsync(handlers[i], i, item, context, exceptions, syncLock, cancellationToken);
 
         await Task.WhenAll(branchTasks).ConfigureAwait(false);
 
         if (exceptions.Count > 0)
             throw new AggregateException("One or more branch handlers failed.", exceptions);
+    }
+
+    private async Task ExecuteCollectedBranchAsync(
+        Func<T, Task> handler,
+        int branchIndex,
+        T item,
+        PipelineContext context,
+        List<BranchHandlerException> exceptions,
+        object syncLock,
+        CancellationToken cancellationToken)
+    {
+        var branchActivity = context.Observability.Tracer.StartActivity(GetActivityNames(context)[branchIndex]);
+
+        try
+        {
+            try
+            {
+                await handler(item).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+            {
+                var branchException = new BranchHandlerException(ResolveNodeId(context), branchIndex, item, ex);
+
+                lock (syncLock)
+                {
+                    exceptions.Add(branchException);
+                }
+            }
+        }
+        finally
+        {
+            branchActivity.Dispose();
+        }
     }
 
     private async Task BranchHandlerAsync(
@@ -150,7 +169,7 @@ public sealed class BranchNode<T> : TransformNode<T, T>
         PipelineContext context,
         CancellationToken cancellationToken)
     {
-        var branchActivity = context.Observability.Tracer.StartActivity($"Branch_{ResolveNodeId(context)}_{branchIndex}");
+        var branchActivity = context.Observability.Tracer.StartActivity(GetActivityNames(context)[branchIndex]);
 
         try
         {
@@ -167,6 +186,31 @@ public sealed class BranchNode<T> : TransformNode<T, T>
         {
             branchActivity.Dispose();
         }
+    }
+
+    /// <summary>
+    ///     Returns the activity name per branch, cached until the frozen handler set or the resolved node id changes.
+    /// </summary>
+    private string[] GetActivityNames(PipelineContext context)
+    {
+        // The hot path takes no lock: the cached arrays are only replaced, never mutated, and the node id is fixed for
+        // a run. A mismatch rebuilds outside the lock and publishes the new array with a single reference store.
+        var nodeId = ResolveNodeId(context);
+        var cachedNames = _activityNames;
+        var cachedNodeId = _activityNodeId;
+
+        if (cachedNames is not null && cachedNodeId == nodeId)
+            return cachedNames;
+
+        var count = _frozen?.Length ?? _outputHandlers.Count;
+        var built = new string[count];
+
+        for (var i = 0; i < count; i++)
+            built[i] = $"Branch_{nodeId}_{i}";
+
+        _activityNodeId = nodeId;
+        _activityNames = built;
+        return built;
     }
 
     private async Task HandleBranchExceptionAsync(

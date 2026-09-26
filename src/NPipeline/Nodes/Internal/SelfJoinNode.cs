@@ -10,53 +10,53 @@ namespace NPipeline.Nodes.Internal;
 ///     before applying the join logic, solving the "BaseJoinNode Secondary Input Type Erasure" issue.
 /// </summary>
 /// <typeparam name="TKey">The type of the key used for joining. Must be not-null.</typeparam>
-/// <typeparam name="TLeft">The type of the data from the left input stream (wrapper type).</typeparam>
-/// <typeparam name="TRight">The type of the data from the right input stream (wrapper type).</typeparam>
+/// <typeparam name="TItem">The type of the wrapped item in both input streams.</typeparam>
 /// <typeparam name="TOut">The type of the output data after the join.</typeparam>
-internal sealed class SelfJoinNode<TKey, TLeft, TRight, TOut> : KeyedJoinNode<TKey, TLeft, TRight, TOut>
+internal sealed class SelfJoinNode<TKey, TItem, TOut> : KeyedJoinNode<TKey, LeftWrapper<TItem>, RightWrapper<TItem>, TOut>
     where TKey : notnull
 {
     private static readonly Lazy<MethodInfo> _tryCreateProjectionMethod = new(() =>
-        typeof(BaseJoinNode<TKey, TLeft, TRight, TOut>).GetMethod("TryCreateProjection", BindingFlags.NonPublic | BindingFlags.Static)
+        typeof(BaseJoinNode<TKey, LeftWrapper<TItem>, RightWrapper<TItem>, TOut>).GetMethod("TryCreateProjection",
+            BindingFlags.NonPublic | BindingFlags.Static)
         ?? throw new InvalidOperationException("Unable to locate projection builder for self-join fallbacks."));
 
     private static readonly ConcurrentDictionary<Type, Func<object?, TOut>> _projectionCache = new();
 
     /// <summary>
     ///     Gets or sets the function to create output from matched items.
-    ///     Receives unwrapped items as objects.
+    ///     Receives the unwrapped items.
     /// </summary>
-    public Func<object, object, TOut>? OutputFactory { get; set; }
+    public Func<TItem, TItem, TOut>? OutputFactory { get; set; }
 
     /// <summary>
     ///     Gets or sets the key selector for the left stream.
-    ///     Receives an unwrapped item as an object and returns the key.
+    ///     Receives an unwrapped item and returns the key.
     /// </summary>
-    public Func<object, TKey>? LeftKeySelector { get; set; }
+    public Func<TItem, TKey>? LeftKeySelector { get; set; }
 
     /// <summary>
     ///     Gets or sets the key selector for the right stream.
-    ///     Receives an unwrapped item as an object and returns the key.
+    ///     Receives an unwrapped item and returns the key.
     /// </summary>
-    public Func<object, TKey>? RightKeySelector { get; set; }
+    public Func<TItem, TKey>? RightKeySelector { get; set; }
 
     /// <summary>
     ///     Gets or sets the optional fallback for unmatched left items.
-    ///     Receives an unwrapped item as an object and returns the output.
+    ///     Receives an unwrapped item and returns the output.
     ///     If not set, the base implementation is used.
     /// </summary>
-    public Func<object, TOut>? LeftFallback { get; set; }
+    public Func<TItem, TOut>? LeftFallback { get; set; }
 
     /// <summary>
     ///     Gets or sets the optional fallback for unmatched right items.
-    ///     Receives an unwrapped item as an object and returns the output.
+    ///     Receives an unwrapped item and returns the output.
     ///     If not set, the base implementation is used.
     /// </summary>
-    public Func<object, TOut>? RightFallback { get; set; }
+    public Func<TItem, TOut>? RightFallback { get; set; }
 
     /// <summary>
     ///     Creates the output item from the two joined input items.
-    ///     Unwraps both items using dynamic to access the .Item property before calling OutputFactory.
+    ///     Unwraps both items and calls the output factory.
     /// </summary>
     /// <param name="leftItem">The left input item (wrapped type).</param>
     /// <param name="rightItem">The right input item (wrapped type).</param>
@@ -64,7 +64,7 @@ internal sealed class SelfJoinNode<TKey, TLeft, TRight, TOut> : KeyedJoinNode<TK
     /// <exception cref="InvalidOperationException">
     ///     Thrown when OutputFactory is not set.
     /// </exception>
-    public override TOut CreateOutput(TLeft leftItem, TRight rightItem)
+    public override TOut CreateOutput(LeftWrapper<TItem> leftItem, RightWrapper<TItem> rightItem)
     {
         if (OutputFactory is null)
         {
@@ -72,10 +72,7 @@ internal sealed class SelfJoinNode<TKey, TLeft, TRight, TOut> : KeyedJoinNode<TK
                 $"{nameof(OutputFactory)} must be set before calling {nameof(CreateOutput)}.");
         }
 
-        var leftUnwrapped = UnwrapItem(leftItem, "left");
-        var rightUnwrapped = UnwrapItem(rightItem, "right");
-
-        return OutputFactory(leftUnwrapped!, rightUnwrapped!);
+        return OutputFactory(leftItem.Item, rightItem.Item);
     }
 
     /// <summary>
@@ -85,13 +82,11 @@ internal sealed class SelfJoinNode<TKey, TLeft, TRight, TOut> : KeyedJoinNode<TK
     /// </summary>
     /// <param name="leftItem">The left input item (wrapped type).</param>
     /// <returns>The output item created from the left item.</returns>
-    public override TOut CreateOutputFromLeft(TLeft leftItem)
+    public override TOut CreateOutputFromLeft(LeftWrapper<TItem> leftItem)
     {
-        var unwrapped = UnwrapItem(leftItem, "left");
-
         return LeftFallback is not null
-            ? LeftFallback(unwrapped!)
-            : ProjectUnwrappedItem(unwrapped!, "left");
+            ? LeftFallback(leftItem.Item)
+            : ProjectUnwrappedItem(leftItem.Item!, "left");
     }
 
     /// <summary>
@@ -101,13 +96,11 @@ internal sealed class SelfJoinNode<TKey, TLeft, TRight, TOut> : KeyedJoinNode<TK
     /// </summary>
     /// <param name="rightItem">The right input item (wrapped type).</param>
     /// <returns>The output item created from the right item.</returns>
-    public override TOut CreateOutputFromRight(TRight rightItem)
+    public override TOut CreateOutputFromRight(RightWrapper<TItem> rightItem)
     {
-        var unwrapped = UnwrapItem(rightItem, "right");
-
         return RightFallback is not null
-            ? RightFallback(unwrapped!)
-            : ProjectUnwrappedItem(unwrapped!, "right");
+            ? RightFallback(rightItem.Item)
+            : ProjectUnwrappedItem(rightItem.Item!, "right");
     }
 
     /// <summary>
@@ -117,7 +110,7 @@ internal sealed class SelfJoinNode<TKey, TLeft, TRight, TOut> : KeyedJoinNode<TK
     /// <exception cref="InvalidOperationException">
     ///     Thrown when LeftKeySelector or RightKeySelector is not set.
     /// </exception>
-    private protected override (Func<TLeft, TKey> GetKey1, Func<TRight, TKey> GetKey2) ResolveKeySelectors()
+    private protected override (Func<LeftWrapper<TItem>, TKey> GetKey1, Func<RightWrapper<TItem>, TKey> GetKey2) ResolveKeySelectors()
     {
         var leftKeySelector = LeftKeySelector ?? throw new InvalidOperationException(
             $"{nameof(LeftKeySelector)} must be set before executing join.");
@@ -125,16 +118,11 @@ internal sealed class SelfJoinNode<TKey, TLeft, TRight, TOut> : KeyedJoinNode<TK
         var rightKeySelector = RightKeySelector ?? throw new InvalidOperationException(
             $"{nameof(RightKeySelector)} must be set before executing join.");
 
+        // The typed Item property is read directly, so a value-type item is never boxed on the key path.
         return (
-            left => leftKeySelector(UnwrapItem(left, "left")!),
-            right => rightKeySelector(UnwrapItem(right, "right")!));
+            left => leftKeySelector(left.Item),
+            right => rightKeySelector(right.Item));
     }
-
-    private static object? UnwrapItem<TWrapper>(TWrapper wrapper, string wrapperRole) =>
-        wrapper is ISelfJoinWrapper joinWrapper
-            ? joinWrapper.Item
-            : throw new InvalidOperationException(
-                $"Self-join {wrapperRole} wrapper of type '{typeof(TWrapper).FullName}' must implement {nameof(ISelfJoinWrapper)}.");
 
     private static TOut ProjectUnwrappedItem(object value, string wrapperRole)
     {

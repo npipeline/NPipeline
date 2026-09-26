@@ -105,7 +105,7 @@ public sealed class LookupNodeTests
     {
         protected override int ExtractKey(EnrichedUser input, PipelineContext context) => input.Id;
 
-        protected override async Task<UserProfile?> LookupAsync(int key, PipelineContext context, CancellationToken cancellationToken) =>
+        protected override async ValueTask<UserProfile?> LookupAsync(int key, PipelineContext context, CancellationToken cancellationToken) =>
             await profileService.GetProfileAsync(key, cancellationToken);
 
         protected override FullyEnrichedUser CreateOutput(EnrichedUser input, UserProfile? lookupValue, PipelineContext context) =>

@@ -74,7 +74,7 @@ public abstract class ParallelExecutionStrategyBase(int? maxDegreeOfParallelism 
     ///     Transforms one work item through the core item executor, which applies the node's item retry, backoff,
     ///     resilience policy, dead-lettering, and lineage outcome.
     /// </summary>
-    private protected static Task<ItemExecutionResult<TOut>> ExecuteItemAsync<TIn, TOut>(
+    private protected static ValueTask<ItemExecutionResult<TOut>> ExecuteItemAsync<TIn, TOut>(
         IndexedWorkItem<TIn> work,
         ITransformNode<TIn, TOut> node,
         PipelineContext context,
@@ -86,7 +86,7 @@ public abstract class ParallelExecutionStrategyBase(int? maxDegreeOfParallelism 
             ? ExecuteTracedAsync(work, node, context, cached, onRetry)
             : ExecuteCoreAsync(work, node, context, cached, null, onRetry);
 
-    private static async Task<ItemExecutionResult<TOut>> ExecuteTracedAsync<TIn, TOut>(
+    private static async ValueTask<ItemExecutionResult<TOut>> ExecuteTracedAsync<TIn, TOut>(
         IndexedWorkItem<TIn> work,
         ITransformNode<TIn, TOut> node,
         PipelineContext context,
@@ -97,7 +97,7 @@ public abstract class ParallelExecutionStrategyBase(int? maxDegreeOfParallelism 
         return await ExecuteCoreAsync(work, node, context, cached, itemActivity, onRetry).ConfigureAwait(false);
     }
 
-    private static Task<ItemExecutionResult<TOut>> ExecuteCoreAsync<TIn, TOut>(
+    private static ValueTask<ItemExecutionResult<TOut>> ExecuteCoreAsync<TIn, TOut>(
         IndexedWorkItem<TIn> work,
         ITransformNode<TIn, TOut> node,
         PipelineContext context,

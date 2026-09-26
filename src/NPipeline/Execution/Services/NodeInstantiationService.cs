@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -27,6 +28,22 @@ public sealed class NodeInstantiationService : INodeInstantiationService
 
     private static readonly MethodInfo CoerceStreamExecutionStrategyMethod = typeof(NodeInstantiationService)
         .GetMethod(nameof(CoerceStreamExecutionStrategy), BindingFlags.NonPublic | BindingFlags.Static)!;
+
+    // These delegates depend only on node kind and input/output types, so they are cached process-wide. The node
+    // instance and (for sources, sinks and adapters) the node id are passed at invocation time, never captured.
+    private static readonly ConcurrentDictionary<Type, Func<INode, PipelineContext, CancellationToken, Task<IDataStream>>> SourceDelegates = new();
+
+    private static readonly ConcurrentDictionary<Type, Func<INode, IDataStream, PipelineContext, CancellationToken, Task>> SinkDelegates = new();
+
+    private static readonly ConcurrentDictionary<Type, Func<IDataStream, string, IDataStream>> OutputAdapters = new();
+
+    private static readonly ConcurrentDictionary<(Type In, Type Out, Type Strategy, Type Node), Func<INode, IExecutionStrategy, IDataStream, PipelineContext, string, CancellationToken, Task<IDataStream>>> StrategyDelegates = new();
+
+    /// <summary>
+    ///     Number of compiled expression delegates produced. Test-only; a second <c>BuildPlans</c> call for the same
+    ///     graph shape must not increase it.
+    /// </summary>
+    internal static int CompilationCount;
 
     /// <inheritdoc />
     public Dictionary<string, INode> InstantiateNodes(
@@ -178,11 +195,12 @@ public sealed class NodeInstantiationService : INodeInstantiationService
     }
 
     /// <summary>
-    ///     Compiles a delegate that invokes the supplied execution strategy against the supplied node instance.
+    ///     Returns a cached delegate that invokes the supplied execution strategy against the supplied node instance.
     /// </summary>
     /// <remarks>
     ///     Neither the node nor its strategy is captured: both arrive as parameters on each call, which is what makes
-    ///     the compiled delegate safe to cache across runs.
+    ///     the compiled delegate safe to cache across runs. The node id is folded into a per-node closure around the
+    ///     process-wide delegate so that the cache is keyed only by types.
     /// </remarks>
     private static Func<INode, IExecutionStrategy, IDataStream, PipelineContext, CancellationToken, Task<IDataStream>> BuildStrategyDelegate(
         string nodeId,
@@ -193,6 +211,23 @@ public sealed class NodeInstantiationService : INodeInstantiationService
         MethodInfo strategyCoercion,
         Type nodeInterfaceDefinition)
     {
+        var cacheKey = (inType, outType, strategyInterface, nodeInterfaceDefinition);
+        var cached = StrategyDelegates.GetOrAdd(cacheKey,
+            _ => CompileStrategyDelegate(inType, outType, strategyInterface, executeMethodName, strategyCoercion, nodeInterfaceDefinition));
+
+        return (node, strategy, pipe, ctx, ct) => cached(node, strategy, pipe, ctx, nodeId, ct);
+    }
+
+    private static Func<INode, IExecutionStrategy, IDataStream, PipelineContext, string, CancellationToken, Task<IDataStream>> CompileStrategyDelegate(
+        Type inType,
+        Type outType,
+        Type strategyInterface,
+        string executeMethodName,
+        MethodInfo strategyCoercion,
+        Type nodeInterfaceDefinition)
+    {
+        _ = Interlocked.Increment(ref CompilationCount);
+
         var execMethod = strategyInterface.GetMethod(executeMethodName) ??
                          throw new InvalidOperationException($"Could not find '{executeMethodName}' on {strategyInterface.Name}.");
 
@@ -202,23 +237,25 @@ public sealed class NodeInstantiationService : INodeInstantiationService
         var strategyParam = Expression.Parameter(typeof(IExecutionStrategy), "strategy");
         var pipeParam = Expression.Parameter(typeof(IDataStream), "pipe");
         var ctxParam = Expression.Parameter(typeof(PipelineContext), "ctx");
+        var nodeIdParam = Expression.Parameter(typeof(string), "nodeId");
         var ctParam = Expression.Parameter(typeof(CancellationToken), "ct");
 
         var typedInputInterface = typeof(IDataStream<>).MakeGenericType(inType);
         var castInput = Expression.Convert(pipeParam, typedInputInterface);
         var typedNodeInterface = nodeInterfaceDefinition.MakeGenericType(inType, outType);
         var castNode = Expression.Convert(nodeParam, typedNodeInterface);
-        var strategyExpr = Expression.Call(strategyCoercion, strategyParam, nodeParam, Expression.Constant(nodeId));
+        var strategyExpr = Expression.Call(strategyCoercion, strategyParam, nodeParam, nodeIdParam);
 
-        var call = Expression.Call(strategyExpr, closedExec, castInput, castNode, ctxParam, Expression.Constant(nodeId), ctParam);
+        var call = Expression.Call(strategyExpr, closedExec, castInput, castNode, ctxParam, nodeIdParam, ctParam);
         var upcastCall = Expression.Call(UpcastTaskGenericMethod.MakeGenericMethod(outType), call);
 
-        return Expression.Lambda<Func<INode, IExecutionStrategy, IDataStream, PipelineContext, CancellationToken, Task<IDataStream>>>(
+        return Expression.Lambda<Func<INode, IExecutionStrategy, IDataStream, PipelineContext, string, CancellationToken, Task<IDataStream>>>(
             upcastCall,
             nodeParam,
             strategyParam,
             pipeParam,
             ctxParam,
+            nodeIdParam,
             ctParam).Compile();
     }
 
@@ -274,6 +311,15 @@ public sealed class NodeInstantiationService : INodeInstantiationService
                 $"Source node '{def.Id}' does not implement {sourceInterface.Name}.");
         }
 
+        return SourceDelegates.GetOrAdd(outputType, static type => CompileSourceDelegate(type));
+    }
+
+    private static Func<INode, PipelineContext, CancellationToken, Task<IDataStream>> CompileSourceDelegate(Type outputType)
+    {
+        _ = Interlocked.Increment(ref CompilationCount);
+
+        var sourceInterface = typeof(ISourceNode<>).MakeGenericType(outputType);
+
         // Get the OpenStream method
         var executeMethod = sourceInterface.GetMethod(
             nameof(ISourceNode<int>.OpenStream),
@@ -321,6 +367,15 @@ public sealed class NodeInstantiationService : INodeInstantiationService
             throw new InvalidOperationException(
                 $"Sink node '{def.Id}' does not implement {sinkInterface.Name}.");
         }
+
+        return SinkDelegates.GetOrAdd(inputType, static type => CompileSinkDelegate(type));
+    }
+
+    private static Func<INode, IDataStream, PipelineContext, CancellationToken, Task> CompileSinkDelegate(Type inputType)
+    {
+        _ = Interlocked.Increment(ref CompilationCount);
+
+        var sinkInterface = typeof(ISinkNode<>).MakeGenericType(inputType);
 
         // Get the ConsumeAsync method
         var executeMethod = sinkInterface.GetMethod(
@@ -399,6 +454,13 @@ public sealed class NodeInstantiationService : INodeInstantiationService
     {
         if (outputType is null)
             return null;
+
+        return OutputAdapters.GetOrAdd(outputType, static type => CompileAdapter(type));
+    }
+
+    private static Func<IDataStream, string, IDataStream> CompileAdapter(Type outputType)
+    {
+        _ = Interlocked.Increment(ref CompilationCount);
 
         var pipeParam = Expression.Parameter(typeof(IDataStream), "pipe");
         var streamNameParam = Expression.Parameter(typeof(string), "streamName");

@@ -30,7 +30,7 @@ internal readonly record struct ItemExecutionResult<TOut>(
 
 internal interface IPerItemRetryExecutor
 {
-    Task<ItemExecutionResult<TOut>> ExecuteWithRetryAsync<TIn, TOut>(
+    ValueTask<ItemExecutionResult<TOut>> ExecuteWithRetryAsync<TIn, TOut>(
         TIn item,
         ITransformNode<TIn, TOut> node,
         PipelineContext context,

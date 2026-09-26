@@ -149,23 +149,19 @@ public static class SelfJoinExtensions
         _ = builder.AddPreconfiguredNodeInstance(rightWrapHandle.Id, rightWrapTransform);
 
         // Create and configure the join node instance
-        var joinNode = new SelfJoinNode<TKey, LeftWrapper<TItem>, RightWrapper<TItem>, TOut>
+        var joinNode = new SelfJoinNode<TKey, TItem, TOut>
         {
-            OutputFactory = (left, right) => outputFactory((TItem)left, (TItem)right),
-            LeftKeySelector = item => leftKeySelector((TItem)item),
-            RightKeySelector = item => (rightKeySelector ?? leftKeySelector)((TItem)item),
+            OutputFactory = outputFactory,
+            LeftKeySelector = leftKeySelector,
+            RightKeySelector = rightKeySelector ?? leftKeySelector,
             JoinType = joinType,
-            LeftFallback = leftFallback is not null
-                ? item => leftFallback((TItem)item)
-                : null,
-            RightFallback = rightFallback is not null
-                ? item => rightFallback((TItem)item)
-                : null,
+            LeftFallback = leftFallback,
+            RightFallback = rightFallback,
         };
 
         // Register join node with preconfigured instance
         var joinHandle =
-            builder.AddJoin<SelfJoinNode<TKey, LeftWrapper<TItem>, RightWrapper<TItem>, TOut>, LeftWrapper<TItem>, RightWrapper<TItem>, TOut>(nodeName);
+            builder.AddJoin<SelfJoinNode<TKey, TItem, TOut>, LeftWrapper<TItem>, RightWrapper<TItem>, TOut>(nodeName);
 
         _ = builder.AddPreconfiguredNodeInstance(joinHandle.Id, joinNode);
 
