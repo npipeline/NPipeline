@@ -592,6 +592,41 @@ public sealed class RuntimePipelineBinderTests
             .WithLineageOptions(lineageOptions)
             .Build();
 
+    [Fact]
+    public async Task BindAsync_SameCachedGraphTwice_ReusesNormalisedAnnotationsInstance()
+    {
+        const string nodeId = "route";
+
+        var routeNode = new NodeDefinition(
+            nodeId,
+            nodeId,
+            typeof(object),
+            NodeKind.Route,
+            typeof(int),
+            typeof(int));
+
+        var graph = PipelineGraphBuilder.Create()
+            .WithNodes([routeNode])
+            .WithEdges(ImmutableArray<Edge>.Empty)
+            .WithPreconfiguredNodeInstances(ImmutableDictionary<string, INode>.Empty)
+            .WithItemLevelLineageEnabled(true)
+            .WithNodeExecutionAnnotations(new Dictionary<string, object>
+            {
+                [ExecutionAnnotationKeys.RouteOptionsForNode(nodeId)] = new RouteOptions<int>()
+                    .When("even", value => value % 2 == 0)
+                    .Otherwise("odd"),
+            })
+            .Build();
+
+        var context = new PipelineContext();
+
+        var first = await _binder.BindAsync(graph, context);
+        var second = await _binder.BindAsync(graph, context);
+
+        _ = second.Graph.ExecutionOptions.NodeExecutionAnnotations
+            .Should().BeSameAs(first.Graph.ExecutionOptions.NodeExecutionAnnotations);
+    }
+
     private sealed class DisposableDeadLetterSink : IDeadLetterSink, IAsyncDisposable
     {
         public static int Disposed;

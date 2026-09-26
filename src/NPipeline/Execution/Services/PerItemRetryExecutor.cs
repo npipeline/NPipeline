@@ -17,7 +17,7 @@ internal sealed class PerItemRetryExecutor : IPerItemRetryExecutor
 {
     public static PerItemRetryExecutor Instance { get; } = new();
 
-    public async Task<ItemExecutionResult<TOut>> ExecuteWithRetryAsync<TIn, TOut>(
+    public async ValueTask<ItemExecutionResult<TOut>> ExecuteWithRetryAsync<TIn, TOut>(
         TIn item,
         ITransformNode<TIn, TOut> node,
         PipelineContext context,

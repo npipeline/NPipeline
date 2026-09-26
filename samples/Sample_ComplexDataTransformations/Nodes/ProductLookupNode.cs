@@ -44,7 +44,7 @@ public class ProductLookupNode : LookupNode<OrderCustomerJoin, int, Product, Enr
     /// <param name="context">The current pipeline context.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>A task that represents the asynchronous lookup operation.</returns>
-    protected override async Task<Product?> LookupAsync(int key, PipelineContext context, CancellationToken cancellationToken)
+    protected override async ValueTask<Product?> LookupAsync(int key, PipelineContext context, CancellationToken cancellationToken)
     {
         // Simulate external lookup delay
         await Task.Delay(10, cancellationToken);

@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using NPipeline.DataFlow.Timestamping;
 
 namespace NPipeline.DataFlow.Windowing;
@@ -16,6 +17,19 @@ public abstract class WindowAssigner
     /// <param name="extractor">An optional timestamp extractor for items that don't implement <see cref="ITimestamped" />.</param>
     /// <returns>An enumerable of windows that the item belongs to.</returns>
     public abstract IEnumerable<IWindow> AssignWindows<T>(T item, DateTimeOffset timestamp, TimestampExtractor<T>? extractor = null);
+
+    /// <summary>
+    ///     Tries to resolve the single window that contains the timestamp, avoiding an enumerable allocation for
+    ///     assigners whose windows never overlap.
+    /// </summary>
+    /// <param name="timestamp">The timestamp of the data item.</param>
+    /// <param name="window">The window that contains the timestamp, when this assigner yields exactly one.</param>
+    /// <returns><c>true</c> when the assigner produces exactly one window for every timestamp; otherwise <c>false</c>.</returns>
+    public virtual bool TryGetSingleWindow(DateTimeOffset timestamp, [NotNullWhen(true)] out TimeWindow? window)
+    {
+        window = null;
+        return false;
+    }
 
     /// <summary>
     ///     Creates a tumbling window assigner with the specified window size.
@@ -59,10 +73,14 @@ public sealed class TumblingWindowAssigner : WindowAssigner
     public TimeSpan WindowSize => _windowSize;
 
     /// <inheritdoc />
-    public override IEnumerable<IWindow> AssignWindows<T>(T item, DateTimeOffset timestamp, TimestampExtractor<T>? extractor = null)
+    public override IEnumerable<IWindow> AssignWindows<T>(T item, DateTimeOffset timestamp, TimestampExtractor<T>? extractor = null) =>
+        [TimeWindow.ForTimestamp(timestamp, _windowSize)];
+
+    /// <inheritdoc />
+    public override bool TryGetSingleWindow(DateTimeOffset timestamp, [NotNullWhen(true)] out TimeWindow? window)
     {
-        var window = TimeWindow.ForTimestamp(timestamp, _windowSize);
-        yield return window;
+        window = TimeWindow.ForTimestamp(timestamp, _windowSize);
+        return true;
     }
 }
 
@@ -104,18 +122,17 @@ public sealed class SlidingWindowAssigner : WindowAssigner
     public override IEnumerable<IWindow> AssignWindows<T>(T item, DateTimeOffset timestamp, TimestampExtractor<T>? extractor = null)
     {
         var windowStart = TimeWindow.GetWindowStart(timestamp, _slide);
-        var windows = new List<IWindow>();
 
-        // Generate all windows that contain this timestamp
-        var currentStart = windowStart;
+        // The windows that contain the timestamp start at windowStart, windowStart - slide, ... and stop once the
+        // window no longer contains it. That count is ceil((windowSize - offsetIntoWindow) / slide).
+        var offsetIntoWindow = timestamp - windowStart;
+        var slideTicks = _slide.Ticks;
+        var count = (int)((_windowSize.Ticks - offsetIntoWindow.Ticks + slideTicks - 1) / slideTicks);
 
-        while (currentStart + _windowSize > timestamp)
-        {
-            if (currentStart <= timestamp)
-                windows.Add(new TimeWindow(currentStart, _windowSize));
+        var windows = new TimeWindow[count];
 
-            currentStart -= _slide;
-        }
+        for (var i = 0; i < count; i++)
+            windows[i] = new TimeWindow(windowStart - (i * _slide), _windowSize);
 
         return windows;
     }

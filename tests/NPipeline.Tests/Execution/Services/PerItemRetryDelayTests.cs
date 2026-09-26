@@ -106,12 +106,12 @@ public sealed class PerItemRetryDelayTests
         });
     }
 
-    private static Task<ItemExecutionResult<int>> ExecuteAsync(
+    private static async Task<ItemExecutionResult<int>> ExecuteAsync(
         PipelineContext context,
         PipelineResilienceOptions options,
         int failures,
         CancellationToken cancellationToken = default) =>
-        PerItemRetryExecutor.Instance.ExecuteWithRetryAsync(
+        await PerItemRetryExecutor.Instance.ExecuteWithRetryAsync(
             7,
             new FlakyTransform(failures),
             context,

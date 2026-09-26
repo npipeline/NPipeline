@@ -3,6 +3,7 @@ using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.Execution;
 using NPipeline.Execution.Factories;
+using NPipeline.Execution.Plans;
 using NPipeline.Execution.Services;
 using NPipeline.Execution.Strategies;
 using NPipeline.Nodes;
@@ -11,6 +12,7 @@ using NPipeline.State;
 
 namespace NPipeline.Tests.Core.Execution;
 
+[Collection(ProcessWideCounterGroup.Name)]
 public sealed class NodeInstantiationServiceTests
 {
     [Fact]
@@ -74,6 +76,55 @@ public sealed class NodeInstantiationServiceTests
         Assert.Contains("cannot run a stream transform", ex.Message, StringComparison.Ordinal);
         Assert.Contains("IStreamExecutionStrategy", ex.Message, StringComparison.Ordinal);
         Assert.Contains("stream", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void BuildPlans_SameGraphShape_ReusesCompiledDelegates()
+    {
+        var service = new NodeInstantiationService();
+
+        static Dictionary<string, NodeExecutionPlan> Build(NodeInstantiationService service)
+        {
+            var builder = new PipelineBuilder().WithoutExtendedValidation();
+            var source = builder.AddSource<UniqueSourceNode, UniqueIn>("source");
+            var transform = builder.AddTransform<UniqueTransformNode, UniqueIn, UniqueOut>("transform");
+            var sink = builder.AddSink<UniqueSinkNode, UniqueOut>("sink");
+            builder.Connect(source, transform).Connect(transform, sink);
+
+            var graph = builder.Build().Graph;
+            var nodeInstances = service.InstantiateNodes(graph, new DefaultNodeFactory(), new OwnedNodeInstances());
+            return service.BuildPlans(graph, nodeInstances);
+        }
+
+        _ = Build(service);
+        var afterFirst = Volatile.Read(ref NodeInstantiationService.CompilationCount);
+
+        _ = Build(service);
+        var afterSecond = Volatile.Read(ref NodeInstantiationService.CompilationCount);
+
+        Assert.Equal(afterFirst, afterSecond);
+    }
+
+    private sealed record UniqueIn(int Value);
+
+    private sealed record UniqueOut(int Value);
+
+    private sealed class UniqueSourceNode : SourceNode<UniqueIn>
+    {
+        public override IDataStream<UniqueIn> OpenStream(PipelineContext context, CancellationToken cancellationToken) =>
+            new DataStream<UniqueIn>(Array.Empty<UniqueIn>().ToAsyncEnumerable(), "unique-source");
+    }
+
+    private sealed class UniqueTransformNode : TransformNode<UniqueIn, UniqueOut>
+    {
+        public override ValueTask<UniqueOut> TransformAsync(UniqueIn item, PipelineContext context, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(new UniqueOut(item.Value));
+    }
+
+    private sealed class UniqueSinkNode : SinkNode<UniqueOut>
+    {
+        public override Task ConsumeAsync(IDataStream<UniqueOut> input, PipelineContext context, CancellationToken cancellationToken) =>
+            Task.CompletedTask;
     }
 
     private sealed class NonStreamStrategyPassthroughNode : IStreamTransformNode<int, int>

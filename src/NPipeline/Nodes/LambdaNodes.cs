@@ -102,8 +102,8 @@ public sealed class AsyncLambdaTransformNode<TIn, TOut>(
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A task representing the asynchronous transformation.</returns>
-    public override async ValueTask<TOut> TransformAsync(TIn input, PipelineContext context, CancellationToken cancellationToken) =>
-        await _transform(input, cancellationToken).ConfigureAwait(false);
+    public override ValueTask<TOut> TransformAsync(TIn input, PipelineContext context, CancellationToken cancellationToken) =>
+        _transform(input, cancellationToken);
 }
 
 /// <summary>

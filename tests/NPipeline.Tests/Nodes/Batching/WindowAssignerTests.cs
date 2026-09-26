@@ -209,4 +209,53 @@ public class WindowAssignerTests
     }
 
     #endregion
+
+    #region Assignment Tests (P08)
+
+    [Fact]
+    public void Tumbling_TryGetSingleWindow_ReturnsTheContainingWindow()
+    {
+        var assigner = WindowAssigner.Tumbling(TimeSpan.FromMinutes(1));
+        var timestamp = new DateTimeOffset(2024, 1, 1, 0, 0, 30, TimeSpan.Zero);
+
+        assigner.TryGetSingleWindow(timestamp, out var window).Should().BeTrue();
+        window!.Contains(timestamp).Should().BeTrue();
+        window.Should().Be(TimeWindow.ForTimestamp(timestamp, TimeSpan.FromMinutes(1)));
+    }
+
+    [Theory]
+    [InlineData(10, 5)]
+    [InlineData(10, 10)]
+    [InlineData(60, 30)]
+    [InlineData(20, 7)]
+    [InlineData(5, 20)]
+    public void Sliding_AssignWindows_ReturnsEveryWindowContainingTheTimestamp(int windowSeconds, int slideSeconds)
+    {
+        var assigner = WindowAssigner.Sliding(TimeSpan.FromSeconds(windowSeconds), TimeSpan.FromSeconds(slideSeconds));
+        var timestamp = new DateTimeOffset(2024, 1, 1, 3, 17, 23, TimeSpan.Zero).AddTicks(123);
+
+        var windows = assigner.AssignWindows(0, timestamp).ToList();
+
+        windows.Should().OnlyContain(w => w.Contains(timestamp));
+        windows.Should().BeEquivalentTo(ReferenceWindows(timestamp, windowSeconds, slideSeconds));
+    }
+
+    private static IEnumerable<IWindow> ReferenceWindows(DateTimeOffset timestamp, int windowSeconds, int slideSeconds)
+    {
+        var windowSize = TimeSpan.FromSeconds(windowSeconds);
+        var slide = TimeSpan.FromSeconds(slideSeconds);
+        var windowStart = TimeWindow.GetWindowStart(timestamp, slide);
+
+        var currentStart = windowStart;
+
+        while (currentStart + windowSize > timestamp)
+        {
+            if (currentStart <= timestamp)
+                yield return new TimeWindow(currentStart, windowSize);
+
+            currentStart -= slide;
+        }
+    }
+
+    #endregion
 }

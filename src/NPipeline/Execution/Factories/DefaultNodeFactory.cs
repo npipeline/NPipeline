@@ -13,8 +13,9 @@ namespace NPipeline.Execution.Factories;
 /// </summary>
 public sealed class DefaultNodeFactory : INodeFactory
 {
-    // Cache of compiled factory delegates for fast instantiation
-    private readonly ConcurrentDictionary<Type, Func<INode>?> _compiledFactories = new();
+    // Cache of compiled factory delegates for fast instantiation. The delegate depends only on the node type, so the
+    // cache is process-wide rather than per factory instance.
+    private static readonly ConcurrentDictionary<Type, Func<INode>?> CompiledFactories = new();
 
     /// <inheritdoc />
     public INode Create(NodeDefinition nodeDefinition, PipelineGraph graph)
@@ -26,7 +27,7 @@ public sealed class DefaultNodeFactory : INodeFactory
             return preconfigured;
 
         // Try to get or create a compiled factory delegate
-        var factory = _compiledFactories.GetOrAdd(nodeDefinition.NodeType, BuildCompiledFactory);
+        var factory = CompiledFactories.GetOrAdd(nodeDefinition.NodeType, BuildCompiledFactory);
 
         // If we successfully compiled a factory, use it (fast path)
         if (factory != null)

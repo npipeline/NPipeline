@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using NPipeline.Configuration;
 using NPipeline.DataFlow.Routing;
 using NPipeline.ErrorHandling;
@@ -22,6 +23,31 @@ public sealed class RuntimePipelineBinder : IRuntimePipelineBinder
                                                                                 BindingFlags.NonPublic | BindingFlags.Static)
                                                                         ?? throw new InvalidOperationException(
                                                                             $"Method '{nameof(AdaptLineageRouteOptionsGeneric)}' not found.");
+
+    private static readonly ConditionalWeakTable<ExecutionOptionsConfiguration, NormalizedAnnotationCache>
+        NormalizedAnnotations = new();
+
+    private sealed class NormalizedAnnotationCache
+    {
+        private readonly object _lock = new();
+        private NormalizedAnnotationEntry? _entry;
+
+        public ImmutableDictionary<string, object> GetOrAdd(bool lineageEnabled,
+            Func<ImmutableDictionary<string, object>> compute)
+        {
+            lock (_lock)
+            {
+                if (_entry is { } existing && existing.LineageEnabled == lineageEnabled)
+                    return existing.Annotations;
+
+                var annotations = compute();
+                _entry = new NormalizedAnnotationEntry(lineageEnabled, annotations);
+                return annotations;
+            }
+        }
+    }
+
+    private sealed record NormalizedAnnotationEntry(bool LineageEnabled, ImmutableDictionary<string, object> Annotations);
 
     /// <summary>
     ///     Shared singleton instance for the stateless runtime binder.
@@ -164,12 +190,35 @@ public sealed class RuntimePipelineBinder : IRuntimePipelineBinder
 
     private static PipelineGraph NormalizeRuntimeExecutionAnnotations(PipelineGraph graph)
     {
+        return graph with
+        {
+            ExecutionOptions = graph.ExecutionOptions with
+            {
+                NodeExecutionAnnotations = GetNormalizedAnnotations(graph),
+            },
+        };
+    }
+
+    // The normalised annotations depend only on the annotations bag, the node definitions and the lineage flag, all of
+    // which are fixed for a cached graph. Recomputing builds a generic lineage type per node on every run, so the
+    // result is memoised against the configuration instance and reused until the lineage flag changes.
+    private static ImmutableDictionary<string, object> GetNormalizedAnnotations(PipelineGraph graph)
+    {
+        var source = graph.ExecutionOptions;
+        var lineageEnabled = graph.Lineage.ItemLevelLineageEnabled;
+
+        var cache = NormalizedAnnotations.GetOrCreateValue(source);
+        return cache.GetOrAdd(lineageEnabled, () => ComputeNormalizedAnnotations(graph, lineageEnabled));
+    }
+
+    private static ImmutableDictionary<string, object> ComputeNormalizedAnnotations(PipelineGraph graph, bool lineageEnabled)
+    {
         var normalizedAnnotations =
             (graph.ExecutionOptions.NodeExecutionAnnotations ?? ImmutableDictionary<string, object>.Empty).ToBuilder();
 
         foreach (var nodeDef in graph.Nodes)
         {
-            var contract = BuildRuntimeStreamContract(nodeDef, graph.Lineage.ItemLevelLineageEnabled);
+            var contract = BuildRuntimeStreamContract(nodeDef, lineageEnabled);
             normalizedAnnotations[ExecutionAnnotationKeys.RuntimeStreamContractForNode(nodeDef.Id)] = contract;
 
             if (nodeDef.Kind != NodeKind.Route)
@@ -183,13 +232,7 @@ public sealed class RuntimePipelineBinder : IRuntimePipelineBinder
             normalizedAnnotations[routeKey] = NormalizeRouteOptions(nodeDef, contract, routeOptions);
         }
 
-        return graph with
-        {
-            ExecutionOptions = graph.ExecutionOptions with
-            {
-                NodeExecutionAnnotations = normalizedAnnotations.ToImmutable(),
-            },
-        };
+        return normalizedAnnotations.ToImmutable();
     }
 
     private static RuntimeNodeStreamContract BuildRuntimeStreamContract(NodeDefinition nodeDef, bool lineageEnabled)

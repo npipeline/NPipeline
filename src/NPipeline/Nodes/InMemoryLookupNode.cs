@@ -13,10 +13,10 @@ internal sealed class InMemoryLookupNode<TIn, TKey, TValue, TOut>(InMemoryLookup
 {
     protected override TKey ExtractKey(TIn input, PipelineContext context) => configuration.KeyExtractor(input);
 
-    protected override Task<TValue?> LookupAsync(TKey key, PipelineContext context, CancellationToken cancellationToken)
+    protected override ValueTask<TValue?> LookupAsync(TKey key, PipelineContext context, CancellationToken cancellationToken)
     {
         configuration.Data.TryGetValue(key, out var value);
-        return Task.FromResult(value);
+        return ValueTask.FromResult<TValue?>(value);
     }
 
     protected override TOut CreateOutput(TIn input, TValue? lookupValue, PipelineContext context) => configuration.OutputCreator(input, lookupValue);
