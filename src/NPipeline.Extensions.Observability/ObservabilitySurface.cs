@@ -110,7 +110,7 @@ public sealed class ObservabilitySurface : IObservabilitySurface
         var tracer = context.Observability.Tracer;
         var logger = context.Observability.LoggerFactory.CreateLogger(nameof(ObservabilitySurface));
         var nodeType = nodeInstance.GetType().Name;
-        var activity = tracer.StartActivity($"Node.Execute: {nodeDef.Id}");
+        var activity = new NodeSpan(tracer.StartActivity($"Node.Execute: {nodeDef.Id}"));
         activity.SetTag("node.id", nodeDef.Id);
         activity.SetTag("node.type", nodeType);
         ObservabilitySurfaceLogMessages.NodeExecuting(logger, nodeDef.Id, nodeType);
@@ -147,13 +147,19 @@ public sealed class ObservabilitySurface : IObservabilitySurface
             context.NodeEnvironment.NodeExecutionScopeRegistry.RegisterNodeObservabilityScope(
                 nodeDef.Id,
                 autoObservabilityScope,
-                (scope, failureException) => PublishNodeDataflowCompleted(
-                    context,
-                    nodeDef.Id,
-                    nodeType,
-                    startTs,
-                    scope.GetTimingBreakdown(),
-                    failureException));
+                (scope, failureException) =>
+                {
+                    PublishNodeDataflowCompleted(
+                        context,
+                        nodeDef.Id,
+                        nodeType,
+                        startTs,
+                        scope.GetTimingBreakdown(),
+                        failureException);
+
+                    // A streaming node's work happens after it "completes", so its span ends with its dataflow.
+                    activity.End(failureException);
+                });
         }
 
         return new NodeObservationScope(nodeDef.Id, nodeType, startTs, startTimestamp, activity, context.RunIdentity.PipelineId,
@@ -185,6 +191,10 @@ public sealed class ObservabilitySurface : IObservabilitySurface
         // Don't dispose AutoObservabilityScope here - it will be disposed when data pipe is fully consumed
         // For streaming execution, items are iterated after node "completes"
 
+        // Without an observability scope nothing marks the end of the dataflow, so the span ends now.
+        if (scope.AutoObservabilityScope is null)
+            EndSpan(scope, null);
+
         return completed;
     }
 
@@ -211,6 +221,9 @@ public sealed class ObservabilitySurface : IObservabilitySurface
             autoScope.RecordFailure(ex);
             autoScope.Dispose();
         }
+
+        // Idempotent: the scope's completion callback may already have ended it.
+        EndSpan(scope, ex);
 
         return completed;
     }
@@ -329,6 +342,8 @@ public sealed class ObservabilitySurface : IObservabilitySurface
 
         await collector.EmitMetricsAsync(pipelineName, context.RunIdentity.PipelineId, pipelineRunId, startTime, endTime, success, exception,
             context.CancellationToken).ConfigureAwait(false);
+
+        ReleaseIfSubPipeline(collector, context);
     }
 
     private async Task EmitMetricsAsync(Type definitionType, PipelineContext context, bool success, Exception? exception)
@@ -357,5 +372,56 @@ public sealed class ObservabilitySurface : IObservabilitySurface
             success,
             exception,
             context.CancellationToken).ConfigureAwait(false);
+
+        ReleaseIfSubPipeline(collector, context);
+    }
+
+    /// <summary>
+    ///     Drops a sub-pipeline run's metrics once they are emitted. A composite node starts one sub-pipeline per item,
+    ///     so keeping them would grow the collector with every item. A top-level run's metrics stay readable.
+    /// </summary>
+    private static void ReleaseIfSubPipeline(IObservabilityCollector collector, PipelineContext context)
+    {
+        if (context.Properties.ContainsKey(PipelineContextKeys.ParentPipelineId))
+            collector.ReleasePipeline(context.RunIdentity.PipelineId);
+    }
+
+    private static void EndSpan(NodeObservationScope scope, Exception? exception)
+    {
+        if (scope.Activity is NodeSpan span)
+            span.End(exception);
+        else
+        {
+            if (exception is not null)
+                scope.Activity.RecordException(exception);
+
+            scope.Activity.Dispose();
+        }
+    }
+
+    /// <summary>
+    ///     The <c>Node.Execute</c> span, ended exactly once: by the node's completion, or by its dataflow's completion
+    ///     when the node streams, whichever path applies.
+    /// </summary>
+    private sealed class NodeSpan(IPipelineActivity inner) : IPipelineActivity
+    {
+        private int _ended;
+
+        public void SetTag(string key, object value) => inner.SetTag(key, value);
+
+        public void RecordException(Exception exception) => inner.RecordException(exception);
+
+        public void End(Exception? exception)
+        {
+            if (Interlocked.Exchange(ref _ended, 1) != 0)
+                return;
+
+            if (exception is not null)
+                inner.RecordException(exception);
+
+            inner.Dispose();
+        }
+
+        public void Dispose() => End(null);
     }
 }

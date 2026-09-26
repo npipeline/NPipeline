@@ -121,6 +121,19 @@ public sealed class ObservabilityCollector : IObservabilityCollector
     }
 
     /// <inheritdoc />
+    public void ReleasePipeline(Guid pipelineId)
+    {
+        foreach (var entry in _nodeMetrics)
+        {
+            if (entry.Value.PipelineId == pipelineId)
+                _ = _nodeMetrics.TryRemove(entry);
+        }
+    }
+
+    private INodeMetrics[] GetNodeMetrics(Guid pipelineId) =>
+        [.. _nodeMetrics.Values.Where(builder => builder.PipelineId == pipelineId).Select(static builder => builder.Build())];
+
+    /// <inheritdoc />
     public INodeMetrics? GetNodeMetrics(string nodeId, Guid pipelineId)
     {
         if (nodeId is null)
@@ -148,7 +161,9 @@ public sealed class ObservabilityCollector : IObservabilityCollector
     {
         ArgumentNullException.ThrowIfNull(pipelineName);
 
-        var nodeMetrics = GetNodeMetrics();
+        // Only this run's nodes: the collector can outlive a run (a DI scope running several pipelines, or a composite
+        // node running a sub-pipeline per item), and summing every run it has seen inflates the totals.
+        var nodeMetrics = GetNodeMetrics(pipelineId);
         var totalItemsProcessed = nodeMetrics.Sum(m => m.ItemsProcessed);
 
         var durationMs = endTime.HasValue

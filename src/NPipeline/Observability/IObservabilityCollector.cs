@@ -126,6 +126,15 @@ public interface IObservabilityCollector
     IReadOnlyList<INodeMetrics> GetNodeMetrics();
 
     /// <summary>
+    ///     Releases the metrics collected for one pipeline run, once they have been emitted and nothing will read them
+    ///     again. Used for sub-pipeline runs, which a composite node can start once per item.
+    /// </summary>
+    /// <param name="pipelineId">The pipeline run whose metrics are released.</param>
+    void ReleasePipeline(Guid pipelineId)
+    {
+    }
+
+    /// <summary>
     ///     Gets the collected metrics for a specific node.
     /// </summary>
     /// <param name="nodeId">The unique identifier of the node.</param>

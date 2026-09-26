@@ -77,6 +77,15 @@ namespace NPipeline.Pipeline;
 /// </remarks>
 public static class PipelineContextKeys
 {
+    /// <summary>
+    ///     Parent pipeline id of a sub-pipeline run, in <see cref="PipelineContext.Properties" /> (value: <see cref="Guid" />).
+    /// </summary>
+    /// <remarks>
+    ///     Set by composite nodes on each sub-pipeline's context. Extensions use it to tell a sub-pipeline run, of which
+    ///     there may be one per item, from a top-level run.
+    /// </remarks>
+    public const string ParentPipelineId = "__Composite_ParentPipelineId";
+
     /// <summary>Dead-letter sink decorator hook key (value: Func&lt;IDeadLetterSink?, IDeadLetterSink?&gt;).</summary>
     /// <remarks>Allows extensions to decorate the resolved dead-letter sink at pipeline execution time.</remarks>
     public const string DeadLetterSinkDecorator = "NPipeline.DeadLetterSinkDecorator";

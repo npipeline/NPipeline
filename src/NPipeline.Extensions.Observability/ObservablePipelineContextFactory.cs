@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NPipeline.Configuration;
 using NPipeline.Execution;
 using NPipeline.Observability;
+using NPipeline.Observability.Tracing;
 using NPipeline.Pipeline;
 
 namespace NPipeline.Extensions.Observability;
@@ -49,10 +50,12 @@ public sealed class ObservablePipelineContextFactory : IObservablePipelineContex
         // This ensures we get the correct scoped instance of IObservabilityCollector
         var observabilityFactory = _serviceProvider.GetService<IObservabilityFactory>();
 
-        // Create a new configuration with the observability factory
+        // Create a new configuration with the observability factory, and the container's tracer (for example the
+        // OpenTelemetry tracer) unless the caller supplied one.
         var configWithObservability = configuration with
         {
             ObservabilityFactory = observabilityFactory ?? new DiObservabilityFactory(_serviceProvider),
+            Tracer = configuration.Tracer ?? _serviceProvider.GetService<IPipelineTracer>(),
         };
 
         var context = new PipelineContext(configWithObservability);

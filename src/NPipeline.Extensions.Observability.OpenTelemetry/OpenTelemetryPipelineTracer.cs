@@ -81,7 +81,14 @@ public sealed class OpenTelemetryPipelineTracer : IPipelineTracer, IDisposable
     }
 
     /// <inheritdoc />
-    public IPipelineActivity? CurrentActivity { get; private set; }
+    /// <remarks>
+    ///     Derived from the async-local <see cref="Activity.Current" />, so each thread and async flow sees its own
+    ///     activity, and only while it is running.
+    /// </remarks>
+    public IPipelineActivity? CurrentActivity =>
+        Activity.Current is { } current && ReferenceEquals(current.Source, _activitySource)
+            ? new PipelineActivity(current)
+            : null;
 
     /// <inheritdoc />
     public IPipelineActivity StartActivity(string name)
@@ -98,8 +105,6 @@ public sealed class OpenTelemetryPipelineTracer : IPipelineTracer, IDisposable
         if (activity is null)
             return NullPipelineTracer.Instance.StartActivity(name);
 
-        var pipelineActivity = new PipelineActivity(activity);
-        CurrentActivity = pipelineActivity;
-        return pipelineActivity;
+        return new PipelineActivity(activity);
     }
 }
