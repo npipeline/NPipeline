@@ -43,7 +43,7 @@ public sealed class PipelineValidationTests
     public void UnreachableNode_Should_FailValidation()
     {
         var act = () => Build<UnreachableNodePipeline>();
-        act.Should().Throw<PipelineValidationException>().WithMessage("*Unreachable nodes*");
+        act.Should().Throw<PipelineValidationException>().WithMessage("*Unreachable nodes*orphan-sink*");
     }
 
     [Fact]
@@ -163,6 +163,43 @@ public sealed class PipelineValidationTests
         var finished = await Task.WhenAny(run, Task.Delay(TimeSpan.FromSeconds(10)));
         finished.Should().BeSameAs(run, "every branch of the diamond reaches a sink, so the run must complete");
         await run;
+    }
+
+    [Fact]
+    public void JoinUpstreamOfNeitherInputType_Should_FailTypeCompatibility()
+    {
+        // Built by hand: the typed builder cannot connect a mismatched upstream to a join at all.
+        var join = new NodeDefinition("join", "join", typeof(TestJoinNode), NodeKind.Join, typeof(Left), typeof(int), IsJoin: true,
+            SecondInputType: typeof(Right));
+
+        var graph = PipelineGraphBuilder.Create()
+            .WithNodes([
+                new NodeDefinition("left", "left", typeof(StreamingSource<Left>), NodeKind.Source, OutputType: typeof(Left)),
+                new NodeDefinition("right", "right", typeof(StreamingSource<Right>), NodeKind.Source, OutputType: typeof(Right)),
+                new NodeDefinition("text", "text", typeof(StreamingSource<string>), NodeKind.Source, OutputType: typeof(string)),
+                join,
+                new NodeDefinition("sink", "sink", typeof(CollectingSink<int>), NodeKind.Sink, typeof(int)),
+            ])
+            .WithEdges([new Edge("left", "join"), new Edge("right", "join"), new Edge("text", "join"), new Edge("join", "sink")])
+            .WithPreconfiguredNodeInstances(FrozenDictionary<string, INode>.Empty)
+            .Build();
+
+        var result = PipelineGraphValidator.Validate(graph, PipelineGraphValidator.ExtendedRules);
+
+        result.Errors.Should().ContainMatch("*text*outputs String*accepts on neither input*");
+    }
+
+    [Fact]
+    public void IsolatedNodes_AreReportedOnce()
+    {
+        var builder = new PipelineBuilder();
+        _ = builder.AddSource<StreamingSource<int>, int>("s");
+        _ = builder.AddSink<CollectingSink<int>, int>("k");
+
+        var result = builder.Validate();
+
+        result.Errors.Should().ContainSingle(e => e.Contains("Isolated nodes"));
+        result.Errors.Should().NotContain(e => e.Contains("Unreachable") || e.Contains("no inbound edges"));
     }
 
     [Fact]
@@ -429,7 +466,9 @@ public sealed class PipelineValidationTests
             var t = b.AddTransform<T, int, int>("t");
             var orphan = b.AddTransform<T, int, int>("orphan");
             var k = b.AddInMemorySink<int>("k");
-            b.Connect(s, t).Connect(t, k); /* orphan disconnected */
+            var orphanSink = b.AddInMemorySink<int>("orphan-sink");
+            b.Connect(s, t).Connect(t, k);
+            b.Connect(orphan, orphanSink); /* nothing feeds orphan, so orphan-sink is unreachable */
         }
     }
 

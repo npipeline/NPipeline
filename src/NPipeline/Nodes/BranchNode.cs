@@ -114,17 +114,33 @@ public sealed class BranchNode<T> : TransformNode<T, T>
         PipelineContext context,
         CancellationToken cancellationToken)
     {
-        var exceptions = new List<BranchHandlerException>();
-        var syncLock = new object();
         var branchTasks = new Task[handlers.Length];
 
         for (var i = 0; i < handlers.Length; i++)
-            branchTasks[i] = ExecuteCollectedBranchAsync(handlers[i], i, item, context, exceptions, syncLock, cancellationToken);
+            branchTasks[i] = ExecuteCollectedBranchAsync(handlers[i], i, item, context, cancellationToken);
 
-        await Task.WhenAll(branchTasks).ConfigureAwait(false);
+        try
+        {
+            await Task.WhenAll(branchTasks).ConfigureAwait(false);
+        }
+        catch
+        {
+            // Each failing branch faulted its own task, so the failures are gathered only when there are any: the
+            // common, successful path allocates nothing beyond the task array.
+            List<BranchHandlerException>? failures = null;
 
-        if (exceptions.Count > 0)
-            throw new AggregateException("One or more branch handlers failed.", exceptions);
+            foreach (var task in branchTasks)
+            {
+                // A cancellation of this run, or anything other than a handler failure, propagates as it is.
+                if (task.IsCanceled || task.Exception?.InnerException is { } other && other is not BranchHandlerException)
+                    await task.ConfigureAwait(false);
+
+                if (task.Exception?.InnerException is BranchHandlerException failure)
+                    (failures ??= []).Add(failure);
+            }
+
+            throw new AggregateException("One or more branch handlers failed.", failures!);
+        }
     }
 
     private async Task ExecuteCollectedBranchAsync(
@@ -132,27 +148,17 @@ public sealed class BranchNode<T> : TransformNode<T, T>
         int branchIndex,
         T item,
         PipelineContext context,
-        List<BranchHandlerException> exceptions,
-        object syncLock,
         CancellationToken cancellationToken)
     {
         var branchActivity = context.Observability.Tracer.StartActivity(GetActivityNames(context)[branchIndex]);
 
         try
         {
-            try
-            {
-                await handler(item).ConfigureAwait(false);
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
-            {
-                var branchException = new BranchHandlerException(ResolveNodeId(context), branchIndex, item, ex);
-
-                lock (syncLock)
-                {
-                    exceptions.Add(branchException);
-                }
-            }
+            await handler(item).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+        {
+            throw new BranchHandlerException(ResolveNodeId(context), branchIndex, item, ex);
         }
         finally
         {

@@ -109,6 +109,9 @@ public abstract class TimeWindowedJoinNode<TKey, TIn1, TIn2, TOut> : BaseJoinNod
 
         var (getKey1, getKey2) = GetKeySelectors();
 
+        // Reused for tumbling windows, where each item lands in exactly one window, so no per-item array is allocated.
+        var singleWindow = new IWindow[1];
+
         try
         {
             await foreach (var item in inputStream.WithCancellation(cancellationToken).ConfigureAwait(false))
@@ -130,12 +133,14 @@ public abstract class TimeWindowedJoinNode<TKey, TIn1, TIn2, TOut> : BaseJoinNod
                     }
                     else
                     {
-                        var assigned1 = _windowAssigner.AssignWindows(item1, timestamp1, _timestampExtractor1);
+                        var assigned1 = WindowsFor(item1, timestamp1, _timestampExtractor1, singleWindow);
 
                         var landedInLiveWindow = false;
 
-                        foreach (var window in assigned1)
+                        for (var w = 0; w < assigned1.Count; w++)
                         {
+                            var window = assigned1[w];
+
                             // Late: the window was already emitted. Pairing with a recreated window would emit a
                             // second partial result, so the item is dropped (or emitted at once when preserved).
                             if (window.End <= watermark)
@@ -187,12 +192,14 @@ public abstract class TimeWindowedJoinNode<TKey, TIn1, TIn2, TOut> : BaseJoinNod
                     }
                     else
                     {
-                        var assigned2 = _windowAssigner.AssignWindows(item2, timestamp2, _timestampExtractor2);
+                        var assigned2 = WindowsFor(item2, timestamp2, _timestampExtractor2, singleWindow);
 
                         var landedInLiveWindow = false;
 
-                        foreach (var window in assigned2)
+                        for (var w = 0; w < assigned2.Count; w++)
                         {
+                            var window = assigned2[w];
+
                             if (window.End <= watermark)
                                 continue;
 
@@ -267,25 +274,29 @@ public abstract class TimeWindowedJoinNode<TKey, TIn1, TIn2, TOut> : BaseJoinNod
                 }
             }
 
-            // Handle unmatched items for outer joins at the end of the streams. The state is then released.
-            if (emitUnmatchedLeft)
+            // End of stream: emit the remaining windows' unmatched items in window order, as a watermark would have.
+            // The state is then released.
+            if (emitUnmatchedLeft || emitUnmatchedRight)
             {
-                foreach (var state in windows.Values)
+                while (expiry.TryDequeue(out var window, out _))
                 {
-                    foreach (var unmatchedLeft in state.Left.Unmatched())
-                    {
-                        yield return CreateOutputFromLeft(unmatchedLeft);
-                    }
-                }
-            }
+                    if (!windows.Remove(window, out var state))
+                        continue;
 
-            if (emitUnmatchedRight)
-            {
-                foreach (var state in windows.Values)
-                {
-                    foreach (var unmatchedRight in state.Right.Unmatched())
+                    if (emitUnmatchedLeft)
                     {
-                        yield return CreateOutputFromRight(unmatchedRight);
+                        foreach (var unmatchedLeft in state.Left.Unmatched())
+                        {
+                            yield return CreateOutputFromLeft(unmatchedLeft);
+                        }
+                    }
+
+                    if (emitUnmatchedRight)
+                    {
+                        foreach (var unmatchedRight in state.Right.Unmatched())
+                        {
+                            yield return CreateOutputFromRight(unmatchedRight);
+                        }
                     }
                 }
             }
@@ -297,6 +308,27 @@ public abstract class TimeWindowedJoinNode<TKey, TIn1, TIn2, TOut> : BaseJoinNod
             Volatile.Write(ref _waitingItems1, 0);
             Volatile.Write(ref _waitingItems2, 0);
         }
+    }
+
+    /// <summary>
+    ///     The windows an item belongs to. A single window is returned through <paramref name="singleWindow" />, which the
+    ///     caller must finish with before the next call.
+    /// </summary>
+    private IReadOnlyList<IWindow> WindowsFor<T>(T item, DateTimeOffset timestamp, TimestampExtractor<T>? extractor, IWindow[] singleWindow)
+    {
+        // Tumbling windows partition time, so the last single window, when it contains the timestamp, is the item's
+        // window: consecutive items usually share one, and no new window object is needed.
+        if (singleWindow[0] is TimeWindow last && last.Contains(timestamp))
+            return singleWindow;
+
+        if (_windowAssigner.TryGetSingleWindow(timestamp, out var window))
+        {
+            singleWindow[0] = window;
+            return singleWindow;
+        }
+
+        var assigned = _windowAssigner.AssignWindows(item, timestamp, extractor);
+        return assigned as IReadOnlyList<IWindow> ?? [.. assigned];
     }
 
     private static WindowState GetOrAddWindow(Dictionary<IWindow, WindowState> windows,

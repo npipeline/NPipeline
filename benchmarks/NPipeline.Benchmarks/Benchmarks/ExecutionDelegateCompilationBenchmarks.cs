@@ -1,6 +1,7 @@
 using BenchmarkDotNet.Attributes;
 using NPipeline.DataFlow;
 using NPipeline.Execution;
+using NPipeline.Execution.Caching;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 
@@ -18,9 +19,16 @@ public class ExecutionDelegateCompilationBenchmarks
 {
     private PipelineRunner _runner = null!;
 
+    /// <summary>
+    ///     True measures the "before": every run compiles its delegates again, as it did without the caches.
+    /// </summary>
+    [Params(false, true)]
+    public bool CachesBypassed { get; set; }
+
     [GlobalSetup]
     public async Task Setup()
     {
+        CollectibleAwareCache.Bypass = CachesBypassed;
         _runner = PipelineRunner.Create();
 
         // Prime the compiled delegate caches so the steady state is measured.
@@ -30,6 +38,9 @@ public class ExecutionDelegateCompilationBenchmarks
             await _runner.RunAsync<PreconfiguredDefinition>(context);
         }
     }
+
+    [GlobalCleanup]
+    public void Cleanup() => CollectibleAwareCache.Bypass = false;
 
     [Benchmark(Description = "1,000 runs of source(lambda) -> transform -> sink(instance)")]
     public async Task Run_PreconfiguredGraph_1000Times()
