@@ -93,6 +93,7 @@ public sealed class SequentialExecutionStrategy : IResumableExecutionStrategy, I
             var inputIndex = offset - 1;
             using var observabilityScope = context.NodeEnvironment.NodeExecutionScopeRegistry.BeginNodeScope(nodeId);
             var timedInput = NodeTimingDataStreamWrapper.WrapInputWait(input, observabilityScope);
+            var observing = !ReferenceEquals(observabilityScope, NodeExecutionScopeRegistry.NullScope);
 
 #pragma warning disable CA2007
 
@@ -129,17 +130,19 @@ public sealed class SequentialExecutionStrategy : IResumableExecutionStrategy, I
                 inputIndex++;
 
                 // Use cached values to avoid per-item dictionary lookups and allocations
-                using var itemActivity = cached.TracingEnabled
+                var itemActivity = cached.TracingEnabled
                     ? tracer.StartActivity("Item.Transform")
                     : null;
 
                 var produced = false;
                 TOut? output = default;
 
+                // Skip the timing calls entirely when nothing is observing the node.
+                var workStart = observing ? Stopwatch.GetTimestamp() : 0;
+                var transformed = false;
+
                 try
                 {
-                    var workStart = Stopwatch.GetTimestamp();
-
                     var executionResult = await _perItemRetryExecutor.ExecuteWithRetryAsync(
                             item,
                             node,
@@ -154,14 +157,23 @@ public sealed class SequentialExecutionStrategy : IResumableExecutionStrategy, I
                             circuitBreaker: cached.CircuitBreaker)
                         .ConfigureAwait(false);
 
-                    observabilityScope.AddWork(Stopwatch.GetElapsedTime(workStart));
                     produced = executionResult.Produced;
                     output = executionResult.Output;
+                    transformed = true;
                 }
                 catch (Exception ex)
                 {
                     observabilityScope.RecordFailure(ex);
                     throw;
+                }
+                finally
+                {
+                    if (transformed && observing)
+                        observabilityScope.AddWork(Stopwatch.GetElapsedTime(workStart));
+
+                    // Ended before the yield: a span still open after it would include every downstream consumer's work
+                    // on the item.
+                    itemActivity?.Dispose();
                 }
 
                 if (produced)

@@ -100,9 +100,11 @@ public sealed class NodeExecutor(
         {
             var adapter = nodeDef.LineageAdapter ?? throw new InvalidOperationException(ErrorMessages.LineageAdapterMissing(plan.NodeId));
 
-            // Started here, not by the adapter, because only the executor knows the strategy the node runs under.
+            // Started here, not by the adapter, because only the executor knows the strategy the node runs under. A
+            // declared mapper wins in the adapter, so the strategy's provenance reports are not used in that case, and
+            // claiming them would leave the strategy's Inputs and Outcomes without the Forget that releases them.
             LineageNodeOutcomeRegistry.BeginNode(context.RunIdentity.PipelineId, plan.NodeId,
-                LineageProvenanceSupport.Reports(strategy, instance), context.Lineage.LineageSink);
+                LineageProvenanceSupport.Reports(strategy, instance) && nodeDef.LineageMapperType is null, context.Lineage.LineageSink);
 
             var (unwrapped, rewrap) = adapter(input, plan.NodeId, context.RunIdentity.PipelineId, context.RunIdentity.PipelineName,
                 nodeDef.DeclaredCardinality ?? TransformCardinality.OneToOne, graph.Lineage.LineageOptions, context.CancellationToken);
@@ -300,7 +302,10 @@ public sealed class NodeExecutor(
                 graph.Lineage.LineageOptions, context.CancellationToken);
         }
 
-        using var observabilityScope = context.NodeEnvironment.NodeExecutionScopeRegistry.BeginNodeScope(plan.NodeId);
+        // The attempt's handle is released even when the attempt fails: the execution stage holds a retry-spanning
+        // handle for sinks, so the registration - and the scope the next attempt records to - survives this attempt.
+        // A terminal failure is disposed by CompleteNodeFailure.
+        var observabilityScope = context.NodeEnvironment.NodeExecutionScopeRegistry.BeginNodeScope(plan.NodeId);
         effectiveInput = NodeTimingDataStreamWrapper.WrapInputWait(effectiveInput, observabilityScope);
 
         var before = observabilityScope.GetTimingBreakdown();
@@ -309,11 +314,6 @@ public sealed class NodeExecutor(
         try
         {
             await plan.ExecuteSink!(instance, effectiveInput, context, context.CancellationToken).ConfigureAwait(false);
-        }
-        catch (Exception ex)
-        {
-            observabilityScope.RecordFailure(ex);
-            throw;
         }
         finally
         {
@@ -329,6 +329,8 @@ public sealed class NodeExecutor(
 
             foreach (var view in edgeViews)
                 await view.DisposeAsync().ConfigureAwait(false);
+
+            observabilityScope.Dispose();
         }
 
         nodeOutputs[plan.NodeId] = null; // sinks produce no downstream pipe

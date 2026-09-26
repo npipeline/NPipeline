@@ -26,6 +26,12 @@ public sealed class NodeExecutionScopeRegistry
     }
 
     /// <summary>
+    ///     The scope handed out for a node with no registration. Used to skip work that only matters when a node is
+    ///     actually observed.
+    /// </summary>
+    internal static IAutoObservabilityScope NullScope => NullObservabilityScope.Instance;
+
+    /// <summary>
     ///     Disposes all active node observability scopes.
     /// </summary>
     public void DisposeAllNodeScopes()
@@ -33,14 +39,23 @@ public sealed class NodeExecutionScopeRegistry
         if (_nodeObservabilityScopes.IsEmpty)
             return;
 
-        var registrations = new List<NodeObservabilityRegistration>(_nodeObservabilityScopes.Values);
-        _nodeObservabilityScopes.Clear();
-
-        foreach (var registration in registrations)
+        // Remove under the dictionary's own atomic semantics, so a scope a handle is disposing at the same time is
+        // disposed exactly once by whichever side removes it.
+        foreach (var key in _nodeObservabilityScopes.Keys)
         {
-            registration.Scope.Dispose();
-            registration.OnDisposed?.Invoke(registration.Scope, registration.Scope.GetFailureException());
+            if (_nodeObservabilityScopes.TryRemove(key, out var registration))
+                DisposeRegistration(registration);
         }
+    }
+
+    /// <summary>
+    ///     Disposes a removed registration exactly once: the scope's dispose is idempotent, and the callback fires only
+    ///     for the side that removed the registration.
+    /// </summary>
+    private static void DisposeRegistration(NodeObservabilityRegistration registration)
+    {
+        registration.Scope.Dispose();
+        registration.OnDisposed?.Invoke(registration.Scope, registration.Scope.GetFailureException());
     }
 
     /// <summary>
@@ -91,9 +106,11 @@ public sealed class NodeExecutionScopeRegistry
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(nodeId);
 
-        return _nodeObservabilityScopes.TryGetValue(nodeId, out var registration)
-            ? new ScopedObservabilityHandle(this, nodeId, registration.Scope)
-            : NullObservabilityScope.Instance;
+        if (!_nodeObservabilityScopes.TryGetValue(nodeId, out var registration))
+            return NullObservabilityScope.Instance;
+
+        _ = Interlocked.Increment(ref registration.Handles);
+        return new ScopedObservabilityHandle(this, nodeId, registration);
     }
 
     /// <summary>
@@ -108,7 +125,9 @@ public sealed class NodeExecutionScopeRegistry
             return false;
 
         registration.Scope.RecordFailure(exception);
-        DisposeNodeScope(nodeId, registration.Scope);
+
+        // A terminal failure disposes the scope regardless of any handle still open: the run is over.
+        _ = RemoveAndDisposeNodeScope(nodeId, registration);
         return true;
     }
 
@@ -151,23 +170,34 @@ public sealed class NodeExecutionScopeRegistry
         }
     }
 
-    private void DisposeNodeScope(string nodeId, IAutoObservabilityScope expectedScope)
+    /// <summary>
+    ///     Removes and disposes a node's registration. Returns true when this call removed the registration and ran its
+    ///     disposal.
+    /// </summary>
+    /// <remarks>
+    ///     Removal and the callback are tied together atomically, so when a handle and <see cref="DisposeAllNodeScopes" />
+    ///     race, only the side that removes the registration disposes the scope and fires the callback.
+    /// </remarks>
+    private bool RemoveAndDisposeNodeScope(string nodeId, NodeObservabilityRegistration expectedRegistration)
     {
-        Action<IAutoObservabilityScope, Exception?>? onDisposed = null;
+        if (!_nodeObservabilityScopes.TryRemove(
+                new KeyValuePair<string, NodeObservabilityRegistration>(nodeId, expectedRegistration)))
+            return false;
 
-        if (_nodeObservabilityScopes.TryGetValue(nodeId, out var currentRegistration) &&
-            ReferenceEquals(currentRegistration.Scope, expectedScope) &&
-            _nodeObservabilityScopes.TryRemove(new KeyValuePair<string, NodeObservabilityRegistration>(nodeId, currentRegistration)))
-            onDisposed = currentRegistration.OnDisposed;
-
-        expectedScope.Dispose();
-        onDisposed?.Invoke(expectedScope, expectedScope.GetFailureException());
+        DisposeRegistration(expectedRegistration);
+        return true;
     }
 
-    private readonly struct NodeObservabilityRegistration(
+    private sealed class NodeObservabilityRegistration(
         IAutoObservabilityScope scope,
         Action<IAutoObservabilityScope, Exception?>? onDisposed)
     {
+        /// <summary>
+        ///     How many scopes have been handed out for this registration and not yet disposed. The registration is
+        ///     disposed when the last one goes.
+        /// </summary>
+        public int Handles;
+
         public IAutoObservabilityScope Scope { get; } = scope;
 
         public Action<IAutoObservabilityScope, Exception?>? OnDisposed { get; } = onDisposed;
@@ -178,13 +208,15 @@ public sealed class NodeExecutionScopeRegistry
         private readonly IAutoObservabilityScope _inner;
         private readonly string _nodeId;
         private readonly NodeExecutionScopeRegistry _registry;
+        private readonly NodeObservabilityRegistration _registration;
         private int _disposed;
 
-        public ScopedObservabilityHandle(NodeExecutionScopeRegistry registry, string nodeId, IAutoObservabilityScope inner)
+        public ScopedObservabilityHandle(NodeExecutionScopeRegistry registry, string nodeId, NodeObservabilityRegistration registration)
         {
             _registry = registry;
             _nodeId = nodeId;
-            _inner = inner;
+            _registration = registration;
+            _inner = registration.Scope;
         }
 
         public void RecordItemCount(long processed, long emitted)
@@ -227,6 +259,14 @@ public sealed class NodeExecutionScopeRegistry
             return _inner.GetFailureException();
         }
 
+        public void ClearFailure()
+        {
+            if (Volatile.Read(ref _disposed) == 1)
+                return;
+
+            _inner.ClearFailure();
+        }
+
         public void AddWork(TimeSpan duration)
         {
             if (Volatile.Read(ref _disposed) == 1)
@@ -264,7 +304,10 @@ public sealed class NodeExecutionScopeRegistry
             if (Interlocked.Exchange(ref _disposed, 1) == 1)
                 return;
 
-            _registry.DisposeNodeScope(_nodeId, _inner);
+            // The registration holds a handle for the scope it is about to hand out, so the scope is disposed only
+            // once the last handle goes - a restart's second handle keeps it alive across the failed attempt.
+            if (Interlocked.Decrement(ref _registration.Handles) == 0)
+                _ = _registry.RemoveAndDisposeNodeScope(_nodeId, _registration);
         }
     }
 

@@ -24,6 +24,9 @@ public static class NodeTimingDataStreamWrapper
         ArgumentNullException.ThrowIfNull(input);
         ArgumentNullException.ThrowIfNull(scope);
 
+        if (ReferenceEquals(scope, NodeExecutionScopeRegistry.NullScope))
+            return input;
+
         var dataType = input.GetDataType();
         var wrap = WrapInputWaitDelegates.GetOrAdd(dataType, static t => BuildWrapInputWaitDelegate(t));
         return wrap(input, scope);
@@ -36,6 +39,9 @@ public static class NodeTimingDataStreamWrapper
     {
         ArgumentNullException.ThrowIfNull(input);
         ArgumentNullException.ThrowIfNull(scope);
+
+        if (ReferenceEquals(scope, NodeExecutionScopeRegistry.NullScope))
+            return input;
 
         return new DataStream<T>(EnumerateWithInputWait(input, scope), input.StreamName);
     }

@@ -89,6 +89,8 @@ public sealed class LineageItemContextTests
         // the order outputs come in and whatever items were dropped before them.
         var emitted = transformRecords.Where(static r => r.OutcomeReason != LineageOutcomeReason.FilteredOut).ToList();
         emitted.Should().HaveCount(5);
+        emitted.Should().OnlyContain(static r => r.OutcomeReason == LineageOutcomeReason.Emitted,
+            "an item that succeeds after a node restart was emitted, not errored");
         var correlationOf = emitted.ToDictionary(static r => (int)r.Data! / 10, static r => r.CorrelationId);
         correlationOf.Keys.Should().BeEquivalentTo([1, 3, 4, 5, 6]);
         correlationOf.Values.Append(skipped.CorrelationId).Should().OnlyHaveUniqueItems();

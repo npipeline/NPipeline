@@ -155,6 +155,14 @@ internal sealed class PipelineNodeExecutionStage(
         var nodeInstance = setup.NodeInstances[nodeDef.Id];
         var nodeScope = observabilitySurface.BeginNode(context, setup.Graph, nodeDef, nodeInstance);
 
+        // A sink drains its input inside the node's execution, so each L3 retry re-executes the sink and re-begins a
+        // node scope. This handle spans every retry: an attempt releasing its own handle must not unregister the
+        // scope the next attempt records to, and the last attempt's release ends the node's observability at the
+        // node's end, not at the pipeline's.
+        using var sinkRetryScope = nodeDef.Kind is NodeKind.Sink or NodeKind.CompositeOutput
+            ? context.NodeEnvironment.NodeExecutionScopeRegistry.BeginNodeScope(nodeDef.Id)
+            : null;
+
         try
         {
             await ExecuteNodeWithRetriesAsync(

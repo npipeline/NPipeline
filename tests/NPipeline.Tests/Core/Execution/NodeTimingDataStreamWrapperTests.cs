@@ -31,6 +31,22 @@ public sealed class NodeTimingDataStreamWrapperTests
     }
 
     [Fact]
+    public void WrapInputWait_WithNullScope_ReturnsTheSameInstance()
+    {
+        // Arrange
+        var input = new DataStream<int>(new[] { 1, 2, 3 }.ToAsyncEnumerable(), "source-stream");
+
+        // Act
+        var typedWrapped = NodeTimingDataStreamWrapper.WrapInputWait(input, NodeExecutionScopeRegistry.NullScope);
+        IDataStream untypedInput = input;
+        var untypedWrapped = NodeTimingDataStreamWrapper.WrapInputWait(untypedInput, NodeExecutionScopeRegistry.NullScope);
+
+        // Assert - nothing is observing, so no wrapper layer is added.
+        _ = typedWrapped.Should().BeSameAs(input);
+        _ = untypedWrapped.Should().BeSameAs(untypedInput);
+    }
+
+    [Fact]
     public async Task WrapInputWait_UntypedInput_PreservesStreamNameAndData()
     {
         // Arrange

@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using NPipeline.Attributes.Lineage;
 using NPipeline.Configuration;
+using NPipeline.Execution.Lineage;
 
 namespace NPipeline.Lineage;
 
@@ -52,6 +53,7 @@ internal sealed class CapAwareMaterializingStrategy<TIn, TOut> : LineageMappingS
                 yield return packet;
             }
 
+            LineageNodeOutcomeRegistry.GetWriter(pipelineId, nodeId).ClearAll();
             yield break;
         }
 
@@ -88,6 +90,7 @@ internal sealed class CapAwareMaterializingStrategy<TIn, TOut> : LineageMappingS
                 yield return packet;
             }
 
+            LineageNodeOutcomeRegistry.GetWriter(pipelineId, nodeId).ClearAll();
             yield break;
         }
 
