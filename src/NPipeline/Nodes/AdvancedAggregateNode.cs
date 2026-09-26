@@ -133,6 +133,10 @@ public abstract class AdvancedAggregateNode<TIn, TKey, TAccumulate, TResult> : I
         // consumer stops early or the input fails, so the instance-level count stays accurate.
         var liveGroups = 0L;
 
+        // The last single (tumbling) window seen. Consecutive items usually share it, and tumbling windows partition
+        // time, so a timestamp it contains belongs to it: no new window object per item.
+        TimeWindow? lastSingleWindow = null;
+
         try
         {
             await foreach (var obj in input.WithCancellation(cancellationToken).ConfigureAwait(false))
@@ -148,8 +152,11 @@ public abstract class AdvancedAggregateNode<TIn, TKey, TAccumulate, TResult> : I
                 var landedInLiveWindow = false;
 
                 // Late windows were already emitted; reopening one would emit a second, partial result.
-                if (_windowAssigner.TryGetSingleWindow(timestamp, out var singleWindow))
+                if (lastSingleWindow is { } last && last.Contains(timestamp)
+                    || _windowAssigner.TryGetSingleWindow(timestamp, out lastSingleWindow))
                 {
+                    var singleWindow = lastSingleWindow;
+
                     if (singleWindow.End > watermark)
                     {
                         AccumulateWindow(singleWindow, key, item);

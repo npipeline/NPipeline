@@ -223,7 +223,7 @@ public sealed class ValidationEdgeCasesTests
         success.Should().BeFalse("build should fail due to validation errors");
         pipeline.Should().BeNull("pipeline should not be created when validation fails");
         validationResult.Errors.Should().Contain(error => error.Contains("Self-loop"));
-        validationResult.Errors.Should().Contain(error => error.Contains("Unreachable"));
+        validationResult.Errors.Should().Contain(error => error.Contains("Isolated"));
     }
 
     [Fact]
@@ -234,7 +234,7 @@ public sealed class ValidationEdgeCasesTests
         var source = builder.AddInMemorySourceWithDataFromContext(PipelineContext.CreateDefault(), "source", [1, 2, 3]);
         var node1 = builder.AddPassThroughTransform<int, int>("n1");
         var node2 = builder.AddPassThroughTransform<int, int>("n2");
-        var node3 = builder.AddPassThroughTransform<int, int>("n3"); // Unreachable
+        var node3 = builder.AddPassThroughTransform<int, int>("n3"); // Isolated: no edges
         var sink = builder.AddInMemorySink<int>("sink");
 
         // Create circular dependency
@@ -256,7 +256,7 @@ public sealed class ValidationEdgeCasesTests
 
         var exception = act.Should().Throw<PipelineValidationException>().Subject.Single();
         exception.Result.Errors.Should().Contain(error => error.Contains("Cycle detected"));
-        exception.Result.Errors.Should().Contain(error => error.Contains("Unreachable"));
+        exception.Result.Errors.Should().Contain(error => error.Contains("Isolated"));
     }
 
     [Fact]

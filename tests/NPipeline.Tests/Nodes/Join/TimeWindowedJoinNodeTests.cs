@@ -264,6 +264,21 @@ public sealed class TimeWindowedJoinNodeTests
     }
 
     [Fact]
+    public async Task TimeWindowedJoin_EndOfStream_EmitsUnmatchedItemsInWindowOrder()
+    {
+        // No right items ever arrive, so every window closes at the end of the stream; they close in window order,
+        // as a watermark would close them, not in the order the windows were created.
+        var node = new WindowedOrderCustomerJoin { JoinType = JoinType.LeftOuter };
+
+        var results = await RunAsync(node,
+            new TimedCustomer(3, "C", BaseTime.AddMinutes(2)),
+            new TimedCustomer(1, "A", BaseTime),
+            new TimedCustomer(2, "B", BaseTime.AddMinutes(1)));
+
+        results.Select(static r => r.CustomerName).Should().Equal("A", "B", "C");
+    }
+
+    [Fact]
     public void TimeWindowedJoin_NegativeMaxOutOfOrderness_Throws()
     {
         var act = () => new NegativeLatenessJoin();

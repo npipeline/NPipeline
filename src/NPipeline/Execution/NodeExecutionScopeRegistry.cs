@@ -54,6 +54,7 @@ public sealed class NodeExecutionScopeRegistry
     /// </summary>
     private static void DisposeRegistration(NodeObservabilityRegistration registration)
     {
+        registration.Retire();
         registration.Scope.Dispose();
         registration.OnDisposed?.Invoke(registration.Scope, registration.Scope.GetFailureException());
     }
@@ -106,10 +107,9 @@ public sealed class NodeExecutionScopeRegistry
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(nodeId);
 
-        if (!_nodeObservabilityScopes.TryGetValue(nodeId, out var registration))
+        if (!_nodeObservabilityScopes.TryGetValue(nodeId, out var registration) || !registration.TryAcquireHandle())
             return NullObservabilityScope.Instance;
 
-        _ = Interlocked.Increment(ref registration.Handles);
         return new ScopedObservabilityHandle(this, nodeId, registration);
     }
 
@@ -197,6 +197,33 @@ public sealed class NodeExecutionScopeRegistry
         ///     disposed when the last one goes.
         /// </summary>
         public int Handles;
+
+        /// <summary>
+        ///     Hands out one more handle, unless the registration was retired (its count set to -1) because its last
+        ///     handle went or it was disposed. A handle on a retired registration would record into a disposed scope.
+        /// </summary>
+        public bool TryAcquireHandle()
+        {
+            while (true)
+            {
+                var current = Volatile.Read(ref Handles);
+
+                if (current < 0)
+                    return false;
+
+                if (Interlocked.CompareExchange(ref Handles, current + 1, current) == current)
+                    return true;
+            }
+        }
+
+        /// <summary>
+        ///     Releases a handle. Returns true when it was the last one and the registration is now retired, so the
+        ///     caller disposes it; false when another handle is still open, or one was acquired in between.
+        /// </summary>
+        public bool ReleaseHandle() =>
+            Interlocked.Decrement(ref Handles) == 0 && Interlocked.CompareExchange(ref Handles, -1, 0) == 0;
+
+        public void Retire() => Volatile.Write(ref Handles, -1);
 
         /// <summary>
         ///     The highest input index recorded as processed. It spans every attempt that shares the registration, so
@@ -345,7 +372,7 @@ public sealed class NodeExecutionScopeRegistry
 
             // The registration holds a handle for the scope it is about to hand out, so the scope is disposed only
             // once the last handle goes - a restart's second handle keeps it alive across the failed attempt.
-            if (Interlocked.Decrement(ref _registration.Handles) == 0)
+            if (_registration.ReleaseHandle())
                 _ = _registry.RemoveAndDisposeNodeScope(_nodeId, _registration);
         }
     }

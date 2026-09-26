@@ -119,6 +119,20 @@ public sealed class SlidingWindowAssigner : WindowAssigner
     public TimeSpan Slide => _slide;
 
     /// <inheritdoc />
+    /// <remarks>A slide equal to the window size makes the windows tumble, so each timestamp lands in exactly one.</remarks>
+    public override bool TryGetSingleWindow(DateTimeOffset timestamp, [NotNullWhen(true)] out TimeWindow? window)
+    {
+        if (_slide != _windowSize)
+        {
+            window = null;
+            return false;
+        }
+
+        window = TimeWindow.ForTimestamp(timestamp, _windowSize);
+        return true;
+    }
+
+    /// <inheritdoc />
     public override IEnumerable<IWindow> AssignWindows<T>(T item, DateTimeOffset timestamp, TimestampExtractor<T>? extractor = null)
     {
         var windowStart = TimeWindow.GetWindowStart(timestamp, _slide);

@@ -258,4 +258,29 @@ public class WindowAssignerTests
     }
 
     #endregion
+
+    #region Single-window fast path
+
+    [Fact]
+    public void Sliding_WithSlideEqualToSize_ReportsTheSingleTumblingWindow()
+    {
+        var assigner = WindowAssigner.Sliding(TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(5));
+        var timestamp = new DateTimeOffset(2024, 1, 1, 10, 7, 0, TimeSpan.Zero);
+
+        assigner.TryGetSingleWindow(timestamp, out var window).Should().BeTrue();
+
+        window!.Start.Should().Be(new DateTimeOffset(2024, 1, 1, 10, 5, 0, TimeSpan.Zero));
+        assigner.AssignWindows(0, timestamp).Should().ContainSingle().Which.Should().Be(window);
+    }
+
+    [Fact]
+    public void Sliding_WithOverlappingWindows_HasNoSingleWindow()
+    {
+        var assigner = WindowAssigner.Sliding(TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(1));
+
+        assigner.TryGetSingleWindow(DateTimeOffset.UtcNow, out var window).Should().BeFalse();
+        window.Should().BeNull();
+    }
+
+    #endregion
 }

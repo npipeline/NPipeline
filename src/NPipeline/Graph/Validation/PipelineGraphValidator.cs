@@ -162,7 +162,13 @@ public static class PipelineGraphValidator
             if (sourceCandidates.Count == 0)
                 yield return new ValidationIssue(ValidationSeverity.Error, "Pipeline has no source nodes (nodes with zero inbound edges).", "Sources");
 
-            var nonSourceZeroInbound = sourceCandidates.Where(n => !IsSourceNode(n.NodeType)).ToList();
+            // A node with no edges at all is reported once, as isolated, rather than also as lacking inbound edges and
+            // as unreachable. A lone node is not isolated: there is nothing to connect it to.
+            var isolatedIds = g.Nodes.Length > 1
+                ? g.Nodes.Where(n => !incoming.ContainsKey(n.Id) && !outgoing.ContainsKey(n.Id)).Select(n => n.Id).ToHashSet()
+                : [];
+
+            var nonSourceZeroInbound = sourceCandidates.Where(n => !IsSourceNode(n.NodeType) && !isolatedIds.Contains(n.Id)).ToList();
 
             if (nonSourceZeroInbound.Count > 0)
             {
@@ -192,7 +198,10 @@ public static class PipelineGraphValidator
                 }
             }
 
-            var unreachable = g.Nodes.Select(n => n.Id).Where(id => !reachable.Contains(id)).ToList();
+            // A node already reported above is not repeated; the nodes downstream of it still are.
+            var unreachable = g.Nodes.Select(n => n.Id)
+                .Where(id => !reachable.Contains(id) && !isolatedIds.Contains(id) && nonSourceZeroInbound.All(n => n.Id != id))
+                .ToList();
 
             if (unreachable.Count > 0)
             {
@@ -205,11 +214,9 @@ public static class PipelineGraphValidator
                     $"Unreachable nodes (not connected to any source): {details}", "Reachability");
             }
 
-            var isolated = g.Nodes.Where(n => !incoming.ContainsKey(n.Id) && !outgoing.ContainsKey(n.Id)).ToList();
-
-            if (isolated.Count > 0 && g.Nodes.Length > 1)
+            if (isolatedIds.Count > 0)
             {
-                var details = string.Join(", ", isolated.Select(n => $"{n.Id} ('{n.Name}', {n.NodeType.Name})"));
+                var details = string.Join(", ", g.Nodes.Where(n => isolatedIds.Contains(n.Id)).Select(n => $"{n.Id} ('{n.Name}', {n.NodeType.Name})"));
                 yield return new ValidationIssue(ValidationSeverity.Error, $"Isolated nodes (no edges): {details}", "Reachability");
             }
         }
@@ -441,9 +448,21 @@ public static class PipelineGraphValidator
                 if (src.OutputType is null || dst.InputType is null)
                     continue; // source may be raw or sink w/out typing
 
-                // Skip type checking for join nodes - they have two input types (TLeft, TRight) and InputType only represents TLeft
+                // A join takes two input types: an upstream must feed one of them. A join without a recorded second
+                // input type (a hand-built graph) is left to the join-inputs rule.
                 if (dst.IsJoin)
+                {
+                    if (dst.SecondInputType is null || dst.InputType.IsAssignableFrom(src.OutputType) ||
+                        dst.SecondInputType.IsAssignableFrom(src.OutputType))
+                        continue;
+
+                    yield return new ValidationIssue(
+                        ValidationSeverity.Error,
+                        $"Type mismatch: {src.Id} ('{src.Name}', {src.NodeType.Name}) outputs {src.OutputType.Name}, which join {dst.Id} ('{dst.Name}') accepts on neither input ({dst.InputType.Name}, {dst.SecondInputType.Name})",
+                        "Types");
+
                     continue;
+                }
 
                 if (!dst.InputType.IsAssignableFrom(src.OutputType))
                 {
