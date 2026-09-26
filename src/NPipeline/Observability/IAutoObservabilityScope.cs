@@ -28,6 +28,21 @@ public interface IAutoObservabilityScope : IDisposable
     void IncrementProcessed();
 
     /// <summary>
+    ///     Records that the node read the item at <paramref name="inputIndex" /> in its whole input. Implementations
+    ///     that span node restarts count each index once as processed, and report a replayed index through
+    ///     <see cref="IncrementReplayed" /> instead.
+    /// </summary>
+    /// <param name="inputIndex">The item's position in the node's whole input, preserved across restarts.</param>
+    void IncrementProcessed(long inputIndex) => IncrementProcessed();
+
+    /// <summary>
+    ///     Increments count of items a node restart read again, after they had already been processed once.
+    /// </summary>
+    void IncrementReplayed()
+    {
+    }
+
+    /// <summary>
     ///     Increments count of items emitted by one.
     /// </summary>
     void IncrementEmitted();

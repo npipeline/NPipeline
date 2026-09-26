@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using NPipeline.DataFlow.Timestamping;
@@ -41,7 +40,6 @@ public abstract class TimeWindowedJoinNode<TKey, TIn1, TIn2, TOut> : BaseJoinNod
     private readonly TimeSpan _maxOutOfOrderness;
     private readonly TimestampExtractor<TIn1>? _timestampExtractor1;
     private readonly TimestampExtractor<TIn2>? _timestampExtractor2;
-    private readonly TimeSpan _watermarkInterval;
     private readonly WindowAssigner _windowAssigner;
     private long _lateItemsDropped;
     private long _maxWaitingItems1;
@@ -57,26 +55,22 @@ public abstract class TimeWindowedJoinNode<TKey, TIn1, TIn2, TOut> : BaseJoinNod
     /// <param name="timestampExtractor2">Optional timestamp extractor for second input type.</param>
     /// <param name="maxOutOfOrderness">
     ///     The maximum allowed lateness for out-of-order events. Events arriving later than this relative to current watermark may be
-    ///     treated as late.
+    ///     treated as late. The watermark is re-evaluated on every item.
     /// </param>
-    /// <param name="watermarkInterval">The frequency at which watermarks are emitted to advance event time and trigger window cleanup.</param>
     protected TimeWindowedJoinNode(
         WindowAssigner windowAssigner,
         TimestampExtractor<TIn1>? timestampExtractor1 = null,
         TimestampExtractor<TIn2>? timestampExtractor2 = null,
-        TimeSpan? maxOutOfOrderness = null,
-        TimeSpan? watermarkInterval = null)
+        TimeSpan? maxOutOfOrderness = null)
     {
         ArgumentNullException.ThrowIfNull(windowAssigner);
         _windowAssigner = windowAssigner;
         _timestampExtractor1 = timestampExtractor1;
         _timestampExtractor2 = timestampExtractor2;
         _maxOutOfOrderness = maxOutOfOrderness ?? TimeSpan.FromMinutes(5);
-        _watermarkInterval = watermarkInterval ?? TimeSpan.FromSeconds(30);
 
         // A negative lateness would push the watermark ahead of the data and close windows before their items arrive.
         ArgumentOutOfRangeException.ThrowIfLessThan(_maxOutOfOrderness, TimeSpan.Zero, nameof(maxOutOfOrderness));
-        ArgumentOutOfRangeException.ThrowIfLessThan(_watermarkInterval, TimeSpan.Zero, nameof(watermarkInterval));
         JoinType = JoinType.Inner; // Time-windowed joins typically use inner join semantics
     }
 
@@ -107,7 +101,6 @@ public abstract class TimeWindowedJoinNode<TKey, TIn1, TIn2, TOut> : BaseJoinNod
         var sawLeft = false;
         var sawRight = false;
         var watermark = DateTimeOffset.MinValue;
-        var lastWatermarkCheck = Stopwatch.GetTimestamp();
         Volatile.Write(ref _waitingItems1, 0);
         Volatile.Write(ref _waitingItems2, 0);
 
@@ -236,10 +229,8 @@ public abstract class TimeWindowedJoinNode<TKey, TIn1, TIn2, TOut> : BaseJoinNod
                     continue;
                 }
 
-                if (Stopwatch.GetElapsedTime(lastWatermarkCheck) < _watermarkInterval)
-                    continue;
-
-                lastWatermarkCheck = Stopwatch.GetTimestamp();
+                // The watermark is re-evaluated on every item: the check is a subtraction, a comparison and a queue
+                // peek, so throttling it on the wall clock saved nothing and held every window of a fast replay.
                 var candidate = sawLeft && sawRight
                     ? TimestampUtils.SafeSubtract(maxTs1 <= maxTs2 ? maxTs1 : maxTs2, _maxOutOfOrderness)
                     : DateTimeOffset.MinValue;

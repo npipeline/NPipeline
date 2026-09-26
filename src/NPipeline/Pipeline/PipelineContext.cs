@@ -296,6 +296,22 @@ public sealed class PipelineContext : IAsyncDisposable
     internal IResiliencePolicy? ConfiguredResiliencePolicy { get; }
 
     /// <summary>
+    ///     Wraps whichever resilience policy the run resolves, at every level: a node's own policy, the graph's, the
+    ///     context's, or the default. Used by the testing harness to observe failures without replacing the pipeline's
+    ///     own policy, which still runs inside the wrapper.
+    /// </summary>
+    /// <remarks>
+    ///     Applied when the run's policy is bound and when a node's own policy is applied, never per item.
+    /// </remarks>
+    internal Func<IResiliencePolicy, IResiliencePolicy>? ResiliencePolicyOverride { get; set; }
+
+    /// <summary>
+    ///     Returns <paramref name="policy" /> wrapped by <see cref="ResiliencePolicyOverride" />, when one is set.
+    /// </summary>
+    internal IResiliencePolicy ApplyResiliencePolicyOverride(IResiliencePolicy policy) =>
+        ResiliencePolicyOverride is { } wrap ? wrap(policy) : policy;
+
+    /// <summary>
     ///     The sink for items that have failed processing and have been redirected.
     /// </summary>
     public IDeadLetterSink? DeadLetterSink { get; internal set; }

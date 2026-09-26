@@ -168,7 +168,8 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
                     if (window is not null)
                         await window.WaitAsync(faultCts.Token).ConfigureAwait(false);
 
-                    observabilityScope.IncrementProcessed();
+                    // Counted by input index, so an item a node restart replays is reported as replayed, not processed.
+                    observabilityScope.IncrementProcessed(offset + sequence);
 
                     // Lineage is keyed by the item's index in the node's input, which a restart preserves.
                     var lineageInputIndex = trackLineage

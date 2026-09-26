@@ -108,4 +108,4 @@ A windowing strategy where windows do not overlap. Each window covers a fixed du
 
 ### Watermark
 
-A marker tracking event-time progress in windowed aggregations. The watermark represents the system's belief about the latest event time - when it advances past a window's end time, that window closes. Controlled by `WatermarkInterval` and `MaxOutOfOrderness` in `AggregateNodeConfiguration`.
+A marker tracking event-time progress in windowed aggregations. The watermark represents the system's belief about the latest event time - when it advances past a window's end time, that window closes. It trails the latest event time by `MaxOutOfOrderness` (in `AggregateNodeConfiguration`, or the windowed join's constructor) and is re-evaluated on every item.

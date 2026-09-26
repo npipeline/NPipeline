@@ -248,7 +248,8 @@ internal sealed class PipelineNodeExecutionStage(
             graph.ExecutionOptions.NodeExecutionAnnotations.TryGetValue(ExecutionAnnotationKeys.NodeResiliencePolicyForNode(nodeId),
                 out var policyAnnotation) &&
             policyAnnotation is IResiliencePolicy nodePolicy)
-            context.NodeEnvironment.NodeExecutionScopeRegistry.SetRuntimeAnnotation(ExecutionAnnotationKeys.NodeResiliencePolicyForNode(nodeId), nodePolicy);
+            context.NodeEnvironment.NodeExecutionScopeRegistry.SetRuntimeAnnotation(ExecutionAnnotationKeys.NodeResiliencePolicyForNode(nodeId),
+                context.ApplyResiliencePolicyOverride(nodePolicy));
     }
 
     private async Task ExecuteNodeWithRetriesAsync(

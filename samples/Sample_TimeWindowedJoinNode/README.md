@@ -144,9 +144,6 @@ windowAssigner: WindowAssigner.Tumbling(TimeSpan.FromMinutes(2))
 
 // Set reasonable out-of-orderness tolerance
 maxOutOfOrderness: TimeSpan.FromSeconds(30)
-
-// Adjust watermark interval for cleanup frequency
-watermarkInterval: TimeSpan.FromSeconds(10)
 ```
 
 ## Real-World Applications

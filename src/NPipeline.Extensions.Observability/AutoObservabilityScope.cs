@@ -22,6 +22,7 @@ public sealed class AutoObservabilityScope : IAutoObservabilityScope
     private long _inputWaitTicks;
     private long _itemsEmitted;
     private long _itemsProcessed;
+    private long _itemsReplayed;
     private long _outputBlockTicks;
     private bool _success;
     private long _workTicks;
@@ -88,6 +89,15 @@ public sealed class AutoObservabilityScope : IAutoObservabilityScope
             return;
 
         _ = Interlocked.Increment(ref _itemsProcessed);
+    }
+
+    /// <inheritdoc />
+    public void IncrementReplayed()
+    {
+        if (Volatile.Read(ref _disposed) == 1)
+            return;
+
+        _ = Interlocked.Increment(ref _itemsReplayed);
     }
 
     /// <inheritdoc />
@@ -227,7 +237,12 @@ public sealed class AutoObservabilityScope : IAutoObservabilityScope
         }
 
         if (_options.RecordItemCounts)
+        {
             _collector.RecordItemMetrics(_nodeId, _itemsProcessed, _itemsEmitted, _pipelineId, _pipelineName);
+
+            if (_itemsReplayed > 0)
+                _collector.RecordItemsReplayed(_nodeId, _itemsReplayed, _pipelineId, _pipelineName);
+        }
 
         var workDurationMs = timingBreakdown.WorkDuration.TotalMilliseconds;
 

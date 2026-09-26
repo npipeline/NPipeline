@@ -124,10 +124,10 @@ public sealed class SequentialExecutionStrategy : IResumableExecutionStrategy, I
                     throw;
                 }
 
-                // Track item processed
-                observabilityScope.IncrementProcessed();
-
                 inputIndex++;
+
+                // Counted by input index, so an item a node restart replays is reported as replayed, not processed.
+                observabilityScope.IncrementProcessed(inputIndex);
 
                 // Use cached values to avoid per-item dictionary lookups and allocations
                 var itemActivity = cached.TracingEnabled

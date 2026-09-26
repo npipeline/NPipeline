@@ -1263,6 +1263,10 @@ public sealed class IntegrationTests
         Assert.NotNull(transformMetrics);
         Assert.True(transformMetrics.Success, "a node that recovered after a restart was not a failure");
         Assert.Equal(10, transformMetrics.ItemsEmitted);
+
+        // Each input item is processed once; the item the restart read again is reported as replayed.
+        Assert.Equal(10, transformMetrics.ItemsProcessed);
+        Assert.True(transformMetrics.ItemsReplayed > 0, "the restart replays the item that failed");
     }
 
     [Fact]

@@ -144,13 +144,6 @@ public sealed class PipelineTestHarness<TPipeline> where TPipeline : IPipelineDe
         // If error capturing is enabled or a cancellation token was provided, create a new context
         if (_captureErrors || cancellationToken != default)
         {
-            IResiliencePolicy resiliencePolicy;
-
-            if (_captureErrors)
-                resiliencePolicy = new CapturingResiliencePolicy(Context.ExecutionConfiguration.ResiliencePolicy, _capturedErrors, _errorHandlingDecision);
-            else
-                resiliencePolicy = Context.ExecutionConfiguration.ResiliencePolicy;
-
             executionContext = new PipelineContext(
                 new PipelineContextConfiguration(
                     CancellationToken: cancellationToken != default
@@ -159,7 +152,7 @@ public sealed class PipelineTestHarness<TPipeline> where TPipeline : IPipelineDe
                     Parameters: Context.Parameters,
                     Items: Context.Items,
                     Properties: Context.Properties,
-                    ResiliencePolicy: resiliencePolicy,
+                    ResiliencePolicy: Context.ConfiguredResiliencePolicy,
                     DeadLetterSink: Context.DeadLetterSink, // Preserve the dead-letter sink
                     ErrorHandlerFactory: Context.ErrorHandlerFactory,
                     LineageFactory: Context.Lineage.LineageFactory,
@@ -169,6 +162,15 @@ public sealed class PipelineTestHarness<TPipeline> where TPipeline : IPipelineDe
 
             // Preserve the ExecutionObserver from the original context
             executionContext.Observability.ExecutionObserver = Context.Observability.ExecutionObserver;
+
+            // Wrap whichever policy the run resolves (a node's own, the pipeline's, or the context's), so errors are
+            // captured even when the pipeline registers its own policy, and that policy still runs first.
+            if (_captureErrors)
+            {
+                var captured = _capturedErrors;
+                var decision = _errorHandlingDecision;
+                executionContext.ResiliencePolicyOverride = policy => new CapturingResiliencePolicy(policy, captured, decision);
+            }
         }
 
         var stopwatch = Stopwatch.StartNew();

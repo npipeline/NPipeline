@@ -317,8 +317,7 @@ public sealed class JoinCardinalityTests
     private sealed class WindowedOrderCustomerJoin()
         : TimeWindowedJoinNode<int, TimedCustomer, TimedOrder, Result>(
             new TumblingWindowAssigner(TimeSpan.FromMinutes(1)),
-            maxOutOfOrderness: TimeSpan.Zero,
-            watermarkInterval: TimeSpan.Zero)
+            maxOutOfOrderness: TimeSpan.Zero)
     {
         public override Result CreateOutput(TimedCustomer item1, TimedOrder item2) => new(item2.OrderId, item1.Name);
 

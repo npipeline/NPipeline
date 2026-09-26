@@ -107,8 +107,9 @@ var averages = builder.GroupItems<Measurement>()
 |----------|---------|-------------|
 | `WindowAssigner` | (required) | Tumbling or sliding window strategy. Window sizes and slides must be positive |
 | `TimestampExtractor` | `null` | Extracts event time from items; uses arrival time for items that are neither `ITimestamped` nor extracted |
-| `MaxOutOfOrderness` | 5 minutes | How late an item can arrive and still be included |
-| `WatermarkInterval` | 30 seconds | How often watermarks advance |
+| `MaxOutOfOrderness` | 5 minutes | How late an item can arrive and still be included. Must not be negative |
+
+The watermark is re-evaluated on every item, so windows close as soon as the data passes them, even in a fast replay.
 
 Windows are aligned on UTC ticks, so the same instant always lands in the same window regardless of the timestamp's UTC offset.
 
