@@ -127,12 +127,17 @@ public sealed class SlidingWindowAssigner : WindowAssigner
         // window no longer contains it. That count is ceil((windowSize - offsetIntoWindow) / slide).
         var offsetIntoWindow = timestamp - windowStart;
         var slideTicks = _slide.Ticks;
-        var count = (int)((_windowSize.Ticks - offsetIntoWindow.Ticks + slideTicks - 1) / slideTicks);
+        var count = (_windowSize.Ticks - offsetIntoWindow.Ticks + slideTicks - 1) / slideTicks;
+
+        // Near DateTimeOffset.MinValue (for example a default timestamp from an unset field) the earlier windows would
+        // start before the representable range, so they are left out rather than failing the pipeline.
+        var earliestStartUtcTicks = Math.Max(0, -windowStart.Offset.Ticks);
+        count = Math.Min(count, (windowStart.UtcTicks - earliestStartUtcTicks) / slideTicks + 1);
 
         var windows = new TimeWindow[count];
 
-        for (var i = 0; i < count; i++)
-            windows[i] = new TimeWindow(windowStart - (i * _slide), _windowSize);
+        for (var i = 0; i < windows.Length; i++)
+            windows[i] = new TimeWindow(windowStart.AddTicks(-i * slideTicks), _windowSize);
 
         return windows;
     }

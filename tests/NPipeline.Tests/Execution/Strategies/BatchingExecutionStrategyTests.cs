@@ -4,6 +4,7 @@ using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.Execution.Strategies;
 using NPipeline.Nodes;
+using NPipeline.Observability;
 using NPipeline.Pipeline;
 using NPipeline.Tests.Reliability.Behavior;
 
@@ -53,7 +54,8 @@ public sealed class BatchingExecutionStrategyTests
 
         async IAsyncEnumerable<int> IdleThenBurstAsync([EnumeratorCancellation] CancellationToken ct)
         {
-            await Task.Delay(500, ct);
+            // The idle gap outlasts the window, so a window timed from the last emission would already have expired.
+            await Task.Delay(1_500, ct);
             _ = Interlocked.Increment(ref items);
             yield return 1;
             await Task.Delay(50, ct);
@@ -64,10 +66,10 @@ public sealed class BatchingExecutionStrategyTests
             yield return 3;
         }
 
-        var strategy = new BatchingExecutionStrategy(10, TimeSpan.FromMilliseconds(200));
+        var strategy = new BatchingExecutionStrategy(10, TimeSpan.FromSeconds(1));
         await using var input = new DataStream<int>(IdleThenBurstAsync(CancellationToken.None), "input");
         var context = new PipelineContext();
-        var node = new BatchingNode<int>(10, TimeSpan.FromMilliseconds(200));
+        var node = new BatchingNode<int>(10, TimeSpan.FromSeconds(1));
 
         await using var output = await strategy.ExecuteAsync(input, node, context, "batch", CancellationToken.None);
 
@@ -100,10 +102,13 @@ public sealed class BatchingExecutionStrategyTests
             }
         }
 
-        var strategy = new BatchingExecutionStrategy(1, TimeSpan.FromSeconds(5));
+        // A partial batch flushed on time leaves the producer blocked on the idle input when the consumer leaves.
+        var strategy = new BatchingExecutionStrategy(2, TimeSpan.FromMilliseconds(50));
         await using var input = new DataStream<int>(OneItemThenIdleAsync(CancellationToken.None), "input");
         var context = new PipelineContext();
-        var node = new BatchingNode<int>(1, TimeSpan.FromSeconds(5));
+        var scope = new FailureRecordingScope();
+        context.NodeEnvironment.NodeExecutionScopeRegistry.RegisterNodeObservabilityScope("batch", scope);
+        var node = new BatchingNode<int>(2, TimeSpan.FromMilliseconds(50));
 
         await using var output = await strategy.ExecuteAsync(input, node, context, "batch", CancellationToken.None);
         var enumerator = output.GetAsyncEnumerator(CancellationToken.None);
@@ -114,5 +119,66 @@ public sealed class BatchingExecutionStrategyTests
         var act = async () => await enumerator.DisposeAsync();
         await act.Should().NotThrowAsync();
         disposed.Should().BeTrue();
+        scope.RecordedFailure.Should().BeNull("a consumer leaving early is not a failure of the batching node");
+    }
+
+    [Fact]
+    public void Constructor_NegativeTimespan_Throws()
+    {
+        var act = () => new BatchingExecutionStrategy(10, TimeSpan.FromMilliseconds(-1));
+
+        act.Should().Throw<ArgumentOutOfRangeException>();
+    }
+
+    [Fact]
+    public async Task BatchAsync_SourceFailsMidWindow_EmitsPartialBatchThenThrows()
+    {
+        async IAsyncEnumerable<int> TwoItemsThenFailAsync([EnumeratorCancellation] CancellationToken ct = default)
+        {
+            yield return 1;
+            yield return 2;
+            await Task.Delay(20, ct);
+            throw new InvalidOperationException("source failed");
+        }
+
+        var batches = new List<IReadOnlyCollection<int>>();
+
+        var act = async () =>
+        {
+            await foreach (var batch in TwoItemsThenFailAsync().BatchAsync(10, TimeSpan.FromSeconds(5)))
+                batches.Add(batch);
+        };
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("source failed");
+        batches.Should().ContainSingle().Which.Should().Equal(1, 2);
+    }
+
+    private sealed class FailureRecordingScope : IAutoObservabilityScope
+    {
+        public Exception? RecordedFailure { get; private set; }
+
+        public void RecordItemCount(long processed, long emitted)
+        {
+        }
+
+        public void IncrementProcessed()
+        {
+        }
+
+        public void IncrementEmitted()
+        {
+        }
+
+        public void RecordFailure(Exception exception) => RecordedFailure = exception;
+
+        public Exception? GetFailureException() => RecordedFailure;
+
+        public void AddInputWait(TimeSpan duration)
+        {
+        }
+
+        public void Dispose()
+        {
+        }
     }
 }

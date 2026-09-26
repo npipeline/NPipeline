@@ -7,9 +7,9 @@ using NPipeline.DataFlow.DataStreams;
 namespace NPipeline.Execution;
 
 /// <summary>
-///     Whether a node has received an input item during its current execution. Node retry (L3) executes a node again
-///     only while this is unset: once input has flowed, a forward-only input cannot be read again from the start, so a
-///     second execution would lose or duplicate items.
+///     Whether a node has started reading its input during its current execution. Node retry (L3) executes a node
+///     again only while this is unset: once a read has started, a forward-only input cannot be read again from the
+///     start (the read may already have run the upstream chain), so a second execution would lose or duplicate items.
 /// </summary>
 internal sealed class InputFlow
 {
@@ -29,7 +29,7 @@ internal sealed class InputFlow
 }
 
 /// <summary>
-///     Wraps a node's input so that its first item marks the node's <see cref="InputFlow" />.
+///     Wraps a node's input so that the start of its first read marks the node's <see cref="InputFlow" />.
 /// </summary>
 internal static class InputFlowTracking
 {

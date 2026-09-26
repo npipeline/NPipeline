@@ -285,8 +285,8 @@ Static members: `PipelineContextConfiguration.Default`, `WithParameters(paramete
 Resilience options aren't part of this record. Set them on the pipeline builder with `WithResilience`.
 
 The system uses the `ResiliencePolicy` set through `PipelineContextConfiguration.WithResilience(policy)` when the graph doesn't
-configure one. The full precedence at run time is: the graph's policy instance, then the graph's policy type, then the
-context policy, then `DefaultResiliencePolicy.Instance`.
+configure one. The full precedence at run time is: the node's own policy, then the graph's policy instance, then the
+graph's policy type, then the context policy, then `DefaultResiliencePolicy.Instance`.
 
 ## Next Steps
 

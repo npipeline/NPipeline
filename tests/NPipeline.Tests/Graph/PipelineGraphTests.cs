@@ -37,6 +37,25 @@ public class PipelineGraphTests
         _ = rewritten.NodeDefinitionMap["second"].Should().BeSameAs(second);
     }
 
+    [Fact]
+    public void NodeDefinitionMap_FirstAccess_DoesNotChangeEquality()
+    {
+        var graph = new PipelineGraph
+        {
+            Nodes = [NewDefinition("first")],
+            Edges = [],
+            PreconfiguredNodeInstances = FrozenDictionary<string, INode>.Empty,
+        };
+
+        var copy = graph with { };
+        var hashBefore = graph.GetHashCode();
+
+        _ = graph.NodeDefinitionMap;
+
+        _ = graph.Should().Be(copy);
+        _ = graph.GetHashCode().Should().Be(hashBefore);
+    }
+
     private static NPipeline.Graph.NodeDefinition NewDefinition(string id) =>
         new(id, id, typeof(object), NPipeline.Graph.NodeKind.Transform, typeof(int), typeof(int));
 

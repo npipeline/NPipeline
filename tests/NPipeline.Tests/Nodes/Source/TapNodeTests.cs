@@ -86,7 +86,7 @@ public sealed class TapNodeTests
         await BehaviorPipeline.RunAsync(b =>
         {
             var source = b.AddSource<StreamingSource<int>, int>("source");
-            _ = b.AddPreconfiguredNodeInstance(source.Id, StreamingSource<int>.Of(Enumerable.Range(0, 50)));
+            _ = b.AddPreconfiguredNodeInstance(source.Id, StreamingSource<int>.Of(Enumerable.Range(0, 1_000)));
             var tap = b.AddTap<int>(new IgnoringSink<int>(), "tap");
             var sink = b.AddSink<DummySink<int>, int>("sink");
             _ = b.AddPreconfiguredNodeInstance(sink.Id, mainSink);
@@ -94,7 +94,7 @@ public sealed class TapNodeTests
         });
 
         // Assert
-        mainSink.ReceivedItems.Should().Equal(Enumerable.Range(0, 50));
+        mainSink.ReceivedItems.Should().Equal(Enumerable.Range(0, 1_000), "more items than the tap buffer holds must still flow");
     }
 
     [Fact]
@@ -180,10 +180,56 @@ public sealed class TapNodeTests
         var context = PipelineContext.CreateDefault();
 
         // Act
-        var results = await tapNode.TransformAsync(Enumerable.Range(0, 10).ToAsyncEnumerable(), context, CancellationToken.None).ToListAsync();
+        var results = await tapNode.TransformAsync(Enumerable.Range(0, 1_000).ToAsyncEnumerable(), context, CancellationToken.None).ToListAsync();
 
-        // Assert - all items still pass through
-        _ = results.Should().Equal(Enumerable.Range(0, 10));
+        // Assert - all items still pass through, including more than the tap buffer holds
+        _ = results.Should().Equal(Enumerable.Range(0, 1_000));
+    }
+
+    [Fact]
+    public async Task TransformAsync_SinkFailingAfterSomeItemsWhileTheBufferIsFull_Propagates()
+    {
+        // Arrange: the sink reads a few items, then stalls long enough for the writer to block on a full buffer.
+        ThrowAfterSink<int> sink = new(3);
+        TapNode<int> tapNode = new(sink);
+        var context = PipelineContext.CreateDefault();
+
+        // Act
+        async Task DrainAsync()
+        {
+            await foreach (var _ in tapNode.TransformAsync(Enumerable.Range(0, 1_000).ToAsyncEnumerable(), context, CancellationToken.None))
+            {
+            }
+        }
+
+        var act = () => DrainAsync().WaitAsync(TimeSpan.FromSeconds(10));
+
+        // Assert
+        _ = await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("sink failed after reading");
+    }
+
+    [Fact]
+    public async Task TransformAsync_InputFails_CancelsTheSinkInsteadOfEndingItsInput()
+    {
+        // Arrange
+        ObservingSink<int> sink = new();
+        TapNode<int> tapNode = new(sink);
+        var context = PipelineContext.CreateDefault();
+
+        async IAsyncEnumerable<int> FailingInput()
+        {
+            yield return 1;
+            await Task.Yield();
+            throw new InvalidOperationException("upstream failed");
+        }
+
+        // Act
+        var act = async () => await tapNode.TransformAsync(FailingInput(), context, CancellationToken.None).ToListAsync();
+        _ = await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("upstream failed");
+        await tapNode.DisposeAsync();
+
+        // Assert
+        _ = sink.Outcome.Should().Be("cancelled", "a sink must not treat an aborted stream as a complete one");
     }
 
     #endregion
@@ -300,6 +346,44 @@ public sealed class TapNodeTests
             await foreach (var _ in input.WithCancellation(cancellationToken))
             {
                 // No-op
+            }
+        }
+    }
+
+    private sealed class ThrowAfterSink<T>(int readBeforeFailing) : SinkNode<T>
+    {
+        public override async Task ConsumeAsync(IDataStream<T> input, PipelineContext context, CancellationToken cancellationToken)
+        {
+            var read = 0;
+
+            await foreach (var _ in input.WithCancellation(cancellationToken))
+            {
+                if (++read == readBeforeFailing)
+                {
+                    await Task.Delay(100, CancellationToken.None);
+                    throw new InvalidOperationException("sink failed after reading");
+                }
+            }
+        }
+    }
+
+    private sealed class ObservingSink<T> : SinkNode<T>
+    {
+        public string? Outcome { get; private set; }
+
+        public override async Task ConsumeAsync(IDataStream<T> input, PipelineContext context, CancellationToken cancellationToken)
+        {
+            try
+            {
+                await foreach (var _ in input.WithCancellation(cancellationToken))
+                {
+                }
+
+                Outcome = "completed";
+            }
+            catch (OperationCanceledException)
+            {
+                Outcome = "cancelled";
             }
         }
     }

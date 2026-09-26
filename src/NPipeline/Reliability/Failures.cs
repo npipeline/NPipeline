@@ -149,7 +149,7 @@ public readonly record struct NodeFailure
     public bool IsTransient { get; init; }
 
     /// <summary>
-    ///     Whether the node received an input item before it failed.
+    ///     Whether the node had started reading its input before it failed.
     /// </summary>
     /// <remarks>
     ///     Node retry covers setup only. A node that has read input is not executed again, whatever the policy answers:

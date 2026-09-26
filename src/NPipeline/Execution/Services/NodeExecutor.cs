@@ -90,7 +90,7 @@ public sealed class NodeExecutor(
         // Transform outputs are lazily drained by the terminal below the fan-out, so the input edge views must not
         // be released here; passing null means GetNodeInputAsync does not resolve edge-routed views to disposable
         // views, and instead leaves the raw multicast edge view (still alive) as the input.
-        var input = await GetNodeInputAsync(plan.NodeId, graph, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, edgeViews: null, context.CancellationToken)
+        var input = await GetNodeInputAsync(plan.NodeId, graph, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, context.CancellationToken)
             .ConfigureAwait(false);
 
         var strategy = NodeExecutionStrategyResolver.Resolve(nodeDef, instance);
@@ -145,12 +145,10 @@ public sealed class NodeExecutor(
         INode instance)
     {
         // Gather inputs and merge using existing merge service (still reflection-free path).
-        // A join's output stream is lazy (BaseJoinNode.ExecuteAsync wraps an async-iterator), drained later by the
-        // terminal below it, so - like a transform - its input edge views must not be released here.
         var joinInputPipes = new List<IDataStream>();
 
         foreach (var edge in inputLookup[plan.NodeId])
-            joinInputPipes.Add(TrackInputFlow(context, plan.NodeId, ResolveEdgeInput(edge, nodeOutputs, plan.NodeId, edgeViews: null)));
+            joinInputPipes.Add(TrackInputFlow(context, plan.NodeId, ResolveEdgeInput(edge, nodeOutputs, plan.NodeId)));
 
         var merged = await pipeMergeService
             .MergeAsync(nodeDef, instance, joinInputPipes, ExecutionAnnotationsService.GetMergeCapacity(graph, plan.NodeId), context.CancellationToken)
@@ -214,65 +212,55 @@ public sealed class NodeExecutor(
         NodeDefinition nodeDef,
         INode instance)
     {
-        var edgeViews = new List<IAsyncDisposable>();
-
         var input = TrackInputFlow(context, plan.NodeId,
-            await GetNodeInputAsync(plan.NodeId, graph, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, edgeViews, context.CancellationToken)
+            await GetNodeInputAsync(plan.NodeId, graph, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, context.CancellationToken)
                 .ConfigureAwait(false));
 
-        try
+        IDataStream output;
+
+        if (graph.Lineage.ItemLevelLineageEnabled)
         {
-            IDataStream output;
+            var (unwrappedInput, inputLineageContext) = lineage.PrepareInputWithLineageContext(input, context.CancellationToken);
+            context.RegisterForDisposal(unwrappedInput as IAsyncDisposable ?? input);
 
-            if (graph.Lineage.ItemLevelLineageEnabled)
+            output = await plan.ExecuteAggregate!(instance, unwrappedInput, context, context.CancellationToken).ConfigureAwait(false);
+
+            // Adapt aggregate output to declared OutputType prior to lineage wrapping so sinks get strongly typed pipes.
+            if (nodeDef.OutputType is not null && output.GetDataType() != nodeDef.OutputType)
+                output = AdaptOutput(plan, output, nodeDef.OutputType, $"AggregateResult_{plan.NodeId}");
+
+            output = lineage.WrapNodeOutputFromInputLineage(
+                output,
+                inputLineageContext,
+                plan.NodeId,
+                context.RunIdentity.PipelineId,
+                context.RunIdentity.PipelineName,
+                graph.Lineage.LineageOptions,
+                LineageOutcomeReason.Aggregated,
+                nodeDef.LineageMapperType,
+                context.CancellationToken);
+        }
+        else
+        {
+            output = await plan.ExecuteAggregate!(instance, input, context, context.CancellationToken).ConfigureAwait(false);
+
+            // Ensure output pipe matches declared result type for downstream strict casting (e.g., SinkNode<T>).
+            if (nodeDef.OutputType is not null && output.GetDataType() != nodeDef.OutputType)
             {
-                var (unwrappedInput, inputLineageContext) = lineage.PrepareInputWithLineageContext(input, context.CancellationToken);
-                context.RegisterForDisposal(unwrappedInput as IAsyncDisposable ?? input);
+                output = AdaptOutput(plan, output, nodeDef.OutputType, $"AggregateResult_{plan.NodeId}");
 
-                output = await plan.ExecuteAggregate!(instance, unwrappedInput, context, context.CancellationToken).ConfigureAwait(false);
-
-                // Adapt aggregate output to declared OutputType prior to lineage wrapping so sinks get strongly typed pipes.
-                if (nodeDef.OutputType is not null && output.GetDataType() != nodeDef.OutputType)
-                    output = AdaptOutput(plan, output, nodeDef.OutputType, $"AggregateResult_{plan.NodeId}");
-
-                output = lineage.WrapNodeOutputFromInputLineage(
-                    output,
-                    inputLineageContext,
-                    plan.NodeId,
-                    context.RunIdentity.PipelineId,
-                    context.RunIdentity.PipelineName,
-                    graph.Lineage.LineageOptions,
-                    LineageOutcomeReason.Aggregated,
-                    nodeDef.LineageMapperType,
-                    context.CancellationToken);
-            }
-            else
-            {
-                output = await plan.ExecuteAggregate!(instance, input, context, context.CancellationToken).ConfigureAwait(false);
-
-                // Ensure output pipe matches declared result type for downstream strict casting (e.g., SinkNode<T>).
-                if (nodeDef.OutputType is not null && output.GetDataType() != nodeDef.OutputType)
+                if (output.GetDataType() != nodeDef.OutputType)
                 {
-                    output = AdaptOutput(plan, output, nodeDef.OutputType, $"AggregateResult_{plan.NodeId}");
-
-                    if (output.GetDataType() != nodeDef.OutputType)
-                    {
-                        throw new InvalidOperationException(
-                            ErrorMessages.NodeOutputTypeMismatch(plan.NodeId, "Aggregate", nodeDef.OutputType, output.GetDataType()));
-                    }
+                    throw new InvalidOperationException(
+                        ErrorMessages.NodeOutputTypeMismatch(plan.NodeId, "Aggregate", nodeDef.OutputType, output.GetDataType()));
                 }
             }
+        }
 
-            var counter = GetOrCreateCounter(context);
-            output = dataStreamWrapperService.WrapWithCountingAndBranching(output, counter, context, graph, plan.NodeId);
-            context.RegisterForDisposal(output as IAsyncDisposable ?? input);
-            nodeOutputs[plan.NodeId] = output;
-        }
-        finally
-        {
-            foreach (var view in edgeViews)
-                await view.DisposeAsync().ConfigureAwait(false);
-        }
+        var counter = GetOrCreateCounter(context);
+        output = dataStreamWrapperService.WrapWithCountingAndBranching(output, counter, context, graph, plan.NodeId);
+        context.RegisterForDisposal(output as IAsyncDisposable ?? input);
+        nodeOutputs[plan.NodeId] = output;
     }
 
     private async Task ExecuteSinkPlanAsync(NodeExecutionPlan plan,
@@ -285,10 +273,8 @@ public sealed class NodeExecutor(
         NodeDefinition nodeDef,
         INode instance)
     {
-        var edgeViews = new List<IAsyncDisposable>();
-
         var input = TrackInputFlow(context, plan.NodeId,
-            await GetNodeInputAsync(plan.NodeId, graph, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, edgeViews, context.CancellationToken)
+            await GetNodeInputAsync(plan.NodeId, graph, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, context.CancellationToken)
                 .ConfigureAwait(false));
 
         var effectiveInput = input;
@@ -327,9 +313,6 @@ public sealed class NodeExecutor(
             if (exclusiveWork > TimeSpan.Zero)
                 observabilityScope.AddWork(exclusiveWork);
 
-            foreach (var view in edgeViews)
-                await view.DisposeAsync().ConfigureAwait(false);
-
             observabilityScope.Dispose();
         }
 
@@ -351,7 +334,7 @@ public sealed class NodeExecutor(
     private async Task<IDataStream> GetNodeInputAsync(string nodeId, PipelineGraph graph, ILookup<string, Edge> inputLookup,
         IDictionary<string, IDataStream?> nodeOutputs,
         IReadOnlyDictionary<string, INode> nodeInstances, IReadOnlyDictionary<string, NodeDefinition> nodeDefinitions,
-        List<IAsyncDisposable>? edgeViews, CancellationToken cancellationToken)
+        CancellationToken cancellationToken)
     {
         var inputEdges = inputLookup[nodeId].ToList();
 
@@ -360,7 +343,7 @@ public sealed class NodeExecutor(
 
         var inputPipes = new List<IDataStream>(inputEdges.Count);
         foreach (var edge in inputEdges)
-            inputPipes.Add(ResolveEdgeInput(edge, nodeOutputs, nodeId, edgeViews));
+            inputPipes.Add(ResolveEdgeInput(edge, nodeOutputs, nodeId));
 
         var nodeDef = nodeDefinitions[nodeId];
 
@@ -377,24 +360,17 @@ public sealed class NodeExecutor(
     }
 
     /// <summary>
-    ///     Resolves the input a specific incoming edge delivers, handing a Route node's output the branch this edge
-    ///     represents instead of the next unclaimed subscriber channel.
-    /// </summary>
-    /// <summary>
     ///     Resolves the input a specific incoming edge delivers, handing a fan-out node's output the branch this
     ///     edge represents instead of the next unclaimed subscriber channel.
     /// </summary>
     /// <param name="edge">The incoming edge whose upstream output is resolved.</param>
     /// <param name="nodeOutputs">The outputs produced by nodes executed so far.</param>
     /// <param name="nodeId">The id of the node this edge feeds, used only for error messages.</param>
-    /// <param name="edgeViews">
-    ///     When not null, collects the edge-specific view so the caller can release it once the node's execution
-    ///     completes. This must be released for sinks, aggregates, and joins - node kinds that drain their input
-    ///     while executing - so a node that never reads its input does not stall its siblings. Transform outputs are
-    ///     lazily drained by the terminal below them, so their views must not be released here; callers pass null.
-    /// </param>
-    private static IDataStream ResolveEdgeInput(Edge edge, IDictionary<string, IDataStream?> nodeOutputs, string nodeId,
-        List<IAsyncDisposable>? edgeViews)
+    /// <remarks>
+    ///     The view is never released here: the consuming node's output may be lazy, and node retry reads the same
+    ///     channel again. The execution stage releases routed edges once every terminal below the node has finished.
+    /// </remarks>
+    private static IDataStream ResolveEdgeInput(Edge edge, IDictionary<string, IDataStream?> nodeOutputs, string nodeId)
     {
         if (!nodeOutputs.TryGetValue(edge.SourceNodeId, out var upstream) || upstream is null)
             throw new InvalidOperationException(ErrorMessages.OutputNotFoundForSourceNode(edge.SourceNodeId) + $" when processing node '{nodeId}'.");
@@ -402,12 +378,7 @@ public sealed class NodeExecutor(
         if (upstream is not IEdgeRoutedDataStream routed)
             return upstream;
 
-        var view = routed.GetEdgeView(edge);
-
-        if (edgeViews is not null && view is IAsyncDisposable disposableView)
-            edgeViews.Add(disposableView);
-
-        return view;
+        return routed.GetEdgeView(edge);
     }
 
     private static void ValidateRuntimeInputContract(PipelineGraph graph, string nodeId, IReadOnlyList<IDataStream> inputPipes)

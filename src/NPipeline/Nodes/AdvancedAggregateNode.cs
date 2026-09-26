@@ -52,6 +52,10 @@ public abstract class AdvancedAggregateNode<TIn, TKey, TAccumulate, TResult> : I
         _timestampExtractor = config.TimestampExtractor;
         _maxOutOfOrderness = config.EffectiveMaxOutOfOrderness;
         _watermarkInterval = config.EffectiveWatermarkInterval;
+
+        // A negative lateness would push the watermark ahead of the data and close windows before their items arrive.
+        ArgumentOutOfRangeException.ThrowIfLessThan(_maxOutOfOrderness, TimeSpan.Zero, nameof(config.MaxOutOfOrderness));
+        ArgumentOutOfRangeException.ThrowIfLessThan(_watermarkInterval, TimeSpan.Zero, nameof(config.WatermarkInterval));
     }
 
     /// <inheritdoc />
@@ -102,7 +106,8 @@ public abstract class AdvancedAggregateNode<TIn, TKey, TAccumulate, TResult> : I
     public abstract TResult GetResult(TAccumulate accumulator);
 
     /// <summary>
-    ///     Gets the number of items dropped because their window had already been emitted when they arrived.
+    ///     Gets the number of items dropped because every window they belong to had already been emitted when they
+    ///     arrived. An item that still lands in at least one open window is not counted.
     /// </summary>
     public long LateItemsDropped => Interlocked.Read(ref _lateItemsDropped);
 
@@ -129,81 +134,96 @@ public abstract class AdvancedAggregateNode<TIn, TKey, TAccumulate, TResult> : I
         var watermark = DateTimeOffset.MinValue;
         var lastWatermarkCheck = Stopwatch.GetTimestamp();
 
-        await foreach (var obj in input.WithCancellation(cancellationToken).ConfigureAwait(false))
+        // Groups this execution added to _activeGroups and has not emitted yet, returned in the finally when the
+        // consumer stops early or the input fails, so the instance-level count stays accurate.
+        var liveGroups = 0L;
+
+        try
         {
-            if (obj is not TIn item)
-                continue;
-
-            var timestamp = TimestampUtils.ResolveEventTime(item, _timestampExtractor);
-            if (timestamp > maxTimestamp)
-                maxTimestamp = timestamp;
-
-            var key = GetKey(item);
-
-            if (_windowAssigner.TryGetSingleWindow(timestamp, out var singleWindow))
+            await foreach (var obj in input.WithCancellation(cancellationToken).ConfigureAwait(false))
             {
-                if (singleWindow.End <= watermark)
+                if (obj is not TIn item)
+                    continue;
+
+                var timestamp = TimestampUtils.ResolveEventTime(item, _timestampExtractor);
+                if (timestamp > maxTimestamp)
+                    maxTimestamp = timestamp;
+
+                var key = GetKey(item);
+                var landedInLiveWindow = false;
+
+                // Late windows were already emitted; reopening one would emit a second, partial result.
+                if (_windowAssigner.TryGetSingleWindow(timestamp, out var singleWindow))
                 {
-                    // Late: the window was already emitted. Reopening it would emit a second, partial result.
-                    _ = Interlocked.Increment(ref _lateItemsDropped);
+                    if (singleWindow.End > watermark)
+                    {
+                        AccumulateWindow(singleWindow, key, item);
+                        landedInLiveWindow = true;
+                    }
                 }
                 else
                 {
-                    AccumulateWindow(singleWindow, key, item);
-                }
-            }
-            else
-            {
-                foreach (var window in _windowAssigner.AssignWindows(item, timestamp, _timestampExtractor))
-                {
-                    if (window.End <= watermark)
+                    foreach (var window in _windowAssigner.AssignWindows(item, timestamp, _timestampExtractor))
                     {
-                        // Late: the window was already emitted. Reopening it would emit a second, partial result.
-                        _ = Interlocked.Increment(ref _lateItemsDropped);
-                        continue;
-                    }
+                        if (window.End <= watermark)
+                            continue;
 
-                    AccumulateWindow(window, key, item);
+                        AccumulateWindow(window, key, item);
+                        landedInLiveWindow = true;
+                    }
+                }
+
+                if (!landedInLiveWindow)
+                    _ = Interlocked.Increment(ref _lateItemsDropped);
+
+                if (Stopwatch.GetElapsedTime(lastWatermarkCheck) < _watermarkInterval)
+                    continue;
+
+                lastWatermarkCheck = Stopwatch.GetTimestamp();
+                var candidate = TimestampUtils.SafeSubtract(maxTimestamp, _maxOutOfOrderness);
+                if (candidate <= watermark)
+                    continue;
+
+                watermark = candidate;
+
+                while (expiry.TryPeek(out var closing, out var end) && end <= watermark)
+                {
+                    _ = expiry.Dequeue();
+                    if (!windows.Remove(closing, out var groups))
+                        continue;
+
+                    foreach (var accumulator in groups.Values)
+                    {
+                        ReleaseGroup();
+                        yield return GetResult(accumulator!);
+                    }
                 }
             }
 
-            if (Stopwatch.GetElapsedTime(lastWatermarkCheck) < _watermarkInterval)
-                continue;
-
-            lastWatermarkCheck = Stopwatch.GetTimestamp();
-            var candidate = TimestampUtils.SafeSubtract(maxTimestamp, _maxOutOfOrderness);
-            if (candidate <= watermark)
-                continue;
-
-            watermark = candidate;
-
-            while (expiry.TryPeek(out var closing, out var end) && end <= watermark)
+            // End of stream: flush the remaining windows in window order. The state is then released.
+            while (expiry.TryDequeue(out var closing, out _))
             {
-                _ = expiry.Dequeue();
                 if (!windows.Remove(closing, out var groups))
                     continue;
 
                 foreach (var accumulator in groups.Values)
                 {
-                    _ = Interlocked.Increment(ref _totalWindowsClosed);
-                    _ = Interlocked.Decrement(ref _activeGroups);
+                    ReleaseGroup();
                     yield return GetResult(accumulator!);
                 }
             }
         }
-
-        // End of stream: flush the remaining windows in window order. The state is then released.
-        while (expiry.TryDequeue(out var closing, out _))
+        finally
         {
-            if (!windows.Remove(closing, out var groups))
-                continue;
+            if (liveGroups != 0)
+                _ = Interlocked.Add(ref _activeGroups, -liveGroups);
+        }
 
-            foreach (var accumulator in groups.Values)
-            {
-                _ = Interlocked.Increment(ref _totalWindowsClosed);
-                _ = Interlocked.Decrement(ref _activeGroups);
-                yield return GetResult(accumulator!);
-            }
+        void ReleaseGroup()
+        {
+            liveGroups--;
+            _ = Interlocked.Increment(ref _totalWindowsClosed);
+            _ = Interlocked.Decrement(ref _activeGroups);
         }
 
         void AccumulateWindow(IWindow window, TKey key, TIn item)
@@ -220,6 +240,7 @@ public abstract class AdvancedAggregateNode<TIn, TKey, TAccumulate, TResult> : I
 
             if (!keyExists)
             {
+                liveGroups++;
                 _ = Interlocked.Increment(ref _totalWindowsProcessed);
                 var active = Interlocked.Increment(ref _activeGroups);
                 if (active > Interlocked.Read(ref _maxConcurrentWindows))

@@ -53,7 +53,6 @@ internal sealed class CapAwareMaterializingStrategy<TIn, TOut> : LineageMappingS
                 yield return packet;
             }
 
-            LineageNodeOutcomeRegistry.GetWriter(pipelineId, nodeId).ClearAll();
             yield break;
         }
 
@@ -90,7 +89,6 @@ internal sealed class CapAwareMaterializingStrategy<TIn, TOut> : LineageMappingS
                 yield return packet;
             }
 
-            LineageNodeOutcomeRegistry.GetWriter(pipelineId, nodeId).ClearAll();
             yield break;
         }
 

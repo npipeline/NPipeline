@@ -100,29 +100,44 @@ internal static class CircuitBreakerGate
         ? "half-open with every probe slot in use"
         : "open";
 
+    /// <summary>
+    ///     Logs a transition and reports it to the run's observer. Never throws.
+    /// </summary>
+    /// <remarks>
+    ///     The transition has already happened in state shared across runs, and on acquire the caller holds a permit it
+    ///     has not received yet. A logger or observer that throws must not fail the item, or the permit would leak and
+    ///     could wedge the breaker half-open.
+    /// </remarks>
     private static void Report(PipelineContext context, CircuitBreaker breaker, BreakerTransition transition)
     {
         if (!transition.Occurred)
             return;
 
-        var logger = CreateLogger(context);
         var reason = transition.Reason!;
+        ILogger? logger = null;
 
-        switch (transition.To)
+        try
         {
-            case CircuitState.Open:
-                CircuitBreakerLogMessages.Opened(logger, breaker.NodeId, reason);
-                break;
-            case CircuitState.HalfOpen:
-                CircuitBreakerLogMessages.HalfOpened(logger, breaker.NodeId, reason);
-                break;
-            default:
-                CircuitBreakerLogMessages.Closed(logger, breaker.NodeId, reason);
-                break;
+            logger = CreateLogger(context);
+
+            switch (transition.To)
+            {
+                case CircuitState.Open:
+                    CircuitBreakerLogMessages.Opened(logger, breaker.NodeId, reason);
+                    break;
+                case CircuitState.HalfOpen:
+                    CircuitBreakerLogMessages.HalfOpened(logger, breaker.NodeId, reason);
+                    break;
+                default:
+                    CircuitBreakerLogMessages.Closed(logger, breaker.NodeId, reason);
+                    break;
+            }
+        }
+        catch
+        {
+            // A failing logger has nowhere to report to.
         }
 
-        // The transition has already happened in state shared across runs, so an observer that throws must not also
-        // fail the item that caused it.
         try
         {
             context.Observability.ExecutionObserver.OnCircuitStateChanged(new CircuitStateChangedEvent(
@@ -130,7 +145,15 @@ internal static class CircuitBreakerGate
         }
         catch (Exception ex)
         {
-            CircuitBreakerLogMessages.StateChangeListenerFailed(logger, ex, breaker.NodeId, transition.From.ToString(), transition.To.ToString());
+            try
+            {
+                if (logger is not null)
+                    CircuitBreakerLogMessages.StateChangeListenerFailed(logger, ex, breaker.NodeId, transition.From.ToString(), transition.To.ToString());
+            }
+            catch
+            {
+                // A failing logger has nowhere to report to.
+            }
         }
     }
 

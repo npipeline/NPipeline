@@ -325,21 +325,4 @@ internal readonly struct LineageNodeOutcomeWriter
         _ = _node.Inputs.TryRemove(inputIndex, out _);
         _ = _node.Outcomes.TryRemove(inputIndex, out _);
     }
-
-    /// <summary>
-    ///     Releases all of a node's per-item state at once. Used once a materializing strategy has mapped every item, so
-    ///     the state it accumulated while reading is not held for the rest of the run.
-    /// </summary>
-    public void ClearAll()
-    {
-        if (_node is null)
-            return;
-
-        _node.Inputs.Clear();
-        _node.Outcomes.Clear();
-
-        while (_node.Provenance.TryDequeue(out _))
-        {
-        }
-    }
 }

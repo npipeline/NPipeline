@@ -29,8 +29,8 @@ namespace NPipeline.Configuration;
 ///     <para>
 ///         <strong>Resilience Policy:</strong>
 ///         <see cref="ResiliencePolicy" /> decides how node and item failures are handled, when the graph does not
-///         configure one. Precedence at run time: the graph's policy instance, then the graph's policy type, then
-///         this policy, then <see cref="DefaultResiliencePolicy.Instance" />.
+///         configure one. Precedence at run time: a node's own policy, then the graph's policy instance, then the
+///         graph's policy type, then this policy, then <see cref="DefaultResiliencePolicy.Instance" />.
 ///     </para>
 ///     <para>
 ///         See <see cref="PipelineContext" /> for detailed thread-safety requirements and recommendations.
@@ -126,8 +126,9 @@ public sealed record PipelineContextConfiguration(
     /// <param name="resiliencePolicy">The resilience policy to use during execution.</param>
     /// <returns>A new configuration with the specified resilience policy.</returns>
     /// <remarks>
-    ///     The policy is used when the graph does not configure one. Precedence at run time: the graph's policy
-    ///     instance, then the graph's policy type, then this policy, then <see cref="DefaultResiliencePolicy.Instance" />.
+    ///     The policy is used when the graph does not configure one. Precedence at run time: a node's own policy, then
+    ///     the graph's policy instance, then the graph's policy type, then this policy, then
+    ///     <see cref="DefaultResiliencePolicy.Instance" />.
     /// </remarks>
     public static PipelineContextConfiguration WithResilience(IResiliencePolicy resiliencePolicy)
     {

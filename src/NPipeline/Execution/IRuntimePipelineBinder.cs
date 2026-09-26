@@ -29,10 +29,15 @@ public interface IRuntimePipelineBinder
 /// <param name="PipelineLineageSink">Resolved pipeline-level lineage sink (if any).</param>
 /// <param name="ResiliencePolicy">Resolved resilience policy for execution.</param>
 /// <param name="LineageCollector">Resolved item-level lineage collector (if any).</param>
+/// <param name="RunOwnedInstances">
+///     Instances the binder created from a configured type and the run owns: the run disposes them when it ends,
+///     however it ends. Instances passed in directly, or owned by a container, are not included.
+/// </param>
 public readonly record struct RuntimePipelineBindingResult(
     PipelineGraph Graph,
     IDeadLetterSink? DeadLetterSink,
     ILineageSink? LineageSink,
     IPipelineLineageSink? PipelineLineageSink,
     IResiliencePolicy ResiliencePolicy,
-    ILineageCollector? LineageCollector = null);
+    ILineageCollector? LineageCollector = null,
+    IReadOnlyList<object>? RunOwnedInstances = null);

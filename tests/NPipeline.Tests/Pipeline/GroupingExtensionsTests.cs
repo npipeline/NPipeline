@@ -178,8 +178,8 @@ public sealed class GroupingExtensionsTests
         var act = () => PipelineRunner.Create().RunAsync(definition, new PipelineContext());
 
         await act.Should().NotThrowAsync();
-        // Arrival time puts all three items in the same window: "a" sums to 3 and "b" to 3.
-        results.Should().Equal(3, 3);
+        // Arrival-time windows are aligned on UTC, so the items can straddle a window boundary; the totals cannot.
+        results.Sum().Should().Be(6);
     }
 
     private sealed class InlinePipelineDefinition(Action<PipelineBuilder> define) : IPipelineDefinition

@@ -99,6 +99,11 @@ In the `Default` profile, `PipelineContext.Parameters`, `.Items`, and `.Properti
 - No need to add explicit locking for simple shared counters or flags.
 - Safe to use with `NPipeline.Extensions.Parallelism` without additional synchronization for basic scenarios.
 
+When you supply your own dictionaries through `PipelineContextConfiguration`, `Parameters` is copied into a
+`ConcurrentDictionary`, and `Items` and `Properties` are wrapped in a lock-based view so you keep seeing the pipeline's
+writes. The wrapper locks on the dictionary you supplied, so if your own code reads or writes that dictionary while a
+run is in progress, lock on the same instance.
+
 ```csharp
 // Safe in Default profile - ConcurrentDictionary handles concurrent writes
 public override ValueTask<Order> TransformAsync(

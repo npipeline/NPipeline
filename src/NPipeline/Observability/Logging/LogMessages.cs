@@ -175,6 +175,12 @@ internal static partial class PipelineRunnerLogMessages
 
     [LoggerMessage(10, LogLevel.Warning, "Cleanup after a failed pipeline run threw {ExceptionType}; the original failure is preserved")]
     public static partial void CleanupFailed(ILogger logger, Exception exception, string exceptionType);
+
+    [LoggerMessage(11, LogLevel.Warning, "Reporting the pipeline failure to the observer threw {ExceptionType}; the original failure is preserved")]
+    public static partial void FailureReportingFailed(ILogger logger, Exception exception, string exceptionType);
+
+    [LoggerMessage(12, LogLevel.Warning, "A callback registered on the run's cancellation token threw while the run was being cancelled")]
+    public static partial void CancellationCallbackFailed(ILogger logger, Exception exception);
 }
 
 /// <summary>

@@ -126,13 +126,22 @@ public sealed class CircuitBreakerBehaviorTests
         {
             var t = Wire(b, transform, new CollectingSink<int>(), Enumerable.Range(1, 200), "sequential");
 
-            _ = b.WithResilience(t, o => o with { CircuitBreaker = new CircuitBreakerOptions { ConsecutiveFailures = 3 } });
+            // No backoff, so a policy that keeps answering Retry for refused attempts hits the repeat ceiling at
+            // once instead of waiting out a hundred exponential delays.
+            _ = b.WithResilience(t, o => o with
+            {
+                ItemRetry = o.ItemRetry with { Backoff = RetryBackoff.None },
+                CircuitBreaker = new CircuitBreakerOptions { ConsecutiveFailures = 3 },
+            });
+
             _ = b.AddResiliencePolicy(t, ResiliencePolicyBuilder.ForNode<FlakyTransform, int>().OnAny().Retry(1000).Build());
         });
 
         var failure = await act.Should().ThrowAsync<Exception>();
 
         Chain(failure.Which).Should().Contain(e => e is CircuitBreakerOpenException);
+        Chain(failure.Which).Should().NotContain(e => e.Message.Contains("more than", StringComparison.Ordinal),
+            "a refused attempt must fail the node, not be retried until the repeat ceiling");
         transform.TotalAttempts.Should().BeLessThan(10);
     }
 

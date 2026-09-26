@@ -21,8 +21,10 @@ public static class PipelineBuilderValidationExtensions
     /// <param name="builder">The pipeline builder to validate.</param>
     /// <returns>A validation result containing any structural issues found.</returns>
     /// <remarks>
-    ///     This method performs all standard validation checks (cycles, type compatibility, connectivity)
-    ///     without freezing the builder state or requiring all configuration to be finalized.
+    ///     This method runs the same checks as <see cref="PipelineBuilder.TryBuild" /> (the core, extended and custom
+    ///     rules, over the same graph) without freezing the builder state. A builder with no nodes, or with
+    ///     configuration that cannot be turned into a graph, is reported as an issue rather than thrown. The graph's
+    ///     <see cref="GraphValidationMode" /> does not apply: the rules always run.
     ///     Use this to get early feedback on pipeline validity during development.
     ///     Example:
     ///     <code>
@@ -42,7 +44,9 @@ public static class PipelineBuilderValidationExtensions
     {
         ArgumentNullException.ThrowIfNull(builder);
 
-        return PipelineGraphValidator.Validate(builder.CreateGraph(includeChildGraphs: false), builder.GetValidationRules());
+        return builder.TryCreateGraph(includeChildGraphs: false, out var graph, out var issue)
+            ? PipelineGraphValidator.Validate(graph, builder.GetValidationRules())
+            : new PipelineValidationResult(ImmutableList.Create(issue));
     }
 
     /// <summary>

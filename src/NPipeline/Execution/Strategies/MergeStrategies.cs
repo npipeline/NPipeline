@@ -35,15 +35,10 @@ public static class MergeStrategies
     ///     Items are yielded as they become available from any of the source streams.
     ///     This is ideal for responsive, real-time processing.
     /// </summary>
-    public static async IAsyncEnumerable<T> Interleave<T>(
+    public static IAsyncEnumerable<T> Interleave<T>(
         IEnumerable<IDataStream> dataStreams,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
-    {
-        await foreach (var item in InterleaveBounded<T>(dataStreams, null, cancellationToken).ConfigureAwait(false))
-        {
-            yield return item;
-        }
-    }
+        CancellationToken cancellationToken = default) =>
+        InterleaveBounded<T>(dataStreams, null, cancellationToken);
 
     /// <summary>
     ///     Merges multiple asynchronous streams into a single stream by interleaving their items with optional capacity limits.

@@ -30,7 +30,7 @@ public sealed class PipeMergeService(IMergeStrategySelector strategySelector) : 
 
         // Special-case join nodes: they intentionally accept heterogeneous input types (the two sides of the join)
         // so we must not filter by nodeDef.InputType (which reflects only the first input's type). Their two inputs
-        // must be read concurrently, or an unbounded live input starves the other side (C03).
+        // must be read concurrently, or an unbounded live input starves the other side.
         if (nodeDef.Kind == NodeKind.Join)
         {
             var sources = new IAsyncEnumerable<object?>[materializedInputPipes.Count];

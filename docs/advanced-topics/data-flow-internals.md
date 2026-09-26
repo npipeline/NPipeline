@@ -75,16 +75,20 @@ internal class CountingPassthroughDataStream<T> : IForwardOnlyDataStream<T>
 
 Used by the observability system to track item counts without affecting data flow.
 
-### MulticastDataStream\<T>
+### Multicast streams
 
-Distributes items to multiple consumers (branch/tap patterns):
+When a node fans out to several downstream nodes, the runtime wraps its output in a multicast stream:
+`CountingMulticastDataStream<T>` for a plain fan-out, and `CountingConditionalMulticastDataStream<T>` for a Route node.
+A single pump reads the upstream once and writes each item to one channel per outgoing edge, so every downstream node
+reads its own copy.
 
-```csharp
-internal class AsyncEnumerableDataStream<T>(
-    IAsyncEnumerable<T> source, string name) : IForwardOnlyDataStream<T>
-```
-
-When a node fans out to multiple downstream nodes, the runtime creates multicast streams so each downstream gets its own enumeration.
+- **Buffering:** each edge's channel is unbounded by default. `BranchOptions.PerSubscriberBufferCapacity` bounds it,
+  which makes the pump wait for the slowest reader.
+- **Unread edges:** the runtime releases an edge once every terminal below the node consuming it has finished,
+  including node retries. The pump then stops feeding that edge and discards what it holds, so a sink that stops early
+  or never reads its input can't stall its siblings.
+- **Metrics:** the pump records `BranchMetrics` for the node. Backlog is sampled from the channels every 64 items
+  and once at the end of the stream, so a short burst between samples may not show up in `MaxAggregateBacklog`.
 
 ## How Streams Connect Nodes
 

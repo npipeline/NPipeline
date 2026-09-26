@@ -96,12 +96,16 @@ public sealed class NodeInstantiationServiceTests
             return service.BuildPlans(graph, nodeInstances);
         }
 
+        var beforeFirst = Volatile.Read(ref NodeInstantiationService.CompilationCount);
+
         _ = Build(service);
         var afterFirst = Volatile.Read(ref NodeInstantiationService.CompilationCount);
 
         _ = Build(service);
         var afterSecond = Volatile.Read(ref NodeInstantiationService.CompilationCount);
 
+        // The node types are unique to this test, so the first build must compile; the second must not.
+        Assert.True(afterFirst > beforeFirst);
         Assert.Equal(afterFirst, afterSecond);
     }
 

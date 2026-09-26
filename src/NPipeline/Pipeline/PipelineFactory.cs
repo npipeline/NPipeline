@@ -89,28 +89,38 @@ public sealed class PipelineFactory : IPipelineFactory
         // handling cannot come from different instances.
         var builder = new PipelineBuilder(context.Lineage.Module);
 
-        definition.Define(builder, context);
-
-        // Allow tests / advanced users to supply preconfigured node instances via context. A context-supplied
-        // instance wins over one the definition registered, so a test double replaces the real node. An unknown id
-        // throws: silently ignoring it would leave the real node running.
-        if (context.NodeEnvironment.PreconfiguredNodeInstances.Count > 0)
+        try
         {
-            foreach (var kvp in context.NodeEnvironment.PreconfiguredNodeInstances)
+            definition.Define(builder, context);
+
+            // Allow tests / advanced users to supply preconfigured node instances via context. A context-supplied
+            // instance wins over one the definition registered, so a test double replaces the real node. An unknown id
+            // throws: silently ignoring it would leave the real node running.
+            if (context.NodeEnvironment.PreconfiguredNodeInstances.Count > 0)
             {
-                try
+                foreach (var kvp in context.NodeEnvironment.PreconfiguredNodeInstances)
                 {
-                    _ = builder.SetPreconfiguredNodeInstance(kvp.Key, kvp.Value);
-                }
-                catch (InvalidOperationException ex)
-                {
-                    throw new InvalidOperationException(
-                        $"{ex.Message} Node ids are the sanitized, lower-case form of the node's name.", ex);
+                    try
+                    {
+                        _ = builder.SetPreconfiguredNodeInstance(kvp.Key, kvp.Value);
+                    }
+                    catch (InvalidOperationException ex)
+                    {
+                        throw new InvalidOperationException(
+                            $"{ex.Message} Node ids are the sanitized, lower-case form of the node's name.", ex);
+                    }
                 }
             }
-        }
 
-        return builder.Build();
+            return builder.Build();
+        }
+        catch
+        {
+            // No pipeline reaches the run, so nothing else will release the instances the definition created. The
+            // caller's instances are left alone.
+            PipelineBuilder.DisposeBuilderInstances(builder, context.NodeEnvironment.PreconfiguredNodeInstances.Values);
+            throw;
+        }
     }
 
     private static bool CanCacheGraph(Type definitionType, PipelineContext context)

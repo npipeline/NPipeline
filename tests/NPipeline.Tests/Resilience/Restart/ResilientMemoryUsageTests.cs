@@ -11,6 +11,7 @@ using NPipeline.Extensions.Testing;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 using NPipeline.Reliability;
+using NPipeline.Tests.Core.Execution;
 
 namespace NPipeline.Tests.Resilience.Restart;
 
@@ -18,8 +19,8 @@ namespace NPipeline.Tests.Resilience.Restart;
 ///     Memory stays bounded by the replay window when a restartable node streams a large input.
 /// </summary>
 
-// Use a collection to avoid parallel execution with other stateful tests (shared resources & GC pressure)
-[Collection("StatefulTests")]
+// Measures process-wide memory, so it must not run alongside other tests.
+[Collection(ProcessWideCounterGroup.Name)]
 public sealed class ResilientMemoryUsageTests
 {
     private static long ForceAndGetMemory(bool full = true)

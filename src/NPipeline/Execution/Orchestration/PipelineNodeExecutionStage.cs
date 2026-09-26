@@ -1,5 +1,6 @@
 using System.Runtime.ExceptionServices;
 using NPipeline.DataFlow;
+using NPipeline.DataFlow.Routing;
 using NPipeline.ErrorHandling;
 using NPipeline.Execution.Annotations;
 using NPipeline.Graph;
@@ -84,19 +85,21 @@ internal sealed class PipelineNodeExecutionStage(
         if (terminals.Count == 1)
         {
             context.CancellationToken.ThrowIfCancellationRequested();
-            await ExecuteNodeAsync(terminals[0], setup, context, inputLookup, nodeOutputs).ConfigureAwait(false);
+            var releaser = new RoutedEdgeReleaser(terminals, inputLookup, nodeOutputs);
+            await ExecuteTerminalAsync(terminals[0], setup, context, inputLookup, nodeOutputs, releaser).ConfigureAwait(false);
             return;
         }
 
         // Terminal nodes run on separate threads from here, so the node output bag they share needs guarding.
         var gate = new object();
         var synchronizedOutputs = new SynchronizedNodeOutputs(nodeOutputs, gate);
+        var edgeReleaser = new RoutedEdgeReleaser(terminals, inputLookup, synchronizedOutputs);
         var tasks = new List<Task>(terminals.Count);
 
         foreach (var nodeDef in terminals)
         {
             tasks.Add(Task.Run(
-                () => ExecuteNodeAsync(nodeDef, setup, context, inputLookup, synchronizedOutputs),
+                () => ExecuteTerminalAsync(nodeDef, setup, context, inputLookup, synchronizedOutputs, edgeReleaser),
                 context.CancellationToken));
         }
 
@@ -123,6 +126,27 @@ internal sealed class PipelineNodeExecutionStage(
 
             ObserveInBackground(pending);
             await finished.ConfigureAwait(false); // rethrows with the original stack
+        }
+    }
+
+    /// <summary>
+    ///     Executes a terminal node, including its retries, then releases the routed edges it no longer needs.
+    /// </summary>
+    private async Task ExecuteTerminalAsync(
+        NodeDefinition nodeDef,
+        PipelineExecutionSetupResult setup,
+        PipelineContext context,
+        ILookup<string, Edge> inputLookup,
+        IDictionary<string, IDataStream?> nodeOutputs,
+        RoutedEdgeReleaser edgeReleaser)
+    {
+        try
+        {
+            await ExecuteNodeAsync(nodeDef, setup, context, inputLookup, nodeOutputs).ConfigureAwait(false);
+        }
+        finally
+        {
+            edgeReleaser.TerminalFinished(nodeDef.Id);
         }
     }
 
@@ -259,6 +283,86 @@ internal sealed class PipelineNodeExecutionStage(
                 await persistenceService.TryPersistAfterNode(context, completedEvent).ConfigureAwait(false);
             },
             context.CancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    ///     Releases each routed edge once every terminal below the node consuming it has finished.
+    /// </summary>
+    /// <remarks>
+    ///     A fan-out pump feeds its edges in lockstep, so an edge nobody reads any more must be released or it stalls its
+    ///     siblings. The consuming node cannot release it itself: transform, join and aggregate outputs are lazy and
+    ///     are read later by the terminals below them, and node retry reads the same edge again. Once every terminal
+    ///     reachable from the node has finished, including its retries, nothing can read the node's input edges again.
+    /// </remarks>
+    private sealed class RoutedEdgeReleaser
+    {
+        private readonly object _gate = new();
+        private readonly ILookup<string, Edge> _inputLookup;
+        private readonly Dictionary<string, List<string>> _nodesByTerminal = new(StringComparer.Ordinal);
+        private readonly IDictionary<string, IDataStream?> _nodeOutputs;
+        private readonly Dictionary<string, int> _pendingTerminals = new(StringComparer.Ordinal);
+
+        public RoutedEdgeReleaser(
+            IReadOnlyList<NodeDefinition> terminals,
+            ILookup<string, Edge> inputLookup,
+            IDictionary<string, IDataStream?> nodeOutputs)
+        {
+            _inputLookup = inputLookup;
+            _nodeOutputs = nodeOutputs;
+
+            foreach (var terminal in terminals)
+            {
+                // The terminal itself and every node upstream of it.
+                var reached = new List<string>();
+                var seen = new HashSet<string>(StringComparer.Ordinal) { terminal.Id };
+                var stack = new Stack<string>();
+                stack.Push(terminal.Id);
+
+                while (stack.Count > 0)
+                {
+                    var nodeId = stack.Pop();
+                    reached.Add(nodeId);
+                    _pendingTerminals[nodeId] = _pendingTerminals.GetValueOrDefault(nodeId) + 1;
+
+                    foreach (var edge in inputLookup[nodeId])
+                    {
+                        if (seen.Add(edge.SourceNodeId))
+                            stack.Push(edge.SourceNodeId);
+                    }
+                }
+
+                _nodesByTerminal[terminal.Id] = reached;
+            }
+        }
+
+        public void TerminalFinished(string terminalId)
+        {
+            if (!_nodesByTerminal.TryGetValue(terminalId, out var reached))
+                return;
+
+            List<string>? released = null;
+
+            lock (_gate)
+            {
+                foreach (var nodeId in reached)
+                {
+                    if (--_pendingTerminals[nodeId] == 0)
+                        (released ??= []).Add(nodeId);
+                }
+            }
+
+            if (released is null)
+                return;
+
+            foreach (var nodeId in released)
+            {
+                foreach (var edge in _inputLookup[nodeId])
+                {
+                    if (_nodeOutputs.TryGetValue(edge.SourceNodeId, out var upstream) && upstream is IEdgeRoutedDataStream routed)
+                        routed.ReleaseEdge(edge);
+                }
+            }
+        }
     }
 
     private static void HandleNodeExecutionException(NodeDefinition nodeDef, PipelineContext context, Exception ex)

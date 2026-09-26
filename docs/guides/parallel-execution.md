@@ -136,7 +136,7 @@ Thread safety of context dictionaries depends on the [optimization profile](opti
 
 ### Dictionary Implementation by Profile
 
-In the `Default` profile, context dictionaries use `ConcurrentDictionary<string, object>` internally. This eliminates the most common source of bugs when developers first enable parallel execution - concurrent writes to `context.Items` no longer throw or corrupt data.
+In the `Default` profile, context dictionaries are thread-safe: `ConcurrentDictionary<string, object>` when the context creates them, and a locking wrapper around dictionaries you supply yourself. This eliminates the most common source of bugs when developers first enable parallel execution - concurrent writes to `context.Items` no longer throw or corrupt data.
 
 In the `HighThroughput` profile, context dictionaries use pooled `Dictionary<string, object>` instances for zero locking overhead. This avoids memory barriers on every dictionary access, which matters at millions of operations per second. The trade-off is that concurrent writes are unsafe - use `IPipelineStateManager` for shared state in parallel scenarios.
 

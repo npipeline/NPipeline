@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Linq.Expressions;
+using NPipeline.Execution.Caching;
 using NPipeline.Graph;
 using NPipeline.Nodes;
 
@@ -27,7 +28,8 @@ public sealed class DefaultNodeFactory : INodeFactory
             return preconfigured;
 
         // Try to get or create a compiled factory delegate
-        var factory = CompiledFactories.GetOrAdd(nodeDefinition.NodeType, BuildCompiledFactory);
+        var nodeType = nodeDefinition.NodeType;
+        var factory = CollectibleAwareCache.GetOrAdd(CompiledFactories, nodeType, nodeType.IsCollectible, BuildCompiledFactory);
 
         // If we successfully compiled a factory, use it (fast path)
         if (factory != null)

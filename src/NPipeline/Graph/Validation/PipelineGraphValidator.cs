@@ -262,10 +262,24 @@ public static class PipelineGraphValidator
                 var hasLeft = join.InputType is null || upstreamTypes.Any(t => t is not null && join.InputType.IsAssignableFrom(t));
                 var hasRight = join.SecondInputType is null || upstreamTypes.Any(t => t is not null && join.SecondInputType.IsAssignableFrom(t));
 
-                if (upstreamIds.Count < 2 || !hasLeft || !hasRight)
-                    yield return new ValidationIssue(ValidationSeverity.Error,
-                        $"Join node '{join.Name}' ({join.Id}) must have both its left and right inputs connected; found {upstreamIds.Count} input(s).",
-                        "Structure");
+                if (upstreamIds.Count >= 2 && hasLeft && hasRight)
+                    continue;
+
+                var missing = (hasLeft, hasRight) switch
+                {
+                    (false, false) => $"left ({join.InputType!.Name}) and right ({join.SecondInputType!.Name}) inputs",
+                    (false, true) => $"left input ({join.InputType!.Name})",
+                    (true, false) => $"right input ({join.SecondInputType!.Name})",
+                    _ => "second input",
+                };
+
+                var connected = upstreamTypes.Count == 0
+                    ? "none"
+                    : string.Join(", ", upstreamTypes.Select(t => t?.Name ?? "unknown"));
+
+                yield return new ValidationIssue(ValidationSeverity.Error,
+                    $"Join node '{join.Name}' ({join.Id}) is missing its {missing}; connected upstream types: {connected}.",
+                    "Structure");
             }
         }
     }

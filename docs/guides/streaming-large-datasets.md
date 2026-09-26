@@ -77,7 +77,7 @@ NPipeline provides several stream types, each with different memory characterist
 |--------|--------|------------|----------|
 | `DataStream<T>` | Constant | No (forward-only) | Default: lazy streaming |
 | `InMemoryDataStream<T>` | O(n) | Yes | Small, bounded reference data |
-| `MulticastDataStream<T>` | Bounded | N/A | Branching to multiple consumers |
+| Multicast (fan-out) streams | Unbounded by default; bounded with `BranchOptions` | N/A | Branching to multiple consumers |
 
 ### Forward-Only Streams
 

@@ -150,7 +150,9 @@ public async Task EmailNode_SendsNotification()
 
 ## Testing Error Handling
 
-Use `CaptureErrors()` to test resilience and error paths:
+Use `CaptureErrors()` to test resilience and error paths. It supplies its capturing policy through the pipeline
+context, so a policy the pipeline registers itself with `builder.AddResiliencePolicy(...)` takes precedence and errors
+aren't captured. See [resilience policy precedence](../error-handling/resilience-policies.md).
 
 ```csharp
 [Fact]

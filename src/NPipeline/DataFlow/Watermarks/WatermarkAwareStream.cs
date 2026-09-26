@@ -53,18 +53,18 @@ public static class WatermarkAwareStreamExtensions
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var lastWatermarkCheck = Stopwatch.GetTimestamp();
-        var intervalTicks = watermarkInterval <= TimeSpan.Zero ? 0 : watermarkInterval.Ticks;
+        var emitEveryItem = watermarkInterval <= TimeSpan.Zero;
 
-        await foreach (var item in source.WithCancellation(cancellationToken))
+        await foreach (var item in source.WithCancellation(cancellationToken).ConfigureAwait(false))
         {
             // Resolve the item's event time: ITimestamped, else the extractor, else arrival time.
             var timestamp = TimestampUtils.ResolveEventTime(item, timestampExtractor);
 
             watermarkGenerator.Update(timestamp);
 
-            // Check if it's time to emit a watermark. The interval is measured with the monotonic stopwatch so that
-            // no clock reads are needed once it is satisfied.
-            var emit = intervalTicks == 0;
+            // Check if it's time to emit a watermark. The interval is measured with the monotonic stopwatch, which is
+            // not read at all when a watermark is emitted for every item.
+            var emit = emitEveryItem;
 
             if (!emit)
             {
@@ -107,7 +107,7 @@ public static class WatermarkAwareStreamExtensions
         Func<Watermark, TResult> watermarkProcessor,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        await foreach (var item in source.WithCancellation(cancellationToken))
+        await foreach (var item in source.WithCancellation(cancellationToken).ConfigureAwait(false))
         {
             var result = item switch
             {
@@ -137,7 +137,7 @@ public static class WatermarkAwareStreamExtensions
     {
         Watermark? latestWatermark = null;
 
-        await foreach (var item in source.WithCancellation(cancellationToken))
+        await foreach (var item in source.WithCancellation(cancellationToken).ConfigureAwait(false))
         {
             if (item is StreamItem<T>.WatermarkItem watermarkItem)
             {

@@ -36,7 +36,7 @@ internal sealed class DiContainerNodeFactory(IServiceProvider serviceProvider) :
         if (node is not null)
         {
             // The container owns whatever it resolves; the run must not dispose it.
-            _ = _containerOwned.TryAdd((INode)node, 0);
+            MarkContainerOwned((INode)node);
             return (INode)node;
         }
 
@@ -116,5 +116,15 @@ internal sealed class DiContainerNodeFactory(IServiceProvider serviceProvider) :
                 return ActivatorUtilities.CreateInstance(sp, type);
             }
         };
+    }
+
+    /// <summary>
+    ///     Remembers an instance the container owns. Only disposable instances matter to the ownership check, so the
+    ///     others are not held for the factory's lifetime.
+    /// </summary>
+    private void MarkContainerOwned(INode instance)
+    {
+        if (instance is IDisposable or IAsyncDisposable)
+            _ = _containerOwned.TryAdd(instance, 0);
     }
 }

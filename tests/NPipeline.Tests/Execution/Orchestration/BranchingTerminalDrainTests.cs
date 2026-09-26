@@ -4,9 +4,11 @@ using NPipeline.Configuration;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.Branching;
 using NPipeline.DataFlow.DataStreams;
+using NPipeline.DataFlow.Windowing;
 using NPipeline.Execution;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
+using NPipeline.Reliability;
 
 namespace NPipeline.Tests.Execution.Orchestration;
 
@@ -150,6 +152,135 @@ public sealed class BranchingTerminalDrainTests
         (await Task.WhenAny(run, Task.Delay(DeadlockTimeout))).Should().BeSameAs(run);
         await run;
         recorder.FirstSinkCount.Should().Be(SourceItemCount);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task AggregateBelowAFanOut_ReceivesEveryItem(bool bounded)
+    {
+        var (context, recorder) = CreateRun();
+
+        var run = PipelineRunner.Create().RunAsync(new AggregateBranchPipeline(bounded), context, CancellationToken.None);
+        (await Task.WhenAny(run, Task.Delay(DeadlockTimeout))).Should().BeSameAs(run);
+        await run;
+
+        recorder.FirstSinkCount.Should().Be(SourceItemCount);
+        recorder.AggregatedCount.Should().Be(SourceItemCount, "the aggregate's lazy output is read after the aggregate node executed");
+    }
+
+    [Fact]
+    public async Task SinkBelowATransformThatIgnoresItsInput_DoesNotStallSiblings()
+    {
+        var (context, recorder) = CreateRun();
+
+        var run = PipelineRunner.Create().RunAsync<IgnoringChainPipeline>(context, CancellationToken.None);
+        (await Task.WhenAny(run, Task.Delay(DeadlockTimeout))).Should().BeSameAs(run);
+        await run;
+
+        recorder.FirstSinkCount.Should().Be(SourceItemCount);
+    }
+
+    [Fact]
+    public async Task RetriedSinkBelowAFanOut_ReadsItsBranchOnTheRetry()
+    {
+        var (context, recorder) = CreateRun();
+
+        var run = PipelineRunner.Create().RunAsync<RetriedSinkBranchPipeline>(context, CancellationToken.None);
+        (await Task.WhenAny(run, Task.Delay(DeadlockTimeout))).Should().BeSameAs(run);
+        await run;
+
+        recorder.FirstSinkCount.Should().Be(SourceItemCount);
+        recorder.FlakyAttempts.Should().Be(2);
+        recorder.SecondSinkCount.Should().Be(SourceItemCount, "the retry must read the branch the failed attempt never touched");
+    }
+
+    private sealed class CountingAggregate()
+        : AggregateNode<int, int, int>(new AggregateNodeConfiguration<int>(WindowAssigner.Tumbling(TimeSpan.FromDays(1))))
+    {
+        public override int GetKey(int item) => 0;
+
+        public override int CreateAccumulator() => 0;
+
+        public override int Accumulate(int accumulator, int item) => accumulator + 1;
+    }
+
+    private sealed class AggregateResultSink : SinkNode<int>
+    {
+        public override async Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken cancellationToken)
+        {
+            // Arrival-time windows aligned on UTC midnight can split a run in two, so sum the window counts.
+            await foreach (var count in input.WithCancellation(cancellationToken))
+            {
+                DrainRecorder.For(context).RecordAggregated(count);
+            }
+        }
+    }
+
+    private sealed class AggregateBranchPipeline(bool bounded) : IPipelineDefinition
+    {
+        public void Define(PipelineBuilder builder, PipelineContext context)
+        {
+            var source = builder.AddSource<YieldingSource, int>("source");
+            var aggregate = builder.AddAggregate<CountingAggregate, int, int, int>("aggregate");
+            _ = builder.Connect(source, aggregate);
+            _ = builder.Connect(aggregate, builder.AddSink<AggregateResultSink, int>("aggregate-sink"));
+            _ = builder.Connect(source, builder.AddSink<FirstSink, int>("first"));
+
+            if (bounded)
+                _ = builder.WithBranchOptions("source", new BranchOptions(BranchBufferCapacity));
+        }
+    }
+
+    private sealed class PassThroughTransform : TransformNode<int, int>
+    {
+        public override ValueTask<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(item);
+    }
+
+    private sealed class IgnoringChainPipeline : IPipelineDefinition
+    {
+        public void Define(PipelineBuilder builder, PipelineContext context)
+        {
+            var source = builder.AddSource<YieldingSource, int>("source");
+            var transform = builder.AddTransform<PassThroughTransform, int, int>("transform");
+            _ = builder.Connect(source, transform);
+            _ = builder.Connect(transform, builder.AddSink<IgnoringSink, int>("ignoring"));
+            _ = builder.Connect(source, builder.AddSink<FirstSink, int>("first"));
+            _ = builder.WithBranchOptions("source", new BranchOptions(BranchBufferCapacity));
+        }
+    }
+
+    /// <summary>
+    ///     Fails its first attempt with a transient error before reading, then counts every item.
+    /// </summary>
+    private sealed class FlakyBeforeReadSink : SinkNode<int>
+    {
+        public override async Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken cancellationToken)
+        {
+            var recorder = DrainRecorder.For(context);
+
+            if (recorder.RecordFlakyAttempt() == 1)
+                throw new TimeoutException("transient, before reading");
+
+            await foreach (var _ in input.WithCancellation(cancellationToken))
+            {
+                recorder.RecordSecondSinkItem();
+            }
+        }
+    }
+
+    private sealed class RetriedSinkBranchPipeline : IPipelineDefinition
+    {
+        public void Define(PipelineBuilder builder, PipelineContext context)
+        {
+            var source = builder.AddSource<YieldingSource, int>("source");
+            var flaky = builder.AddSink<FlakyBeforeReadSink, int>("flaky");
+            _ = builder.Connect(source, flaky);
+            _ = builder.Connect(source, builder.AddSink<FirstSink, int>("first"));
+            _ = builder.WithBranchOptions("source", new BranchOptions(BranchBufferCapacity));
+            _ = builder.WithResilience(flaky, o => o with { NodeRetry = new NodeRetryOptions { MaxRetries = 1, Backoff = RetryBackoff.None } });
+        }
     }
 
     private sealed class SlowDisposableSink : SinkNode<int>, IAsyncDisposable
@@ -308,12 +439,18 @@ public sealed class BranchingTerminalDrainTests
     {
         public const string ContextKey = "test.drain.recorder";
 
+        private int _aggregatedCount;
         private int _firstSinkCount;
+        private int _flakyAttempts;
         private int _produced;
         private int _producedWhenFirstItemObserved = -1;
         private int _secondSinkCount;
 
         public int FirstSinkCount => Volatile.Read(ref _firstSinkCount);
+
+        public int AggregatedCount => Volatile.Read(ref _aggregatedCount);
+
+        public int FlakyAttempts => Volatile.Read(ref _flakyAttempts);
 
         public int SecondSinkCount => Volatile.Read(ref _secondSinkCount);
 
@@ -331,6 +468,13 @@ public sealed class BranchingTerminalDrainTests
             if (Interlocked.Increment(ref _firstSinkCount) == 1)
                 _ = Interlocked.CompareExchange(ref _producedWhenFirstItemObserved, Volatile.Read(ref _produced), -1);
         }
+
+        public void RecordAggregated(int count)
+        {
+            _ = Interlocked.Add(ref _aggregatedCount, count);
+        }
+
+        public int RecordFlakyAttempt() => Interlocked.Increment(ref _flakyAttempts);
 
         public void RecordSecondSinkItem()
         {

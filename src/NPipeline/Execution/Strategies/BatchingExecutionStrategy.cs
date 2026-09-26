@@ -63,11 +63,13 @@ public sealed class BatchingExecutionStrategy : IExecutionStrategy, IStreamExecu
     /// </summary>
     /// <param name="batchSize">The maximum number of items in a batch. Must be greater than zero.</param>
     /// <param name="timespan">The maximum time to wait before emitting a batch, even if not full.</param>
-    /// <exception cref="ArgumentOutOfRangeException">Thrown when batchSize is not greater than zero.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">
+    ///     Thrown when <paramref name="batchSize" /> is not greater than zero, or <paramref name="timespan" /> is negative.
+    /// </exception>
     public BatchingExecutionStrategy(int batchSize, TimeSpan timespan)
     {
-        if (batchSize <= 0)
-            throw new ArgumentOutOfRangeException(nameof(batchSize), "Batch size must be greater than zero.");
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(batchSize);
+        ArgumentOutOfRangeException.ThrowIfLessThan(timespan, TimeSpan.Zero);
 
         BatchSize = batchSize;
         Timespan = timespan;
@@ -192,8 +194,9 @@ public sealed class BatchingExecutionStrategy : IExecutionStrategy, IStreamExecu
                 {
                     hasItem = await enumerator.MoveNextAsync().ConfigureAwait(false);
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
                 {
+                    // A cancellation of our own token (caller cancelled, or the consumer left) is not a node failure.
                     scope.RecordFailure(ex);
                     throw;
                 }

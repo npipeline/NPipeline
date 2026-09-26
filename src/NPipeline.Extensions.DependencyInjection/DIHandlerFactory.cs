@@ -32,7 +32,7 @@ public sealed class DiHandlerFactory(IServiceProvider serviceProvider) : IErrorH
 
         if (instance is IDeadLetterSink dls)
         {
-            _ = _containerOwned.TryAdd(dls, 0);
+            MarkContainerOwned(dls);
             return dls;
         }
 
@@ -57,7 +57,7 @@ public sealed class DiHandlerFactory(IServiceProvider serviceProvider) : IErrorH
 
         if (instance is ILineageSink ls)
         {
-            _ = _containerOwned.TryAdd(ls, 0);
+            MarkContainerOwned(ls);
             return ls;
         }
 
@@ -86,7 +86,7 @@ public sealed class DiHandlerFactory(IServiceProvider serviceProvider) : IErrorH
 
         if (instance is IPipelineLineageSink pls)
         {
-            _ = _containerOwned.TryAdd(pls, 0);
+            MarkContainerOwned(pls);
             return pls;
         }
 
@@ -188,5 +188,15 @@ public sealed class DiHandlerFactory(IServiceProvider serviceProvider) : IErrorH
         {
             return null;
         }
+    }
+
+    /// <summary>
+    ///     Remembers an instance the container owns. Only disposable instances matter to the ownership check, so the
+    ///     others are not held for the factory's lifetime.
+    /// </summary>
+    private void MarkContainerOwned(object instance)
+    {
+        if (instance is IDisposable or IAsyncDisposable)
+            _ = _containerOwned.TryAdd(instance, 0);
     }
 }

@@ -88,7 +88,7 @@ public override async Task ConsumeAsync(
 }
 ```
 
-> **Thread Safety:** In the `Default` [optimization profile](optimization-profiles.md), `Parameters`, `Items`, and `Properties` are backed by `ConcurrentDictionary` and support concurrent reads and writes. In `HighThroughput` mode, they are plain `Dictionary` instances with zero locking overhead but no thread safety. For complex shared state in parallel execution, use [`IPipelineStateManager`](parallel-execution.md#ipipelinestatemanager).
+> **Thread Safety:** In the `Default` [optimization profile](optimization-profiles.md), `Parameters`, `Items`, and `Properties` support concurrent reads and writes: the context creates them as `ConcurrentDictionary` instances, copies caller-supplied `Parameters` into one, and wraps caller-supplied `Items` and `Properties` in a view that locks on the dictionary you supplied. In `HighThroughput` mode, they are plain `Dictionary` instances with zero locking overhead but no thread safety. For complex shared state in parallel execution, use [`IPipelineStateManager`](parallel-execution.md#ipipelinestatemanager).
 
 ## Accessing Framework Services
 

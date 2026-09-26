@@ -38,6 +38,7 @@ builder.WithValidationMode(GraphValidationMode.Off);
 | `UnconsumedOutputRule` | No | Every non-sink node's output is consumed downstream |
 | `JoinInputsRule` | No | Every join has both its left and right inputs connected |
 | `CycleDetectionRule` | No | Graph is a DAG (no cycles) |
+| `ResilienceOptionsRule` | No | Item retry, node restart and circuit breakers are set only on transforms; node restart uses a resumable strategy |
 
 ### Extended Rules (Opt-Out)
 
@@ -49,7 +50,6 @@ Extended rules add configuration and best-practice checks:
 | `SelfLoopRule` | No edges from a node to itself |
 | `DuplicateEdgeRule` | No duplicate edges between same node pair |
 | `TypeCompatibilityRule` | Output type is assignable to downstream input type |
-| `ResilienceConfigurationRule` | Resilient nodes have proper retry/materialization config |
 | `ParallelConfigurationRule` | Parallel nodes have bounded queues and reasonable DOP |
 
 Disable extended rules if needed:

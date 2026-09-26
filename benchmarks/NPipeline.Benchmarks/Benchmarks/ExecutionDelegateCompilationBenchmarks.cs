@@ -19,20 +19,26 @@ public class ExecutionDelegateCompilationBenchmarks
     private PipelineRunner _runner = null!;
 
     [GlobalSetup]
-    public void Setup()
+    public async Task Setup()
     {
         _runner = PipelineRunner.Create();
 
         // Prime the compiled delegate caches so the steady state is measured.
         for (var i = 0; i < 16; i++)
-            _ = _runner.RunAsync<PreconfiguredDefinition>(new PipelineContext());
+        {
+            await using var context = new PipelineContext();
+            await _runner.RunAsync<PreconfiguredDefinition>(context);
+        }
     }
 
     [Benchmark(Description = "1,000 runs of source(lambda) -> transform -> sink(instance)")]
     public async Task Run_PreconfiguredGraph_1000Times()
     {
         for (var i = 0; i < 1000; i++)
-            await _runner.RunAsync<PreconfiguredDefinition>(new PipelineContext());
+        {
+            await using var context = new PipelineContext();
+            await _runner.RunAsync<PreconfiguredDefinition>(context);
+        }
     }
 
     private sealed class PreconfiguredDefinition : IPipelineDefinition

@@ -171,4 +171,63 @@ public sealed class AggregateWatermarkTests
         await RunAggregate(node, new Sale("a", 1, T0), new Sale("a", 2, T0.AddMinutes(2)));
         node.GetActiveWindowCount().Should().Be(0);
     }
+
+    private sealed class LatenessNode(TimeSpan maxOutOfOrderness)
+        : AggregateNode<Sale, string, int>(new AggregateNodeConfiguration<Sale>(
+            WindowAssigner.Tumbling(TimeSpan.FromMinutes(1)), s => s.At, maxOutOfOrderness))
+    {
+        public override string GetKey(Sale s) => s.Cat;
+        public override int CreateAccumulator() => 0;
+        public override int Accumulate(int a, Sale s) => a + s.Amount;
+    }
+
+    [Fact]
+    public void Aggregate_NegativeMaxOutOfOrderness_Throws()
+    {
+        var act = () => new LatenessNode(TimeSpan.FromMinutes(-1));
+
+        act.Should().Throw<ArgumentOutOfRangeException>();
+    }
+
+    [Fact]
+    public async Task Aggregate_ConsumerLeavingEarly_ReleasesItsActiveWindows()
+    {
+        var node = new SumNode(TimeSpan.Zero, s => s.At);
+
+        var input = new[]
+        {
+            new Sale("a", 1, T0), new Sale("b", 1, T0), new Sale("a", 1, T0.AddMinutes(1)), new Sale("a", 1, T0.AddMinutes(5)),
+        }.Cast<object?>().ToAsyncEnumerable();
+
+        var output = (IAsyncEnumerable<object?>)(await node.ExecuteAsync(input))!;
+
+        await using (var enumerator = output.GetAsyncEnumerator())
+        {
+            (await enumerator.MoveNextAsync()).Should().BeTrue();
+        }
+
+        node.GetActiveWindowCount().Should().Be(0, "an abandoned execution's windows are no longer active");
+    }
+
+    private sealed class SlidingCountNode()
+        : AggregateNode<Sale, string, int>(new AggregateNodeConfiguration<Sale>(
+            WindowAssigner.Sliding(TimeSpan.FromMinutes(10), TimeSpan.FromMinutes(1)), s => s.At, TimeSpan.Zero))
+    {
+        public override string GetKey(Sale s) => s.Cat;
+        public override int CreateAccumulator() => 0;
+        public override int Accumulate(int a, Sale s) => a + 1;
+    }
+
+    [Fact]
+    public async Task Aggregate_SlidingWindowAtMinValue_DoesNotThrow()
+    {
+        // A default timestamp (an unset field) must not fail the pipeline by computing windows before MinValue.
+        var output = (IAsyncEnumerable<object?>)(await new SlidingCountNode().ExecuteAsync(
+            new object?[] { new Sale("a", 1, DateTime.SpecifyKind(DateTime.MinValue, DateTimeKind.Utc)) }.ToAsyncEnumerable()))!;
+
+        var results = new List<int>();
+        await foreach (var r in output) results.Add((int)r!);
+
+        results.Should().Equal(1);
+    }
 }
