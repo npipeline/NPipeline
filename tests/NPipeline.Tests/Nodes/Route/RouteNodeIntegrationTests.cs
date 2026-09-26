@@ -1,10 +1,13 @@
 using AwesomeAssertions;
 using NPipeline.Attributes.Nodes;
+using NPipeline.DataFlow;
 using NPipeline.DataFlow.Branching;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.DataFlow.Routing;
 using NPipeline.ErrorHandling;
 using NPipeline.Execution;
 using NPipeline.Extensions.Testing;
+using NPipeline.Graph;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 
@@ -254,6 +257,87 @@ public sealed class RouteNodeIntegrationTests
             builder.ConnectWhen(route, gteTwoHandle, x => x >= 2, "gte-two");
             builder.ConnectOtherwise(route, fallbackHandle, "fallback");
         }
+    }
+
+    [Fact]
+    public async Task Pump_AllocatesNegligibleMemoryPerItem()
+    {
+        // P04: the pump used to allocate a Task[], a closure, and (in AllMatches mode) a HashSet<int> per routed
+        // item. Precomputing rule -> channel-index arrays and writing synchronously in the common case should make
+        // the steady-state per-item cost close to zero, for both unbounded channels (no blocked write, ever).
+        const int itemCount = 100_000;
+
+        var evenChannel = new InMemorySinkNode<int>();
+        var oddChannel = new InMemorySinkNode<int>();
+
+        var edgeEven = new Edge("src", "even", "even");
+        var edgeOdd = new Edge("src", "odd", "odd");
+
+        RouteOptions<int> options = new();
+        options.When("even", static x => x % 2 == 0);
+        options.When("odd", static x => x % 2 != 0);
+
+        StatsCounter counter = new();
+        BranchMetrics metrics = new();
+
+        await using var stream = new CountingConditionalMulticastDataStream<int>(
+            new DataStream<int>(Produce(itemCount), "Source"),
+            counter,
+            [edgeEven, edgeOdd],
+            null,
+            options,
+            metrics);
+
+        var evenView = (IDataStream<int>)stream.GetEdgeView(edgeEven);
+        var oddView = (IDataStream<int>)stream.GetEdgeView(edgeOdd);
+
+        var evenTask = Task.Run(async () =>
+        {
+            var n = 0;
+
+            await foreach (var _ in evenView.WithCancellation(CancellationToken.None))
+            {
+                n++;
+            }
+
+            return n;
+        });
+
+        var oddTask = Task.Run(async () =>
+        {
+            var n = 0;
+
+            await foreach (var _ in oddView.WithCancellation(CancellationToken.None))
+            {
+                n++;
+            }
+
+            return n;
+        });
+
+        // The pump and its two consumers each run on their own pooled thread, so a per-thread allocation counter
+        // would miss most of what we want to measure. GetTotalAllocatedBytes(precise: true) is process-wide and
+        // forces a GC first, trading a slower test for a number that actually reflects the pump's per-item cost.
+        var before = GC.GetTotalAllocatedBytes(precise: true);
+        var counts = await Task.WhenAll(evenTask, oddTask);
+        var after = GC.GetTotalAllocatedBytes(precise: true);
+
+        counts.Sum().Should().Be(itemCount);
+
+        // Generous bound: unavoidable Channel<T>/ValueTask machinery still allocates something per item, so this
+        // asserts "no extra per-item allocation on top of that baseline", not a specific byte count. The old
+        // closure/Task[]/HashSet path added well over this on top of the same baseline.
+        (after - before).Should().BeLessThan(itemCount * 300, "the pump must not allocate extra objects per routed item anymore");
+    }
+
+    private static async IAsyncEnumerable<int> Produce(int count)
+    {
+        for (var i = 0; i < count; i++)
+        {
+            yield return i;
+        }
+
+        await Task.CompletedTask;
     }
 
     private sealed class NoMatchThrowPipeline : IPipelineDefinition

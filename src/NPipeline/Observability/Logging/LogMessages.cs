@@ -254,3 +254,13 @@ internal static partial class BranchNodeLogMessages
     [LoggerMessage(2, LogLevel.Warning, "Exception in branch handler {BranchIndex} for node '{NodeId}'. {AdditionalMessage}")]
     public static partial void BranchHandlerExceptionWithMessage(ILogger logger, Exception exception, int branchIndex, string nodeId, string additionalMessage);
 }
+
+/// <summary>
+///     Source-generated logging methods for the counting multicast data streams.
+/// </summary>
+[ExcludeFromCodeCoverage]
+internal static partial class DataStreamLog
+{
+    [LoggerMessage(1, LogLevel.Warning, "Multicast pump for stream '{StreamName}' did not shut down within {Timeout} after disposal cancelled it")]
+    public static partial void MulticastPumpShutdownTimedOut(ILogger logger, string streamName, TimeSpan timeout);
+}

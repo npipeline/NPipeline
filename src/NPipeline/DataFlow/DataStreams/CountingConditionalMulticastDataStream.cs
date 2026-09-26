@@ -1,8 +1,10 @@
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
+using Microsoft.Extensions.Logging;
 using NPipeline.DataFlow.Branching;
 using NPipeline.DataFlow.Routing;
 using NPipeline.Graph;
+using NPipeline.Observability.Logging;
 
 namespace NPipeline.DataFlow.DataStreams;
 
@@ -11,18 +13,24 @@ namespace NPipeline.DataFlow.DataStreams;
 /// </summary>
 internal sealed class CountingConditionalMulticastDataStream<T> : IForwardOnlyDataStream<T>, IHasBranchMetrics, IEdgeRoutedDataStream
 {
+    private static readonly TimeSpan PumpShutdownTimeout = TimeSpan.FromSeconds(30);
+
     private readonly int[] _abandonedChannels;
     private readonly int[] _channelTaken;
     private readonly Channel<T>[] _channels;
     private readonly StatsCounter _counter;
     private readonly CancellationTokenSource _cts = new();
     private readonly Dictionary<Edge, int> _edgeToChannel;
+    private readonly ILogger _logger;
     private readonly Dictionary<string, int[]> _namedOutputChannels;
+    private readonly int[]? _otherwiseChannels;
     private readonly RouteOptions<T> _options;
-    private readonly int[] _pendingPerChannel;
+    private readonly bool[] _queuedScratch;
+    private readonly int[][] _ruleChannels;
     private readonly Task _pumpTask;
     private readonly IDataStream<T> _source;
-    private bool _disposed;
+    private int _disposedFlag;
+    private int _itemsSinceSample;
     private int _nextSubscriber;
 
     public CountingConditionalMulticastDataStream(
@@ -31,7 +39,8 @@ internal sealed class CountingConditionalMulticastDataStream<T> : IForwardOnlyDa
         IReadOnlyList<Edge> subscriberEdges,
         int? perSubscriberBuffer,
         RouteOptions<T> options,
-        BranchMetrics metrics)
+        BranchMetrics metrics,
+        ILogger? logger = null)
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(counter);
@@ -42,13 +51,14 @@ internal sealed class CountingConditionalMulticastDataStream<T> : IForwardOnlyDa
         _source = source;
         _counter = counter;
         _options = options;
+        _logger = logger ?? NullLogger.Instance;
         Metrics = metrics;
 
         _channels = new Channel<T>[subscriberEdges.Count];
         _channelTaken = new int[subscriberEdges.Count];
-        _pendingPerChannel = new int[subscriberEdges.Count];
         _abandonedChannels = new int[subscriberEdges.Count];
         _edgeToChannel = new Dictionary<Edge, int>(subscriberEdges.Count);
+        _queuedScratch = new bool[subscriberEdges.Count];
 
         var namedOutputChannels = new Dictionary<string, List<int>>(StringComparer.Ordinal);
 
@@ -89,6 +99,20 @@ internal sealed class CountingConditionalMulticastDataStream<T> : IForwardOnlyDa
 
         ValidateConfiguredOutputs();
 
+        _ruleChannels = new int[_options.Rules.Count][];
+
+        for (var r = 0; r < _options.Rules.Count; r++)
+        {
+            _ruleChannels[r] = _namedOutputChannels.TryGetValue(_options.Rules[r].OutputName, out var channelIndexes)
+                ? channelIndexes
+                : [];
+        }
+
+        _otherwiseChannels = _options.OtherwiseOutputName is { } otherwiseOutputName &&
+                              _namedOutputChannels.TryGetValue(otherwiseOutputName, out var otherwiseChannelIndexes)
+            ? otherwiseChannelIndexes
+            : null;
+
         _pumpTask = Task.Run(PumpAsync, CancellationToken.None);
 
         if (perSubscriberBuffer.HasValue)
@@ -105,7 +129,7 @@ internal sealed class CountingConditionalMulticastDataStream<T> : IForwardOnlyDa
                 $"Edge '{edge.SourceNodeId}->{edge.TargetNodeId}' (output='{edge.SourceOutputName ?? "<default>"}') was not registered for stream '{StreamName}'.");
         }
 
-        return new EdgeRoutedDataStream(this, edge, channelIndex);
+        return new EdgeView(this, channelIndex);
     }
 
     public string StreamName => $"CountedConditionalMulticast_{_source.StreamName}";
@@ -114,7 +138,7 @@ internal sealed class CountingConditionalMulticastDataStream<T> : IForwardOnlyDa
 
     public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposedFlag) != 0, this);
 
         var idx = Interlocked.Increment(ref _nextSubscriber) - 1;
 
@@ -125,12 +149,12 @@ internal sealed class CountingConditionalMulticastDataStream<T> : IForwardOnlyDa
                 $"Stream: {StreamName}. Subscriber #{idx + 1}.");
         }
 
-        return GetAsyncEnumeratorForChannel(idx, cancellationToken);
+        return ClaimChannel(idx, cancellationToken);
     }
 
     public async IAsyncEnumerable<object?> ToAsyncEnumerable([EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposedFlag) != 0, this);
 
         await foreach (var item in this.WithCancellation(cancellationToken).ConfigureAwait(false))
         {
@@ -140,13 +164,19 @@ internal sealed class CountingConditionalMulticastDataStream<T> : IForwardOnlyDa
 
     public async ValueTask DisposeAsync()
     {
-        if (_disposed)
+        if (Interlocked.Exchange(ref _disposedFlag, 1) != 0)
             return;
 
-        _disposed = true;
         await _cts.CancelAsync().ConfigureAwait(false);
 
-        await _pumpTask.ConfigureAwait(false);
+        try
+        {
+            await _pumpTask.WaitAsync(PumpShutdownTimeout).ConfigureAwait(false);
+        }
+        catch (TimeoutException)
+        {
+            DataStreamLog.MulticastPumpShutdownTimedOut(_logger, StreamName, PumpShutdownTimeout);
+        }
 
         _cts.Dispose();
         await _source.DisposeAsync().ConfigureAwait(false);
@@ -154,9 +184,9 @@ internal sealed class CountingConditionalMulticastDataStream<T> : IForwardOnlyDa
 
     public BranchMetrics Metrics { get; }
 
-    internal IAsyncEnumerator<T> GetAsyncEnumeratorForChannel(int channelIndex, CancellationToken cancellationToken)
+    internal IAsyncEnumerator<T> ClaimChannel(int channelIndex, CancellationToken cancellationToken)
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposedFlag) != 0, this);
 
         if (Interlocked.Exchange(ref _channelTaken[channelIndex], 1) != 0)
         {
@@ -164,7 +194,12 @@ internal sealed class CountingConditionalMulticastDataStream<T> : IForwardOnlyDa
                 $"Channel {channelIndex} on stream '{StreamName}' has already been consumed.");
         }
 
-        return ReadChannel(_channels[channelIndex], channelIndex, cancellationToken);
+        return new ChannelSubscriber(this, channelIndex, cancellationToken);
+    }
+
+    internal void ReleaseChannel(int channelIndex)
+    {
+        AbandonChannel(channelIndex);
     }
 
     private void ValidateConfiguredOutputs()
@@ -190,6 +225,7 @@ internal sealed class CountingConditionalMulticastDataStream<T> : IForwardOnlyDa
         // The pump is the only writer, so the count is accumulated locally and folded into the shared
         // counter once, keeping the per-item path free of atomics and of cross-node cache-line contention.
         var counted = 0L;
+        var rules = _options.Rules;
 
         try
         {
@@ -197,70 +233,51 @@ internal sealed class CountingConditionalMulticastDataStream<T> : IForwardOnlyDa
             {
                 counted++;
 
-                var writes = new Task[_channels.Length];
-                var writeCount = 0;
-                var aggregatePending = 0;
-
-                void QueueWrite(int channelIndex)
-                {
-                    // A subscriber that stopped early would otherwise fill its buffer and block the pump,
-                    // stalling every sibling. Its channel is drained and discarded by AbandonChannel.
-                    if (Volatile.Read(ref _abandonedChannels[channelIndex]) != 0)
-                        return;
-
-                    var writer = _channels[channelIndex].Writer;
-
-                    // TryWrite succeeds whenever the buffer has room, which keeps the common path allocation-free.
-                    if (!writer.TryWrite(item))
-                        writes[writeCount++] = writer.WriteAsync(item, _cts.Token).AsTask();
-
-                    var pending = Interlocked.Increment(ref _pendingPerChannel[channelIndex]);
-                    aggregatePending += pending;
-                    Metrics.ObservePerSubscriberPending(channelIndex, pending);
-                }
-
                 var matched = false;
 
                 if (_options.MatchMode == RouteMatchMode.FirstMatch)
                 {
-                    foreach (var rule in _options.Rules)
+                    for (var r = 0; r < rules.Count; r++)
                     {
-                        if (!rule.Predicate(item))
+                        if (!rules[r].Predicate(item))
                             continue;
 
-                        QueueNamedOutput(rule.OutputName, QueueWrite);
+                        foreach (var ch in _ruleChannels[r])
+                            await WriteOneAsync(ch, item).ConfigureAwait(false);
+
                         matched = true;
                         break;
                     }
                 }
                 else
                 {
-                    HashSet<int>? queuedChannels = null;
+                    Array.Clear(_queuedScratch);
 
-                    foreach (var rule in _options.Rules)
+                    for (var r = 0; r < rules.Count; r++)
                     {
-                        if (!rule.Predicate(item))
+                        if (!rules[r].Predicate(item))
                             continue;
 
                         matched = true;
 
-                        if (!_namedOutputChannels.TryGetValue(rule.OutputName, out var channelIndexes))
-                            continue;
-
-                        queuedChannels ??= [];
-
-                        foreach (var channelIndex in channelIndexes)
+                        foreach (var ch in _ruleChannels[r])
                         {
-                            if (queuedChannels.Add(channelIndex))
-                                QueueWrite(channelIndex);
+                            if (_queuedScratch[ch])
+                                continue;
+
+                            _queuedScratch[ch] = true;
+                            await WriteOneAsync(ch, item).ConfigureAwait(false);
                         }
                     }
                 }
 
                 if (!matched)
                 {
-                    if (_options.OtherwiseOutputName is { } otherwiseOutput)
-                        QueueNamedOutput(otherwiseOutput, QueueWrite);
+                    if (_otherwiseChannels is { } otherwiseChannels)
+                    {
+                        foreach (var ch in otherwiseChannels)
+                            await WriteOneAsync(ch, item).ConfigureAwait(false);
+                    }
                     else if (_options.NoMatchBehavior == NoRouteMatchBehavior.Throw)
                     {
                         throw new InvalidOperationException(
@@ -268,17 +285,21 @@ internal sealed class CountingConditionalMulticastDataStream<T> : IForwardOnlyDa
                     }
                 }
 
-                if (writeCount == 0)
-                    continue;
-
-                if (writeCount == 1)
-                    await writes[0].ConfigureAwait(false);
-                else
-                    await Task.WhenAll(writes[..writeCount]).ConfigureAwait(false);
-
-                Metrics.ObservePending(aggregatePending);
+                SampleBacklog();
             }
 
+            // Always take one final sample so a short-lived stream (fewer than the sampling interval's worth
+            // of items) still reports an accurate backlog instead of never sampling at all.
+            SampleBacklog(force: true);
+
+            foreach (var ch in _channels)
+            {
+                _ = ch.Writer.TryComplete();
+            }
+        }
+        catch (OperationCanceledException) when (_cts.IsCancellationRequested)
+        {
+            // Disposal cancelled the pump; this is a normal shutdown, not a fault.
             foreach (var ch in _channels)
             {
                 _ = ch.Writer.TryComplete();
@@ -299,45 +320,48 @@ internal sealed class CountingConditionalMulticastDataStream<T> : IForwardOnlyDa
         }
     }
 
-    private void QueueNamedOutput(string outputName, Action<int> enqueue)
+    /// <summary>
+    ///     Writes one item to one channel, synchronously in the common case. Replaces the old closure-based
+    ///     QueueWrite/Task[] pattern, which allocated per item and could orphan a write task's exception when a
+    ///     later rule's predicate threw.
+    /// </summary>
+    private ValueTask WriteOneAsync(int channelIndex, T item)
     {
-        if (!_namedOutputChannels.TryGetValue(outputName, out var channelIndexes))
-            return;
+        if (Volatile.Read(ref _abandonedChannels[channelIndex]) != 0)
+            return ValueTask.CompletedTask;
 
-        foreach (var channelIndex in channelIndexes)
-        {
-            enqueue(channelIndex);
-        }
+        var writer = _channels[channelIndex].Writer;
+
+        return writer.TryWrite(item) ? ValueTask.CompletedTask : WriteBlockedAsync(writer, item);
     }
 
-    private async IAsyncEnumerator<T> ReadChannel(Channel<T> channel, int channelIndex, CancellationToken ct)
+    private async ValueTask WriteBlockedAsync(ChannelWriter<T> writer, T item) =>
+        await writer.WriteAsync(item, _cts.Token).ConfigureAwait(false);
+
+    /// <summary>
+    ///     Samples backlog from the channels themselves every 64 items instead of doing per-item, per-subscriber
+    ///     Interlocked bookkeeping, which used to contend the pump and consumer threads on the same cache line.
+    /// </summary>
+    private void SampleBacklog(bool force = false)
     {
-        var drainedToCompletion = false;
+        if (!force && (++_itemsSinceSample & 63) != 0)
+            return;
 
-        try
+        var aggregate = 0;
+
+        for (var i = 0; i < _channels.Length; i++)
         {
-            await foreach (var item in channel.Reader.ReadAllAsync(ct).ConfigureAwait(false))
-            {
-                yield return item;
+            var reader = _channels[i].Reader;
 
-                var remaining = Interlocked.Decrement(ref _pendingPerChannel[channelIndex]);
+            if (!reader.CanCount)
+                continue;
 
-                if (remaining < 0)
-                    remaining = 0;
-
-                Metrics.ObservePerSubscriberPending(channelIndex, remaining);
-            }
-
-            drainedToCompletion = true;
-            Metrics.MarkSubscriberCompleted();
+            var pending = reader.Count;
+            Metrics.ObservePerSubscriberPending(i, pending);
+            aggregate += pending;
         }
-        finally
-        {
-            // Reached on break, on an exception in the consumer, and on cancellation - any case where this
-            // subscriber stops before the stream ends.
-            if (!drainedToCompletion)
-                AbandonChannel(channelIndex);
-        }
+
+        Metrics.ObservePending(aggregate);
     }
 
     /// <summary>
@@ -371,18 +395,58 @@ internal sealed class CountingConditionalMulticastDataStream<T> : IForwardOnlyDa
         });
     }
 
-    private sealed class EdgeRoutedDataStream(
-        CountingConditionalMulticastDataStream<T> owner,
-        Edge edge,
-        int channelIndex)
-        : IForwardOnlyDataStream<T>
+    /// <summary>
+    ///     Hand-written enumerator over a subscriber's channel. Unlike a compiler-generated async iterator, its
+    ///     <see cref="DisposeAsync"/> always runs the abandon logic, even when it is disposed before the first
+    ///     <see cref="MoveNextAsync"/> call - the case an async-iterator's not-started disposal would otherwise skip.
+    /// </summary>
+    private sealed class ChannelSubscriber(CountingConditionalMulticastDataStream<T> owner, int index, CancellationToken ct) : IAsyncEnumerator<T>
     {
-        public string StreamName => $"{owner.StreamName}_{edge.SourceNodeId}_{edge.TargetNodeId}";
+        private readonly ChannelReader<T> _reader = owner._channels[index].Reader;
+        private bool _completed;
+
+        public T Current { get; private set; } = default!;
+
+        public async ValueTask<bool> MoveNextAsync()
+        {
+            while (true)
+            {
+                if (_reader.TryRead(out var item))
+                {
+                    Current = item;
+                    return true;
+                }
+
+                if (!await _reader.WaitToReadAsync(ct).ConfigureAwait(false))
+                {
+                    _completed = true;
+                    owner.Metrics.MarkSubscriberCompleted();
+                    return false;
+                }
+            }
+        }
+
+        public ValueTask DisposeAsync()
+        {
+            if (!_completed)
+                owner.AbandonChannel(index);
+
+            return ValueTask.CompletedTask;
+        }
+    }
+
+    /// <summary>
+    ///     Edge-specific view returned by <see cref="GetEdgeView"/>. Releases its channel on disposal even if it was
+    ///     never enumerated, so a sink/aggregate/join node that does not read its input does not stall its siblings.
+    /// </summary>
+    private sealed class EdgeView(CountingConditionalMulticastDataStream<T> owner, int channelIndex) : IForwardOnlyDataStream<T>
+    {
+        public string StreamName => $"{owner.StreamName}_edge{channelIndex}";
 
         public Type GetDataType() => typeof(T);
 
         public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default) =>
-            owner.GetAsyncEnumeratorForChannel(channelIndex, cancellationToken);
+            owner.ClaimChannel(channelIndex, cancellationToken);
 
         public async IAsyncEnumerable<object?> ToAsyncEnumerable([EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
@@ -392,6 +456,10 @@ internal sealed class CountingConditionalMulticastDataStream<T> : IForwardOnlyDa
             }
         }
 
-        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+        public ValueTask DisposeAsync()
+        {
+            owner.ReleaseChannel(channelIndex);
+            return ValueTask.CompletedTask;
+        }
     }
 }

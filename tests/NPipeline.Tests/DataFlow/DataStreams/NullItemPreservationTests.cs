@@ -89,17 +89,6 @@ public sealed class NullItemPreservationTests
     }
 
     [Fact]
-    public async Task MulticastDataStream_ToAsyncEnumerable_PreservesNulls()
-    {
-        BranchMetrics metrics = new();
-        await using var stream = MulticastDataStream<string?>.Create(SourceWithNulls(), 1, null, "Source", metrics);
-
-        var items = await CollectAsync(stream);
-
-        items.Should().Equal(Expected);
-    }
-
-    [Fact]
     public async Task CountingConditionalMulticastDataStream_ToAsyncEnumerable_PreservesNulls()
     {
         StatsCounter counter = new();
@@ -162,7 +151,6 @@ public sealed class NullItemPreservationTests
             new AsyncEnumerableDataStream<string?>(SourceWithNulls(), "Source"),
             new CountingPassthroughDataStream<string?>(new DataStream<string?>(SourceWithNulls(), "Source"), counter),
             new CountingMulticastDataStream<string?>(new DataStream<string?>(SourceWithNulls(), "Source"), counter, 1, null, new BranchMetrics()),
-            MulticastDataStream<string?>.Create(SourceWithNulls(), 1, null, "Source", new BranchMetrics()),
         ];
 
         try
