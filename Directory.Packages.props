@@ -14,7 +14,7 @@
     <PackageVersion Include="Azure.Storage.Blobs" Version="12.29.2" />
     <PackageVersion Include="Azure.Storage.Files.DataLake" Version="12.27.1" />
     <PackageVersion Include="BenchmarkDotNet" Version="0.15.8" />
-    <PackageVersion Include="CassandraCSharpDriver" Version="3.22.1" />
+    <PackageVersion Include="CassandraCSharpDriver" Version="3.23.0" />
     <PackageVersion Include="Confluent.Kafka" Version="2.15.1" />
     <PackageVersion Include="Confluent.SchemaRegistry" Version="2.15.1" />
     <PackageVersion Include="Confluent.SchemaRegistry.Serdes.Avro" Version="2.15.1" />
