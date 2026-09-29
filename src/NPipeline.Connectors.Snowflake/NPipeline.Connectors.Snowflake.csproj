@@ -33,6 +33,7 @@
     </ItemGroup>
 
     <ItemGroup>
+        <PackageReference Include="Google.Cloud.Storage.V1" />
         <PackageReference Include="Snowflake.Data"/>
         <PackageReference Include="NResilience"/>
     </ItemGroup>
