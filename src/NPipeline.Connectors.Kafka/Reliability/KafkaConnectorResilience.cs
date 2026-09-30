@@ -5,7 +5,7 @@ namespace NPipeline.Connectors.Kafka.Reliability;
 
 /// <summary>
 ///     Resilience presets for <see cref="Nodes.KafkaSourceNode{T}" />. Assign one to
-///     <see cref="Configuration.KafkaConfiguration.Resilience" />, or derive your own with a <c>with</c> expression.
+///     <see cref="Configuration.KafkaReadOptions.Resilience" />, or derive your own with a <c>with</c> expression.
 /// </summary>
 /// <remarks>
 ///     <para>
@@ -53,7 +53,7 @@ public static class KafkaConnectorResilience
     /// <summary>
     ///     Four attempts (three retries) per consume, with exponential backoff and full jitter from 100 milliseconds up
     ///     to 30 seconds. There is no attempt timeout or overall deadline: a consume is a blocking poll that the
-    ///     connector's <c>PollTimeoutMs</c> already bounds, and the attempt count bounds the call.
+    ///     connector's <c>PollTimeout</c> already bounds, and the attempt count bounds the call.
     /// </summary>
     /// <remarks>
     ///     Replaces <c>ExponentialBackoffRetryStrategy</c> (<c>MaxRetries = 3</c>, <c>BaseDelayMs = 100</c>,

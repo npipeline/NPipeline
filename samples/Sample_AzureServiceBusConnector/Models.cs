@@ -1,46 +1,7 @@
 namespace Sample_AzureServiceBusConnector;
 
-/// <summary>
-///     Represents an order message received from the Azure Service Bus queue.
-/// </summary>
-public class Order
-{
-    /// <summary>Gets or sets the unique order identifier.</summary>
-    public int OrderId { get; set; }
+/// <summary>An order received from the input queue as JSON.</summary>
+public sealed record Order(int OrderId, int CustomerId, decimal TotalAmount, string Status, DateTime CreatedAt);
 
-    /// <summary>Gets or sets the customer identifier who placed the order.</summary>
-    public int CustomerId { get; set; }
-
-    /// <summary>Gets or sets the total amount of the order.</summary>
-    public decimal TotalAmount { get; set; }
-
-    /// <summary>Gets or sets the order status.</summary>
-    public string Status { get; set; } = "Pending";
-
-    /// <summary>Gets or sets the timestamp when the order was created.</summary>
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-}
-
-/// <summary>
-///     Represents a processed order ready to be sent to the output queue or topic.
-/// </summary>
-public class ProcessedOrder
-{
-    /// <summary>Gets or sets the unique order identifier.</summary>
-    public int OrderId { get; set; }
-
-    /// <summary>Gets or sets the customer identifier.</summary>
-    public int CustomerId { get; set; }
-
-    /// <summary>Gets or sets the total amount of the order.</summary>
-    public decimal TotalAmount { get; set; }
-
-    /// <summary>Gets or sets the processing status.</summary>
-    public string Status { get; set; } = "Processed";
-
-    /// <summary>Gets or sets the timestamp when the order was processed.</summary>
-    public DateTime ProcessedAt { get; set; } = DateTime.UtcNow;
-
-    /// <summary>Gets or sets additional processing metadata.</summary>
-    public string? ProcessingNotes { get; set; }
-}
+/// <summary>The result of processing an order, sent to the output queue.</summary>
+public sealed record ProcessedOrder(int OrderId, int CustomerId, decimal TotalAmount, string Status, DateTime ProcessedAt, string? ProcessingNotes);

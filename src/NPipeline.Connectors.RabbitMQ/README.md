@@ -1,55 +1,56 @@
-# NPipeline.Connectors.RabbitMQ
+# NPipeline RabbitMQ Connector
 
-RabbitMQ connector for [NPipeline](https://github.com/your-org/NPipeline) - consume from and publish to RabbitMQ queues with integrated backpressure, publisher
-confirms, and dead-letter handling.
+Source and sink nodes for RabbitMQ in NPipeline pipelines, on NPipeline's shared messaging layer.
+
+## About NPipeline
+
+NPipeline is a high-performance, extensible data processing framework for .NET that enables developers to build scalable and efficient pipeline-based
+applications. It provides a rich set of components for data transformation, aggregation, branching, and parallel processing, with built-in support for
+resilience patterns and error handling.
+
+## Installation
+
+```bash
+dotnet add package NPipeline.Connectors.RabbitMQ
+```
+
+Targets .NET 8.0, 9.0 and 10.0.
 
 ## Features
 
-- **Source node** - Push-based `AsyncEventingBasicConsumer` with bounded channel backpressure
-- **Sink node** - Sequential and batched publishing with publisher confirms
-- **Quorum queues** - First-class support for Classic, Quorum, and Stream queue types
-- **Topology auto-declaration** - Exchanges, queues, and bindings declared at startup
-- **Dead-letter handling** - Both broker-level (DLX) and pipeline-level with enriched headers
-- **Thread-safe acknowledgment** - Atomic ack/nack state machine
-- **Resilient publishing** - Each publish is retried through [NResilience](https://github.com/nresilience/NResilience)
-  (`RabbitMqSinkOptions.Resilience`, default four attempts with jittered backoff from 100 ms). Lost connections and
-  closed channels are retried on a fresh channel; access, routing, and precondition failures are not. The source
-  message is acknowledged only after its publish succeeds, outside the retried call. The sink is the only layer
-  that retries a publish; the client's connection recovery only reconnects
-- **Pluggable metrics** - Implement `IRabbitMqMetrics` for observability
-- **Pluggable serialization** - Default `System.Text.Json`, override with `IMessageSerializer`
+- **Batched publisher confirms**: a batch's publishes are issued together and confirmed in about one round trip.
+- **Prefetch backpressure**, and a channel kept open after the read ends until handed-on messages are settled.
+- **Topology declaration** (quorum, classic or stream queues, bindings, dead-letter exchanges) and TLS.
+- **Retries** of transient publish failures on a fresh channel, never republishing what was confirmed.
+- **One messaging model**: messages are acknowledged or rejected once, and `sink.Acknowledging()` makes any sink (SQL,
+  HTTP, another broker) acknowledge each message once it is written.
+- **Shared JSON defaults** with the JSON connector (camelCase, case-insensitive, enums as names, `[Column]`), or a
+  source-generated `JsonSerializerContext` for Native AOT.
+- **Undeserializable messages** go through the shared row-error handler: fail the read, skip, or send the whole message
+  to the pipeline's dead-letter sink.
+- **Failed writes** fail, requeue the source message, or go to the dead-letter sink.
 
-## Quick Start
+## Usage
 
 ```csharp
-services.AddRabbitMq(o =>
-{
-    o.HostName = "localhost";
-    o.UserName = "guest";
-    o.Password = "guest";
-});
+using NPipeline.Connectors.Messaging;
+using NPipeline.Connectors.RabbitMQ;
 
-services.AddRabbitMqSource<OrderEvent>(new RabbitMqSourceOptions
-{
-    QueueName = "orders",
-    PrefetchCount = 100,
-});
+await using var connection = RabbitMqConnector.Connect(new RabbitMqConnectionOptions { HostName = "rabbit" });
+var orders = RabbitMqConnector.Source<Order>(connection, "orders");
+var invoices = RabbitMqConnector.Sink<Invoice>(connection, exchange: "", routingKey: "invoices");
 
-services.AddRabbitMqSink<EnrichedOrder>(new RabbitMqSinkOptions
-{
-    ExchangeName = "enriched-orders",
-    RoutingKey = "order.enriched",
-});
+builder.AddSink(invoices.Acknowledging(), "invoices");
 ```
 
-## Requirements
+See the [RabbitMQ connector documentation](https://docs.npipeline.net/connectors/rabbitmq) and
+[Message Queues: Shared Behaviour](https://docs.npipeline.net/connectors/message-queues) for every option.
 
-- .NET 8.0, 9.0, or 10.0
-- RabbitMQ 3.12+ (4.x recommended for quorum queues)
+## Related Packages
 
-## Documentation
-
-See the [full documentation](https://your-org.github.io/NPipeline/connectors/rabbitmq) for configuration, topology, dead-letter handling, and more.
+- **[NPipeline](https://www.nuget.org/packages/NPipeline)** - Core pipeline framework
+- **[NPipeline.Connectors](https://www.nuget.org/packages/NPipeline.Connectors)** - Shared messaging layer, storage abstractions and base connectors
+- **[NPipeline.Extensions.DependencyInjection](https://www.nuget.org/packages/NPipeline.Extensions.DependencyInjection)** - Dependency injection integration
 
 ## License
 

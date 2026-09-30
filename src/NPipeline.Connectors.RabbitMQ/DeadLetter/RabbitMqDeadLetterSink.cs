@@ -1,8 +1,7 @@
 using System.Text;
-using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using NPipeline.Connectors.Abstractions;
+using NPipeline.Connectors.Messaging;
 using NPipeline.Connectors.RabbitMQ.Connection;
 using NPipeline.Connectors.RabbitMQ.Models;
 using NPipeline.ErrorHandling;
@@ -12,121 +11,92 @@ using RabbitMQ.Client;
 namespace NPipeline.Connectors.RabbitMQ.DeadLetter;
 
 /// <summary>
-///     Dead-letter sink that publishes failed items to a RabbitMQ dead-letter exchange
-///     with enriched headers. This handles pipeline-level dead lettering (transform failures).
-///     Broker-level dead lettering is handled natively via DLX queue arguments.
+///     A pipeline dead-letter sink that publishes failed items to a RabbitMQ exchange, with the error in <c>x-death-*</c>
+///     headers. A message that could not be deserialized (<see cref="MessageFailure" />) is published with its original
+///     body and headers, so it can be published again once fixed; anything else is serialized with the serializer.
 /// </summary>
-public sealed class RabbitMqDeadLetterSink : IDeadLetterSink, IAsyncDisposable
+public sealed class RabbitMqDeadLetterSink : IDeadLetterSink
 {
-    private readonly IRabbitMqConnectionManager _connectionManager;
-    private readonly string _deadLetterExchange;
-    private readonly JsonSerializerOptions _jsonOptions;
+    private readonly IRabbitMqConnectionManager _connection;
+    private readonly string _exchange;
     private readonly ILogger _logger;
     private readonly string _routingKey;
+    private readonly IMessageSerializer _serializer;
 
-    /// <summary>
-    ///     Initializes a new instance of <see cref="RabbitMqDeadLetterSink" />.
-    /// </summary>
-    /// <param name="connectionManager">The connection manager.</param>
-    /// <param name="deadLetterExchange">The exchange to publish dead-letter messages to.</param>
-    /// <param name="routingKey">The routing key for dead-letter messages. Default is "dead-letter".</param>
-    /// <param name="logger">Optional logger.</param>
-    public RabbitMqDeadLetterSink(
-        IRabbitMqConnectionManager connectionManager,
-        string deadLetterExchange,
-        string routingKey = "dead-letter",
-        ILogger<RabbitMqDeadLetterSink>? logger = null)
+    /// <summary>Creates a sink that publishes to <paramref name="exchange" /> with <paramref name="routingKey" />.</summary>
+    public RabbitMqDeadLetterSink(IRabbitMqConnectionManager connection, string exchange, string routingKey = "dead-letter",
+        IMessageSerializer? serializer = null, ILogger<RabbitMqDeadLetterSink>? logger = null)
     {
-        _connectionManager = connectionManager ?? throw new ArgumentNullException(nameof(connectionManager));
-        _deadLetterExchange = deadLetterExchange ?? throw new ArgumentNullException(nameof(deadLetterExchange));
-        _routingKey = routingKey;
+        _connection = connection ?? throw new ArgumentNullException(nameof(connection));
+        _exchange = exchange ?? throw new ArgumentNullException(nameof(exchange));
+        _routingKey = routingKey ?? throw new ArgumentNullException(nameof(routingKey));
+        _serializer = serializer ?? JsonMessageSerializer.Default;
         _logger = logger ?? NullLogger<RabbitMqDeadLetterSink>.Instance;
-
-        _jsonOptions = new JsonSerializerOptions
-        {
-            WriteIndented = false,
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        };
     }
 
     /// <inheritdoc />
-    public ValueTask DisposeAsync() =>
-
-        // Connection manager disposal handles channel cleanup
-        ValueTask.CompletedTask;
-
-    /// <inheritdoc />
-    public async Task HandleAsync(
-        DeadLetterEnvelope envelope,
-        PipelineContext context,
-        CancellationToken cancellationToken)
+    public async Task HandleAsync(DeadLetterEnvelope envelope, PipelineContext context, CancellationToken cancellationToken)
     {
-        var nodeId = envelope.Attribution.DecisionNodeId;
-        LogMessages.DeadLetterPublishing(_logger, _deadLetterExchange, nodeId);
+        ArgumentNullException.ThrowIfNull(envelope);
 
-        IChannel? channel = null;
+        var nodeId = envelope.Attribution.DecisionNodeId;
+        LogMessages.DeadLetterPublishing(_logger, _exchange, nodeId);
+
+        var headers = new Dictionary<string, object?>
+        {
+            ["x-death-reason"] = Encoding.UTF8.GetBytes(envelope.Error.Message),
+            ["x-death-node"] = Encoding.UTF8.GetBytes(nodeId),
+            ["x-death-origin-node"] = Encoding.UTF8.GetBytes(envelope.Attribution.OriginNodeId),
+            ["x-death-timestamp"] = Encoding.UTF8.GetBytes(DateTimeOffset.UtcNow.ToString("O")),
+            ["x-death-exception-type"] = Encoding.UTF8.GetBytes(envelope.Error.GetType().FullName ?? envelope.Error.GetType().Name),
+        };
+
+        var properties = new BasicProperties { Persistent = true, MessageId = Guid.NewGuid().ToString("N"), Headers = headers };
+        ReadOnlyMemory<byte> body;
+
+        switch (envelope.Item)
+        {
+            case MessageFailure failure:
+                body = failure.Body;
+                properties.MessageId = failure.MessageId;
+                headers["x-original-source"] = Encoding.UTF8.GetBytes(failure.Source);
+                break;
+            case IAcknowledgableMessage message:
+                body = _serializer.Serialize(message.Body, new MessageContext(_exchange));
+                properties.ContentType = _serializer.ContentType;
+                properties.MessageId = message.MessageId;
+
+                if (message is IRabbitMqReceived { Properties: var received })
+                {
+                    properties.CorrelationId = received.CorrelationId;
+
+                    foreach (var (key, value) in received.Headers ?? new Dictionary<string, object?>())
+                    {
+                        headers.TryAdd(key, value);
+                    }
+                }
+
+                break;
+            default:
+                body = _serializer.Serialize(envelope.Item, new MessageContext(_exchange));
+                properties.ContentType = _serializer.ContentType;
+                break;
+        }
+
+        var channel = await _connection.GetPooledChannelAsync(true, cancellationToken).ConfigureAwait(false);
 
         try
         {
-            channel = await _connectionManager.GetPooledChannelAsync(cancellationToken).ConfigureAwait(false);
-
-            var body = JsonSerializer.SerializeToUtf8Bytes(envelope.Item, _jsonOptions);
-
-            var properties = new BasicProperties
-            {
-                ContentType = "application/json",
-                Persistent = true,
-                MessageId = Guid.NewGuid().ToString(),
-                Timestamp = new AmqpTimestamp(DateTimeOffset.UtcNow.ToUnixTimeSeconds()),
-                Headers = new Dictionary<string, object?>
-                {
-                    ["x-death-reason"] = Encoding.UTF8.GetBytes(envelope.Error.Message),
-                    ["x-death-node"] = Encoding.UTF8.GetBytes(nodeId),
-                    ["x-death-origin-node"] = Encoding.UTF8.GetBytes(envelope.Attribution.OriginNodeId),
-                    ["x-death-timestamp"] = Encoding.UTF8.GetBytes(DateTimeOffset.UtcNow.ToString("O")),
-                    ["x-death-exception-type"] = Encoding.UTF8.GetBytes(envelope.Error.GetType().FullName ?? envelope.Error.GetType().Name),
-                },
-            };
-
-            if (envelope.Error.StackTrace is not null)
-            {
-                // Truncate stack trace to avoid oversized headers
-                var truncated = envelope.Error.StackTrace.Length > 2048
-                    ? envelope.Error.StackTrace[..2048]
-                    : envelope.Error.StackTrace;
-
-                properties.Headers["x-death-stack-trace"] = Encoding.UTF8.GetBytes(truncated);
-            }
-
-            // Preserve original message metadata if available
-            if (envelope.Item is IRabbitMqMessageMetadata sourceMeta)
-            {
-                properties.Headers["x-original-exchange"] = Encoding.UTF8.GetBytes(sourceMeta.Exchange);
-                properties.Headers["x-original-routing-key"] = Encoding.UTF8.GetBytes(sourceMeta.RoutingKey);
-
-                if (sourceMeta is IAcknowledgableMessage { MessageId: not null } ackMsg)
-                    properties.Headers["x-original-message-id"] = Encoding.UTF8.GetBytes(ackMsg.MessageId);
-            }
-
-            // BasicPublishAsync waits for broker confirmation when
-            // PublisherConfirmationTrackingEnabled is set on the channel.
-            await channel.BasicPublishAsync(
-                _deadLetterExchange,
-                _routingKey,
-                false,
-                properties,
-                body,
-                cancellationToken).ConfigureAwait(false);
+            await channel.BasicPublishAsync(_exchange, _routingKey, false, properties, body, cancellationToken).ConfigureAwait(false);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            LogMessages.DeadLetterPublishFailed(_logger, ex, _deadLetterExchange);
+            LogMessages.DeadLetterPublishFailed(_logger, ex, _exchange);
             throw;
         }
         finally
         {
-            if (channel is not null)
-                _connectionManager.ReturnChannel(channel);
+            _connection.ReturnChannel(channel);
         }
     }
 }

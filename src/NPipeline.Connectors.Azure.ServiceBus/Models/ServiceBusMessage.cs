@@ -1,319 +1,114 @@
 using Azure.Messaging.ServiceBus;
-using NPipeline.Connectors.Abstractions;
+using NPipeline.Connectors.Messaging;
 
 namespace NPipeline.Connectors.Azure.ServiceBus.Models;
 
 /// <summary>
-///     Azure Service Bus-specific implementation of <see cref="IAcknowledgableMessage{T}" /> that wraps
-///     a consumed message with explicit settlement support (Complete, Abandon, DeadLetter, Defer).
+///     A message received from a Service Bus queue or subscription, locked until it is settled: completed, abandoned,
+///     dead-lettered or deferred. The source renews its lock while it waits. A message never settled is abandoned when the
+///     source's receiver closes, so it is delivered again.
 /// </summary>
-/// <typeparam name="T">The deserialized message body type.</typeparam>
-/// <remarks>
-///     <para>
-///         Settlement methods are idempotent: calling <see cref="CompleteAsync" /> (or any other settlement
-///         method) more than once is safe - only the first call takes effect.
-///     </para>
-///     <para>
-///         <see cref="AcknowledgeAsync" /> delegates to <see cref="CompleteAsync" />.
-///         <see cref="NegativeAcknowledgeAsync" /> delegates to <see cref="AbandonAsync" /> when
-///         <c>requeue = true</c> (the default), or <see cref="DeadLetterAsync" /> when <c>requeue = false</c>.
-///     </para>
-///     <para>
-///         The source node integrates a settlement <see cref="TaskCompletionSource{T}" /> so that the
-///         underlying Service Bus processor handler blocks until settlement completes, keeping the message
-///         lock valid for the full processing duration.
-///     </para>
-/// </remarks>
-public sealed class ServiceBusMessage<T> : IAcknowledgableMessage<T>, IServiceBusMessageMetadata
+/// <typeparam name="T">The body type.</typeparam>
+public sealed class ServiceBusMessage<T> : IAcknowledgableMessage<T>, IServiceBusReceived
 {
-    private readonly Func<IDictionary<string, object>?, CancellationToken, Task> _abandonCallback;
-    private readonly Func<CancellationToken, Task> _completeCallback;
-    private readonly Func<string?, string?, CancellationToken, Task> _deadLetterCallback;
-    private readonly Func<IDictionary<string, object>?, CancellationToken, Task> _deferCallback;
-    private readonly Dictionary<string, object> _metadata;
-    private readonly TaskCompletionSource<bool>? _settlementTcs;
-    private int _settlementState; // 0 = unsettled, 1 = settled
+    private readonly Lazy<IReadOnlyDictionary<string, object>> _metadata;
+    private readonly ServiceBusReceiver _receiver;
+    private readonly MessageSettlement _settlement;
 
-    /// <summary>
-    ///     Internal constructor used by source nodes; captures real settlement callbacks from
-    ///     <see cref="ProcessMessageEventArgs" /> and a <see cref="TaskCompletionSource{T}" />
-    ///     that unblocks the processor handler once settlement completes.
-    /// </summary>
-    internal ServiceBusMessage(
-        T body,
-        string messageId,
-        ServiceBusReceivedMessage rawMessage,
-        Func<CancellationToken, Task> completeCallback,
-        Func<IDictionary<string, object>?, CancellationToken, Task> abandonCallback,
-        Func<string?, string?, CancellationToken, Task> deadLetterCallback,
-        Func<IDictionary<string, object>?, CancellationToken, Task> deferCallback,
-        TaskCompletionSource<bool>? settlementTcs = null)
+    internal ServiceBusMessage(T body, ServiceBusReceivedMessage received, ServiceBusReceiver receiver, MessageSettlement settlement,
+        Lazy<IReadOnlyDictionary<string, object>>? metadata = null)
     {
         Body = body;
-        MessageId = messageId;
-        SessionId = rawMessage.SessionId;
-        CorrelationId = rawMessage.CorrelationId;
-        ReplyTo = rawMessage.ReplyTo;
-        To = rawMessage.To;
-        Subject = rawMessage.Subject;
-        ReplyToSessionId = rawMessage.ReplyToSessionId;
-        EnqueuedTime = rawMessage.EnqueuedTime;
-        DeliveryCount = rawMessage.DeliveryCount;
-        PartitionKey = rawMessage.PartitionKey;
-        TimeToLive = rawMessage.TimeToLive;
-        ContentType = rawMessage.ContentType;
-
-        ApplicationProperties = rawMessage.ApplicationProperties
-            .ToDictionary(k => k.Key, v => v.Value);
-
-        _completeCallback = completeCallback;
-        _abandonCallback = abandonCallback;
-        _deadLetterCallback = deadLetterCallback;
-        _deferCallback = deferCallback;
-        _settlementTcs = settlementTcs;
-        _metadata = BuildMetadata(rawMessage);
+        Received = received;
+        _receiver = receiver;
+        _settlement = settlement;
+        _metadata = metadata ?? new Lazy<IReadOnlyDictionary<string, object>>(BuildMetadata);
     }
 
-    /// <summary>
-    ///     Testing / manual construction - all settlement callbacks are optional delegates.
-    /// </summary>
-    public ServiceBusMessage(
-        T body,
-        string messageId,
-        Func<CancellationToken, Task>? completeCallback = null,
-        Func<IDictionary<string, object>?, CancellationToken, Task>? abandonCallback = null,
-        Func<string?, string?, CancellationToken, Task>? deadLetterCallback = null,
-        Func<IDictionary<string, object>?, CancellationToken, Task>? deferCallback = null,
-        IReadOnlyDictionary<string, object>? applicationProperties = null)
-    {
-        Body = body;
-        MessageId = messageId;
-        _completeCallback = completeCallback ?? (_ => Task.CompletedTask);
-        _abandonCallback = abandonCallback ?? ((_, _) => Task.CompletedTask);
-        _deadLetterCallback = deadLetterCallback ?? ((_, _, _) => Task.CompletedTask);
-        _deferCallback = deferCallback ?? ((_, _) => Task.CompletedTask);
+    /// <summary>The message as the SDK received it, with every broker property.</summary>
+    public ServiceBusReceivedMessage Received { get; }
 
-        ApplicationProperties = applicationProperties != null
-            ? new Dictionary<string, object>(applicationProperties)
-            : new Dictionary<string, object>();
+    /// <summary>The session, for a session-enabled entity.</summary>
+    public string? SessionId => Received.SessionId;
 
-        _metadata = [];
-    }
+    /// <summary>The correlation id.</summary>
+    public string? CorrelationId => Received.CorrelationId;
 
-    // ── IAcknowledgableMessage<T> ────────────────────────────────────────────────
+    /// <summary>The subject (label).</summary>
+    public string? Subject => Received.Subject;
+
+    /// <summary>The content type.</summary>
+    public string? ContentType => Received.ContentType;
+
+    /// <summary>How many times the message has been delivered, this time included.</summary>
+    public int DeliveryCount => Received.DeliveryCount;
+
+    /// <summary>When the broker accepted the message.</summary>
+    public DateTimeOffset EnqueuedTime => Received.EnqueuedTime;
+
+    /// <summary>The application properties the sender set.</summary>
+    public IReadOnlyDictionary<string, object> ApplicationProperties => Received.ApplicationProperties;
 
     /// <inheritdoc />
     public T Body { get; }
 
-    object IAcknowledgableMessage.Body => Body!;
+    object? IAcknowledgableMessage.Body => Body;
 
     /// <inheritdoc />
-    public string MessageId { get; }
+    public string MessageId => Received.MessageId;
 
     /// <inheritdoc />
-    public bool IsAcknowledged => Volatile.Read(ref _settlementState) == 1;
+    public bool IsSettled => _settlement.IsSettled;
 
     /// <inheritdoc />
-    public IReadOnlyDictionary<string, object> Metadata => _metadata;
+    public IReadOnlyDictionary<string, object> Metadata => _metadata.Value;
 
-    /// <summary>
-    ///     Acknowledges the message by completing it on the broker.
-    ///     Equivalent to <see cref="CompleteAsync" />.
-    /// </summary>
-    /// <inheritdoc />
-    public Task AcknowledgeAsync(CancellationToken cancellationToken = default) => CompleteAsync(cancellationToken);
+    /// <summary>Completes the message, removing it from the entity.</summary>
+    public Task AcknowledgeAsync(CancellationToken cancellationToken = default) => _settlement.AcknowledgeAsync(cancellationToken);
 
-    /// <summary>
-    ///     Negatively acknowledges the message.
-    ///     When <paramref name="requeue" /> is <c>true</c> (default), the message is abandoned and
-    ///     becomes available for redelivery.  When <c>false</c>, the message is dead-lettered.
-    /// </summary>
-    public Task NegativeAcknowledgeAsync(bool requeue = true, CancellationToken cancellationToken = default) =>
-        requeue
-            ? AbandonAsync(cancellationToken: cancellationToken)
-            : DeadLetterAsync(cancellationToken: cancellationToken);
+    /// <summary>Rejects the message: with <paramref name="requeue" /> it is abandoned and delivered again; without, it goes to the dead-letter sub-queue.</summary>
+    public Task RejectAsync(bool requeue, CancellationToken cancellationToken = default) => _settlement.RejectAsync(requeue, cancellationToken);
+
+    /// <summary>Moves the message to the dead-letter sub-queue with a reason.</summary>
+    public Task DeadLetterAsync(string reason, string? description = null, CancellationToken cancellationToken = default) =>
+        _settlement.SettleWith(ct => _receiver.DeadLetterMessageAsync(Received, reason, description, ct), cancellationToken);
+
+    /// <summary>Defers the message: it stays in the entity, to be received later by its sequence number only.</summary>
+    public Task DeferAsync(CancellationToken cancellationToken = default) =>
+        _settlement.SettleWith(ct => _receiver.DeferMessageAsync(Received, cancellationToken: ct), cancellationToken);
 
     /// <inheritdoc />
-    public IAcknowledgableMessage<TNew> WithBody<TNew>(TNew body) =>
-        new ServiceBusMessage<TNew>(
-            body,
-            MessageId,
-            _completeCallback,
-            _abandonCallback,
-            _deadLetterCallback,
-            _deferCallback,
-            ApplicationProperties);
+    public IAcknowledgableMessage<TNew> WithBody<TNew>(TNew body) => new ServiceBusMessage<TNew>(body, Received, _receiver, _settlement, _metadata);
 
-    // ── IServiceBusMessageMetadata ───────────────────────────────────────────────
-
-    /// <inheritdoc />
-    public string? SessionId { get; }
-
-    /// <inheritdoc />
-    public string? CorrelationId { get; }
-
-    /// <inheritdoc />
-    public string? ReplyTo { get; }
-
-    /// <inheritdoc />
-    public string? To { get; }
-
-    /// <inheritdoc />
-    public string? Subject { get; }
-
-    /// <inheritdoc />
-    public string? ReplyToSessionId { get; }
-
-    /// <inheritdoc />
-    public DateTimeOffset EnqueuedTime { get; }
-
-    /// <inheritdoc />
-    public int DeliveryCount { get; }
-
-    /// <inheritdoc />
-    public string? PartitionKey { get; }
-
-    /// <inheritdoc />
-    public TimeSpan TimeToLive { get; }
-
-    /// <inheritdoc />
-    public string? ContentType { get; }
-
-    /// <inheritdoc />
-    public bool IsSettled => Volatile.Read(ref _settlementState) == 1;
-
-    /// <inheritdoc />
-    public IReadOnlyDictionary<string, object> ApplicationProperties { get; }
-
-    // ── Settlement API ───────────────────────────────────────────────────────────
-
-    /// <summary>
-    ///     Completes the message, removing it from the queue or subscription.
-    /// </summary>
-    public async Task CompleteAsync(CancellationToken cancellationToken = default)
-    {
-        if (!TryMarkSettled())
-            return;
-
-        try
-        {
-            await _completeCallback(cancellationToken).ConfigureAwait(false);
-        }
-        finally
-        {
-            SignalSettlementTcs();
-        }
-    }
-
-    /// <summary>
-    ///     Abandons the message, making it available for immediate redelivery.
-    /// </summary>
-    /// <param name="propertiesToModify">Optional message properties to update before abandoning.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    public async Task AbandonAsync(
-        IDictionary<string, object>? propertiesToModify = null,
-        CancellationToken cancellationToken = default)
-    {
-        if (!TryMarkSettled())
-            return;
-
-        try
-        {
-            await _abandonCallback(propertiesToModify, cancellationToken).ConfigureAwait(false);
-        }
-        finally
-        {
-            SignalSettlementTcs();
-        }
-    }
-
-    /// <summary>
-    ///     Moves the message to the dead-letter sub-queue.
-    /// </summary>
-    /// <param name="reason">A short reason description.</param>
-    /// <param name="description">A longer description of the failure.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    public async Task DeadLetterAsync(
-        string? reason = null,
-        string? description = null,
-        CancellationToken cancellationToken = default)
-    {
-        if (!TryMarkSettled())
-            return;
-
-        try
-        {
-            await _deadLetterCallback(reason, description, cancellationToken).ConfigureAwait(false);
-        }
-        finally
-        {
-            SignalSettlementTcs();
-        }
-    }
-
-    /// <summary>
-    ///     Defers the message; it remains in the entity but must be received explicitly by sequence number.
-    /// </summary>
-    /// <param name="propertiesToModify">Optional properties to modify.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    public async Task DeferAsync(
-        IDictionary<string, object>? propertiesToModify = null,
-        CancellationToken cancellationToken = default)
-    {
-        if (!TryMarkSettled())
-            return;
-
-        try
-        {
-            await _deferCallback(propertiesToModify, cancellationToken).ConfigureAwait(false);
-        }
-        finally
-        {
-            SignalSettlementTcs();
-        }
-    }
-
-    // ── Private Helpers ──────────────────────────────────────────────────────────
-
-    /// <returns><c>true</c> if this call is the first settlement; <c>false</c> if already settled.</returns>
-    private bool TryMarkSettled() => Interlocked.CompareExchange(ref _settlementState, 1, 0) == 0;
-
-    private void SignalSettlementTcs()
-    {
-        _settlementTcs?.TrySetResult(true);
-    }
-
-    private static Dictionary<string, object> BuildMetadata(ServiceBusReceivedMessage message)
+    private IReadOnlyDictionary<string, object> BuildMetadata()
     {
         var metadata = new Dictionary<string, object>
         {
-            ["EnqueuedTime"] = message.EnqueuedTime,
-            ["DeliveryCount"] = message.DeliveryCount,
+            ["SequenceNumber"] = Received.SequenceNumber,
+            ["DeliveryCount"] = Received.DeliveryCount,
+            ["EnqueuedTime"] = Received.EnqueuedTime,
         };
 
-        if (message.SessionId != null)
-            metadata["SessionId"] = message.SessionId;
+        if (SessionId is not null)
+            metadata["SessionId"] = SessionId;
 
-        if (message.CorrelationId != null)
-            metadata["CorrelationId"] = message.CorrelationId;
+        if (CorrelationId is not null)
+            metadata["CorrelationId"] = CorrelationId;
 
-        if (message.ReplyTo != null)
-            metadata["ReplyTo"] = message.ReplyTo;
+        if (Subject is not null)
+            metadata["Subject"] = Subject;
 
-        if (message.PartitionKey != null)
-            metadata["PartitionKey"] = message.PartitionKey;
-
-        if (message.ContentType != null)
-            metadata["ContentType"] = message.ContentType;
-
-        if (message.Subject != null)
-            metadata["Subject"] = message.Subject;
-
-        foreach (var prop in message.ApplicationProperties)
+        foreach (var (key, value) in Received.ApplicationProperties)
         {
-            metadata[$"ApplicationProperty.{prop.Key}"] = prop.Value;
+            metadata[$"Property.{key}"] = value;
         }
 
         return metadata;
     }
+}
+
+/// <summary>What a Service Bus sink carries on from a received message whatever its body type.</summary>
+internal interface IServiceBusReceived
+{
+    ServiceBusReceivedMessage Received { get; }
 }

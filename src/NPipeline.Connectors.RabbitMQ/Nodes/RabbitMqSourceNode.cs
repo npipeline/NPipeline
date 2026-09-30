@@ -1,16 +1,15 @@
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Text;
 using System.Threading.Channels;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
+using NPipeline.Connectors.Diagnostics;
+using NPipeline.Connectors.Messaging;
 using NPipeline.Connectors.RabbitMQ.Configuration;
-using NPipeline.Connectors.RabbitMQ.Connection;
-using NPipeline.Connectors.RabbitMQ.Metrics;
 using NPipeline.Connectors.RabbitMQ.Models;
 using NPipeline.Connectors.RabbitMQ.Topology;
-using NPipeline.Connectors.Serialization;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
+using NPipeline.ErrorHandling;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 using RabbitMQ.Client;
@@ -19,246 +18,285 @@ using RabbitMQ.Client.Events;
 namespace NPipeline.Connectors.RabbitMQ.Nodes;
 
 /// <summary>
-///     Source node that consumes messages from a RabbitMQ queue using a push-based
-///     <see cref="AsyncEventingBasicConsumer" /> backed by a bounded <see cref="Channel{T}" />
-///     for backpressure integration with RabbitMQ's prefetch QoS.
+///     Consumes a RabbitMQ queue. Each message is handed on as a <see cref="RabbitMqMessage{T}" /> to be acknowledged or
+///     rejected; at most <see cref="RabbitMqReadOptions.PrefetchCount" /> are unsettled at a time. When the read ends, the
+///     consumer is cancelled, messages not yet handed on go back on the queue, and the channel stays open until the messages
+///     handed on are settled (up to <see cref="RabbitMqReadOptions.SettleTimeout" />). Create one with
+///     <see cref="RabbitMqConnector.Source{T}" />.
 /// </summary>
-/// <typeparam name="T">The type of messages to consume.</typeparam>
+/// <typeparam name="T">The body type.</typeparam>
 public sealed class RabbitMqSourceNode<T> : SourceNode<RabbitMqMessage<T>>, IAsyncDisposable
 {
-    private readonly IRabbitMqConnectionManager _connectionManager;
-    private readonly ILogger _logger;
-    private readonly IRabbitMqMetrics _metrics;
-    private readonly RabbitMqSourceOptions _options;
-    private readonly IMessageSerializer _serializer;
-    private string? _activeConsumerTag;
-    private IChannel? _channel;
+    internal const string ConnectorName = "rabbitmq";
 
-    /// <summary>
-    ///     Creates a new <see cref="RabbitMqSourceNode{T}" /> with full dependency injection.
-    /// </summary>
-    public RabbitMqSourceNode(
-        RabbitMqSourceOptions options,
-        IRabbitMqConnectionManager connectionManager,
-        IMessageSerializer serializer,
-        IRabbitMqMetrics? metrics = null,
-        ILogger<RabbitMqSourceNode<T>>? logger = null)
+    private readonly List<Task> _closing = [];
+    private readonly MessageDecoder<T> _decoder;
+    private readonly CancellationTokenSource _disposing = new();
+    private bool _disposed;
+    private readonly RabbitMqReadOptions _options;
+
+    /// <summary>Creates a source and validates <paramref name="options" />.</summary>
+    public RabbitMqSourceNode(RabbitMqReadOptions options)
     {
-        _options = options ?? throw new ArgumentNullException(nameof(options));
-        _connectionManager = connectionManager ?? throw new ArgumentNullException(nameof(connectionManager));
-        _serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
-        _metrics = metrics ?? NullRabbitMqMetrics.Instance;
-        _logger = logger ?? NullLogger<RabbitMqSourceNode<T>>.Instance;
-        _options.Validate();
+        ArgumentNullException.ThrowIfNull(options);
+        options.Validate();
+        _options = options;
+        _decoder = new MessageDecoder<T>(ConnectorName, options.Queue, options.Serializer, options.RowErrorHandler, options.RawExcerptLength);
     }
 
-    /// <inheritdoc />
+    /// <summary>Closes the channels of finished reads now, without waiting for their messages to be settled.</summary>
     public async ValueTask DisposeAsync()
     {
-        if (_channel is not null)
+        if (_disposed)
+            return;
+
+        _disposed = true;
+        await _disposing.CancelAsync().ConfigureAwait(false);
+
+        Task[] closing;
+
+        lock (_closing)
         {
-            // Cancel the consumer
-            if (_activeConsumerTag is not null)
-            {
-                try
-                {
-                    await _channel.BasicCancelAsync(_activeConsumerTag).ConfigureAwait(false);
-                }
-                catch
-                {
-                    // Best-effort cancellation
-                }
-            }
-
-            try
-            {
-                await _channel.CloseAsync().ConfigureAwait(false);
-                _channel.Dispose();
-            }
-            catch
-            {
-                // Best-effort cleanup
-            }
-
-            _channel = null;
+            closing = [.. _closing];
         }
+
+        await Task.WhenAll(closing).ConfigureAwait(false);
+        _disposing.Dispose();
     }
 
     /// <inheritdoc />
     public override IDataStream<RabbitMqMessage<T>> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
-        var stream = ConsumeMessagesAsync(cancellationToken);
-        return new DataStream<RabbitMqMessage<T>>(stream, $"RabbitMqSourceNode<{typeof(T).Name}>");
+        ArgumentNullException.ThrowIfNull(context);
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        return new DataStream<RabbitMqMessage<T>>(ConsumeAsync(context, cancellationToken), $"RabbitMqSourceNode<{typeof(T).Name}>");
     }
 
-    private async IAsyncEnumerable<RabbitMqMessage<T>> ConsumeMessagesAsync(
-        [EnumeratorCancellation] CancellationToken cancellationToken)
+    private async IAsyncEnumerable<RabbitMqMessage<T>> ConsumeAsync(PipelineContext context, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        // Create a dedicated channel for this consumer (not pooled)
-        _channel = await _connectionManager.CreateChannelAsync(cancellationToken).ConfigureAwait(false);
+        var logger = context.Observability.LoggerFactory.CreateLogger(typeof(RabbitMqSourceNode<T>).FullName ?? nameof(RabbitMqSourceNode<T>));
+        var deadLetters = OpenDeadLetterChannel(context);
+        var inFlight = new InFlightMessages();
+        var channel = await _options.Connection.CreateChannelAsync(cancellationToken).ConfigureAwait(false);
 
-        // Set QoS prefetch
-        await _channel.BasicQosAsync(
-            0, _options.PrefetchCount, _options.PrefetchGlobal,
-            cancellationToken).ConfigureAwait(false);
+        // The buffer holds what the broker has delivered and the pipeline has not yet taken; the prefetch bounds it.
+        var buffer = Channel.CreateBounded<RabbitMqMessage<T>>(new BoundedChannelOptions(_options.PrefetchCount)
+        {
+            FullMode = BoundedChannelFullMode.Wait,
+            SingleReader = true,
+            SingleWriter = true,
+        });
 
-        // Optionally declare topology
-        await TopologyDeclarer.DeclareSourceTopologyAsync(_channel, _options, _logger, cancellationToken)
-            .ConfigureAwait(false);
+        using var stop = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        string? consumerTag = null;
+        long sequence = 0;
 
-        // Create bounded channel for push-to-pull bridging
-        var bufferChannel = Channel.CreateBounded<RabbitMqMessage<T>>(
-            new BoundedChannelOptions(_options.InternalBufferCapacity)
+        try
+        {
+            await channel.BasicQosAsync(0, _options.PrefetchCount, false, cancellationToken).ConfigureAwait(false);
+            await TopologyDeclarer.DeclareQueueAsync(channel, _options.Queue, _options.Topology, logger, cancellationToken).ConfigureAwait(false);
+
+            var consumer = new AsyncEventingBasicConsumer(channel);
+
+            consumer.ReceivedAsync += (_, args) => ReceiveAsync(args, channel, buffer.Writer, inFlight, deadLetters, logger, ++sequence, stop.Token);
+
+            consumer.ShutdownAsync += (_, args) =>
             {
-                FullMode = BoundedChannelFullMode.Wait,
-                SingleReader = true,
-                SingleWriter = _options.ConsumerDispatchConcurrency <= 1,
-            });
+                if (!stop.IsCancellationRequested)
+                    buffer.Writer.TryComplete(new InvalidOperationException($"The RabbitMQ channel for queue '{_options.Queue}' closed: {args.ReplyText}"));
 
-        // Set up the async consumer
-        var consumer = new AsyncEventingBasicConsumer(_channel);
+                return Task.CompletedTask;
+            };
 
-        consumer.ReceivedAsync += async (_, args) =>
+            consumerTag = await channel.BasicConsumeAsync(_options.Queue, false, _options.ConsumerTag ?? string.Empty, false, _options.Exclusive, null,
+                consumer, cancellationToken).ConfigureAwait(false);
+
+            LogMessages.ConsumerStarted(logger, _options.Queue, _options.PrefetchCount);
+
+            await foreach (var message in buffer.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
+            {
+                yield return message;
+            }
+        }
+        finally
+        {
+            await stop.CancelAsync().ConfigureAwait(false);
+            buffer.Writer.TryComplete();
+            await StopAsync(channel, consumerTag, buffer.Reader).ConfigureAwait(false);
+
+            lock (_closing)
+            {
+                _closing.Add(CloseWhenSettledAsync(channel, inFlight));
+            }
+        }
+    }
+
+    private async Task ReceiveAsync(BasicDeliverEventArgs args, IChannel channel, ChannelWriter<RabbitMqMessage<T>> buffer, InFlightMessages inFlight,
+        DeadLetterChannel deadLetters, ILogger logger, long sequence, CancellationToken cancellationToken)
+    {
+        var tag = args.DeliveryTag;
+        var properties = args.BasicProperties;
+        var messageId = properties.MessageId ?? $"{_options.Queue}:{args.Redelivered}:{tag}";
+
+        try
+        {
+            if (_options.MaxDeliveryAttempts is { } max && DeliveryAttempts(properties) is { } attempts && attempts > max)
+            {
+                LogMessages.PoisonMessageRejected(logger, tag, attempts, max);
+                await channel.BasicRejectAsync(tag, false, cancellationToken).ConfigureAwait(false);
+                ConnectorDiagnostics.RecordMessagesSettled(ConnectorName, "rejected");
+                return;
+            }
+
+            if (!_decoder.TryDecode(args.Body.Span, out var body, out var error))
+            {
+                LogMessages.DeserializationFailed(logger, error, tag, _options.Queue);
+
+                // Throws for Fail, which fails the read; the message stays unsettled and is delivered again.
+                _ = await _decoder.HandleFailureAsync(error, args.Body, messageId, sequence, Metadata(args), deadLetters, cancellationToken).ConfigureAwait(false);
+                await channel.BasicRejectAsync(tag, false, cancellationToken).ConfigureAwait(false);
+                ConnectorDiagnostics.RecordMessagesSettled(ConnectorName, "rejected");
+                return;
+            }
+
+            inFlight.Add();
+
+            var settlement = new MessageSettlement(
+                async ct =>
+                {
+                    try
+                    {
+                        await channel.BasicAckAsync(tag, false, ct).ConfigureAwait(false);
+                        ConnectorDiagnostics.RecordMessagesSettled(ConnectorName, "acknowledged");
+                    }
+                    finally
+                    {
+                        inFlight.Remove();
+                    }
+                },
+                async (requeue, ct) =>
+                {
+                    try
+                    {
+                        await channel.BasicRejectAsync(tag, requeue, ct).ConfigureAwait(false);
+                        ConnectorDiagnostics.RecordMessagesSettled(ConnectorName, requeue ? "requeued" : "rejected");
+                    }
+                    finally
+                    {
+                        inFlight.Remove();
+                    }
+                });
+
+            var message = new RabbitMqMessage<T>(body, messageId, args.Exchange, args.RoutingKey, tag, args.Redelivered, properties, settlement);
+
+            // Waits while the pipeline is behind; the prefetch stops the broker delivering more meanwhile.
+            await buffer.WriteAsync(message, cancellationToken).ConfigureAwait(false);
+            ConnectorDiagnostics.RecordRowsRead(ConnectorName, ConnectorName, 1);
+        }
+        catch (Exception ex) when (ex is OperationCanceledException or ChannelClosedException && cancellationToken.IsCancellationRequested)
+        {
+            // The read ended; an unsettled message is delivered again once the channel closes.
+        }
+        catch (Exception ex)
+        {
+            buffer.TryComplete(ex);
+        }
+    }
+
+    /// <summary>Stops deliveries and puts back the messages that were delivered but never handed on.</summary>
+    private static async Task StopAsync(IChannel channel, string? consumerTag, ChannelReader<RabbitMqMessage<T>> unread)
+    {
+        try
+        {
+            if (consumerTag is not null && channel.IsOpen)
+                await channel.BasicCancelAsync(consumerTag).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            // The channel is gone, which requeues its messages anyway.
+        }
+
+        while (unread.TryRead(out var message))
         {
             try
             {
-                var sw = Stopwatch.StartNew();
-
-                // Check poison message (delivery attempt count)
-                if (_options.MaxDeliveryAttempts.HasValue && _options.RejectOnMaxDeliveryAttempts)
-                {
-                    var attemptCount = GetDeliveryAttemptCount(args);
-
-                    if (attemptCount > _options.MaxDeliveryAttempts.Value)
-                    {
-                        LogMessages.PoisonMessageRejected(
-                            _logger, args.DeliveryTag, attemptCount, _options.MaxDeliveryAttempts.Value);
-
-                        await _channel.BasicRejectAsync(args.DeliveryTag, false, cancellationToken)
-                            .ConfigureAwait(false);
-
-                        _metrics.RecordNack(_options.QueueName, 1, false);
-                        return;
-                    }
-                }
-
-                // Deserialize
-                T body;
-
-                try
-                {
-                    body = _serializer.Deserialize<T>(args.Body);
-                }
-                catch (Exception ex)
-                {
-                    LogMessages.DeserializationFailed(_logger, ex, args.DeliveryTag, _options.QueueName);
-                    _metrics.RecordDeserializationError(_options.QueueName);
-
-                    if (_options.ContinueOnDeserializationError)
-                    {
-                        await _channel.BasicRejectAsync(args.DeliveryTag, false, cancellationToken)
-                            .ConfigureAwait(false);
-
-                        return;
-                    }
-
-                    // Complete writer with error to propagate to the pipeline
-                    bufferChannel.Writer.TryComplete(ex);
-                    return;
-                }
-
-                var messageId = args.BasicProperties?.MessageId ?? $"{args.Exchange}-{args.RoutingKey}-{args.DeliveryTag}";
-                var capturedChannel = _channel;
-                var capturedDeliveryTag = args.DeliveryTag;
-
-                var message = new RabbitMqMessage<T>(
-                    body,
-                    messageId,
-                    args.Exchange,
-                    args.RoutingKey,
-                    capturedDeliveryTag,
-                    args.Redelivered,
-                    args.BasicProperties ?? new BasicProperties(),
-                    async ct => await capturedChannel.BasicAckAsync(capturedDeliveryTag, false, ct).ConfigureAwait(false),
-                    async (requeue, ct) => await capturedChannel.BasicNackAsync(capturedDeliveryTag, false, requeue, ct).ConfigureAwait(false));
-
-                sw.Stop();
-                _metrics.RecordConsumeLatency(_options.QueueName, sw.Elapsed.TotalMilliseconds);
-
-                LogMessages.MessageConsumed(_logger, args.DeliveryTag, _options.QueueName);
-
-                // Write to bounded channel - blocks if buffer is full (backpressure)
-                await bufferChannel.Writer.WriteAsync(message, cancellationToken).ConfigureAwait(false);
-
-                _metrics.RecordConsumed(_options.QueueName, 1);
+                await message.RejectAsync(true).ConfigureAwait(false);
             }
-            catch (OperationCanceledException)
+            catch (Exception ex) when (ex is not OutOfMemoryException)
             {
-                bufferChannel.Writer.TryComplete();
+                // As above.
             }
-            catch (Exception ex)
-            {
-                bufferChannel.Writer.TryComplete(ex);
-            }
-        };
-
-        consumer.UnregisteredAsync += (_, _) =>
-        {
-            bufferChannel.Writer.TryComplete();
-            return Task.CompletedTask;
-        };
-
-        consumer.ShutdownAsync += (_, args) =>
-        {
-            LogMessages.ConsumerShutdown(_logger, _options.QueueName, args.ReplyText ?? "unknown");
-
-            bufferChannel.Writer.TryComplete(
-                new InvalidOperationException($"Consumer channel shutdown: {args.ReplyText}"));
-
-            return Task.CompletedTask;
-        };
-
-        // Start consuming
-        _activeConsumerTag = await _channel.BasicConsumeAsync(
-            _options.QueueName,
-            false,
-            _options.ConsumerTag ?? "",
-            false,
-            _options.Exclusive,
-            null,
-            consumer,
-            cancellationToken).ConfigureAwait(false);
-
-        LogMessages.ConsumerStarted(_logger, _options.QueueName, _options.PrefetchCount);
-
-        // Read from the bounded channel - this is the IAsyncEnumerable surface
-        await foreach (var message in bufferChannel.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
-        {
-            yield return message;
         }
     }
 
-    private static int GetDeliveryAttemptCount(BasicDeliverEventArgs args)
+    private async Task CloseWhenSettledAsync(IChannel channel, InFlightMessages inFlight)
     {
-        // Try to read x-death header for delivery count
-        if (args.BasicProperties?.Headers is not null &&
-            args.BasicProperties.Headers.TryGetValue("x-death", out var xDeathObj) &&
-            xDeathObj is IList<object> xDeathList &&
-            xDeathList.Count > 0 &&
-            xDeathList[0] is IDictionary<string, object> firstDeath &&
-            firstDeath.TryGetValue("count", out var countObj))
+        try
         {
-            return countObj switch
-            {
-                long l => (int)l,
-                int i => i,
-                _ => 1,
-            };
+            _ = await inFlight.WhenSettledAsync(_options.SettleTimeout, _disposing.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            // Disposed: close now.
         }
 
-        // Fallback: if redelivered, assume at least 2nd attempt
-        return args.Redelivered
-            ? 2
-            : 1;
+        try
+        {
+            await channel.CloseAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            // Already closed.
+        }
+
+        channel.Dispose();
+    }
+
+    /// <summary>
+    ///     The delivery count: <c>x-delivery-count</c> (quorum queues count earlier deliveries, so this delivery is one more),
+    ///     or the <c>x-death</c> count after dead-letter cycles; <c>null</c> when the queue counts neither.
+    /// </summary>
+    internal static int? DeliveryAttempts(IReadOnlyBasicProperties properties)
+    {
+        var headers = properties.Headers;
+
+        if (headers is null)
+            return null;
+
+        if (headers.TryGetValue("x-delivery-count", out var count) && ToInt(count) is { } earlier)
+            return earlier + 1;
+
+        if (headers.TryGetValue("x-death", out var deaths) && deaths is IList<object> { Count: > 0 } list && list[0] is IDictionary<string, object> first &&
+            first.TryGetValue("count", out var deathCount) && ToInt(deathCount) is { } died)
+            return died + 1;
+
+        return null;
+    }
+
+    private static int? ToInt(object? value) => value switch
+    {
+        long l => (int)Math.Min(l, int.MaxValue),
+        int i => i,
+        short s => s,
+        byte b => b,
+        _ => null,
+    };
+
+    private static Dictionary<string, object> Metadata(BasicDeliverEventArgs args)
+    {
+        var metadata = new Dictionary<string, object>
+        {
+            ["Exchange"] = args.Exchange,
+            ["RoutingKey"] = args.RoutingKey,
+            ["Redelivered"] = args.Redelivered,
+        };
+
+        foreach (var (key, value) in args.BasicProperties.Headers ?? new Dictionary<string, object?>())
+        {
+            if (value is not null)
+                metadata[$"Header.{key}"] = value is byte[] bytes ? Encoding.UTF8.GetString(bytes) : value;
+        }
+
+        return metadata;
     }
 }

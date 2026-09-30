@@ -15,9 +15,13 @@
 
     <ItemGroup>
         <PackageReference Include="BenchmarkDotNet"/>
+        <PackageReference Include="Testcontainers.Kafka"/>
+        <PackageReference Include="Testcontainers.LocalStack"/>
         <PackageReference Include="Testcontainers.MsSql"/>
         <PackageReference Include="Testcontainers.MySql"/>
         <PackageReference Include="Testcontainers.PostgreSql"/>
+        <PackageReference Include="Testcontainers.RabbitMq"/>
+        <PackageReference Include="Testcontainers.ServiceBus"/>
     </ItemGroup>
 
     <ItemGroup>
@@ -31,6 +35,10 @@
         <ProjectReference Include="..\..\src\NPipeline.Connectors.Postgres\NPipeline.Connectors.Postgres.csproj"/>
         <ProjectReference Include="..\..\src\NPipeline.Connectors.MySQL\NPipeline.Connectors.MySQL.csproj"/>
         <ProjectReference Include="..\..\src\NPipeline.Connectors.DuckDB\NPipeline.Connectors.DuckDB.csproj"/>
+        <ProjectReference Include="..\..\src\NPipeline.Connectors.Kafka\NPipeline.Connectors.Kafka.csproj"/>
+        <ProjectReference Include="..\..\src\NPipeline.Connectors.RabbitMQ\NPipeline.Connectors.RabbitMQ.csproj"/>
+        <ProjectReference Include="..\..\src\NPipeline.Connectors.Aws.Sqs\NPipeline.Connectors.Aws.Sqs.csproj"/>
+        <ProjectReference Include="..\..\src\NPipeline.Connectors.Azure.ServiceBus\NPipeline.Connectors.Azure.ServiceBus.csproj"/>
     </ItemGroup>
 
 </Project>

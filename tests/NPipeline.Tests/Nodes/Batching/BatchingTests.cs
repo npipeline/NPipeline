@@ -61,6 +61,25 @@ public sealed class BatchingTests(ITestOutputHelper output)
     }
 
     [Fact]
+    public async Task BatchAsync_InfiniteWindow_WaitsForFullBatches()
+    {
+        _ = output;
+
+        async IAsyncEnumerable<int> Slow()
+        {
+            for (var i = 0; i < 5; i++)
+            {
+                await Task.Delay(20);
+                yield return i;
+            }
+        }
+
+        var batches = await Slow().BatchAsync(2, Timeout.InfiniteTimeSpan).ToListAsync();
+
+        batches.Select(b => b.Count).Should().Equal(2, 2, 1);
+    }
+
+    [Fact]
     public async Task BatchAsync_ForeignCancellation_SurfacesAsError()
     {
         _ = output;

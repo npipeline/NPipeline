@@ -2,6 +2,7 @@ using System.Buffers;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
 using NPipeline.Connectors.Files;
+using NPipeline.Connectors.Serialization;
 
 namespace NPipeline.Connectors.Json;
 
@@ -25,7 +26,7 @@ public sealed class JsonSinkNode<T> : FileSinkNode<T>
 
     /// <summary>Creates a sink that serializes each record with the options' serializer settings.</summary>
     public JsonSinkNode(JsonWriteOptions options)
-        : this(options, JsonSerialization.TypeInfo<T>(JsonSerialization.Resolve(options?.SerializerOptions)))
+        : this(options, ConnectorJson.TypeInfo<T>(ConnectorJson.Resolve(options?.SerializerOptions)))
     {
     }
 

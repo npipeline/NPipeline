@@ -1,720 +1,225 @@
-using System.Text.Json;
+using System.Globalization;
+using System.Text;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using Microsoft.Extensions.Logging;
-using NPipeline.Connectors.Abstractions;
 using NPipeline.Connectors.Aws.Sqs.Configuration;
 using NPipeline.Connectors.Aws.Sqs.Internal;
 using NPipeline.Connectors.Aws.Sqs.Models;
-using NPipeline.Connectors.Configuration;
+using NPipeline.Connectors.Diagnostics;
+using NPipeline.Connectors.Messaging;
 using NPipeline.DataFlow;
+using NPipeline.ErrorHandling;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 
 namespace NPipeline.Connectors.Aws.Sqs.Nodes;
 
 /// <summary>
-///     Sink node that publishes messages to an SQS queue with automatic acknowledgment support.
-///     Supports individual and batch acknowledgment strategies.
+///     Sends to an SQS queue with <c>SendMessageBatch</c>, up to ten messages and 256 KB a request. Written through
+///     <c>Acknowledging()</c>, each received message is acknowledged once SQS has its body, and one SQS rejects is handled
+///     as <see cref="SqsWriteOptions{T}.FailedMessages" /> says. Create one with <see cref="SqsConnector.Sink{T}" />.
 /// </summary>
-/// <typeparam name="T">Type to serialize to JSON.</typeparam>
-public sealed class SqsSinkNode<T> : SinkNode<T>, IAsyncDisposable
+/// <typeparam name="T">The body type.</typeparam>
+public sealed class SqsSinkNode<T> : SinkNode<T>, IMessageSink<T>, IAsyncDisposable
 {
-    private readonly AcknowledgmentStrategy _acknowledgmentStrategy;
-    private readonly BatchAcknowledgmentOptions _batchOptions;
-    private readonly AcknowledgmentBatcher _batcher;
+    // SQS's limit for a batch request, with room for the request's own fields.
+    private const int MaxBatchBytes = 256 * 1024 - 4 * 1024;
 
-    private readonly SqsConfiguration _configuration;
-    private readonly List<Task> _delayedAcknowledgmentTasks = [];
-    private readonly JsonSerializerOptions _serializerOptions;
-    private readonly IAmazonSQS _sqsClient;
-    private ILogger _logger = NullLogger.Instance;
+    private readonly IAmazonSQS _client;
+    private readonly SqsWriteOptions<T> _options;
+    private readonly bool _ownsClient;
+    private ILogger _logger = Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance;
 
-    /// <summary>
-    ///     Creates a new SqsSinkNode with the specified configuration.
-    /// </summary>
-    public SqsSinkNode(SqsConfiguration configuration)
+    /// <summary>Creates a sink and validates <paramref name="options" />.</summary>
+    public SqsSinkNode(SqsWriteOptions<T> options)
     {
-        _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-        _configuration.ValidateSink();
-
-        _sqsClient = SqsClientFactory.Create(configuration);
-        _serializerOptions = CreateSerializerOptions(configuration);
-        _acknowledgmentStrategy = configuration.AcknowledgmentStrategy;
-        _batchOptions = configuration.BatchAcknowledgment ?? new BatchAcknowledgmentOptions();
-        _batcher = new AcknowledgmentBatcher(_batchOptions, _sqsClient, configuration.SourceQueueUrl, NullLogger.Instance);
-    }
-
-    /// <summary>
-    ///     Creates a new SqsSinkNode with a custom SQS client.
-    /// </summary>
-    public SqsSinkNode(IAmazonSQS sqsClient, SqsConfiguration configuration)
-    {
-        _sqsClient = sqsClient ?? throw new ArgumentNullException(nameof(sqsClient));
-        _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-        _configuration.ValidateSink();
-
-        _serializerOptions = CreateSerializerOptions(configuration);
-        _acknowledgmentStrategy = configuration.AcknowledgmentStrategy;
-        _batchOptions = configuration.BatchAcknowledgment ?? new BatchAcknowledgmentOptions();
-        _batcher = new AcknowledgmentBatcher(_batchOptions, _sqsClient, configuration.SourceQueueUrl, NullLogger.Instance);
-    }
-
-    /// <inheritdoc />
-    public async ValueTask DisposeAsync()
-    {
-        await _batcher.DisposeAsync().ConfigureAwait(false);
-        List<Task> delayedTasks;
-
-        lock (_delayedAcknowledgmentTasks)
-        {
-            delayedTasks = _delayedAcknowledgmentTasks.ToList();
-        }
-
-        try
-        {
-            await Task.WhenAll(delayedTasks).ConfigureAwait(false);
-        }
-        catch (Exception ex)
-        {
-            SqsSinkNodeLogMessages.DelayedAcknowledgmentFailed(_logger, ex);
-        }
-        finally
-        {
-            lock (_delayedAcknowledgmentTasks)
-            {
-                _delayedAcknowledgmentTasks.RemoveAll(task => task.IsCompleted);
-            }
-        }
-    }
-
-    /// <inheritdoc />
-    public override async Task ConsumeAsync(IDataStream<T> input, PipelineContext context, CancellationToken cancellationToken)
-    {
-        var logger = context.Observability.LoggerFactory.CreateLogger(nameof(SqsSinkNode<T>));
-        _logger = logger;
-        _batcher.SetLogger(logger);
-
-        if (_configuration.EnableParallelProcessing && _configuration.MaxDegreeOfParallelism > 1)
-            await ExecuteParallelAsync(input, logger, cancellationToken).ConfigureAwait(false);
-        else
-            await ExecuteSequentialAsync(input, logger, cancellationToken).ConfigureAwait(false);
-    }
-
-    private async Task ExecuteSequentialAsync(IDataStream<T> input, ILogger logger, CancellationToken cancellationToken)
-    {
-        if (_configuration.BatchSize <= 1)
-        {
-            await foreach (var item in input.WithCancellation(cancellationToken))
-            {
-                await ProcessItemAsync(item, logger, cancellationToken).ConfigureAwait(false);
-            }
-
-            // Flush any remaining batched acknowledgments
-            await _batcher.FlushAsync(cancellationToken).ConfigureAwait(false);
-            return;
-        }
-
-        var batch = new List<OutgoingMessage>(_configuration.BatchSize);
-
-        await foreach (var item in input.WithCancellation(cancellationToken))
-        {
-            batch.Add(CreateOutgoingMessage(item));
-
-            if (batch.Count >= _configuration.BatchSize)
-            {
-                await SendBatchAndAcknowledgeAsync(batch, logger, cancellationToken).ConfigureAwait(false);
-                batch.Clear();
-            }
-        }
-
-        if (batch.Count > 0)
-            await SendBatchAndAcknowledgeAsync(batch, logger, cancellationToken).ConfigureAwait(false);
-
-        // Flush any remaining batched acknowledgments
-        await _batcher.FlushAsync(cancellationToken).ConfigureAwait(false);
-    }
-
-    private async Task ExecuteParallelAsync(IDataStream<T> input, ILogger logger, CancellationToken cancellationToken)
-    {
-        var options = new ParallelOptions
-        {
-            MaxDegreeOfParallelism = _configuration.MaxDegreeOfParallelism,
-            CancellationToken = cancellationToken,
-        };
-
-        await Parallel.ForEachAsync(input, options, async (item, ct) => { await ProcessItemAsync(item, logger, ct).ConfigureAwait(false); })
-            .ConfigureAwait(false);
-
-        // Flush any remaining batched acknowledgments
-        await _batcher.FlushAsync(cancellationToken).ConfigureAwait(false);
-    }
-
-    private static OutgoingMessage CreateOutgoingMessage(T item)
-    {
-        if (item is IAcknowledgableMessage acknowledgableMessage)
-            return new OutgoingMessage(acknowledgableMessage.Body, acknowledgableMessage);
-
-        return new OutgoingMessage(item!, null);
-    }
-
-    private async Task SendBatchAndAcknowledgeAsync(List<OutgoingMessage> batch, ILogger logger, CancellationToken cancellationToken)
-    {
-        if (batch.Count == 1)
-        {
-            var outgoing = batch[0];
-            var sent = await SendMessageAsync(outgoing.Payload, logger, cancellationToken).ConfigureAwait(false);
-
-            if (sent && outgoing.AckMessage != null)
-                await HandleAcknowledgmentAsync(outgoing.AckMessage, cancellationToken).ConfigureAwait(false);
-
-            return;
-        }
-
-        var ackMessages = await SendMessageBatchAsync(batch, logger, cancellationToken).ConfigureAwait(false);
-
-        foreach (var ackMessage in ackMessages)
-        {
-            await HandleAcknowledgmentAsync(ackMessage, cancellationToken).ConfigureAwait(false);
-        }
-    }
-
-    private async Task ProcessItemAsync(T item, ILogger logger, CancellationToken cancellationToken)
-    {
-        // Check if this is an acknowledgable message
-        if (item is IAcknowledgableMessage acknowledgableMessage)
-        {
-            SqsSinkNodeLogMessages.ProcessingAcknowledgableMessage(logger, item?.GetType().Name);
-            await ProcessAcknowledgableMessageAsync(acknowledgableMessage, logger, cancellationToken).ConfigureAwait(false);
-        }
-        else
-        {
-            // Regular message, just send to sink queue
-            SqsSinkNodeLogMessages.ProcessingRegularMessage(logger, item?.GetType().Name);
-            await SendMessageAsync(item!, logger, cancellationToken).ConfigureAwait(false);
-        }
-    }
-
-    private async Task ProcessAcknowledgableMessageAsync(IAcknowledgableMessage message, ILogger logger, CancellationToken cancellationToken)
-    {
-        switch (_acknowledgmentStrategy)
-        {
-            case AcknowledgmentStrategy.AutoOnSinkSuccess:
-                // Send to sink first, then acknowledge
-                // Use the original payload, not the wrapper, to avoid serialization issues
-                var sendSuccess = await SendMessageAsync(message.Body, logger, cancellationToken).ConfigureAwait(false);
-
-                if (sendSuccess)
-                    await AcknowledgeMessageAsync(message, cancellationToken).ConfigureAwait(false);
-
-                break;
-
-            case AcknowledgmentStrategy.Manual:
-                // Send to sink, but don't acknowledge (user must do it manually)
-                await SendMessageAsync(message.Body, logger, cancellationToken).ConfigureAwait(false);
-                break;
-
-            case AcknowledgmentStrategy.Delayed:
-                // Send to sink, then acknowledge after delay
-                sendSuccess = await SendMessageAsync(message.Body, logger, cancellationToken).ConfigureAwait(false);
-
-                if (sendSuccess)
-                {
-                    var delayedTask = Task.Run(async () =>
-                    {
-                        try
-                        {
-                            await Task.Delay(_configuration.AcknowledgmentDelayMs, cancellationToken).ConfigureAwait(false);
-                            await AcknowledgeMessageAsync(message, cancellationToken).ConfigureAwait(false);
-                        }
-                        catch (OperationCanceledException)
-                        {
-                            // Expected on cancellation
-                        }
-                    }, cancellationToken);
-
-                    TrackDelayedAcknowledgmentTask(delayedTask);
-                }
-
-                break;
-
-            case AcknowledgmentStrategy.None:
-                // Send to sink, but don't acknowledge
-                await SendMessageAsync(message.Body, logger, cancellationToken).ConfigureAwait(false);
-                break;
-        }
-    }
-
-    private async Task HandleAcknowledgmentAsync(IAcknowledgableMessage message, CancellationToken cancellationToken)
-    {
-        switch (_acknowledgmentStrategy)
-        {
-            case AcknowledgmentStrategy.AutoOnSinkSuccess:
-                await AcknowledgeMessageAsync(message, cancellationToken).ConfigureAwait(false);
-                break;
-            case AcknowledgmentStrategy.Manual:
-                break;
-            case AcknowledgmentStrategy.Delayed:
-                var delayedTask = Task.Run(async () =>
-                {
-                    try
-                    {
-                        await Task.Delay(_configuration.AcknowledgmentDelayMs, cancellationToken).ConfigureAwait(false);
-                        await AcknowledgeMessageAsync(message, cancellationToken).ConfigureAwait(false);
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        // Expected on cancellation
-                    }
-                }, cancellationToken);
-
-                TrackDelayedAcknowledgmentTask(delayedTask);
-
-                break;
-            case AcknowledgmentStrategy.None:
-                break;
-        }
-    }
-
-    private async Task AcknowledgeMessageAsync(IAcknowledgableMessage message, CancellationToken cancellationToken)
-    {
-        if (message.IsAcknowledged)
-            return;
-
-        if (_batchOptions.EnableAutomaticBatching)
-        {
-            // Add to batch for later acknowledgment
-            await _batcher.AddAsync(message, cancellationToken).ConfigureAwait(false);
-        }
-        else
-        {
-            // Acknowledge immediately
-            await message.AcknowledgeAsync(cancellationToken).ConfigureAwait(false);
-        }
-    }
-
-    private async Task<bool> SendMessageAsync(object item, ILogger logger, CancellationToken cancellationToken)
-    {
-        try
-        {
-            SqsSinkNodeLogMessages.SendingMessage(logger, item.GetType().Name);
-            var jsonBody = JsonSerializer.Serialize(item, _serializerOptions);
-
-            var request = new SendMessageRequest
-            {
-                QueueUrl = _configuration.SinkQueueUrl,
-                MessageBody = jsonBody,
-                DelaySeconds = _configuration.DelaySeconds,
-            };
-
-            // Add message attributes if configured
-            if (_configuration.MessageAttributes != null)
-            {
-                request.MessageAttributes ??= new Dictionary<string, MessageAttributeValue>();
-
-                foreach (var attr in _configuration.MessageAttributes)
-                {
-                    request.MessageAttributes[attr.Key] = attr.Value;
-                }
-            }
-
-            await _sqsClient.SendMessageAsync(request, cancellationToken).ConfigureAwait(false);
-            SqsSinkNodeLogMessages.MessageSent(logger);
-            return true;
-        }
-        catch (Exception ex) when (_configuration.ContinueOnError)
-        {
-            SqsSinkNodeLogMessages.SendMessageFailed(logger, ex);
-            return false;
-        }
-    }
-
-    private async Task<IReadOnlyList<IAcknowledgableMessage>> SendMessageBatchAsync(
-        IReadOnlyList<OutgoingMessage> items,
-        ILogger logger,
-        CancellationToken cancellationToken)
-    {
-        var entries = new List<SendMessageBatchRequestEntry>(items.Count);
-        var entryAckMap = new Dictionary<string, IAcknowledgableMessage>(items.Count);
-
-        for (var i = 0; i < items.Count; i++)
-        {
-            try
-            {
-                var jsonBody = JsonSerializer.Serialize(items[i].Payload, _serializerOptions);
-                var entryId = Guid.NewGuid().ToString();
-
-                var entry = new SendMessageBatchRequestEntry
-                {
-                    Id = entryId,
-                    MessageBody = jsonBody,
-                    DelaySeconds = _configuration.DelaySeconds,
-                };
-
-                // Add message attributes if configured
-                if (_configuration.MessageAttributes != null)
-                {
-                    entry.MessageAttributes ??= new Dictionary<string, MessageAttributeValue>();
-
-                    foreach (var attr in _configuration.MessageAttributes)
-                    {
-                        entry.MessageAttributes[attr.Key] = attr.Value;
-                    }
-                }
-
-                entries.Add(entry);
-
-                if (items[i].AckMessage != null)
-                    entryAckMap[entryId] = items[i].AckMessage!;
-            }
-            catch (Exception ex) when (_configuration.ContinueOnError)
-            {
-                SqsSinkNodeLogMessages.BatchSerializationFailed(logger, ex);
-            }
-        }
-
-        if (entries.Count == 0)
-            return [];
-
-        var request = new SendMessageBatchRequest
-        {
-            QueueUrl = _configuration.SinkQueueUrl,
-            Entries = entries,
-        };
-
-        try
-        {
-            var response = await _sqsClient.SendMessageBatchAsync(request, cancellationToken).ConfigureAwait(false);
-
-            var failedIds = response.Failed?.Select(f => f.Id).ToHashSet() ?? [];
-
-            if (failedIds.Count > 0)
-            {
-                foreach (var failed in response.Failed!)
-                {
-                    SqsSinkNodeLogMessages.BatchMessageFailed(logger, failed.Id, failed.Message);
-                }
-            }
-
-            var successfulAckMessages = entryAckMap
-                .Where(kvp => !failedIds.Contains(kvp.Key))
-                .Select(kvp => kvp.Value)
-                .ToList();
-
-            return successfulAckMessages;
-        }
-        catch (AmazonSQSException ex) when (_configuration.ContinueOnError)
-        {
-            SqsSinkNodeLogMessages.SendMessageBatchFailed(logger, ex);
-            return [];
-        }
-    }
-
-    private static JsonSerializerOptions CreateSerializerOptions(SqsConfiguration configuration)
-    {
-        var options = new JsonSerializerOptions
-        {
-            PropertyNameCaseInsensitive = configuration.PropertyNameCaseInsensitive,
-            PropertyNamingPolicy = configuration.PropertyNamingPolicy switch
-            {
-                JsonPropertyNamingPolicy.CamelCase => JsonNamingPolicy.CamelCase,
-                JsonPropertyNamingPolicy.SnakeCase => JsonNamingPolicy.SnakeCaseLower,
-                JsonPropertyNamingPolicy.LowerCase => new LowerCaseNamingPolicy(),
-                JsonPropertyNamingPolicy.PascalCase => new PascalCaseNamingPolicy(),
-                JsonPropertyNamingPolicy.AsIs => null,
-                _ => JsonNamingPolicy.CamelCase,
-            },
-        };
-
-        return options;
-    }
-
-    private void TrackDelayedAcknowledgmentTask(Task delayedTask)
-    {
-        lock (_delayedAcknowledgmentTasks)
-        {
-            _delayedAcknowledgmentTasks.Add(delayedTask);
-            _delayedAcknowledgmentTasks.RemoveAll(task => task.IsCompleted);
-        }
-    }
-
-    private sealed record OutgoingMessage(object Payload, IAcknowledgableMessage? AckMessage);
-
-    private sealed class LowerCaseNamingPolicy : JsonNamingPolicy
-    {
-        public static readonly LowerCaseNamingPolicy Instance = new();
-
-        public override string ConvertName(string name)
-        {
-            if (string.IsNullOrEmpty(name))
-                return name;
-
-            return name.ToLowerInvariant();
-        }
-    }
-
-    private sealed class PascalCaseNamingPolicy : JsonNamingPolicy
-    {
-        public static readonly PascalCaseNamingPolicy Instance = new();
-
-        public override string ConvertName(string name)
-        {
-            if (string.IsNullOrEmpty(name))
-                return name;
-
-            return char.ToUpperInvariant(name[0]) + name[1..];
-        }
-    }
-}
-
-/// <summary>
-///     Handles batch acknowledgment of messages to improve performance.
-/// </summary>
-internal sealed class AcknowledgmentBatcher : IDisposable, IAsyncDisposable
-{
-    private readonly List<IAcknowledgableMessageWrapper> _batch;
-    private readonly Timer _flushTimer;
-    private readonly object _lock = new();
-    private readonly BatchAcknowledgmentOptions _options;
-    private readonly string _queueUrl;
-    private readonly SemaphoreSlim _semaphore;
-    private readonly IAmazonSQS _sqsClient;
-    private bool _disposed;
-    private ILogger _logger;
-
-    public AcknowledgmentBatcher(
-        BatchAcknowledgmentOptions options,
-        IAmazonSQS sqsClient,
-        string queueUrl,
-        ILogger? logger = null)
-    {
+        ArgumentNullException.ThrowIfNull(options);
+        options.Validate();
         _options = options;
-        _sqsClient = sqsClient;
-        _queueUrl = queueUrl;
-        _logger = logger ?? NullLogger.Instance;
-        _semaphore = new SemaphoreSlim(options.MaxConcurrentBatches, options.MaxConcurrentBatches);
-        _batch = new List<IAcknowledgableMessageWrapper>(options.BatchSize);
-        _flushTimer = new Timer(FlushCallback, null, options.FlushTimeoutMs, options.FlushTimeoutMs);
+        (_client, _ownsClient) = SqsClientFactory.For(options);
     }
 
-    public async ValueTask DisposeAsync()
+    /// <summary>Disposes the client, if the sink created it.</summary>
+    public ValueTask DisposeAsync()
     {
-        if (_disposed)
-            return;
+        if (_ownsClient)
+            _client.Dispose();
 
-        try
-        {
-            _flushTimer.Change(Timeout.Infinite, Timeout.Infinite);
-            await FlushAsync(CancellationToken.None).ConfigureAwait(false);
-        }
-        catch (Exception ex)
-        {
-            SqsSinkNodeLogMessages.FlushBatchOnDisposeFailed(_logger, ex);
-        }
-        finally
-        {
-            _flushTimer.Dispose();
-        }
-
-        _semaphore.Dispose();
-        _disposed = true;
+        return ValueTask.CompletedTask;
     }
 
-    public void Dispose()
+    /// <inheritdoc />
+    public override Task ConsumeAsync(IDataStream<T> input, PipelineContext context, CancellationToken cancellationToken) =>
+        WriteAsync(input, static item => item, static _ => null, context, cancellationToken);
+
+    /// <inheritdoc />
+    public Task ConsumeMessagesAsync(IDataStream<IAcknowledgableMessage<T>> input, PipelineContext context, CancellationToken cancellationToken) =>
+        WriteAsync(input, static message => message.Body, static message => message, context, cancellationToken);
+
+    private async Task WriteAsync<TItem>(IDataStream<TItem> input, Func<TItem, T> body, Func<TItem, IAcknowledgableMessage?> source,
+        PipelineContext context, CancellationToken cancellationToken)
     {
-        if (_disposed)
-            return;
+        ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(context);
 
-        try
+        _logger = context.Observability.LoggerFactory.CreateLogger(typeof(SqsSinkNode<T>).FullName ?? nameof(SqsSinkNode<T>));
+        var deadLetters = OpenDeadLetterChannel(context);
+
+        await foreach (var items in input.BatchAsync(_options.BatchSize, _options.BatchLinger, cancellationToken).ConfigureAwait(false))
         {
-            _flushTimer.Change(Timeout.Infinite, Timeout.Infinite);
-        }
-        catch (ObjectDisposedException)
-        {
-            // Ignore if already disposed
-        }
-        finally
-        {
-            _flushTimer.Dispose();
-            _semaphore.Dispose();
-            _disposed = true;
-        }
-    }
+            var batch = new List<Outgoing>(items.Count);
+            var bytes = 0;
 
-    public void SetLogger(ILogger logger)
-    {
-        _logger = logger ?? NullLogger.Instance;
-    }
-
-    public async Task AddAsync(IAcknowledgableMessage message, CancellationToken cancellationToken)
-    {
-        await _semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
-
-        bool shouldFlush;
-
-        try
-        {
-            lock (_lock)
+            foreach (var item in items)
             {
-                _batch.Add(new AcknowledgableMessageWrapper(message));
-                shouldFlush = _batch.Count >= _options.BatchSize;
-            }
-        }
-        finally
-        {
-            _semaphore.Release();
-        }
+                var value = body(item);
+                var outgoing = new Outgoing(value, source(item), Encoding.UTF8.GetString(_options.Serializer.Serialize(value, new MessageContext(_options.QueueUrl))));
+                var size = Encoding.UTF8.GetByteCount(outgoing.Text) + AttributeBytes(outgoing.Source);
 
-        if (shouldFlush)
-            await FlushAsync(cancellationToken).ConfigureAwait(false);
-    }
-
-    public async Task FlushAsync(CancellationToken cancellationToken)
-    {
-        await _semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
-
-        try
-        {
-            await FlushBatchAsync(cancellationToken).ConfigureAwait(false);
-        }
-        finally
-        {
-            _semaphore.Release();
-        }
-    }
-
-    private void FlushCallback(object? state)
-    {
-        if (_disposed)
-            return;
-
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                if (_disposed)
-                    return;
-
-                await FlushAsync(CancellationToken.None).ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                SqsSinkNodeLogMessages.FlushBatchFailed(_logger, ex);
-            }
-        });
-    }
-
-    private async Task FlushBatchAsync(CancellationToken cancellationToken)
-    {
-        List<IAcknowledgableMessageWrapper> messagesToAck;
-
-        lock (_lock)
-        {
-            if (_batch.Count == 0)
-                return;
-
-            messagesToAck = _batch.ToList();
-            _batch.Clear();
-        }
-
-        if (messagesToAck.Count == 1)
-        {
-            // Single message - acknowledge directly
-            await messagesToAck[0].AcknowledgeAsync(cancellationToken).ConfigureAwait(false);
-        }
-        else
-        {
-            // Batch acknowledge
-            await AcknowledgeBatchAsync(messagesToAck, cancellationToken).ConfigureAwait(false);
-        }
-    }
-
-    private async Task AcknowledgeBatchAsync(IReadOnlyList<IAcknowledgableMessageWrapper> messages, CancellationToken cancellationToken)
-    {
-        var entries = new List<DeleteMessageBatchRequestEntry>();
-        var entryLookup = new Dictionary<string, IAcknowledgableMessageWrapper>();
-
-        foreach (var message in messages)
-        {
-            if (message.Metadata.TryGetValue("ReceiptHandle", out var receiptHandle) && receiptHandle is string handle)
-            {
-                var entry = new DeleteMessageBatchRequestEntry
+                // A batch over SQS's size limit is sent in parts.
+                if (batch.Count > 0 && bytes + size > MaxBatchBytes)
                 {
-                    Id = message.MessageId,
-                    ReceiptHandle = handle,
-                };
+                    await SendAsync(batch, deadLetters, cancellationToken).ConfigureAwait(false);
+                    batch.Clear();
+                    bytes = 0;
+                }
 
-                entries.Add(entry);
-                entryLookup[entry.Id] = message;
+                batch.Add(outgoing);
+                bytes += size;
             }
+
+            await SendAsync(batch, deadLetters, cancellationToken).ConfigureAwait(false);
         }
+    }
 
-        if (entries.Count == 0)
-            return;
+    private async Task SendAsync(List<Outgoing> batch, DeadLetterChannel deadLetters, CancellationToken cancellationToken)
+    {
+        var errors = new Exception?[batch.Count];
+        var request = new SendMessageBatchRequest { QueueUrl = _options.QueueUrl, Entries = [.. batch.Select(Entry)] };
 
-        var request = new DeleteMessageBatchRequest
+        try
         {
-            QueueUrl = _queueUrl,
-            Entries = entries,
-        };
+            var response = await _client.SendMessageBatchAsync(request, cancellationToken).ConfigureAwait(false);
 
-        var response = await _sqsClient.DeleteMessageBatchAsync(request, cancellationToken).ConfigureAwait(false);
-
-        var failedIds = response.Failed?.Select(f => f.Id).ToHashSet() ?? [];
-
-        foreach (var entry in entries)
-        {
-            if (!failedIds.Contains(entry.Id) && entryLookup.TryGetValue(entry.Id, out var wrapper))
-                wrapper.MarkAcknowledged();
-        }
-
-        // Handle failed deletions
-        if (response.Failed?.Count > 0)
-        {
-            foreach (var failed in response.Failed)
+            foreach (var failed in response.Failed ?? [])
             {
-                SqsSinkNodeLogMessages.DeleteMessageFailed(_logger, failed.Id, failed.Message);
+                var index = int.Parse(failed.Id, CultureInfo.InvariantCulture);
+                SqsLogMessages.SendFailed(_logger, index, _options.QueueUrl, failed.Code, failed.Message);
+                errors[index] = new AmazonSQSException($"SQS rejected the message ({failed.Code}): {failed.Message}") { ErrorCode = failed.Code };
+            }
+        }
+        catch (Exception ex) when (ex is AmazonSQSException or HttpRequestException && !cancellationToken.IsCancellationRequested)
+        {
+            // The SDK already retried the request; every message in it failed.
+            Array.Fill(errors, ex);
+        }
+
+        var sent = 0;
+        var acknowledgements = new List<Task>();
+
+        for (var i = 0; i < batch.Count; i++)
+        {
+            if (errors[i] is not null)
+                continue;
+
+            sent++;
+
+            if (batch[i].Source is { } from)
+                acknowledgements.Add(from.AcknowledgeAsync(cancellationToken));
+        }
+
+        // Settled together: a broker that settles each message with its own request (Service Bus) takes one round trip, not one per message.
+        await Task.WhenAll(acknowledgements).ConfigureAwait(false);
+        ConnectorDiagnostics.RecordRowsWritten(SqsConnector.Name, SqsConnector.Name, sent);
+
+        for (var i = 0; i < batch.Count; i++)
+        {
+            if (errors[i] is not { } error)
+                continue;
+
+            switch (_options.FailedMessages)
+            {
+                case FailedMessageAction.Requeue:
+                    // A plain body has no source message to requeue, so its failure fails the write.
+                    if (batch[i].Source is not { } requeue)
+                        throw error;
+
+                    await requeue.RejectAsync(true, cancellationToken).ConfigureAwait(false);
+                    break;
+                case FailedMessageAction.DeadLetter:
+                    await deadLetters.SendAsync(batch[i].Body!, error, cancellationToken).ConfigureAwait(false);
+
+                    if (batch[i].Source is { } handled)
+                        await handled.AcknowledgeAsync(cancellationToken).ConfigureAwait(false);
+
+                    break;
+                default:
+                    throw error;
             }
         }
     }
 
-    private interface IAcknowledgableMessageWrapper
+    private SendMessageBatchRequestEntry Entry(Outgoing outgoing, int index)
     {
-        string MessageId { get; }
-        IReadOnlyDictionary<string, object> Metadata { get; }
-        Task AcknowledgeAsync(CancellationToken cancellationToken = default);
-        void MarkAcknowledged();
-    }
+        var entry = new SendMessageBatchRequestEntry(index.ToString(CultureInfo.InvariantCulture), outgoing.Text);
 
-    private sealed class AcknowledgableMessageWrapper(IAcknowledgableMessage inner) : IAcknowledgableMessageWrapper
-    {
-        private readonly IAcknowledgableMessage _inner = inner;
+        // FIFO queues reject a per-message delay, so it is only sent when asked for.
+        if (_options.Delay > TimeSpan.Zero)
+            entry.DelaySeconds = (int)_options.Delay.TotalSeconds;
 
-        public string MessageId => _inner.MessageId;
-        public IReadOnlyDictionary<string, object> Metadata => _inner.Metadata;
+        var received = outgoing.Source as ISqsReceived;
 
-        public Task AcknowledgeAsync(CancellationToken cancellationToken = default) => _inner.AcknowledgeAsync(cancellationToken);
-
-        public void MarkAcknowledged()
+        if (_options.MessageAttributes.Count > 0 || (_options.CopyMessageAttributes && received is { Attributes.Count: > 0 }))
         {
-            if (_inner is IAwsSqsAcknowledgableMessage awsMessage)
-                awsMessage.MarkAcknowledged();
+            entry.MessageAttributes = [];
+
+            if (_options.CopyMessageAttributes && received is not null)
+            {
+                foreach (var (key, value) in received.Attributes)
+                {
+                    entry.MessageAttributes[key] = value;
+                }
+            }
+
+            foreach (var (key, value) in _options.MessageAttributes)
+            {
+                entry.MessageAttributes[key] = value;
+            }
         }
+
+        if (_options.MessageGroupId is { } group)
+            entry.MessageGroupId = group(outgoing.Body);
+
+        if (_options.DeduplicationId is { } deduplication)
+            entry.MessageDeduplicationId = deduplication(outgoing.Body);
+        else if (entry.MessageGroupId is not null && outgoing.Source is { } source)
+            entry.MessageDeduplicationId = source.MessageId;
+
+        return entry;
     }
-}
 
-/// <summary>
-///     Null logger implementation for default no-op logging.
-/// </summary>
-internal sealed class NullLogger : ILogger
-{
-    public static readonly NullLogger Instance = new();
-
-    public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
-
-    public bool IsEnabled(LogLevel logLevel) => false;
-
-    public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+    /// <summary>The bytes a message's attributes add to a request: SQS counts their names, types and values against its limit.</summary>
+    private int AttributeBytes(IAcknowledgableMessage? source)
     {
+        var total = 0;
+
+        void Add(IEnumerable<KeyValuePair<string, MessageAttributeValue>> attributes)
+        {
+            foreach (var (key, value) in attributes)
+            {
+                total += Encoding.UTF8.GetByteCount(key) + Encoding.UTF8.GetByteCount(value.DataType ?? string.Empty) +
+                         (value.StringValue is { } text ? Encoding.UTF8.GetByteCount(text) : 0) + (int)(value.BinaryValue?.Length ?? 0);
+            }
+        }
+
+        Add(_options.MessageAttributes);
+
+        if (_options.CopyMessageAttributes && source is ISqsReceived received)
+            Add(received.Attributes);
+
+        return total;
     }
+
+    private sealed record Outgoing(T Body, IAcknowledgableMessage? Source, string Text);
 }

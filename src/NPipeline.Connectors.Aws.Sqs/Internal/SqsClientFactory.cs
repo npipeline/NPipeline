@@ -5,54 +5,42 @@ using NPipeline.Connectors.Aws.Sqs.Configuration;
 
 namespace NPipeline.Connectors.Aws.Sqs.Internal;
 
-/// <summary>
-///     Builds the SQS client the nodes use when the caller does not supply one.
-/// </summary>
+/// <summary>The client a node uses: the one in its options, or one it creates and owns.</summary>
 internal static class SqsClientFactory
 {
-    public static IAmazonSQS Create(SqsConfiguration configuration)
+    public static (IAmazonSQS Client, bool Owned) For(SqsNodeOptions options) =>
+        options.Client is { } client ? (client, false) : (Create(options), true);
+
+    private static AmazonSQSClient Create(SqsNodeOptions options)
     {
-        var config = CreateClientConfig(configuration);
+        var config = new AmazonSQSConfig();
 
-        if (!string.IsNullOrWhiteSpace(configuration.AccessKeyId) &&
-            !string.IsNullOrWhiteSpace(configuration.SecretAccessKey))
+        // Setting RegionEndpoint clears ServiceURL, so with a service URL (LocalStack, a VPC endpoint) the region only signs requests.
+        if (options.ServiceUrl is { } serviceUrl)
         {
-            return new AmazonSQSClient(
-                configuration.AccessKeyId,
-                configuration.SecretAccessKey,
-                config);
+            config.ServiceURL = serviceUrl;
+
+            if (options.Region is { } signingRegion)
+                config.AuthenticationRegion = signingRegion;
         }
-
-        if (!string.IsNullOrWhiteSpace(configuration.ProfileName))
+        else if (options.Region is { } region)
         {
-            var chain = new CredentialProfileStoreChain();
-
-            if (chain.TryGetProfile(configuration.ProfileName, out var profile))
-                return new AmazonSQSClient(profile.GetAWSCredentials(chain), config);
+            config.RegionEndpoint = RegionEndpoint.GetBySystemName(region);
         }
-
-        // Use default credential chain
-        return new AmazonSQSClient(config);
-    }
-
-    /// <summary>
-    ///     The client configuration, including the SDK's retry settings. The SDK is the only layer that retries SQS
-    ///     calls: its retry knows which errors are throttling, backs off with jitter, and spends from a retry quota.
-    /// </summary>
-    public static AmazonSQSConfig CreateClientConfig(SqsConfiguration configuration)
-    {
-        var config = new AmazonSQSConfig
-        {
-            RegionEndpoint = RegionEndpoint.GetBySystemName(configuration.Region),
-        };
 
         // Left unset, the SDK resolves these itself (AWS_RETRY_MODE, AWS_MAX_ATTEMPTS, or the shared config file).
-        if (configuration.RetryMode is { } retryMode)
+        if (options.RetryMode is { } retryMode)
             config.RetryMode = retryMode;
 
-        if (configuration.MaxErrorRetry is { } maxErrorRetry)
+        if (options.MaxErrorRetry is { } maxErrorRetry)
             config.MaxErrorRetry = maxErrorRetry;
 
-        return config;
+        if (options.Credentials is { } credentials)
+            return new AmazonSQSClient(credentials, config);
+
+        if (options.ProfileName is { } profileName && new CredentialProfileStoreChain().TryGetAWSCredentials(profileName, out var profile))
+            return new AmazonSQSClient(profile, config);
+
+        return new AmazonSQSClient(config);
     }
 }

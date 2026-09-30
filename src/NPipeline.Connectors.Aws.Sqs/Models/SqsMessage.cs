@@ -1,216 +1,100 @@
-using Amazon.SQS;
 using Amazon.SQS.Model;
-using NPipeline.Connectors.Abstractions;
+using NPipeline.Connectors.Messaging;
 
 namespace NPipeline.Connectors.Aws.Sqs.Models;
 
-internal interface IAwsSqsAcknowledgableMessage
-{
-    void MarkAcknowledged();
-}
-
 /// <summary>
-///     SQS-specific implementation of IAcknowledgableMessage that wraps an SQS message
-///     with acknowledgment capability. Supports both individual and batch acknowledgment.
+///     A message received from an SQS queue. Acknowledging it deletes it from the queue (in batches, shortly after); a
+///     message not acknowledged within its visibility timeout is delivered again.
 /// </summary>
-/// <typeparam name="T">The deserialized message body type.</typeparam>
-public sealed class SqsMessage<T> : IAcknowledgableMessage<T>, IAwsSqsAcknowledgableMessage
+/// <typeparam name="T">The body type.</typeparam>
+public sealed class SqsMessage<T> : IAcknowledgableMessage<T>, ISqsReceived
 {
-    private readonly object _ackLock = new();
-    private readonly Func<CancellationToken, Task> _acknowledgeCallback;
-    private readonly Dictionary<string, object> _metadata;
-    private Task? _ackTask;
-    private volatile bool _isAcknowledged;
+    private readonly Lazy<IReadOnlyDictionary<string, object>> _metadata;
+    private readonly MessageSettlement _settlement;
 
-    /// <summary>
-    ///     Internal constructor used by SqsSourceNode with direct acknowledgment.
-    /// </summary>
-    internal SqsMessage(
-        T body,
-        string messageId,
-        string receiptHandle,
-        IDictionary<string, MessageAttributeValue> attributes,
-        DateTime timestamp,
-        IAmazonSQS sqsClient,
-        string queueUrl)
+    internal SqsMessage(T body, string messageId, string receiptHandle, string queueUrl, IReadOnlyDictionary<string, MessageAttributeValue> attributes,
+        IReadOnlyDictionary<string, string> systemAttributes, MessageSettlement settlement, Lazy<IReadOnlyDictionary<string, object>>? metadata = null)
     {
         Body = body;
         MessageId = messageId;
         ReceiptHandle = receiptHandle;
-        Attributes = attributes ?? new Dictionary<string, MessageAttributeValue>();
-        Timestamp = timestamp;
-        _acknowledgeCallback = ct => AcknowledgeDirectlyAsync(sqsClient, queueUrl, receiptHandle, ct);
-        _metadata = BuildMetadata();
+        QueueUrl = queueUrl;
+        Attributes = attributes;
+        SystemAttributes = systemAttributes;
+        _settlement = settlement;
+        _metadata = metadata ?? new Lazy<IReadOnlyDictionary<string, object>>(BuildMetadata);
     }
 
-    /// <summary>
-    ///     Internal constructor used by SqsSourceNode with batch acknowledgment callback.
-    /// </summary>
-    internal SqsMessage(
-        T body,
-        string messageId,
-        string receiptHandle,
-        IDictionary<string, MessageAttributeValue> attributes,
-        DateTime timestamp,
-        Func<CancellationToken, Task> acknowledgeCallback)
-    {
-        Body = body;
-        MessageId = messageId;
-        ReceiptHandle = receiptHandle;
-        Attributes = attributes ?? new Dictionary<string, MessageAttributeValue>();
-        Timestamp = timestamp;
-        _acknowledgeCallback = acknowledgeCallback;
-        _metadata = BuildMetadata();
-    }
-
-    /// <summary>
-    ///     Gets the receipt handle used to delete the message.
-    /// </summary>
+    /// <summary>The handle this receipt of the message is deleted or made visible with.</summary>
     public string ReceiptHandle { get; }
 
-    /// <summary>
-    ///     Gets the message attributes (metadata).
-    /// </summary>
-    public IDictionary<string, MessageAttributeValue> Attributes { get; }
+    /// <summary>The queue the message was received from.</summary>
+    public string QueueUrl { get; }
 
-    /// <summary>
-    ///     Gets the timestamp when the message was sent.
-    /// </summary>
-    public DateTime Timestamp { get; }
+    /// <summary>The message attributes the sender set.</summary>
+    public IReadOnlyDictionary<string, MessageAttributeValue> Attributes { get; }
 
-    /// <summary>
-    ///     Gets the deserialized message body.
-    /// </summary>
+    /// <summary>SQS's attributes: <c>SentTimestamp</c>, <c>ApproximateReceiveCount</c>, <c>MessageGroupId</c> and the rest.</summary>
+    public IReadOnlyDictionary<string, string> SystemAttributes { get; }
+
+    /// <summary>When the message was sent, from <c>SentTimestamp</c>.</summary>
+    public DateTimeOffset? SentAt =>
+        SystemAttributes.TryGetValue("SentTimestamp", out var sent) && long.TryParse(sent, out var ms) ? DateTimeOffset.FromUnixTimeMilliseconds(ms) : null;
+
+    /// <summary>How many times the message has been received, this time included, from <c>ApproximateReceiveCount</c>.</summary>
+    public int ReceiveCount =>
+        SystemAttributes.TryGetValue("ApproximateReceiveCount", out var count) && int.TryParse(count, out var n) ? n : 1;
+
+    /// <inheritdoc />
     public T Body { get; }
 
-    object IAcknowledgableMessage.Body => Body!;
+    object? IAcknowledgableMessage.Body => Body;
 
-    /// <summary>
-    ///     Gets the SQS message ID.
-    /// </summary>
+    /// <inheritdoc />
     public string MessageId { get; }
 
-    /// <summary>
-    ///     Gets a value indicating whether this message has been acknowledged.
-    /// </summary>
-    public bool IsAcknowledged => _isAcknowledged;
+    /// <inheritdoc />
+    public bool IsSettled => _settlement.IsSettled;
+
+    /// <inheritdoc />
+    public IReadOnlyDictionary<string, object> Metadata => _metadata.Value;
+
+    /// <inheritdoc />
+    public Task AcknowledgeAsync(CancellationToken cancellationToken = default) => _settlement.AcknowledgeAsync(cancellationToken);
 
     /// <summary>
-    ///     Gets metadata associated with the message.
+    ///     Rejects the message: with <paramref name="requeue" /> it becomes visible again at once, so it is delivered again;
+    ///     without, it is deleted. (SQS moves a message to a dead-letter queue only through the queue's redrive policy.)
     /// </summary>
-    public IReadOnlyDictionary<string, object> Metadata => _metadata;
+    public Task RejectAsync(bool requeue, CancellationToken cancellationToken = default) => _settlement.RejectAsync(requeue, cancellationToken);
 
-    /// <summary>
-    ///     Acknowledges the message by deleting it from the SQS queue.
-    ///     This method is idempotent - calling it multiple times has no effect.
-    /// </summary>
-    public async Task AcknowledgeAsync(CancellationToken cancellationToken = default)
-    {
-        Task ackTask;
-
-        lock (_ackLock)
-        {
-            if (_isAcknowledged)
-                return;
-
-            _ackTask ??= _acknowledgeCallback(cancellationToken);
-            ackTask = _ackTask;
-        }
-
-        try
-        {
-            await ackTask.ConfigureAwait(false);
-
-            lock (_ackLock)
-            {
-                _isAcknowledged = true;
-                _ackTask = Task.CompletedTask;
-            }
-        }
-        catch
-        {
-            lock (_ackLock)
-            {
-                if (ReferenceEquals(_ackTask, ackTask))
-                    _ackTask = null;
-            }
-
-            throw;
-        }
-    }
-
-    /// <summary>
-    ///     Negatively acknowledges the message.
-    ///     For SQS, this is a no-op - the message will become visible again after the
-    ///     visibility timeout expires, effectively achieving redelivery.
-    /// </summary>
-    /// <param name="requeue">Ignored for SQS. Redelivery is handled by visibility timeout.</param>
-    /// <param name="cancellationToken">Cancellation token for the operation.</param>
-    /// <returns>A completed task.</returns>
-    public Task NegativeAcknowledgeAsync(bool requeue = true, CancellationToken cancellationToken = default) =>
-
-        // SQS does not support explicit nack - messages are redelivered
-        // after the visibility timeout expires.
-        Task.CompletedTask;
-
-    /// <summary>
-    ///     Creates a new SqsMessage with the provided body while preserving acknowledgment behavior.
-    /// </summary>
-    /// <typeparam name="TNew">The new body type.</typeparam>
-    /// <param name="body">The new message body.</param>
-    /// <returns>A new SqsMessage with the same acknowledgment callback.</returns>
+    /// <inheritdoc />
     public IAcknowledgableMessage<TNew> WithBody<TNew>(TNew body) =>
-        new SqsMessage<TNew>(
-            body,
-            MessageId,
-            ReceiptHandle,
-            Attributes,
-            Timestamp,
-            _acknowledgeCallback);
+        new SqsMessage<TNew>(body, MessageId, ReceiptHandle, QueueUrl, Attributes, SystemAttributes, _settlement, _metadata);
 
-    void IAwsSqsAcknowledgableMessage.MarkAcknowledged()
+    private IReadOnlyDictionary<string, object> BuildMetadata()
     {
-        lock (_ackLock)
+        var metadata = new Dictionary<string, object> { ["QueueUrl"] = QueueUrl };
+
+        foreach (var (key, value) in SystemAttributes)
         {
-            _isAcknowledged = true;
-            _ackTask = Task.CompletedTask;
+            metadata[key] = value;
         }
-    }
 
-    private static async Task AcknowledgeDirectlyAsync(
-        IAmazonSQS sqsClient,
-        string queueUrl,
-        string receiptHandle,
-        CancellationToken cancellationToken)
-    {
-        await sqsClient.DeleteMessageAsync(
-            queueUrl,
-            receiptHandle,
-            cancellationToken).ConfigureAwait(false);
-    }
-
-    private Dictionary<string, object> BuildMetadata()
-    {
-        var metadata = new Dictionary<string, object>
+        foreach (var (key, value) in Attributes)
         {
-            ["Timestamp"] = Timestamp,
-            ["ReceiptHandle"] = ReceiptHandle,
-        };
-
-        // Add message attributes to metadata
-        foreach (var attr in Attributes)
-        {
-            object value = attr.Value.DataType switch
-            {
-                "String" => attr.Value.StringValue,
-                "Number" => attr.Value.StringValue,
-                "Binary" => attr.Value.BinaryValue,
-                _ => attr.Value.StringValue,
-            };
-
-            metadata[$"Attribute.{attr.Key}"] = value;
+            metadata[$"Attribute.{key}"] = value.StringValue ?? (object?)value.BinaryValue ?? string.Empty;
         }
 
         return metadata;
     }
+}
+
+/// <summary>What an SQS sink carries on from a received message whatever its body type.</summary>
+internal interface ISqsReceived
+{
+    string MessageId { get; }
+
+    IReadOnlyDictionary<string, MessageAttributeValue> Attributes { get; }
 }

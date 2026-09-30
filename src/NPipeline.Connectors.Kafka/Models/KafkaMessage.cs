@@ -1,238 +1,119 @@
 using System.Text;
 using Confluent.Kafka;
-using NPipeline.Connectors.Abstractions;
+using NPipeline.Connectors.Messaging;
 
 namespace NPipeline.Connectors.Kafka.Models;
 
 /// <summary>
-///     Kafka-specific implementation of <see cref="IAcknowledgableMessage{T}" /> that wraps a Kafka message
-///     with acknowledgment capability via offset commit.
+///     A message read from a Kafka topic. Acknowledging it lets the group's committed offset move past it, once every
+///     earlier message of its partition is settled too; a message never acknowledged is read again after a restart.
 /// </summary>
-/// <typeparam name="T">The deserialized message body type.</typeparam>
-public sealed class KafkaMessage<T> : IAcknowledgableMessage<T>, IKafkaMessageMetadata, IKafkaOffsetSource
+/// <typeparam name="T">The body type.</typeparam>
+public sealed class KafkaMessage<T> : IAcknowledgableMessage<T>, IKafkaReceived
 {
-    private readonly object _ackLock = new();
-    private readonly Func<CancellationToken, Task>? _acknowledgeCallback;
-    private readonly Dictionary<string, object> _metadata;
-    private Task? _ackTask;
-    private volatile bool _isAcknowledged;
+    private readonly Func<IConsumerGroupMetadata>? _groupMetadata;
+    private readonly Lazy<IReadOnlyDictionary<string, object>> _metadata;
+    private readonly MessageSettlement _settlement;
 
-    /// <summary>
-    ///     Initializes a new instance of <see cref="KafkaMessage{T}" />.
-    /// </summary>
-    /// <param name="body">The deserialized message body.</param>
-    /// <param name="topic">The topic the message was consumed from.</param>
-    /// <param name="partition">The partition number.</param>
-    /// <param name="offset">The offset within the partition.</param>
-    /// <param name="key">The message key.</param>
-    /// <param name="timestamp">The message timestamp.</param>
-    /// <param name="headers">The message headers.</param>
-    /// <param name="acknowledgeCallback">The callback to invoke when acknowledging the message.</param>
-    /// <param name="consumerGroupMetadata">The consumer group metadata for exactly-once semantics.</param>
-    public KafkaMessage(
-        T body,
-        string topic,
-        int partition,
-        long offset,
-        string key,
-        DateTime timestamp,
-        Headers headers,
-        Func<CancellationToken, Task>? acknowledgeCallback,
-        IConsumerGroupMetadata? consumerGroupMetadata = null)
+    internal KafkaMessage(T body, TopicPartitionOffset position, string? key, DateTimeOffset timestamp, Headers headers, bool isTombstone,
+        MessageSettlement settlement, Func<IConsumerGroupMetadata>? groupMetadata, Lazy<IReadOnlyDictionary<string, object>>? metadata = null)
     {
         Body = body;
-        Topic = topic;
-        Partition = partition;
-        Offset = offset;
+        Position = position;
         Key = key;
         Timestamp = timestamp;
-        Headers = headers ?? [];
-        _acknowledgeCallback = acknowledgeCallback;
-        TopicPartitionOffset = new TopicPartitionOffset(topic, new Partition(partition), new Offset(offset));
-        ConsumerGroupMetadata = consumerGroupMetadata;
-        _metadata = BuildMetadata();
+        Headers = headers;
+        IsTombstone = isTombstone;
+        _settlement = settlement;
+        _groupMetadata = groupMetadata;
+        _metadata = metadata ?? new Lazy<IReadOnlyDictionary<string, object>>(BuildMetadata);
     }
 
-    /// <summary>
-    ///     Gets the deserialized message body.
-    /// </summary>
-    public T Body { get; }
+    /// <summary>The topic, partition and offset the message was read from.</summary>
+    public TopicPartitionOffset Position { get; }
 
-    object IAcknowledgableMessage.Body => Body!;
+    /// <summary>The topic.</summary>
+    public string Topic => Position.Topic;
 
-    /// <summary>
-    ///     Gets a unique identifier for the message (topic-partition-offset format).
-    /// </summary>
-    public string MessageId => $"{Topic}-{Partition}-{Offset}";
+    /// <summary>The partition.</summary>
+    public int Partition => Position.Partition.Value;
 
-    /// <summary>
-    ///     Gets a value indicating whether this message has been acknowledged.
-    /// </summary>
-    public bool IsAcknowledged => _isAcknowledged;
+    /// <summary>The offset in its partition.</summary>
+    public long Offset => Position.Offset.Value;
 
-    /// <summary>
-    ///     Gets metadata associated with the message.
-    /// </summary>
-    public IReadOnlyDictionary<string, object> Metadata => _metadata;
+    /// <summary>The key as UTF-8 text, or <c>null</c> when the message has none.</summary>
+    public string? Key { get; }
 
-    /// <summary>
-    ///     Acknowledges the message by committing its offset.
-    ///     This method is idempotent - calling it multiple times has no effect.
-    ///     For exactly-once semantics, this is a no-op as offsets are committed via SendOffsetsToTransaction.
-    /// </summary>
-    public async Task AcknowledgeAsync(CancellationToken cancellationToken = default)
-    {
-        // For exactly-once semantics, acknowledgment is handled by SendOffsetsToTransaction in the sink
-        if (_acknowledgeCallback == null)
-        {
-            lock (_ackLock)
-            {
-                _isAcknowledged = true;
-            }
+    /// <summary>When the message was produced, or appended by the broker, as the topic records it.</summary>
+    public DateTimeOffset Timestamp { get; }
 
-            return;
-        }
-
-        Task ackTask;
-
-        lock (_ackLock)
-        {
-            if (_isAcknowledged)
-                return;
-
-            _ackTask ??= _acknowledgeCallback(cancellationToken);
-            ackTask = _ackTask;
-        }
-
-        try
-        {
-            await ackTask.ConfigureAwait(false);
-
-            lock (_ackLock)
-            {
-                _isAcknowledged = true;
-                _ackTask = Task.CompletedTask;
-            }
-        }
-        catch
-        {
-            lock (_ackLock)
-            {
-                if (ReferenceEquals(_ackTask, ackTask))
-                    _ackTask = null;
-            }
-
-            throw;
-        }
-    }
-
-    /// <summary>
-    ///     Negatively acknowledges the message.
-    ///     For Kafka, this is a no-op as Kafka does not support negative acknowledgment.
-    ///     Messages will be redelivered based on consumer group offset management.
-    /// </summary>
-    /// <param name="requeue">Ignored for Kafka. Kafka does not support requeue semantics.</param>
-    /// <param name="cancellationToken">Cancellation token for the operation.</param>
-    /// <returns>A completed task.</returns>
-    public Task NegativeAcknowledgeAsync(bool requeue = true, CancellationToken cancellationToken = default) =>
-
-        // Kafka does not support negative acknowledgment.
-        // Message redelivery is handled by not committing the offset.
-        Task.CompletedTask;
-
-    /// <summary>
-    ///     Creates a new KafkaMessage with the provided body while preserving acknowledgment behavior.
-    /// </summary>
-    /// <typeparam name="TNew">The new body type.</typeparam>
-    /// <param name="body">The new message body.</param>
-    /// <returns>A new KafkaMessage with the same acknowledgment callback.</returns>
-    public IAcknowledgableMessage<TNew> WithBody<TNew>(TNew body) =>
-        new KafkaMessage<TNew>(
-            body,
-            Topic,
-            Partition,
-            Offset,
-            Key,
-            Timestamp,
-            Headers,
-            _acknowledgeCallback,
-            ConsumerGroupMetadata);
-
-    // IKafkaMessageMetadata implementation
-
-    /// <inheritdoc />
-    public string Topic { get; }
-
-    /// <inheritdoc />
-    public int Partition { get; }
-
-    /// <inheritdoc />
-    public long Offset { get; }
-
-    /// <inheritdoc />
-    public string Key { get; }
-
-    /// <inheritdoc />
-    public DateTime Timestamp { get; }
-
-    /// <inheritdoc />
+    /// <summary>The message's headers.</summary>
     public Headers Headers { get; }
 
-    /// <summary>
-    ///     Gets the topic partition offset for this message, used for exactly-once semantics.
-    /// </summary>
-    public TopicPartitionOffset TopicPartitionOffset { get; }
+    /// <summary>Whether the message is a tombstone: a null value, which marks its key deleted in a compacted topic.</summary>
+    public bool IsTombstone { get; }
+
+    /// <inheritdoc />
+    public T Body { get; }
+
+    object? IAcknowledgableMessage.Body => Body;
+
+    /// <summary>The message's position, <c>topic/partition/offset</c>, which is unique.</summary>
+    public string MessageId => $"{Topic}/{Partition}/{Offset}";
+
+    /// <inheritdoc />
+    public bool IsSettled => _settlement.IsSettled;
+
+    /// <inheritdoc />
+    public IReadOnlyDictionary<string, object> Metadata => _metadata.Value;
+
+    IConsumerGroupMetadata? IKafkaReceived.GroupMetadata() => _groupMetadata?.Invoke();
+
+    /// <inheritdoc />
+    public Task AcknowledgeAsync(CancellationToken cancellationToken = default) => _settlement.AcknowledgeAsync(cancellationToken);
 
     /// <summary>
-    ///     Gets the consumer group metadata for exactly-once semantics.
-    ///     This is used by the sink to call SendOffsetsToTransaction.
+    ///     Rejects the message. Without <paramref name="requeue" />, it is skipped: the committed offset may move past it.
+    ///     With it, commits for its partition stop at it, so a restart reads it (and what follows) again; Kafka cannot
+    ///     redeliver a single message.
     /// </summary>
-    public IConsumerGroupMetadata? ConsumerGroupMetadata { get; }
+    public Task RejectAsync(bool requeue, CancellationToken cancellationToken = default) => _settlement.RejectAsync(requeue, cancellationToken);
 
-    /// <summary>
-    ///     Marks the message as acknowledged without invoking the callback.
-    ///     Used internally when batch acknowledgment is handled externally.
-    /// </summary>
-    internal void MarkAcknowledged()
-    {
-        lock (_ackLock)
-        {
-            _isAcknowledged = true;
-            _ackTask = Task.CompletedTask;
-        }
-    }
+    /// <inheritdoc />
+    public IAcknowledgableMessage<TNew> WithBody<TNew>(TNew body) =>
+        new KafkaMessage<TNew>(body, Position, Key, Timestamp, Headers, IsTombstone, _settlement, _groupMetadata, _metadata);
 
-    private Dictionary<string, object> BuildMetadata()
+    private IReadOnlyDictionary<string, object> BuildMetadata()
     {
         var metadata = new Dictionary<string, object>
         {
             ["Topic"] = Topic,
             ["Partition"] = Partition,
             ["Offset"] = Offset,
-            ["Key"] = Key,
             ["Timestamp"] = Timestamp,
         };
 
-        // Add headers to metadata
+        if (Key is not null)
+            metadata["Key"] = Key;
+
         foreach (var header in Headers)
         {
-            var value = header.GetValueBytes();
-
-            if (value is { Length: > 0 })
-            {
-                // Try to decode as string, otherwise store as base64
-                try
-                {
-                    var stringValue = Encoding.UTF8.GetString(value);
-                    metadata[$"Header.{header.Key}"] = stringValue;
-                }
-                catch
-                {
-                    metadata[$"Header.{header.Key}"] = Convert.ToBase64String(value);
-                }
-            }
+            metadata[$"Header.{header.Key}"] = Encoding.UTF8.GetString(header.GetValueBytes());
         }
 
         return metadata;
     }
+}
+
+/// <summary>What a Kafka sink needs from a received message whatever its body type: its key, headers, position and group.</summary>
+internal interface IKafkaReceived
+{
+    TopicPartitionOffset Position { get; }
+
+    string? Key { get; }
+
+    Headers Headers { get; }
+
+    /// <summary>The source consumer's group metadata, for a transaction that commits the message's offset.</summary>
+    IConsumerGroupMetadata? GroupMetadata();
 }

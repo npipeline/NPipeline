@@ -1,8 +1,6 @@
-using Microsoft.Extensions.Logging.Abstractions;
-using NPipeline.Connectors.RabbitMQ.Configuration;
+using System.Runtime.CompilerServices;
+using NPipeline.Connectors.Messaging;
 using NPipeline.Connectors.RabbitMQ.Connection;
-using NPipeline.Connectors.RabbitMQ.Nodes;
-using NPipeline.Connectors.RabbitMQ.Serialization;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.Pipeline;
@@ -13,24 +11,11 @@ namespace NPipeline.Connectors.RabbitMQ.Tests.Integration;
 [Collection("RabbitMQ")]
 public sealed class RabbitMqSinkNodeIntegrationTests : IAsyncDisposable
 {
-    private readonly RabbitMqConnectionManager _connectionManager;
-    private readonly RabbitMqContainerFixture _fixture;
+    private readonly IRabbitMqConnectionManager _connectionManager;
 
     public RabbitMqSinkNodeIntegrationTests(RabbitMqContainerFixture fixture)
     {
-        _fixture = fixture;
-
-        var connectionOptions = new RabbitMqConnectionOptions
-        {
-            HostName = _fixture.HostName,
-            Port = _fixture.Port,
-            UserName = RabbitMqContainerFixture.TestUsername,
-            Password = RabbitMqContainerFixture.TestPassword,
-        };
-
-        _connectionManager = new RabbitMqConnectionManager(
-            connectionOptions,
-            NullLogger<RabbitMqConnectionManager>.Instance);
+        _connectionManager = fixture.Connect();
     }
 
     public async ValueTask DisposeAsync()
@@ -57,123 +42,109 @@ public sealed class RabbitMqSinkNodeIntegrationTests : IAsyncDisposable
     [Fact]
     public async Task SinkNode_WithConfirmsOff_Publishes_Messages_To_Queue()
     {
-        var queueName = $"test-sink-noconfirm-{Guid.NewGuid():N}";
-        var serializer = new RabbitMqJsonSerializer();
-
-        var connection = await _connectionManager.GetConnectionAsync();
-        var setupChannel = await connection.CreateChannelAsync();
-        await setupChannel.QueueDeclareAsync(queueName, true, false, true);
-        await setupChannel.CloseAsync();
-
-        var sinkOptions = new RabbitMqSinkOptions { ExchangeName = "", RoutingKey = queueName, EnablePublisherConfirms = false };
+        var queueName = await DeclareQueueAsync("test-sink-noconfirm");
         var items = Enumerable.Range(0, 3).Select(i => new TestMessage($"Sink-{i}", i)).ToArray();
 
-        var sinkNode = new RabbitMqSinkNode<TestMessage>(sinkOptions, _connectionManager, serializer);
+        var sinkNode = RabbitMqConnector.Sink<TestMessage>(_connectionManager, "", queueName, o => o with { PublisherConfirms = false });
         await sinkNode.ConsumeAsync(CreateDataStream(items), new PipelineContext(), CancellationToken.None);
 
         // Without confirms the publish returns before the broker routes the message, so allow it a moment.
-        var consumeChannel = await connection.CreateChannelAsync();
-        var received = 0;
-        var deadline = DateTime.UtcNow.AddSeconds(10);
-
-        while (received < 3 && DateTime.UtcNow < deadline)
-        {
-            if (await consumeChannel.BasicGetAsync(queueName, true) is not null)
-                received++;
-            else
-                await Task.Delay(50);
-        }
-
-        await consumeChannel.CloseAsync();
-        received.Should().Be(3);
+        (await ReceiveAsync(queueName, 3)).Should().HaveCount(3);
     }
 
     [Fact]
     public async Task SinkNode_Publishes_Messages_To_Queue()
     {
-        // Arrange
-        var queueName = $"test-sink-{Guid.NewGuid():N}";
-        var serializer = new RabbitMqJsonSerializer();
+        var queueName = await DeclareQueueAsync("test-sink");
+        var items = Enumerable.Range(0, 3).Select(i => new TestMessage($"Sink-{i}", i)).ToArray();
 
-        // Declare queue
-        var connection = await _connectionManager.GetConnectionAsync();
-        var setupChannel = await connection.CreateChannelAsync();
-        await setupChannel.QueueDeclareAsync(queueName, true, false, true);
-        await setupChannel.CloseAsync();
+        var sinkNode = RabbitMqConnector.Sink<TestMessage>(_connectionManager, "", queueName);
+        await sinkNode.ConsumeAsync(CreateDataStream(items), new PipelineContext(), CancellationToken.None);
 
-        var sinkOptions = new RabbitMqSinkOptions
-        {
-            ExchangeName = "", // Default exchange routes to queue by routing key
-            RoutingKey = queueName,
-        };
-
-        var items = Enumerable.Range(0, 3)
-            .Select(i => new TestMessage($"Sink-{i}", i))
-            .ToArray();
-
-        var sinkNode = new RabbitMqSinkNode<TestMessage>(
-            sinkOptions, _connectionManager, serializer,
-            logger: NullLogger<RabbitMqSinkNode<TestMessage>>.Instance);
-
-        // Act
-        var pipe = CreateDataStream(items);
-        await sinkNode.ConsumeAsync(pipe, new PipelineContext(), CancellationToken.None);
-
-        // Assert - consume and verify
-        var consumeChannel = await connection.CreateChannelAsync();
-
-        for (var i = 0; i < 3; i++)
-        {
-            var result = await consumeChannel.BasicGetAsync(queueName, true);
-            result.Should().NotBeNull();
-            var msg = serializer.Deserialize<TestMessage>(result!.Body);
-            msg.Name.Should().StartWith("Sink-");
-        }
-
-        await consumeChannel.CloseAsync();
+        var received = await ReceiveAsync(queueName, 3);
+        received.Select(r => r.Name).Should().Equal("Sink-0", "Sink-1", "Sink-2");
     }
 
     [Fact]
     public async Task SinkNode_Publishes_With_Routing_Key_Selector()
     {
-        // Arrange
-        var queueName = $"test-sink-rk-{Guid.NewGuid():N}";
-        var serializer = new RabbitMqJsonSerializer();
-
-        var connection = await _connectionManager.GetConnectionAsync();
-        var setupChannel = await connection.CreateChannelAsync();
-        await setupChannel.QueueDeclareAsync(queueName, true, false, true);
-        await setupChannel.CloseAsync();
-
-        var sinkOptions = new RabbitMqSinkOptions
-        {
-            ExchangeName = "",
-            RoutingKeySelector = obj =>
-            {
-                if (obj is TestMessage msg)
-                    return queueName;
-
-                return queueName;
-            },
-        };
-
+        var queueName = await DeclareQueueAsync("test-sink-rk");
         var items = new[] { new TestMessage("routed", 99) };
 
-        var sinkNode = new RabbitMqSinkNode<TestMessage>(
-            sinkOptions, _connectionManager, serializer,
-            logger: NullLogger<RabbitMqSinkNode<TestMessage>>.Instance);
-
-        // Act
+        var sinkNode = RabbitMqConnector.Sink<TestMessage>(_connectionManager, "", "unused", o => o with { RoutingKeySelector = _ => queueName });
         await sinkNode.ConsumeAsync(CreateDataStream(items), new PipelineContext(), CancellationToken.None);
 
-        // Assert
-        var consumeChannel = await connection.CreateChannelAsync();
-        var result = await consumeChannel.BasicGetAsync(queueName, true);
-        result.Should().NotBeNull();
-        var msg = serializer.Deserialize<TestMessage>(result!.Body);
-        msg.Name.Should().Be("routed");
+        (await ReceiveAsync(queueName, 1)).Should().ContainSingle().Which.Name.Should().Be("routed");
+    }
 
-        await consumeChannel.CloseAsync();
+    [Fact]
+    public async Task Source_Feeding_The_Sink_Through_Acknowledging_Leaves_The_Source_Queue_Empty()
+    {
+        const int count = 5;
+        var sourceQueue = await DeclareQueueAsync("test-hop-in");
+        var targetQueue = await DeclareQueueAsync("test-hop-out");
+
+        await RabbitMqConnector.Sink<TestMessage>(_connectionManager, "", sourceQueue)
+            .ConsumeAsync(CreateDataStream(Enumerable.Range(0, count).Select(i => new TestMessage($"Hop-{i}", i))), new PipelineContext(),
+                CancellationToken.None);
+
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var context = new PipelineContext();
+
+        await using (var source = RabbitMqConnector.Source<TestMessage>(_connectionManager, sourceQueue))
+        {
+            var sink = RabbitMqConnector.Sink<TestMessage>(_connectionManager, "", targetQueue).Acknowledging();
+            var messages = source.OpenStream(context, cts.Token);
+
+            await sink.ConsumeAsync(new DataStream<IAcknowledgableMessage<TestMessage>>(TakeAsync(messages, count, cts.Token), "hop"), context, cts.Token);
+        }
+
+        (await ReceiveAsync(targetQueue, count)).Select(m => m.Name).Should().BeEquivalentTo(Enumerable.Range(0, count).Select(i => $"Hop-{i}"));
+        (await ReceiveAsync(sourceQueue, 1, TimeSpan.FromMilliseconds(500))).Should().BeEmpty("the sink acknowledged every message it published");
+    }
+
+    private static async IAsyncEnumerable<IAcknowledgableMessage<T>> TakeAsync<T>(IAsyncEnumerable<IAcknowledgableMessage<T>> source, int count,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var taken = 0;
+
+        await foreach (var message in source.WithCancellation(cancellationToken))
+        {
+            yield return message;
+
+            if (++taken == count)
+                yield break;
+        }
+    }
+
+    private async Task<string> DeclareQueueAsync(string prefix)
+    {
+        var queueName = $"{prefix}-{Guid.NewGuid():N}";
+        var connection = await _connectionManager.GetConnectionAsync();
+        await using var channel = await connection.CreateChannelAsync();
+        _ = await channel.QueueDeclareAsync(queueName, true, false, false);
+        await channel.CloseAsync();
+        return queueName;
+    }
+
+    /// <summary>Gets up to <paramref name="count" /> messages, waiting up to <paramref name="timeout" /> (10 seconds by default) for them.</summary>
+    private async Task<List<TestMessage>> ReceiveAsync(string queueName, int count, TimeSpan? timeout = null)
+    {
+        var connection = await _connectionManager.GetConnectionAsync();
+        await using var channel = await connection.CreateChannelAsync();
+        var received = new List<TestMessage>();
+        var deadline = DateTime.UtcNow + (timeout ?? TimeSpan.FromSeconds(10));
+
+        while (received.Count < count && DateTime.UtcNow < deadline)
+        {
+            if (await channel.BasicGetAsync(queueName, true) is { } result)
+                received.Add(JsonMessageSerializer.Default.Deserialize<TestMessage>(result.Body.Span, new MessageContext(queueName)));
+            else
+                await Task.Delay(50);
+        }
+
+        await channel.CloseAsync();
+        return received;
     }
 
     private static IDataStream<T> CreateDataStream<T>(IEnumerable<T> items)

@@ -175,6 +175,13 @@ public abstract record SqlSinkOptions : SqlNodeOptions
     /// <summary>Rows written per batch. Batch statements are split further to stay under the database's parameter limit.</summary>
     public int BatchSize { get; init; } = DefaultBatchSize;
 
+    /// <summary>
+    ///     The longest a batch waits to fill: a partial batch is written once this long has passed since its first row, so
+    ///     a slow stream (from a message queue, say) is written promptly. Defaults to one second;
+    ///     <see cref="Timeout.InfiniteTimeSpan" /> waits for full batches.
+    /// </summary>
+    public TimeSpan BatchLinger { get; init; } = TimeSpan.FromSeconds(1);
+
     /// <summary>How the sink uses transactions. Defaults to <see cref="SqlTransactionMode.PerBatch" />.</summary>
     public SqlTransactionMode Transaction { get; init; } = SqlTransactionMode.PerBatch;
 
@@ -196,6 +203,9 @@ public abstract record SqlSinkOptions : SqlNodeOptions
         base.Validate();
         ArgumentException.ThrowIfNullOrWhiteSpace(Table, nameof(Table));
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(BatchSize, nameof(BatchSize));
+
+        if (BatchLinger < TimeSpan.Zero && BatchLinger != Timeout.InfiniteTimeSpan)
+            throw new ArgumentOutOfRangeException(nameof(BatchLinger), "BatchLinger must be zero or more, or Timeout.InfiniteTimeSpan.");
 
         if (FailedBatches == FailedBatchAction.DeadLetter && Transaction == SqlTransactionMode.WholeRun)
             throw new ArgumentException("FailedBatchAction.DeadLetter cannot be used with SqlTransactionMode.WholeRun.", nameof(FailedBatches));

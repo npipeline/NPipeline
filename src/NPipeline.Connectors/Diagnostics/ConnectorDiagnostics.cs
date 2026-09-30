@@ -38,6 +38,9 @@ public static class ConnectorDiagnostics
 
     private static readonly Counter<long> RowErrors = Meter.CreateCounter<long>("npipeline.connector.row_errors", "{error}", "Records that failed to map, by the action taken.");
 
+    private static readonly Counter<long> MessagesSettled = Meter.CreateCounter<long>("npipeline.connector.messages_settled", "{message}",
+        "Messages settled by message-queue connectors, by outcome: acknowledged, requeued, rejected or dead_lettered.");
+
     /// <summary>Records records read by a source. Connectors that are not file-based (HTTP) call it directly.</summary>
     public static void RecordRowsRead(string connector, string scheme, long rows) => RowsRead.Add(rows, Tags(connector, scheme));
 
@@ -50,6 +53,14 @@ public static class ConnectorDiagnostics
         var tags = Tags(connector, scheme);
         tags.Add("action", action);
         RowErrors.Add(1, tags);
+    }
+
+    /// <summary>Records messages settled with the broker, and how: <c>acknowledged</c>, <c>requeued</c>, <c>rejected</c> or <c>dead_lettered</c>.</summary>
+    public static void RecordMessagesSettled(string connector, string outcome, long messages = 1)
+    {
+        var tags = Tags(connector, connector);
+        tags.Add("outcome", outcome);
+        MessagesSettled.Add(messages, tags);
     }
 
     internal static void RecordFileRead(string connector, StorageUri uri, long rows, long bytes)

@@ -1,12 +1,14 @@
 ---
 title: "AWS SQS Connector"
-description: "Consume from and send to Amazon SQS queues with long polling, batch operations, and visibility timeout."
-order: 18
+description: "Receive from and send to Amazon SQS standard and FIFO queues with long polling, batched deletes and batched sends."
+order: 19
 ---
 
 # AWS SQS Connector
 
-The `NPipeline.Connectors.Aws.Sqs` package provides source and sink nodes for [Amazon SQS](https://aws.amazon.com/sqs/). Supports long polling, configurable visibility timeout, batch send/receive/delete, message attributes, and multiple acknowledgment strategies.
+The `NPipeline.Connectors.Aws.Sqs` package receives from Amazon SQS queues with long polling and sends to them in
+batches. Serialization, settlement, undeserializable messages and failed writes work as in every message-queue
+connector; see [Message Queues: Shared Behaviour](message-queues.md).
 
 ## Installation
 
@@ -14,243 +16,101 @@ The `NPipeline.Connectors.Aws.Sqs` package provides source and sink nodes for [A
 dotnet add package NPipeline.Connectors.Aws.Sqs
 ```
 
-**Dependencies:** [AWSSDK.SQS](https://www.nuget.org/packages/AWSSDK.SQS) 4.x, [AWSSDK.Extensions.NETCore.Setup](https://www.nuget.org/packages/AWSSDK.Extensions.NETCore.Setup) 4.x
+**Dependencies:** [AWSSDK.SQS](https://www.nuget.org/packages/AWSSDK.SQS) 4.x
 
-## Source Node - `SqsSourceNode<T>`
+## Connection
 
-### Constructors
+Pass a shared `IAmazonSQS` as `Client`, or let each node create one from these settings (and dispose it):
 
-```csharp
-public SqsSourceNode(SqsConfiguration configuration)
+| Option | Default | Description |
+| --- | --- | --- |
+| `Client` | `null` | A client to use, which the caller owns |
+| `Region` | SDK's | The region (`AWS_REGION`, the profile) |
+| `Credentials` | SDK's default chain | Credentials; otherwise `ProfileName`, then the default chain (environment, instance or task role) |
+| `ProfileName` | `null` | A named profile from the shared credentials file |
+| `ServiceUrl` | `null` | A service URL, such as LocalStack's |
+| `RetryMode`, `MaxErrorRetry` | `Standard`, 3 | The SDK's retries; see [Retries](#retries) |
 
-// Bring your own client
-public SqsSourceNode(IAmazonSQS sqsClient, SqsConfiguration configuration)
-```
+In production, prefer the default chain with an IAM role over explicit credentials.
 
-### Example
-
-```csharp
-var config = new SqsConfiguration
-{
-    SourceQueueUrl = "https://sqs.us-east-1.amazonaws.com/123456789/orders",
-    Region = "us-east-1",
-    MaxNumberOfMessages = 10,
-    WaitTimeSeconds = 20,       // long polling
-    VisibilityTimeout = 60,
-    AcknowledgmentStrategy = AcknowledgmentStrategy.AutoOnSinkSuccess
-};
-
-var source = new SqsSourceNode<Order>(config);
-```
-
-## Sink Node - `SqsSinkNode<T>`
-
-### Constructors
+## Receiving
 
 ```csharp
-public SqsSinkNode(SqsConfiguration configuration)
-
-// Bring your own client
-public SqsSinkNode(IAmazonSQS sqsClient, SqsConfiguration configuration)
+var orders = SqsConnector.Source<Order>("https://sqs.ap-southeast-2.amazonaws.com/123456789012/orders",
+    o => o with { VisibilityTimeout = TimeSpan.FromMinutes(2) });
 ```
 
-### Example
+Each message is an `SqsMessage<T>` with its `Body`, `MessageId`, `ReceiptHandle`, `Attributes` (the sender's message
+attributes), `SystemAttributes`, `SentAt` and `ReceiveCount`. Acknowledging a message deletes it, in batches of up to
+ten (`DeleteLinger`, 50 ms), so acknowledging costs a tenth of a request. A message not acknowledged within its
+visibility timeout is delivered again, so set `VisibilityTimeout` longer than a message takes to write.
+`RejectAsync(requeue: true)` makes it visible again at once; `RejectAsync(requeue: false)` deletes it.
+
+A delete that fails leaves the message to be delivered again (it is logged and counted as `delete_failed`), which
+at-least-once delivery allows. When the read ends, the source sends its outstanding deletes once the messages it
+handed on are settled (up to `SettleTimeout`).
+
+### Source options
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `QueueUrl` | required | The queue |
+| `MaxMessages` | 10 | Messages per receive, 1 to 10 |
+| `WaitTime` | 20 s | Long polling: how long a receive waits for a message (fewer empty receives, lower cost) |
+| `VisibilityTimeout` | the queue's | How long a received message stays hidden |
+| `RowErrorHandler`, `RawExcerptLength` | fail, 256 | See [Messages that don't deserialize](message-queues.md#messages-that-dont-deserialize); `Skip` deletes the message, and `Fail` leaves it to be delivered again after its visibility timeout |
+| `DeleteLinger` | 50 ms | How long an acknowledged message waits to be deleted with others |
+| `SettleTimeout` | 30 s | How long the source waits for handed-on messages after the read ends |
+
+### Dead-letter queues
+
+SQS moves a message to a dead-letter queue only through the queue's redrive policy, after `maxReceiveCount`
+deliveries; configure it on the queue. A message that keeps failing is then set aside without the pipeline doing
+anything. Read the dead-letter queue with its own source.
+
+## Sending
 
 ```csharp
-var config = new SqsConfiguration
-{
-    SinkQueueUrl = "https://sqs.us-east-1.amazonaws.com/123456789/processed-orders",
-    Region = "us-east-1",
-    BatchSize = 10,
-    DelaySeconds = 0
-};
-
-var sink = new SqsSinkNode<ProcessedOrder>(config);
+var invoices = SqsConnector.Sink<Invoice>(invoicesUrl, o => o with { Client = client });
+builder.AddSink(invoices.Acknowledging(), "invoices");
 ```
 
-## AWS Credentials
+The sink sends `SendMessageBatch` requests of up to ten messages, split when a batch would pass SQS's 256 KB request
+limit. Entries SQS rejects are handled as `FailedMessages` says. A message received from SQS keeps its message
+attributes (`CopyMessageAttributes`).
 
-The connector resolves credentials in this order:
+For a FIFO queue, set `MessageGroupId`; messages of a group are delivered in order. Without content-based
+deduplication, `DeduplicationId` chooses each message's deduplication id, and when it is `null` a message received from
+a queue keeps its message id, so a retried write isn't delivered twice.
 
-1. **Explicit credentials** - `AccessKeyId` + `SecretAccessKey` in configuration
-2. **Named profile** - `ProfileName` in configuration
-3. **Default credential chain** - environment variables, instance profile, etc.
+### Sink options
 
-```csharp
-// Explicit credentials (development only - use IAM roles in production)
-var config = new SqsConfiguration
-{
-    AccessKeyId = "AKIA...",
-    SecretAccessKey = "...",
-    Region = "us-east-1",
-    SourceQueueUrl = "..."
-};
-
-// Named profile
-var config = new SqsConfiguration
-{
-    ProfileName = "my-profile",
-    Region = "us-east-1",
-    SourceQueueUrl = "..."
-};
-
-// Default chain (recommended for production - EC2 instance role, ECS task role, etc.)
-var config = new SqsConfiguration
-{
-    Region = "us-east-1",
-    SourceQueueUrl = "..."
-};
-```
-
-## Configuration
-
-### AWS
-
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `AccessKeyId` | `string?` | `null` | AWS access key ID |
-| `SecretAccessKey` | `string?` | `null` | AWS secret access key |
-| `Region` | `string` | `"us-east-1"` | AWS region |
-| `ProfileName` | `string?` | `null` | AWS credential profile |
-
-### Queue
-
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `SourceQueueUrl` | `string` | - | Source queue URL |
-| `SinkQueueUrl` | `string` | - | Sink queue URL |
-
-### Polling (Source)
-
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `MaxNumberOfMessages` | `int` | `10` | Messages per receive (1–10) |
-| `WaitTimeSeconds` | `int` | `20` | Long polling wait (0–20 seconds) |
-| `VisibilityTimeout` | `int` | `30` | Visibility timeout (seconds) |
-| `PollingIntervalMs` | `int` | `1000` | Interval between polls (ms) |
-
-### Batching (Sink)
-
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `BatchSize` | `int` | `10` | Messages per send batch (1–10) |
-| `DelaySeconds` | `int` | `0` | Message delivery delay |
-
-### Acknowledgment
-
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `AcknowledgmentStrategy` | `AcknowledgmentStrategy` | `AutoOnSinkSuccess` | `AutoOnSinkSuccess`, `Manual`, or `Delayed` |
-| `AcknowledgmentDelayMs` | `int` | `5000` | Delay before acknowledging (`Delayed` strategy) |
-
-### JSON Serialization
-
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `PropertyNamingPolicy` | `JsonPropertyNamingPolicy` | `CamelCase` | `CamelCase`, `PascalCase`, `Snake_case`, `Kebab-case` |
-| `PropertyNameCaseInsensitive` | `bool` | `true` | Case-insensitive deserialization |
-
-### Error Handling
-
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `RetryMode` | `RequestRetryMode?` | `Standard` | AWS SDK retry mode. See [Retries](#retries) |
-| `MaxErrorRetry` | `int?` | `3` | AWS SDK retries per call. See [Retries](#retries) |
-| `ContinueOnError` | `bool` | `true` | Continue on errors |
-| `MessageErrorHandler` | `Func<...>?` | `null` | Custom error handler |
+| Option | Default | Description |
+| --- | --- | --- |
+| `QueueUrl` | required | The queue |
+| `BatchSize`, `BatchLinger` | 10, 10 ms | Messages per request, and the longest a batch waits to fill |
+| `Delay` | none | Delays each message up to 15 minutes; standard queues only |
+| `MessageAttributes`, `CopyMessageAttributes` | none, `true` | Attributes added to every message, and whether a received message keeps its own |
+| `MessageGroupId`, `DeduplicationId` | `null` | FIFO queues |
+| `FailedMessages` | `Fail` | See [Failed writes](message-queues.md#failed-writes) |
 
 ## Retries
 
-The connector leaves retries to the AWS SDK. The SDK identifies throttling and transient SQS errors, applies jittered backoff, and uses a retry quota to prevent flooding failing endpoints. The nodes don't
-retry on top of it: an exception that reaches a node has already used up the SDK's retries, and it fails the node.
+The connector leaves retries to the AWS SDK, which recognizes throttling and transient errors, backs off with jitter,
+and uses a retry quota so a failing endpoint isn't flooded. An exception that reaches a node has used up the SDK's
+retries.
 
-Two settings configure the SDK client that the nodes create:
+| Option | Default | Description |
+| --- | --- | --- |
+| `RetryMode` | `Standard` | `Standard` retries throttling, 5xx and network errors with jittered exponential backoff; `Adaptive` also slows the client when SQS throttles it; `null` lets the SDK decide (`AWS_RETRY_MODE`) |
+| `MaxErrorRetry` | 3 | Retries per call, not attempts (four attempts); `0` turns them off; `null` lets the SDK decide (`AWS_MAX_ATTEMPTS`) |
 
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `RetryMode` | `RequestRetryMode?` | `Standard` | `Standard` retries throttling, 5xx, and network errors with jittered exponential backoff. `Adaptive` also slows the client down when SQS throttles it. `null` lets the SDK decide (`AWS_RETRY_MODE` or the shared config file) |
-| `MaxErrorRetry` | `int?` | `3` | Retries per call, not total attempts. The default makes up to four attempts. `0` turns retries off. `null` lets the SDK decide (`AWS_MAX_ATTEMPTS`, the shared config file, or the SDK default of 2) |
+Both apply only to a client the node creates. A `Client` you pass keeps its own `AmazonSQSConfig` settings.
 
-If you pass your own `IAmazonSQS` to a node's constructor, the connector can't reconfigure it, and these two settings
-are ignored. Set the retry behavior on the client's own configuration:
-
-```csharp
-var client = new AmazonSQSClient(new AmazonSQSConfig
-{
-    RegionEndpoint = RegionEndpoint.USEast1,
-    RetryMode = RequestRetryMode.Standard,
-    MaxErrorRetry = 3,
-});
-
-var source = new SqsSourceNode<Order>(client, configuration);
-```
-
-`AcknowledgmentDelayMs` and `PollingIntervalMs` are pacing, not retry settings, and are unaffected.
-
-SQS standard queues deliver at least once, and a retried `SendMessage` whose first attempt reached SQS can enqueue the
-message twice. Use a FIFO queue with a deduplication ID, or make consumers idempotent, if duplicates matter.
+Standard queues deliver at least once, and a retried send whose first attempt reached SQS can enqueue a message twice.
+Use a FIFO queue with deduplication, or make consumers idempotent, where duplicates matter.
 
 ## Next Steps
 
-- [Azure Service Bus Connector](azure-service-bus.md) - Azure managed messaging
-- [Kafka Connector](kafka.md) - distributed streaming platform
-- [RabbitMQ Connector](rabbitmq.md) - self-managed message broker
-
-## Acknowledgment Strategies
-
-| Strategy | Description |
-|----------|-------------|
-| `AutoOnSinkSuccess` (default) | Message deleted after successful sink processing |
-| `Manual` | Call `message.AcknowledgeAsync()` explicitly |
-| `Delayed` | Delete after `AcknowledgmentDelayMs` (allows downstream confirmation) |
-| `None` | No acknowledgment - message reappears after `VisibilityTimeout` |
-
-### Manual Acknowledgment
-
-```csharp
-pipeline.AddTransform<SqsMessage<Order>, ProcessedOrder>(async (msg, ct) =>
-{
-    var result = Process(msg.Body);
-    await msg.AcknowledgeAsync(ct); // deletes from queue
-    return result;
-});
-```
-
-### Batch Acknowledgment
-
-When using `AutoOnSinkSuccess` with batch receive (`MaxNumberOfMessages > 1`), messages are deleted in batch using `DeleteMessageBatch` for efficiency.
-
-## `SqsMessage<T>` Wrapper
-
-Source nodes emit `SqsMessage<T>` which exposes SQS metadata:
-
-| Property | Type | Description |
-|----------|------|-------------|
-| `Body` | `T` | Deserialized message body |
-| `MessageId` | `string` | SQS message ID |
-| `ReceiptHandle` | `string` | Receipt handle (for acknowledgment) |
-| `MessageAttributes` | `Dictionary<string, MessageAttribute>` | Custom message attributes |
-| `ApproximateReceiveCount` | `int` | Number of times message has been received |
-| `SentTimestamp` | `DateTimeOffset` | When message was sent |
-
-## Dead-Letter Queue
-
-Configure a DLQ in SQS (not in the connector). After `maxReceiveCount` deliveries, SQS automatically moves the message to the DLQ. Use the connector to process DLQ messages:
-
-```csharp
-var dlqSource = new SqsSourceNode<SqsMessage<Order>>(new SqsConfiguration
-{
-    SourceQueueUrl = "https://sqs.us-east-1.amazonaws.com/123456789/orders-dlq",
-    MaxNumberOfMessages = 10
-});
-```
-
-## Best Practices
-
-1. **Use long polling** (`WaitTimeSeconds = 20`) - reduces empty responses and cost
-2. **Set `VisibilityTimeout` > processing time** - prevents duplicate processing
-3. **Use IAM roles** for credentials in production (EC2 instance role, ECS task role)
-4. **Batch operations** - SQS charges per request, batching reduces cost
-5. **Configure a DLQ** on the SQS queue for poison messages
-6. **Monitor `ApproximateReceiveCount`** to detect stuck messages
-7. **Use FIFO queues** when message ordering matters (set `MessageGroupId`)
+- [Message Queues: Shared Behaviour](message-queues.md)
+- [Kafka](kafka.md), [RabbitMQ](rabbitmq.md), [Azure Service Bus](azure-service-bus.md)

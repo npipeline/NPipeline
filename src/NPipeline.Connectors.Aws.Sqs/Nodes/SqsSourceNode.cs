@@ -1,10 +1,15 @@
+using System.Buffers;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
-using System.Text.Json;
+using System.Text;
 using Amazon.SQS;
 using Amazon.SQS.Model;
+using Microsoft.Extensions.Logging;
 using NPipeline.Connectors.Aws.Sqs.Configuration;
 using NPipeline.Connectors.Aws.Sqs.Internal;
 using NPipeline.Connectors.Aws.Sqs.Models;
+using NPipeline.Connectors.Diagnostics;
+using NPipeline.Connectors.Messaging;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
@@ -13,185 +18,206 @@ using NPipeline.Pipeline;
 namespace NPipeline.Connectors.Aws.Sqs.Nodes;
 
 /// <summary>
-///     Source node that continuously polls an SQS queue and yields messages.
+///     Receives from an SQS queue with long polling. Each message is handed on as an <see cref="SqsMessage{T}" />;
+///     acknowledging it deletes it, in batches of up to ten. When the read ends, the source keeps its client until the
+///     messages handed on are settled (up to <see cref="SqsReadOptions.SettleTimeout" />) and their deletes sent. Create one
+///     with <see cref="SqsConnector.Source{T}" />.
 /// </summary>
-/// <typeparam name="T">Type to deserialize message body to.</typeparam>
-public sealed class SqsSourceNode<T> : SourceNode<SqsMessage<T>>
+/// <typeparam name="T">The body type.</typeparam>
+public sealed class SqsSourceNode<T> : SourceNode<SqsMessage<T>>, IAsyncDisposable
 {
-    private readonly SqsConfiguration _configuration;
-    private readonly JsonSerializerOptions _serializerOptions;
-    private readonly IAmazonSQS _sqsClient;
+    private static readonly IReadOnlyDictionary<string, MessageAttributeValue> NoAttributes = new Dictionary<string, MessageAttributeValue>();
+    private static readonly IReadOnlyDictionary<string, string> NoSystemAttributes = new Dictionary<string, string>();
 
-    /// <summary>
-    ///     Creates a new SqsSourceNode with the specified configuration.
-    /// </summary>
-    public SqsSourceNode(SqsConfiguration configuration)
+    private readonly List<Task> _closing = [];
+    private readonly MessageDecoder<T> _decoder;
+    private readonly CancellationTokenSource _disposing = new();
+    private bool _disposed;
+    private readonly SqsReadOptions _options;
+
+    /// <summary>Creates a source and validates <paramref name="options" />.</summary>
+    public SqsSourceNode(SqsReadOptions options)
     {
-        _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-        _configuration.ValidateSource();
-
-        _sqsClient = SqsClientFactory.Create(configuration);
-        _serializerOptions = CreateSerializerOptions(configuration);
+        ArgumentNullException.ThrowIfNull(options);
+        options.Validate();
+        _options = options;
+        _decoder = new MessageDecoder<T>(SqsConnector.Name, options.QueueUrl, options.Serializer, options.RowErrorHandler, options.RawExcerptLength);
     }
 
-    /// <summary>
-    ///     Creates a new SqsSourceNode with a custom SQS client.
-    /// </summary>
-    public SqsSourceNode(IAmazonSQS sqsClient, SqsConfiguration configuration)
+    /// <summary>Sends the outstanding deletes of finished reads and releases their clients, without waiting for unsettled messages.</summary>
+    public async ValueTask DisposeAsync()
     {
-        _sqsClient = sqsClient ?? throw new ArgumentNullException(nameof(sqsClient));
-        _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-        _configuration.ValidateSource();
+        if (_disposed)
+            return;
 
-        _serializerOptions = CreateSerializerOptions(configuration);
+        _disposed = true;
+        await _disposing.CancelAsync().ConfigureAwait(false);
+
+        Task[] closing;
+
+        lock (_closing)
+        {
+            closing = [.. _closing];
+        }
+
+        await Task.WhenAll(closing).ConfigureAwait(false);
+        _disposing.Dispose();
     }
 
     /// <inheritdoc />
     public override IDataStream<SqsMessage<T>> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
-        var stream = PollMessagesAsync(cancellationToken);
-        return new DataStream<SqsMessage<T>>(stream, $"SqsSourceNode<{typeof(T).Name}>");
+        ArgumentNullException.ThrowIfNull(context);
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        return new DataStream<SqsMessage<T>>(ReceiveAsync(context, cancellationToken), $"SqsSourceNode<{typeof(T).Name}>");
     }
 
-    private async IAsyncEnumerable<SqsMessage<T>> PollMessagesAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
+    private async IAsyncEnumerable<SqsMessage<T>> ReceiveAsync(PipelineContext context, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        // A failed receive is not retried here. The SDK client already retried it (see SqsConfiguration.RetryMode and
-        // MaxErrorRetry), so an exception that reaches this loop has used up its retries and fails the stream.
-        while (true)
+        var logger = context.Observability.LoggerFactory.CreateLogger(typeof(SqsSourceNode<T>).FullName ?? nameof(SqsSourceNode<T>));
+        var deadLetters = OpenDeadLetterChannel(context);
+        var inFlight = new InFlightMessages();
+        var (client, owned) = SqsClientFactory.For(_options);
+        var deleter = new SqsDeleter(client, _options.QueueUrl, _options.DeleteLinger, logger);
+        long sequence = 0;
+
+        try
         {
-            // Cancellation surfaces as OperationCanceledException rather than ending the stream as if it had drained.
-            cancellationToken.ThrowIfCancellationRequested();
-
-            var receiveRequest = new ReceiveMessageRequest
+            while (true)
             {
-                QueueUrl = _configuration.SourceQueueUrl,
-                MaxNumberOfMessages = _configuration.MaxNumberOfMessages,
-                WaitTimeSeconds = _configuration.WaitTimeSeconds,
-                VisibilityTimeout = _configuration.VisibilityTimeout,
-                MessageSystemAttributeNames = ["All"],
-                MessageAttributeNames = ["All"],
-            };
-
-            var response = await _sqsClient.ReceiveMessageAsync(receiveRequest, cancellationToken).ConfigureAwait(false);
-            var messagesToYield = new List<SqsMessage<T>>(response.Messages.Count);
-
-            foreach (var message in response.Messages)
-            {
+                // Cancellation surfaces as OperationCanceledException rather than ending the stream as if it had drained.
                 cancellationToken.ThrowIfCancellationRequested();
 
-                var sqsMessage = CreateSqsMessage(message);
+                // A failed receive is not retried here: the SDK client already retried it.
+                var response = await client.ReceiveMessageAsync(Request(), cancellationToken).ConfigureAwait(false);
 
-                if (sqsMessage != null)
-                    messagesToYield.Add(sqsMessage);
+                // The AWS SDK v4 returns null, not an empty list, when no message arrived.
+                foreach (var received in response.Messages ?? [])
+                {
+                    sequence++;
+
+                    if (!TryDecode(received.Body, out var body, out var error))
+                    {
+                        SqsLogMessages.DeserializationFailed(logger, error, received.MessageId, _options.QueueUrl);
+
+                        // Throws for Fail: the message stays in the queue and is delivered again after its visibility timeout.
+                        _ = await _decoder.HandleFailureAsync(error, Encoding.UTF8.GetBytes(received.Body), received.MessageId, sequence, Metadata(received),
+                            deadLetters, cancellationToken).ConfigureAwait(false);
+
+                        deleter.Enqueue(received.ReceiptHandle);
+                        ConnectorDiagnostics.RecordMessagesSettled(SqsConnector.Name, "rejected");
+                        continue;
+                    }
+
+                    inFlight.Add();
+                    ConnectorDiagnostics.RecordRowsRead(SqsConnector.Name, SqsConnector.Name, 1);
+                    yield return Message(body, received, client, deleter, inFlight);
+                }
             }
-
-            // No messages, or all of them filtered out (e.g., invalid JSON with ContinueOnError): wait before polling again.
-            if (messagesToYield.Count == 0)
+        }
+        finally
+        {
+            lock (_closing)
             {
-                if (_configuration.PollingIntervalMs > 0)
-                    await Task.Delay(_configuration.PollingIntervalMs, cancellationToken).ConfigureAwait(false);
-
-                continue;
-            }
-
-            foreach (var message in messagesToYield)
-            {
-                yield return message;
+                _closing.Add(CloseWhenSettledAsync(client, owned, deleter, inFlight));
             }
         }
     }
 
-    private SqsMessage<T>? CreateSqsMessage(Message sqsMessage)
+    private ReceiveMessageRequest Request() =>
+        new()
+        {
+            QueueUrl = _options.QueueUrl,
+            MaxNumberOfMessages = _options.MaxMessages,
+            WaitTimeSeconds = (int)_options.WaitTime.TotalSeconds,
+            VisibilityTimeout = _options.VisibilityTimeout is { } visibility ? (int)visibility.TotalSeconds : null,
+            MessageSystemAttributeNames = ["All"],
+            MessageAttributeNames = ["All"],
+        };
+
+    private bool TryDecode(string text, out T body, [NotNullWhen(false)] out Exception? error)
+    {
+        var bytes = ArrayPool<byte>.Shared.Rent(Encoding.UTF8.GetMaxByteCount(text.Length));
+
+        try
+        {
+            var length = Encoding.UTF8.GetBytes(text, bytes);
+            var decoded = _decoder.TryDecode(bytes.AsSpan(0, length), out var value, out error);
+            body = value!;
+            return decoded;
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(bytes);
+        }
+    }
+
+    private SqsMessage<T> Message(T body, Message received, IAmazonSQS client, SqsDeleter deleter, InFlightMessages inFlight)
+    {
+        var receiptHandle = received.ReceiptHandle;
+
+        var settlement = new MessageSettlement(
+            _ =>
+            {
+                deleter.Enqueue(receiptHandle);
+                inFlight.Remove();
+                ConnectorDiagnostics.RecordMessagesSettled(SqsConnector.Name, "acknowledged");
+                return Task.CompletedTask;
+            },
+            async (requeue, ct) =>
+            {
+                try
+                {
+                    if (requeue)
+                        _ = await client.ChangeMessageVisibilityAsync(_options.QueueUrl, receiptHandle, 0, ct).ConfigureAwait(false);
+                    else
+                        deleter.Enqueue(receiptHandle);
+
+                    ConnectorDiagnostics.RecordMessagesSettled(SqsConnector.Name, requeue ? "requeued" : "rejected");
+                }
+                finally
+                {
+                    inFlight.Remove();
+                }
+            });
+
+        return new SqsMessage<T>(body, received.MessageId, receiptHandle, _options.QueueUrl,
+            received.MessageAttributes is { Count: > 0 } attributes ? new Dictionary<string, MessageAttributeValue>(attributes) : NoAttributes,
+            received.Attributes is { Count: > 0 } system ? new Dictionary<string, string>(system) : NoSystemAttributes,
+            settlement);
+    }
+
+    private async Task CloseWhenSettledAsync(IAmazonSQS client, bool owned, SqsDeleter deleter, InFlightMessages inFlight)
     {
         try
         {
-            // Deserialize JSON body
-            var body = JsonSerializer.Deserialize<T>(sqsMessage.Body, _serializerOptions);
-
-            if (body == null)
-                return null;
-
-            // Parse timestamp
-            var timestamp = DateTime.UtcNow;
-
-            if (sqsMessage.Attributes.TryGetValue("SentTimestamp", out var sentTimestampStr) &&
-                long.TryParse(sentTimestampStr, out var sentTimestamp))
-                timestamp = DateTimeOffset.FromUnixTimeMilliseconds(sentTimestamp).UtcDateTime;
-
-            return new SqsMessage<T>(
-                body,
-                sqsMessage.MessageId,
-                sqsMessage.ReceiptHandle,
-                sqsMessage.MessageAttributes ?? new Dictionary<string, MessageAttributeValue>(),
-                timestamp,
-                _sqsClient,
-                _configuration.SourceQueueUrl);
+            _ = await inFlight.WhenSettledAsync(_options.SettleTimeout, _disposing.Token).ConfigureAwait(false);
         }
-        catch (JsonException ex)
+        catch (OperationCanceledException)
         {
-            var handler = _configuration.MessageErrorHandler;
-
-            if (handler != null)
-            {
-                var errorWrapper = new SqsMessage<object>(
-                    sqsMessage.Body,
-                    sqsMessage.MessageId,
-                    sqsMessage.ReceiptHandle,
-                    sqsMessage.MessageAttributes ?? new Dictionary<string, MessageAttributeValue>(),
-                    DateTime.UtcNow,
-                    _sqsClient,
-                    _configuration.SourceQueueUrl);
-
-                if (handler(ex, errorWrapper))
-                    return null; // Handler opted to skip
-            }
-
-            if (_configuration.ContinueOnError)
-                return null;
-
-            throw;
+            // Disposed: send what is acknowledged now.
         }
+
+        await deleter.CompleteAsync().ConfigureAwait(false);
+
+        if (owned)
+            client.Dispose();
     }
 
-    private static JsonSerializerOptions CreateSerializerOptions(SqsConfiguration configuration)
+    private Dictionary<string, object> Metadata(Message received)
     {
-        var options = new JsonSerializerOptions
+        var metadata = new Dictionary<string, object> { ["QueueUrl"] = _options.QueueUrl };
+
+        foreach (var (key, value) in received.Attributes ?? [])
         {
-            PropertyNameCaseInsensitive = configuration.PropertyNameCaseInsensitive,
-            PropertyNamingPolicy = configuration.PropertyNamingPolicy switch
-            {
-                JsonPropertyNamingPolicy.CamelCase => JsonNamingPolicy.CamelCase,
-                JsonPropertyNamingPolicy.SnakeCase => JsonNamingPolicy.SnakeCaseLower,
-                JsonPropertyNamingPolicy.LowerCase => new LowerCaseNamingPolicy(),
-                JsonPropertyNamingPolicy.PascalCase => new PascalCaseNamingPolicy(),
-                JsonPropertyNamingPolicy.AsIs => null,
-                _ => JsonNamingPolicy.CamelCase,
-            },
-        };
-
-        return options;
-    }
-
-    private sealed class LowerCaseNamingPolicy : JsonNamingPolicy
-    {
-        public static readonly LowerCaseNamingPolicy Instance = new();
-
-        public override string ConvertName(string name) =>
-            string.IsNullOrEmpty(name)
-                ? name
-                : name.ToLowerInvariant();
-    }
-
-    private sealed class PascalCaseNamingPolicy : JsonNamingPolicy
-    {
-        public static readonly PascalCaseNamingPolicy Instance = new();
-
-        public override string ConvertName(string name)
-        {
-            if (string.IsNullOrEmpty(name))
-                return name;
-
-            return char.ToUpperInvariant(name[0]) + name[1..];
+            metadata[key] = value;
         }
+
+        foreach (var (key, value) in received.MessageAttributes ?? [])
+        {
+            metadata[$"Attribute.{key}"] = value.StringValue ?? (object?)value.BinaryValue ?? string.Empty;
+        }
+
+        return metadata;
     }
 }

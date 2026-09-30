@@ -1,25 +1,12 @@
-# NPipeline.Connectors.Kafka
+# NPipeline Kafka Connector
 
-Apache Kafka connector for NPipeline - integrate with Kafka for high-throughput streaming with multiple serialization formats and delivery semantics.
+Source and sink nodes for Apache Kafka in NPipeline pipelines, on NPipeline's shared messaging layer.
 
-## Features
+## About NPipeline
 
-- **Source & Sink Nodes**: Read from and write to Kafka topics with type-safe message handling
-- **Multiple Serialization Formats**: JSON (default), Apache Avro, and Protocol Buffers with Schema Registry support
-- **Flexible Delivery Semantics**: At-least-once (default) and exactly-once delivery guarantees
-- **Idempotent Production**: Prevent duplicate messages with configurable acknowledgment modes
-- **Partition Management**: Custom partition key providers for sophisticated message routing
-- **Consumer Groups**: Offset management and parallel processing across partitions
-- **Message Acknowledgment**: Manual control over offset commits with acknowledgment callbacks
-- **Resilience**: The source retries retriable consume errors through
-  [NResilience](https://github.com/nresilience/NResilience) (`KafkaConfiguration.Resilience`, default four attempts
-  with jittered backoff from 100 ms); fatal, deserialization, and authorization errors surface at once. The sink does
-  not retry: librdkafka retries each produce and the idempotent producer removes duplicates, so it is the only layer
-  that retries a produce. Tune it with `DeliveryTimeoutMs`, `RetryBackoffMs`, and `RetryBackoffMaxMs`
-- **Kafka Authentication**: Support for SASL/PLAIN and SASL/SSL security protocols
-- **Message Metadata**: Access to Kafka-specific properties (topic, partition, offset, timestamp, headers)
-- **Dead-Letter Envelope**: Optional `DeadLetterEnvelope` model for custom routing
-- **Monitoring**: Built-in metrics collection for production observability
+NPipeline is a high-performance, extensible data processing framework for .NET that enables developers to build scalable and efficient pipeline-based
+applications. It provides a rich set of components for data transformation, aggregation, branching, and parallel processing, with built-in support for
+resilience patterns and error handling.
 
 ## Installation
 
@@ -27,160 +14,44 @@ Apache Kafka connector for NPipeline - integrate with Kafka for high-throughput 
 dotnet add package NPipeline.Connectors.Kafka
 ```
 
-## Quick Start
+Targets .NET 8.0, 9.0 and 10.0.
 
-### Reading from Kafka
+## Features
 
-```csharp
-using NPipeline.Connectors.Kafka.Configuration;
-using NPipeline.Connectors.Kafka.Models;
-using NPipeline.Connectors.Kafka.Nodes;
-using NPipeline.Pipeline;
+- **Ordered offset commits**: acknowledging stores offset + 1, and a partition's commit never passes a message still
+  being handled or one that failed; offsets commit in the background, not per message.
+- **Exactly-once** with a transactional id: each batch commits together with the offsets of the messages it came from.
+- **Avro and Protobuf** serializers backed by a schema registry, with subjects derived from the topic.
+- **A clean leave**: a finished read commits and leaves the group, so its partitions move on at once.
+- **One messaging model**: messages are acknowledged or rejected once, and `sink.Acknowledging()` makes any sink (SQL,
+  HTTP, another broker) acknowledge each message once it is written.
+- **Shared JSON defaults** with the JSON connector (camelCase, case-insensitive, enums as names, `[Column]`), or a
+  source-generated `JsonSerializerContext` for Native AOT.
+- **Undeserializable messages** go through the shared row-error handler: fail the read, skip, or send the whole message
+  to the pipeline's dead-letter sink.
+- **Failed writes** fail, requeue the source message, or go to the dead-letter sink.
 
-public record Order(string OrderId, string CustomerId, decimal Amount);
-
-var config = new KafkaConfiguration
-{
-    BootstrapServers = "localhost:9092",
-    SourceTopic = "orders",
-    ConsumerGroupId = "order-processor",
-    AutoOffsetReset = AutoOffsetReset.Latest,
-};
-
-var source = new KafkaSourceNode<Order>(config);
-
-var sourceHandle = builder.AddSource(source, "kafka-source");
-var sinkHandle = builder.AddSink(async (KafkaMessage<Order> message, CancellationToken ct) =>
-{
-    Console.WriteLine($"Processing: {message.Body.OrderId}");
-    await message.AcknowledgeAsync(ct);
-}, "process-order");
-
-builder.Connect(sourceHandle, sinkHandle);
-```
-
-### Writing to Kafka
+## Usage
 
 ```csharp
-using NPipeline.Connectors.Kafka.Configuration;
-using NPipeline.Connectors.Kafka.Nodes;
-using NPipeline.Pipeline;
+using NPipeline.Connectors.Kafka;
+using NPipeline.Connectors.Messaging;
 
-public record OrderEvent(string OrderId, string EventType, DateTime Timestamp);
+var orders = KafkaConnector.Source<Order>("kafka:9092", "orders", groupId: "billing",
+    o => o with { AutoOffsetReset = AutoOffsetReset.Earliest });
+var invoices = KafkaConnector.Sink<Invoice>("kafka:9092", "invoices", o => o with { KeySelector = i => i.CustomerId });
 
-var config = new KafkaConfiguration
-{
-    BootstrapServers = "localhost:9092",
-    SinkTopic = "order-events",
-    Acks = Acks.All,
-};
-
-var sink = new KafkaSinkNode<OrderEvent>(config);
-
-var sourceHandle = builder.AddSource(() => new[]
-{
-    new OrderEvent("ORD-001", "Created", DateTime.UtcNow),
-    new OrderEvent("ORD-002", "Shipped", DateTime.UtcNow),
-}, "orders-source");
-
-var sinkHandle = builder.AddSink(sink, "kafka-sink");
-
-builder.Connect(sourceHandle, sinkHandle);
+builder.AddSink(invoices.Acknowledging(), "invoices");
 ```
 
-## Serialization Formats
-
-```csharp
-// JSON (default, no Schema Registry needed)
-var config = new KafkaConfiguration
-{
-    SerializationFormat = SerializationFormat.Json,
-};
-
-// Avro with Schema Registry
-var config = new KafkaConfiguration
-{
-    SerializationFormat = SerializationFormat.Avro,
-    SchemaRegistry = new SchemaRegistryConfiguration
-    {
-        Url = "http://localhost:8081",
-        AutoRegisterSchemas = true,
-    },
-};
-
-// Protocol Buffers with Schema Registry
-var config = new KafkaConfiguration
-{
-    SerializationFormat = SerializationFormat.Protobuf,
-    SchemaRegistry = new SchemaRegistryConfiguration
-    {
-        Url = "http://localhost:8081",
-    },
-};
-```
-
-## Delivery Semantics
-
-```csharp
-// At-least-once (default)
-var config = new KafkaConfiguration
-{
-    DeliverySemantic = DeliverySemantic.AtLeastOnce,
-};
-
-// Exactly-once
-var config = new KafkaConfiguration
-{
-    DeliverySemantic = DeliverySemantic.ExactlyOnce,
-    EnableTransactions = true,
-    TransactionalId = "order-processor-1",
-    EnableIdempotence = true,
-    Acks = Acks.All,
-};
-```
-
-## Tuning
-
-```csharp
-var config = new KafkaConfiguration
-{
-    PollTimeoutMs = 100,            // Consumer poll timeout
-    TransactionInitTimeoutMs = 30000, // Transaction init timeout
-};
-```
-
-## Authentication
-
-```csharp
-// SASL/Plain over TLS
-var config = new KafkaConfiguration
-{
-    BootstrapServers = "kafka.example.com:9092",
-    SecurityProtocol = SecurityProtocol.SaslSsl,
-    SaslMechanism = SaslMechanism.Plain,
-    SaslUsername = "username",
-    SaslPassword = "password",
-};
-```
-
-## Documentation
-
-For comprehensive documentation, including advanced topics, partitioning, dead letter handling, and best practices, see
-the [Kafka Connector Documentation](https://docs.npipeline.net/connectors/kafka).
+See the [Kafka connector documentation](https://docs.npipeline.net/connectors/kafka) and
+[Message Queues: Shared Behaviour](https://docs.npipeline.net/connectors/message-queues) for every option.
 
 ## Related Packages
 
 - **[NPipeline](https://www.nuget.org/packages/NPipeline)** - Core pipeline framework
-- **[NPipeline.Connectors](https://www.nuget.org/packages/NPipeline.Connectors)** - Base abstractions for connectors
+- **[NPipeline.Connectors](https://www.nuget.org/packages/NPipeline.Connectors)** - Shared messaging layer, storage abstractions and base connectors
 - **[NPipeline.Extensions.DependencyInjection](https://www.nuget.org/packages/NPipeline.Extensions.DependencyInjection)** - Dependency injection integration
-- **[NPipeline.Extensions.Observability.OpenTelemetry](https://www.nuget.org/packages/NPipeline.Extensions.Observability.OpenTelemetry)** - Observability and
-  tracing
-
-## Requirements
-
-- .NET 8.0, 9.0, or 10.0
-- Confluent.Kafka 2.6.1+ (automatically included)
-- Confluent.SchemaRegistry 2.6.1+ for Avro/Protobuf support
 
 ## License
 

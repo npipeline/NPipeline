@@ -1,148 +1,106 @@
-using NPipeline.Connectors.Abstractions;
-using NPipeline.Connectors.Aws.Sqs.Configuration;
+using System.Text;
+using Amazon.SQS;
+using NPipeline.Connectors.Aws.Sqs;
 using NPipeline.Connectors.Aws.Sqs.Models;
-using NPipeline.Connectors.Aws.Sqs.Nodes;
-using NPipeline.Connectors.Configuration;
+using NPipeline.Connectors.Errors;
+using NPipeline.Connectors.Messaging;
+using NPipeline.ErrorHandling;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 
 namespace Sample_SqsConnector;
 
 /// <summary>
-///     Pipeline demonstrating SQS connector usage for order processing.
+///     Receives orders from an input SQS queue, validates them, and sends the results to an output queue. Each input
+///     message is deleted from its queue once its result has been sent.
 /// </summary>
-/// <remarks>
-///     This sample demonstrates:
-///     1. Consuming messages from an SQS queue using SqsSourceNode
-///     2. Processing orders through a transform node
-///     3. Publishing processed orders to an output SQS queue using SqsSinkNode
-///     4. Automatic message acknowledgment (default behavior)
-/// </remarks>
-public sealed class SqsConnectorPipeline : IPipelineDefinition
+/// <param name="settings">The queue URLs.</param>
+/// <param name="client">The SQS client the source and sink share; the caller owns it.</param>
+public sealed class SqsConnectorPipeline(SqsSampleSettings settings, IAmazonSQS client) : IPipelineDefinition
 {
-    private const string InputQueueUrl = "https://sqs.{region}.amazonaws.com/{account-id}/input-orders-queue";
-    private const string OutputQueueUrl = "https://sqs.{region}.amazonaws.com/{account-id}/processed-orders-queue";
-    private const string Region = "us-east-1";
-
     /// <inheritdoc />
     public void Define(PipelineBuilder builder, PipelineContext context)
     {
-        // Add SQS source node to consume orders from input queue
-        // SqsSourceNode<Order> outputs SqsMessage<Order>
-        var sourceNode = builder.AddSource<SqsSourceNode<Order>, SqsMessage<Order>>(
-            "SqsOrderSource");
+        var source = builder.AddSource(
+            SqsConnector.Source<Order>(settings.InputQueueUrl, o => o with
+            {
+                Client = client,
+                MaxMessages = 10,
+                WaitTime = TimeSpan.FromSeconds(20),
 
-        // Add transform node to process orders
-        // Takes SqsMessage<Order> and outputs IAcknowledgableMessage<ProcessedOrder>
-        var transformNode = builder.AddTransform<OrderProcessor, SqsMessage<Order>, IAcknowledgableMessage<ProcessedOrder>>(
-            "OrderProcessor");
+                // A message not acknowledged within 30 seconds becomes visible again and is redelivered.
+                VisibilityTimeout = TimeSpan.FromSeconds(30),
 
-        // Add SQS sink node to publish processed orders to output queue
-        var sinkNode = builder.AddSink<SqsSinkNode<IAcknowledgableMessage<ProcessedOrder>>, IAcknowledgableMessage<ProcessedOrder>>(
-            "SqsProcessedOrderSink");
+                // A body that isn't a valid Order goes to the dead-letter sink and is then deleted.
+                RowErrorHandler = _ => RowErrorAction.DeadLetter,
+            }),
+            "sqs-order-source");
 
-        // Connect the nodes to form the pipeline
-        _ = builder.Connect(sourceNode, transformNode);
-        _ = builder.Connect(transformNode, sinkNode);
+        var process = builder.AddTransform<OrderProcessor, SqsMessage<Order>, IAcknowledgableMessage<ProcessedOrder>>("order-processor");
+
+        // Acknowledging() deletes each input message once SQS has accepted its result.
+        var sink = builder.AddSink(
+            SqsConnector.Sink<ProcessedOrder>(settings.OutputQueueUrl, o => o with { Client = client }).Acknowledging(),
+            "sqs-processed-order-sink");
+
+        builder.Connect(source, process);
+        builder.Connect(process, sink);
+
+        builder.AddDeadLetterSink(new ConsoleDeadLetterSink());
     }
 
-    /// <summary>
-    ///     Creates a default SqsConfiguration for this sample.
-    /// </summary>
-    public static SqsConfiguration CreateConfiguration() =>
-        new()
-        {
-            Region = Region,
-            SourceQueueUrl = InputQueueUrl,
-            SinkQueueUrl = OutputQueueUrl,
-            MaxNumberOfMessages = 10,
-            WaitTimeSeconds = 20,
-            VisibilityTimeout = 30,
-            AcknowledgmentStrategy = AcknowledgmentStrategy.AutoOnSinkSuccess,
-        };
+    /// <summary>Describes what the pipeline does.</summary>
+    public static string GetDescription(SqsSampleSettings settings) =>
+        $"""
+         SqsConnector.Source<Order>              {settings.InputQueueUrl}
+           -> OrderProcessor                     (message.WithBody(processed))
+             -> SqsConnector.Sink<ProcessedOrder>.Acknowledging()   {settings.OutputQueueUrl}
 
-    /// <summary>
-    ///     Gets a description of the pipeline structure and purpose.
-    /// </summary>
-    /// <returns>A human-readable description of the pipeline.</returns>
-    public static string GetDescription() =>
-        """
-        Pipeline Structure:
-        ┌─────────────────────────────────────────────────────────────────────────────┐
-        │ SQS Order Processing Pipeline                                               │
-        └─────────────────────────────────────────────────────────────────────────────┘
-
-        Flow:
-        ┌──────────────────┐      ┌──────────────────┐      ┌──────────────────┐
-        │  SqsSourceNode   │─────▶│  OrderProcessor  │─────▶│   SqsSinkNode    │
-        │   (Order)        │      │  (Transform)     │      │ (ProcessedOrder) │
-        └──────────────────┘      └──────────────────┘      └──────────────────┘
-                │                           │                         │
-                ▼                           ▼                         ▼
-        Input SQS Queue              Order Processing          Output SQS Queue
-        (input-orders-queue)         & Validation              (processed-orders-queue)
-
-        Features Demonstrated:
-        • Continuous message polling from SQS
-        • Automatic message acknowledgment on successful processing
-        • Order validation and status updates
-        • Publishing processed orders to output queue
-        • JSON serialization/deserialization
-        """;
+         Undeserializable messages -> ConsoleDeadLetterSink
+         """;
 }
 
-/// <summary>
-///     Transform node that processes SQS order messages.
-/// </summary>
-/// <remarks>
-///     This node extracts the Order from the SqsMessage envelope,
-///     validates it, and returns a ProcessedOrder with the result.
-/// </remarks>
+/// <summary>Validates each order, keeping the SQS message so it can be acknowledged downstream.</summary>
 public sealed class OrderProcessor : TransformNode<SqsMessage<Order>, IAcknowledgableMessage<ProcessedOrder>>
 {
     /// <inheritdoc />
-    public override async ValueTask<IAcknowledgableMessage<ProcessedOrder>> TransformAsync(
-        SqsMessage<Order> input,
-        PipelineContext context,
+    public override async ValueTask<IAcknowledgableMessage<ProcessedOrder>> TransformAsync(SqsMessage<Order> input, PipelineContext context,
         CancellationToken cancellationToken)
     {
         var order = input.Body;
-        Console.WriteLine($"Processing Order ID: {order.OrderId}, Customer: {order.CustomerId}, Amount: ${order.TotalAmount:F2}");
+        Console.WriteLine($"Processing order {order.OrderId} (receive #{input.ReceiveCount}), customer {order.CustomerId}, amount ${order.TotalAmount:F2}");
 
-        // Simulate order processing
+        // Simulate processing work.
         await Task.Delay(100, cancellationToken);
 
-        // Validate order
-        if (order.TotalAmount <= 0)
-        {
-            Console.WriteLine($"  ⚠ Order {order.OrderId} rejected: Invalid amount");
+        var valid = order.TotalAmount > 0;
+        Console.WriteLine(valid ? $"  Order {order.OrderId} completed" : $"  Order {order.OrderId} rejected: invalid amount");
 
-            var rejected = new ProcessedOrder
-            {
-                OrderId = order.OrderId,
-                CustomerId = order.CustomerId,
-                TotalAmount = order.TotalAmount,
-                Status = "Rejected",
-                ProcessedAt = DateTime.UtcNow,
-                ProcessingNotes = "Invalid order amount",
-            };
-
-            return input.WithBody(rejected);
-        }
-
-        // Process successful order
-        Console.WriteLine($"  ✓ Order {order.OrderId} processed successfully");
-
-        var processed = new ProcessedOrder
-        {
-            OrderId = order.OrderId,
-            CustomerId = order.CustomerId,
-            TotalAmount = order.TotalAmount,
-            Status = "Completed",
-            ProcessedAt = DateTime.UtcNow,
-            ProcessingNotes = "Order processed successfully",
-        };
+        var processed = new ProcessedOrder(
+            order.OrderId,
+            order.CustomerId,
+            order.TotalAmount,
+            valid ? "Completed" : "Rejected",
+            DateTime.UtcNow,
+            valid ? "Order processed successfully" : "Invalid order amount");
 
         return input.WithBody(processed);
+    }
+}
+
+/// <summary>Prints dead-lettered items: here, messages whose body didn't deserialize.</summary>
+public sealed class ConsoleDeadLetterSink : IDeadLetterSink
+{
+    /// <inheritdoc />
+    public Task HandleAsync(DeadLetterEnvelope envelope, PipelineContext context, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(envelope);
+
+        var description = envelope.Item is MessageFailure failure
+            ? $"message {failure.MessageId} from {failure.Source}: {Encoding.UTF8.GetString(failure.Body.Span)}"
+            : envelope.Item.ToString();
+
+        Console.WriteLine($"  Dead-lettered {description} ({envelope.Error.Message})");
+        return Task.CompletedTask;
     }
 }

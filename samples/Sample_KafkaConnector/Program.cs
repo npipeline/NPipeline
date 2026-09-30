@@ -1,60 +1,55 @@
-﻿using System.Reflection;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using NPipeline.Connectors.Kafka.Metrics;
-using NPipeline.Connectors.Kafka.Partitioning;
-using NPipeline.Extensions.DependencyInjection;
+using Confluent.Kafka;
+using NPipeline.Configuration;
+using NPipeline.Execution;
+using NPipeline.Pipeline;
 
 namespace Sample_KafkaConnector;
 
 /// <summary>
-///     Entry point for Kafka Connector sample demonstrating message processing with Apache Kafka.
+///     Runs the Kafka connector sample until Ctrl+C. Pass <c>--exactly-once</c> to write through a transactional sink.
 /// </summary>
-public sealed class Program
+public static class Program
 {
     public static async Task Main(string[] args)
     {
         Console.WriteLine("=== NPipeline Sample: Kafka Connector ===");
         Console.WriteLine();
 
+        var exactlyOnce = args.Contains("--exactly-once", StringComparer.OrdinalIgnoreCase);
+
+        Console.WriteLine(KafkaConnectorPipeline.GetDescription(exactlyOnce));
+        Console.WriteLine();
+        Console.WriteLine("Press Ctrl+C to stop.");
+        Console.WriteLine();
+
+        using var cts = new CancellationTokenSource();
+
+        Console.CancelKeyPress += (_, e) =>
+        {
+            e.Cancel = true;
+            cts.Cancel();
+        };
+
+        using var deadLetterProducer = new ProducerBuilder<byte[]?, byte[]>(
+            new ProducerConfig { BootstrapServers = KafkaConnectorPipeline.BootstrapServers }).Build();
+
         try
         {
-            var host = Host.CreateDefaultBuilder(args)
-                .ConfigureServices((_, services) =>
-                {
-                    services.AddNPipeline(Assembly.GetExecutingAssembly());
-
-                    services.AddSingleton(KafkaConnectorPipeline.CreateConfiguration());
-                    services.AddSingleton<IKafkaMetrics, ConsoleKafkaMetrics>();
-
-                    services.AddSingleton<IPartitionKeyProvider<SampleMessage>>(
-                        PartitionKeyProvider.FromProperty<SampleMessage, string>(message => message.CustomerId));
-                })
-                .Build();
-
-            Console.WriteLine("Registered NPipeline services and scanned assemblies for nodes.");
-            Console.WriteLine();
-
-            Console.WriteLine("Pipeline Description:");
-            Console.WriteLine(KafkaConnectorPipeline.GetDescription());
-            Console.WriteLine();
-
-            Console.WriteLine("Starting pipeline execution...");
-            Console.WriteLine("Press Ctrl+C to stop.");
-            Console.WriteLine();
-
-            await host.Services.RunPipelineAsync<KafkaConnectorPipeline>();
-
-            Console.WriteLine();
-            Console.WriteLine("Pipeline execution completed successfully!");
+            await using var context = new PipelineContext(PipelineContextConfiguration.WithCancellation(cts.Token));
+            await PipelineRunner.Create().RunAsync(new KafkaConnectorPipeline(deadLetterProducer, exactlyOnce), context, cts.Token);
+        }
+        catch (Exception) when (cts.IsCancellationRequested)
+        {
+            // Ctrl+C: acknowledged offsets are committed as the source closes; the rest are read again next run.
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error executing pipeline: {ex.Message}");
-            Console.WriteLine();
-            Console.WriteLine("Full error details:");
-            Console.WriteLine(ex.ToString());
+            Console.WriteLine($"Error executing pipeline: {ex}");
             Environment.ExitCode = 1;
+            return;
         }
+
+        Console.WriteLine();
+        Console.WriteLine("Pipeline stopped.");
     }
 }

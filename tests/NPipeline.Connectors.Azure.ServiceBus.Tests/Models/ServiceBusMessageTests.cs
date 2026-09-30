@@ -1,477 +1,235 @@
-using NPipeline.Connectors.Abstractions;
+using System.Reflection;
+using Azure.Messaging.ServiceBus;
+using FakeItEasy;
 using NPipeline.Connectors.Azure.ServiceBus.Models;
+using NPipeline.Connectors.Messaging;
 
 namespace NPipeline.Connectors.Azure.ServiceBus.Tests.Models;
 
 public class ServiceBusMessageTests
 {
-    private static ServiceBusMessage<TestModel> CreateMessage(
-        TestModel? body = null,
-        string messageId = "test-message-id",
-        Func<CancellationToken, Task>? completeCallback = null,
-        Func<IDictionary<string, object>?, CancellationToken, Task>? abandonCallback = null,
-        Func<string?, string?, CancellationToken, Task>? deadLetterCallback = null,
-        Func<IDictionary<string, object>?, CancellationToken, Task>? deferCallback = null)
-    {
-        body ??= new TestModel { Id = 1, Name = "Test" };
+    private static readonly DateTimeOffset Enqueued = new(2026, 9, 30, 10, 0, 0, TimeSpan.Zero);
 
-        return new ServiceBusMessage<TestModel>(
-            body,
-            messageId,
-            completeCallback,
-            abandonCallback,
-            deadLetterCallback,
-            deferCallback);
+    private readonly List<string> _settled = [];
+    private readonly ServiceBusReceiver _receiver = A.Fake<ServiceBusReceiver>();
+
+    private static ServiceBusReceivedMessage Received(string? sessionId = "session-1", string? correlationId = "corr-1", string? subject = "orders",
+        IDictionary<string, object>? properties = null) =>
+        ServiceBusModelFactory.ServiceBusReceivedMessage(
+            BinaryData.FromString("{}"),
+            "message-1",
+            sessionId: sessionId,
+            correlationId: correlationId,
+            subject: subject,
+            contentType: "application/json",
+            properties: properties ?? new Dictionary<string, object> { ["tenant"] = "a", ["priority"] = 3 },
+            sequenceNumber: 42,
+            deliveryCount: 2,
+            enqueuedTime: Enqueued);
+
+    private MessageSettlement Settlement() =>
+        new(_ =>
+        {
+            _settled.Add("ack");
+            return Task.CompletedTask;
+        }, (requeue, _) =>
+        {
+            _settled.Add(requeue ? "requeue" : "reject");
+            return Task.CompletedTask;
+        });
+
+    private static ServiceBusMessage<T> Create<T>(T body, ServiceBusReceivedMessage received, ServiceBusReceiver receiver, MessageSettlement settlement)
+    {
+        var constructor = typeof(ServiceBusMessage<T>).GetConstructors(BindingFlags.NonPublic | BindingFlags.Instance).Single();
+        return (ServiceBusMessage<T>)constructor.Invoke([body, received, receiver, settlement, null]);
     }
 
-    public class Constructor
+    private ServiceBusMessage<string> Create(ServiceBusReceivedMessage? received = null) => Create("body", received ?? Received(), _receiver, Settlement());
+
+    [Fact]
+    public void Properties_ComeFromTheReceivedMessage()
     {
-        [Fact]
-        public void Constructor_WithBody_InitializesProperties()
-        {
-            var body = new TestModel { Id = 42, Name = "Order" };
-            var message = new ServiceBusMessage<TestModel>(body, "msg-1");
+        var received = Received();
+        var message = Create(received);
 
-            message.Body.Should().BeSameAs(body);
-            message.MessageId.Should().Be("msg-1");
-            message.IsAcknowledged.Should().BeFalse();
-            message.IsSettled.Should().BeFalse();
-        }
-
-        [Fact]
-        public void Constructor_WithAllCallbacks_DoesNotInvokeCallbacksImmediately()
-        {
-            var completeCalled = false;
-            var abandonCalled = false;
-
-            var message = new ServiceBusMessage<TestModel>(
-                new TestModel(),
-                "msg-1",
-                _ =>
-                {
-                    completeCalled = true;
-                    return Task.CompletedTask;
-                },
-                (_, _) =>
-                {
-                    abandonCalled = true;
-                    return Task.CompletedTask;
-                });
-
-            completeCalled.Should().BeFalse();
-            abandonCalled.Should().BeFalse();
-        }
-
-        [Fact]
-        public void Constructor_WithNoCallbacks_SetsDefaultNoopCallbacks()
-        {
-            var message = new ServiceBusMessage<TestModel>(new TestModel(), "msg-1");
-
-            // Should not throw when calling settle methods (uses no-op callbacks)
-            message.Invoking(m => m.CompleteAsync()).Should().NotThrowAsync();
-        }
-
-        [Fact]
-        public void Constructor_WithApplicationProperties_ExposesThemViaProperty()
-        {
-            var props = new Dictionary<string, object> { ["key"] = "value" };
-
-            var message = new ServiceBusMessage<TestModel>(
-                new TestModel(), "msg-1",
-                applicationProperties: props);
-
-            message.ApplicationProperties.Should().ContainKey("key");
-            message.ApplicationProperties["key"].Should().Be("value");
-        }
+        message.Body.Should().Be("body");
+        ((IAcknowledgableMessage)message).Body.Should().Be("body");
+        message.Received.Should().BeSameAs(received);
+        message.MessageId.Should().Be("message-1");
+        message.SessionId.Should().Be("session-1");
+        message.CorrelationId.Should().Be("corr-1");
+        message.Subject.Should().Be("orders");
+        message.ContentType.Should().Be("application/json");
+        message.DeliveryCount.Should().Be(2);
+        message.EnqueuedTime.Should().Be(Enqueued);
+        message.ApplicationProperties.Should().Contain("tenant", "a");
+        message.IsSettled.Should().BeFalse();
     }
 
-    public class CompleteAsync
+    [Fact]
+    public void Metadata_HasTheBrokerPropertiesAndApplicationProperties()
     {
-        [Fact]
-        public async Task CompleteAsync_CallsCompleteCallback()
-        {
-            var completeCalled = false;
+        var metadata = Create().Metadata;
 
-            var message = CreateMessage(completeCallback: _ =>
-            {
-                completeCalled = true;
-                return Task.CompletedTask;
-            });
-
-            await message.CompleteAsync();
-
-            completeCalled.Should().BeTrue();
-        }
-
-        [Fact]
-        public async Task CompleteAsync_SetsIsAcknowledged()
-        {
-            var message = CreateMessage();
-            await message.CompleteAsync();
-            message.IsAcknowledged.Should().BeTrue();
-        }
-
-        [Fact]
-        public async Task CompleteAsync_SetsIsSettled()
-        {
-            var message = CreateMessage();
-            await message.CompleteAsync();
-            message.IsSettled.Should().BeTrue();
-        }
-
-        [Fact]
-        public async Task CompleteAsync_CalledTwice_InvokesCallbackOnce()
-        {
-            var callCount = 0;
-
-            var message = CreateMessage(completeCallback: _ =>
-            {
-                Interlocked.Increment(ref callCount);
-                return Task.CompletedTask;
-            });
-
-            await message.CompleteAsync();
-            await message.CompleteAsync();
-
-            callCount.Should().Be(1);
-        }
-
-        [Fact]
-        public async Task CompleteAsync_CalledConcurrently_InvokesCallbackOnce()
-        {
-            var callCount = 0;
-
-            var message = CreateMessage(completeCallback: async _ =>
-            {
-                Interlocked.Increment(ref callCount);
-                await Task.Yield();
-            });
-
-            await Task.WhenAll(Enumerable.Range(0, 50).Select(_ => message.CompleteAsync()));
-
-            callCount.Should().Be(1);
-        }
+        metadata.Should().Contain("SequenceNumber", 42L)
+            .And.Contain("DeliveryCount", 2)
+            .And.Contain("EnqueuedTime", Enqueued)
+            .And.Contain("SessionId", "session-1")
+            .And.Contain("CorrelationId", "corr-1")
+            .And.Contain("Subject", "orders")
+            .And.Contain("Property.tenant", "a")
+            .And.Contain("Property.priority", 3);
     }
 
-    public class AbandonAsync
+    [Fact]
+    public void Metadata_LeavesOutMissingProperties()
     {
-        [Fact]
-        public async Task AbandonAsync_CallsAbandonCallback()
-        {
-            var abandonCalled = false;
+        var metadata = Create(Received(null, null, null, new Dictionary<string, object>())).Metadata;
 
-            var message = CreateMessage(abandonCallback: (_, _) =>
-            {
-                abandonCalled = true;
-                return Task.CompletedTask;
-            });
-
-            await message.AbandonAsync();
-
-            abandonCalled.Should().BeTrue();
-        }
-
-        [Fact]
-        public async Task AbandonAsync_SetsIsSettled()
-        {
-            var message = CreateMessage();
-            await message.AbandonAsync();
-            message.IsSettled.Should().BeTrue();
-        }
-
-        [Fact]
-        public async Task AbandonAsync_WithProperties_PassesPropertiesToCallback()
-        {
-            IDictionary<string, object>? capturedProps = null;
-
-            var message = CreateMessage(abandonCallback: (props, _) =>
-            {
-                capturedProps = props;
-                return Task.CompletedTask;
-            });
-
-            var props = new Dictionary<string, object> { ["key"] = "value" };
-
-            await message.AbandonAsync(props);
-
-            capturedProps.Should().NotBeNull();
-            capturedProps!["key"].Should().Be("value");
-        }
-
-        [Fact]
-        public async Task AbandonAsync_CalledAfterComplete_IsNoOp()
-        {
-            var callCount = 0;
-
-            var message = CreateMessage(
-                completeCallback: _ =>
-                {
-                    Interlocked.Increment(ref callCount);
-                    return Task.CompletedTask;
-                },
-                abandonCallback: (_, _) =>
-                {
-                    Interlocked.Increment(ref callCount);
-                    return Task.CompletedTask;
-                });
-
-            await message.CompleteAsync();
-            await message.AbandonAsync();
-
-            callCount.Should().Be(1); // Only complete callback was called
-        }
+        metadata.Keys.Should().BeEquivalentTo("SequenceNumber", "DeliveryCount", "EnqueuedTime");
     }
 
-    public class DeadLetterAsync
+    [Fact]
+    public void Metadata_IsBuiltOnce()
     {
-        [Fact]
-        public async Task DeadLetterAsync_CallsDeadLetterCallback()
-        {
-            var deadLetterCalled = false;
+        var message = Create();
 
-            var message = CreateMessage(deadLetterCallback: (_, _, _) =>
-            {
-                deadLetterCalled = true;
-                return Task.CompletedTask;
-            });
-
-            await message.DeadLetterAsync();
-
-            deadLetterCalled.Should().BeTrue();
-        }
-
-        [Fact]
-        public async Task DeadLetterAsync_WithReasonAndDescription_PassesToCallback()
-        {
-            string? capturedReason = null;
-            string? capturedDesc = null;
-
-            var message = CreateMessage(deadLetterCallback: (reason, desc, _) =>
-            {
-                capturedReason = reason;
-                capturedDesc = desc;
-                return Task.CompletedTask;
-            });
-
-            await message.DeadLetterAsync("TestReason", "TestDescription");
-
-            capturedReason.Should().Be("TestReason");
-            capturedDesc.Should().Be("TestDescription");
-        }
-
-        [Fact]
-        public async Task DeadLetterAsync_SetsIsSettled()
-        {
-            var message = CreateMessage();
-            await message.DeadLetterAsync();
-            message.IsSettled.Should().BeTrue();
-        }
+        message.Metadata.Should().BeSameAs(message.Metadata);
     }
 
-    public class DeferAsync
+    [Fact]
+    public async Task AcknowledgeAsync_SettlesTheMessage()
     {
-        [Fact]
-        public async Task DeferAsync_CallsDeferCallback()
-        {
-            var deferCalled = false;
+        var message = Create();
 
-            var message = CreateMessage(deferCallback: (_, _) =>
-            {
-                deferCalled = true;
-                return Task.CompletedTask;
-            });
+        await message.AcknowledgeAsync();
 
-            await message.DeferAsync();
-
-            deferCalled.Should().BeTrue();
-        }
-
-        [Fact]
-        public async Task DeferAsync_SetsIsSettled()
-        {
-            var message = CreateMessage();
-            await message.DeferAsync();
-            message.IsSettled.Should().BeTrue();
-        }
+        message.IsSettled.Should().BeTrue();
+        _settled.Should().Equal("ack");
     }
 
-    public class AcknowledgeAsync
+    [Theory]
+    [InlineData(true, "requeue")]
+    [InlineData(false, "reject")]
+    public async Task RejectAsync_PassesRequeue(bool requeue, string expected)
     {
-        [Fact]
-        public async Task AcknowledgeAsync_DelegatesToCompleteAsync()
-        {
-            var completeCalled = false;
+        var message = Create();
 
-            var message = CreateMessage(completeCallback: _ =>
-            {
-                completeCalled = true;
-                return Task.CompletedTask;
-            });
+        await message.RejectAsync(requeue);
 
-            await message.AcknowledgeAsync();
-
-            completeCalled.Should().BeTrue();
-        }
-
-        [Fact]
-        public async Task AcknowledgeAsync_SetsIsAcknowledged()
-        {
-            var message = CreateMessage();
-            await message.AcknowledgeAsync();
-            message.IsAcknowledged.Should().BeTrue();
-        }
+        message.IsSettled.Should().BeTrue();
+        _settled.Should().Equal(expected);
     }
 
-    public class NegativeAcknowledgeAsync
+    [Fact]
+    public async Task FirstSettlement_Wins()
     {
-        [Fact]
-        public async Task NegativeAcknowledgeAsync_WhenRequeue_CallsAbandonCallback()
-        {
-            var abandonCalled = false;
+        var message = Create();
 
-            var message = CreateMessage(abandonCallback: (_, _) =>
-            {
-                abandonCalled = true;
-                return Task.CompletedTask;
-            });
+        await message.AcknowledgeAsync();
+        await message.RejectAsync(true);
+        await message.AcknowledgeAsync();
 
-            await message.NegativeAcknowledgeAsync();
+        _settled.Should().Equal("ack");
+    }
 
-            abandonCalled.Should().BeTrue();
-        }
+    [Fact]
+    public async Task DeadLetterAsync_DeadLettersWithTheReceiverAndSettles()
+    {
+        var received = Received();
+        var message = Create(received);
 
-        [Fact]
-        public async Task NegativeAcknowledgeAsync_WhenNoRequeue_CallsDeadLetterCallback()
-        {
-            var deadLetterCalled = false;
+        await message.DeadLetterAsync("bad", "very bad");
+        await message.AcknowledgeAsync();
 
-            var message = CreateMessage(deadLetterCallback: (_, _, _) =>
-            {
-                deadLetterCalled = true;
-                return Task.CompletedTask;
-            });
+        A.CallTo(() => _receiver.DeadLetterMessageAsync(received, "bad", "very bad", A<CancellationToken>._)).MustHaveHappenedOnceExactly();
+        message.IsSettled.Should().BeTrue();
+        _settled.Should().BeEmpty("the dead-lettering settled the message first");
+    }
 
-            await message.NegativeAcknowledgeAsync(false);
+    [Fact]
+    public async Task DeferAsync_DefersWithTheReceiverAndSettles()
+    {
+        var received = Received();
+        var message = Create(received);
 
-            deadLetterCalled.Should().BeTrue();
-        }
+        await message.DeferAsync();
+        await message.DeadLetterAsync("late");
 
-        [Fact]
-        public async Task NegativeAcknowledgeAsync_DefaultIsRequeue()
-        {
-            var abandonCalled = false;
+        A.CallTo(() => _receiver.DeferMessageAsync(received, A<IDictionary<string, object>>._, A<CancellationToken>._)).MustHaveHappenedOnceExactly();
+        A.CallTo(() => _receiver.DeadLetterMessageAsync(A<ServiceBusReceivedMessage>._, A<string>._, A<string>._, A<CancellationToken>._)).MustNotHaveHappened();
+        message.IsSettled.Should().BeTrue();
+    }
 
-            var message = CreateMessage(abandonCallback: (_, _) =>
-            {
-                abandonCalled = true;
-                return Task.CompletedTask;
-            });
+    [Fact]
+    public async Task SettlementFailure_IsReported()
+    {
+        var failing = new MessageSettlement(_ => Task.FromException(new ServiceBusException("lost", ServiceBusFailureReason.MessageLockLost)),
+            (_, _) => Task.CompletedTask);
 
-            await message.NegativeAcknowledgeAsync();
+        var message = Create("body", Received(), _receiver, failing);
 
-            abandonCalled.Should().BeTrue();
-        }
+        var acknowledge = () => message.AcknowledgeAsync();
+
+        (await acknowledge.Should().ThrowAsync<ServiceBusException>()).Which.Reason.Should().Be(ServiceBusFailureReason.MessageLockLost);
     }
 
     public class WithBody
     {
-        [Fact]
-        public void WithBody_ReturnsNewMessageWithNewBody()
+        private readonly List<string> _settled = [];
+
+        private ServiceBusMessage<string> Create()
         {
-            var message = CreateMessage();
-            var newBody = new OtherModel { Value = "new" };
-
-            var newMessage = message.WithBody(newBody);
-
-            newMessage.Should().NotBeSameAs(message);
-            newMessage.Body.Should().BeSameAs(newBody);
-        }
-
-        [Fact]
-        public void WithBody_PreservesMessageId()
-        {
-            var message = CreateMessage(messageId: "original-id");
-            var newMessage = message.WithBody(new OtherModel());
-
-            newMessage.MessageId.Should().Be("original-id");
-        }
-
-        [Fact]
-        public async Task WithBody_NewMessageSharesCallbacks()
-        {
-            var completeCalled = false;
-
-            var message = CreateMessage(completeCallback: _ =>
+            var settlement = new MessageSettlement(_ =>
             {
-                completeCalled = true;
+                _settled.Add("ack");
+                return Task.CompletedTask;
+            }, (requeue, _) =>
+            {
+                _settled.Add(requeue ? "requeue" : "reject");
                 return Task.CompletedTask;
             });
 
-            var newMessage = message.WithBody(new OtherModel());
-            await newMessage.AcknowledgeAsync();
-
-            completeCalled.Should().BeTrue();
+            return ServiceBusMessageTests.Create("body", Received(), A.Fake<ServiceBusReceiver>(), settlement);
         }
 
         [Fact]
-        public void WithBody_NewMessageIsAssignableToInterface()
+        public void KeepsTheMessage()
         {
-            var message = CreateMessage();
-            var newMessage = message.WithBody(new OtherModel());
+            var original = Create();
 
-            newMessage.Should().BeAssignableTo<IAcknowledgableMessage<OtherModel>>();
+            var copy = original.WithBody(7);
+
+            copy.Should().BeOfType<ServiceBusMessage<int>>();
+            copy.Body.Should().Be(7);
+            copy.MessageId.Should().Be(original.MessageId);
+            copy.Metadata.Should().BeSameAs(original.Metadata);
+            ((ServiceBusMessage<int>)copy).Received.Should().BeSameAs(original.Received);
         }
-    }
 
-    public class SettlementIdempotency
-    {
         [Fact]
-        public async Task AfterAnySettlement_AllSubsequentSettlementAttemptsAreNoOps()
+        public async Task SettlingTheCopy_SettlesTheOriginal()
         {
-            var callCount = 0;
+            var original = Create();
+            var copy = original.WithBody(7);
 
-            var message = new ServiceBusMessage<TestModel>(
-                new TestModel(), "msg-1",
-                _ =>
-                {
-                    Interlocked.Increment(ref callCount);
-                    return Task.CompletedTask;
-                },
-                (_, _) =>
-                {
-                    Interlocked.Increment(ref callCount);
-                    return Task.CompletedTask;
-                },
-                (_, _, _) =>
-                {
-                    Interlocked.Increment(ref callCount);
-                    return Task.CompletedTask;
-                },
-                (_, _) =>
-                {
-                    Interlocked.Increment(ref callCount);
-                    return Task.CompletedTask;
-                });
+            await copy.AcknowledgeAsync();
 
-            await message.CompleteAsync();
-            await message.AbandonAsync();
-            await message.DeadLetterAsync();
-            await message.DeferAsync();
-            await message.AcknowledgeAsync();
-            await message.NegativeAcknowledgeAsync();
-
-            callCount.Should().Be(1);
+            original.IsSettled.Should().BeTrue();
+            copy.IsSettled.Should().BeTrue();
         }
-    }
 
-    private class TestModel
-    {
-        public int Id { get; set; }
-        public string Name { get; set; } = string.Empty;
-    }
+        [Fact]
+        public async Task SettlingBoth_SettlesOnce()
+        {
+            var original = Create();
+            var copy = original.WithBody(7);
 
-    private class OtherModel
-    {
-        public string Value { get; set; } = string.Empty;
+            await original.RejectAsync(true);
+            await copy.AcknowledgeAsync();
+            await ((ServiceBusMessage<int>)copy).DeadLetterAsync("x");
+
+            _settled.Should().Equal("requeue");
+        }
     }
 }

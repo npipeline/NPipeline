@@ -1,102 +1,70 @@
 using System.Text;
-using System.Text.Json;
 using Confluent.Kafka;
 using NPipeline.Connectors.Kafka.Models;
+using NPipeline.Connectors.Messaging;
 using NPipeline.ErrorHandling;
 using NPipeline.Pipeline;
-using DeadLetterEnvelope = NPipeline.ErrorHandling.DeadLetterEnvelope;
 
 namespace NPipeline.Connectors.Kafka.DeadLetter;
 
 /// <summary>
-///     Dead-letter sink that sends failed items to a Kafka topic.
-///     Implements NPipeline's <see cref="IDeadLetterSink" /> interface for consistency with other connectors.
+///     A pipeline dead-letter sink that produces failed items to a Kafka topic, with the error in <c>x-dead-letter-*</c>
+///     headers. A message that could not be deserialized (<see cref="MessageFailure" />) is produced with its original value,
+///     key and headers, so it can be replayed once fixed; anything else is serialized with the serializer.
 /// </summary>
 public sealed class KafkaDeadLetterSink : IDeadLetterSink
 {
-    private readonly string _deadLetterTopic;
-    private readonly JsonSerializerOptions _jsonOptions;
-    private readonly IProducer<string, byte[]> _producer;
+    private readonly IProducer<byte[]?, byte[]> _producer;
+    private readonly IMessageSerializer _serializer;
+    private readonly string _topic;
 
-    /// <summary>
-    ///     Initializes a new instance of <see cref="KafkaDeadLetterSink" />.
-    /// </summary>
-    /// <param name="producer">The Kafka producer to use for publishing dead-letter messages.</param>
-    /// <param name="deadLetterTopic">The topic to publish dead-letter messages to.</param>
-    public KafkaDeadLetterSink(
-        IProducer<string, byte[]> producer,
-        string deadLetterTopic)
+    /// <summary>Creates a sink that produces to <paramref name="topic" /> through <paramref name="producer" />, which the caller owns.</summary>
+    public KafkaDeadLetterSink(IProducer<byte[]?, byte[]> producer, string topic, IMessageSerializer? serializer = null)
     {
         _producer = producer ?? throw new ArgumentNullException(nameof(producer));
-        _deadLetterTopic = deadLetterTopic ?? throw new ArgumentNullException(nameof(deadLetterTopic));
-
-        _jsonOptions = new JsonSerializerOptions
-        {
-            WriteIndented = false,
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        };
+        _topic = topic ?? throw new ArgumentNullException(nameof(topic));
+        _serializer = serializer ?? JsonMessageSerializer.Default;
     }
 
     /// <inheritdoc />
-    public async Task HandleAsync(
-        DeadLetterEnvelope envelope,
-        PipelineContext context,
-        CancellationToken cancellationToken)
+    public async Task HandleAsync(DeadLetterEnvelope envelope, PipelineContext context, CancellationToken cancellationToken)
     {
-        // Get correlation ID from attribution or context
-        var correlationId = envelope.Attribution.CorrelationId?.ToString() ?? GetCorrelationId(context);
+        ArgumentNullException.ThrowIfNull(envelope);
 
-        // Create Kafka-specific dead-letter envelope with metadata
-        var kafkaEnvelope = new Models.DeadLetterEnvelope
+        var headers = new Headers
         {
-            NodeId = envelope.Attribution.DecisionNodeId,
-            OriginalItem = envelope.Item,
-            ExceptionType = envelope.Error.GetType().FullName,
-            ExceptionMessage = envelope.Error.Message,
-            StackTrace = envelope.Error.StackTrace,
-            Timestamp = DateTime.UtcNow,
-            CorrelationId = correlationId,
+            { "x-dead-letter-reason", Encoding.UTF8.GetBytes(envelope.Error.Message) },
+            { "x-dead-letter-exception", Encoding.UTF8.GetBytes(envelope.Error.GetType().FullName ?? envelope.Error.GetType().Name) },
+            { "x-dead-letter-node", Encoding.UTF8.GetBytes(envelope.Attribution.DecisionNodeId) },
+            { "x-dead-letter-origin-node", Encoding.UTF8.GetBytes(envelope.Attribution.OriginNodeId) },
         };
 
-        // Extract Kafka-specific metadata if item implements IKafkaMessageMetadata
-        if (envelope.Item is IKafkaMessageMetadata kafkaMetadata)
+        var message = new Message<byte[]?, byte[]> { Headers = headers };
+
+        switch (envelope.Item)
         {
-            kafkaEnvelope.OriginalTopic = kafkaMetadata.Topic;
-            kafkaEnvelope.Partition = kafkaMetadata.Partition;
-            kafkaEnvelope.Offset = kafkaMetadata.Offset;
+            case MessageFailure failure:
+                message.Value = failure.Body.ToArray();
+                headers.Add("x-dead-letter-source", Encoding.UTF8.GetBytes(failure.Source));
+                headers.Add("x-dead-letter-message-id", Encoding.UTF8.GetBytes(failure.MessageId));
+
+                if (failure.Metadata.TryGetValue("Key", out var key) && key is string text)
+                    message.Key = Encoding.UTF8.GetBytes(text);
+
+                break;
+            case IAcknowledgableMessage received:
+                message.Value = _serializer.Serialize(received.Body, new MessageContext(_topic));
+                headers.Add("x-dead-letter-message-id", Encoding.UTF8.GetBytes(received.MessageId));
+
+                if (received is IKafkaReceived { Key: { } receivedKey })
+                    message.Key = Encoding.UTF8.GetBytes(receivedKey);
+
+                break;
+            default:
+                message.Value = _serializer.Serialize(envelope.Item, new MessageContext(_topic));
+                break;
         }
 
-        // Serialize the envelope to JSON
-        var payload = JsonSerializer.SerializeToUtf8Bytes(kafkaEnvelope, _jsonOptions);
-
-        // Create the message with headers
-        var message = new Message<string, byte[]>
-        {
-            Key = correlationId ?? Guid.NewGuid().ToString(),
-            Value = payload,
-            Headers = new Headers
-            {
-                { "x-dead-letter-reason", Encoding.UTF8.GetBytes(envelope.Error.GetType().Name) },
-                { "x-original-node", Encoding.UTF8.GetBytes(envelope.Attribution.DecisionNodeId) },
-                { "x-origin-node", Encoding.UTF8.GetBytes(envelope.Attribution.OriginNodeId) },
-            },
-        };
-
-        // Produce to dead-letter topic (no retries in sink - let NPipeline handle retries)
-        await _producer.ProduceAsync(_deadLetterTopic, message, cancellationToken).ConfigureAwait(false);
-    }
-
-    private static string? GetCorrelationId(PipelineContext context)
-    {
-        // Try to get correlation ID from context parameters
-        if (context.Parameters.TryGetValue("CorrelationId", out var correlationIdObj) && correlationIdObj is string correlationId)
-            return correlationId;
-
-        // Try to get from Items dictionary
-        if (context.Items.TryGetValue("CorrelationId", out var itemsCorrelationIdObj) && itemsCorrelationIdObj is string itemsCorrelationId)
-            return itemsCorrelationId;
-
-        // Generate a new correlation ID if not present
-        return Guid.NewGuid().ToString();
+        _ = await _producer.ProduceAsync(_topic, message, cancellationToken).ConfigureAwait(false);
     }
 }

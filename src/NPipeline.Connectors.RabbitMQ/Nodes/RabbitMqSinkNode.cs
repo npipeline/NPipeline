@@ -1,16 +1,11 @@
-using System.Diagnostics;
-using System.Runtime.ExceptionServices;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
-using NPipeline.Connectors.Abstractions;
-using NPipeline.Connectors.Configuration;
+using NPipeline.Connectors.Diagnostics;
+using NPipeline.Connectors.Messaging;
 using NPipeline.Connectors.RabbitMQ.Configuration;
-using NPipeline.Connectors.RabbitMQ.Connection;
-using NPipeline.Connectors.RabbitMQ.Metrics;
 using NPipeline.Connectors.RabbitMQ.Models;
 using NPipeline.Connectors.RabbitMQ.Topology;
-using NPipeline.Connectors.Serialization;
 using NPipeline.DataFlow;
+using NPipeline.ErrorHandling;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 using NResilience;
@@ -19,516 +14,272 @@ using RabbitMQ.Client;
 namespace NPipeline.Connectors.RabbitMQ.Nodes;
 
 /// <summary>
-///     Sink node that publishes messages to a RabbitMQ exchange with support for
-///     publisher confirms, batching, and acknowledgment pass-through.
+///     Publishes to a RabbitMQ exchange. Messages go in batches of <see cref="RabbitMqWriteOptions{T}.BatchSize" />, each
+///     batch's publishes issued together and their confirms awaited together. Written through <c>Acknowledging()</c>, each
+///     received message is acknowledged once its body is confirmed, and one that cannot be published is handled as
+///     <see cref="RabbitMqWriteOptions{T}.FailedMessages" /> says. Create one with <see cref="RabbitMqConnector.Sink{T}" />.
 /// </summary>
-/// <typeparam name="T">The type of messages to publish.</typeparam>
-public sealed class RabbitMqSinkNode<T> : SinkNode<T>
+/// <typeparam name="T">The body type.</typeparam>
+public sealed class RabbitMqSinkNode<T> : SinkNode<T>, IMessageSink<T>
 {
-    private readonly IRabbitMqConnectionManager _connectionManager;
-    private readonly ILogger _logger;
-    private readonly IRabbitMqMetrics _metrics;
-    private readonly RabbitMqSinkOptions _options;
-    private readonly Resilience _publishPolicy;
-    private readonly IMessageSerializer _serializer;
-    private bool _topologyDeclared;
+    private readonly RabbitMqWriteOptions<T> _options;
+    private readonly Resilience? _retries;
+    private ILogger _logger = Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance;
 
-    /// <summary>
-    ///     Creates a new <see cref="RabbitMqSinkNode{T}" /> with full dependency injection.
-    /// </summary>
-    public RabbitMqSinkNode(
-        RabbitMqSinkOptions options,
-        IRabbitMqConnectionManager connectionManager,
-        IMessageSerializer serializer,
-        IRabbitMqMetrics? metrics = null,
-        ILogger<RabbitMqSinkNode<T>>? logger = null)
+    /// <summary>Creates a sink and validates <paramref name="options" />.</summary>
+    public RabbitMqSinkNode(RabbitMqWriteOptions<T> options)
     {
-        _options = options ?? throw new ArgumentNullException(nameof(options));
-        _connectionManager = connectionManager ?? throw new ArgumentNullException(nameof(connectionManager));
-        _serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
-        _metrics = metrics ?? NullRabbitMqMetrics.Instance;
-        _logger = logger ?? NullLogger<RabbitMqSinkNode<T>>.Instance;
-        _options.Validate();
-        _publishPolicy = _options.Resilience.WithListener(OnResilienceEvent);
+        ArgumentNullException.ThrowIfNull(options);
+        options.Validate();
+        _options = options;
+        _retries = options.Resilience.Attempts > 1
+            ? (options.Resilience with { Attempts = options.Resilience.Attempts - 1 }).WithListener(OnResilienceEvent)
+            : null;
     }
 
     /// <inheritdoc />
-    public override async Task ConsumeAsync(IDataStream<T> input, PipelineContext context, CancellationToken cancellationToken)
+    public override Task ConsumeAsync(IDataStream<T> input, PipelineContext context, CancellationToken cancellationToken) =>
+        WriteAsync(input, static item => item, static _ => null, context, cancellationToken);
+
+    /// <inheritdoc />
+    public Task ConsumeMessagesAsync(IDataStream<IAcknowledgableMessage<T>> input, PipelineContext context, CancellationToken cancellationToken) =>
+        WriteAsync(input, static message => message.Body, static message => message, context, cancellationToken);
+
+    private async Task WriteAsync<TItem>(IDataStream<TItem> input, Func<TItem, T> body, Func<TItem, IAcknowledgableMessage?> source,
+        PipelineContext context, CancellationToken cancellationToken)
     {
-        // Ensure topology is declared once
-        if (!_topologyDeclared && _options.Topology is { AutoDeclare: true })
+        ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(context);
+
+        _logger = context.Observability.LoggerFactory.CreateLogger(typeof(RabbitMqSinkNode<T>).FullName ?? nameof(RabbitMqSinkNode<T>));
+        var deadLetters = OpenDeadLetterChannel(context);
+        await DeclareAsync(cancellationToken).ConfigureAwait(false);
+
+        await foreach (var batch in input.BatchAsync(_options.BatchSize, _options.BatchLinger, cancellationToken).ConfigureAwait(false))
         {
-            var setupChannel = await _connectionManager.GetPooledChannelAsync(_options.EnablePublisherConfirms, cancellationToken).ConfigureAwait(false);
+            var outgoing = new Outgoing[batch.Count];
+            var i = 0;
+
+            foreach (var item in batch)
+            {
+                var value = body(item);
+                var from = source(item);
+                var routingKey = _options.RoutingKeySelector?.Invoke(value) ?? _options.RoutingKey;
+                var bytes = _options.Serializer.Serialize(value, new MessageContext(_options.Exchange.Length > 0 ? _options.Exchange : routingKey));
+                outgoing[i++] = new Outgoing(value, from, routingKey, Properties(from), bytes);
+            }
+
+            await PublishBatchAsync(outgoing, deadLetters, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private async Task PublishBatchAsync(Outgoing[] batch, DeadLetterChannel deadLetters, CancellationToken cancellationToken)
+    {
+        var errors = new Exception?[batch.Length];
+        var channel = await _options.Connection.GetPooledChannelAsync(_options.PublisherConfirms, cancellationToken).ConfigureAwait(false);
+
+        try
+        {
+            // Issue every publish, then await the confirms: the broker confirms a batch in about one round trip.
+            using var confirms = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+
+            if (_options.PublisherConfirms)
+                confirms.CancelAfter(_options.ConfirmTimeout);
+
+            // Each is awaited exactly once below, as RabbitMQ.Client's batch-confirm pattern does.
+#pragma warning disable CA2012
+            var publishes = new ValueTask[batch.Length];
+
+            for (var i = 0; i < batch.Length; i++)
+            {
+                publishes[i] = Publish(channel, batch[i], confirms.Token, cancellationToken);
+            }
+#pragma warning restore CA2012
+
+            for (var i = 0; i < batch.Length; i++)
+            {
+                try
+                {
+                    await publishes[i].ConfigureAwait(false);
+                }
+                catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+                {
+                    errors[i] = ex;
+                }
+            }
+        }
+        finally
+        {
+            _options.Connection.ReturnChannel(channel);
+        }
+
+        // The batch was each message's first attempt. A failure the classifier calls transient gets the policy's remaining
+        // attempts, one message at a time, on a fresh channel if the old one broke, after the policy's first backoff.
+        var retried = false;
+
+        for (var i = 0; i < batch.Length; i++)
+        {
+            if (errors[i] is not { } first || _retries is null || _options.Resilience.Classifier.ClassifyException(first).Kind == VerdictKind.Permanent)
+                continue;
+
+            if (!retried)
+            {
+                await Task.Delay(_options.Resilience.Backoff.TransientBase, cancellationToken).ConfigureAwait(false);
+                retried = true;
+            }
 
             try
             {
-                await TopologyDeclarer.DeclareSinkTopologyAsync(setupChannel, _options, _logger, cancellationToken)
+                await _retries.RunAsync(static (state, ct) => state.Node.PublishOnceAsync(state.Message, ct), (Node: this, Message: batch[i]), cancellationToken)
                     .ConfigureAwait(false);
 
-                _topologyDeclared = true;
+                errors[i] = null;
             }
-            finally
+            catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
             {
-                _connectionManager.ReturnChannel(setupChannel);
+                errors[i] = ex;
             }
         }
 
-        if (_options.Batching is not null)
-            await ExecuteBatchedAsync(input, cancellationToken).ConfigureAwait(false);
-        else
-            await ExecuteSequentialAsync(input, cancellationToken).ConfigureAwait(false);
-    }
-
-    private async Task ExecuteSequentialAsync(IDataStream<T> input, CancellationToken cancellationToken)
-    {
-        var lease = new ChannelLease(await _connectionManager.GetPooledChannelAsync(_options.EnablePublisherConfirms, cancellationToken).ConfigureAwait(false));
-
-        try
-        {
-            await foreach (var item in input.WithCancellation(cancellationToken).ConfigureAwait(false))
-            {
-                await PublishItemAsync(lease, item, cancellationToken).ConfigureAwait(false);
-            }
-        }
-        finally
-        {
-            _connectionManager.ReturnChannel(lease.Channel);
-        }
-    }
-
-    private async Task ExecuteBatchedAsync(IDataStream<T> input, CancellationToken cancellationToken)
-    {
-        var batchOptions = _options.Batching!;
-        var batch = new List<(T Item, ReadOnlyMemory<byte> Body, IAcknowledgableMessage? SourceMsg)>(batchOptions.BatchSize);
-
-        // Guards the batch. Adding, the size-triggered flush, and the linger flush all hold it, so only one flush runs
-        // at a time and a flush never sees the batch change under it.
-        using var batchLock = new SemaphoreSlim(1, 1);
-        using var lingerCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        using var lingerTimer = new PeriodicTimer(batchOptions.LingerTime);
-
-        // Background linger-flush task
-        var flushTask = Task.Run(async () =>
-        {
-            try
-            {
-                while (await lingerTimer.WaitForNextTickAsync(lingerCts.Token).ConfigureAwait(false))
-                {
-                    await batchLock.WaitAsync(lingerCts.Token).ConfigureAwait(false);
-
-                    try
-                    {
-                        await FlushBatchAsync(batch, cancellationToken).ConfigureAwait(false);
-                    }
-                    finally
-                    {
-                        _ = batchLock.Release();
-                    }
-                }
-            }
-            catch (OperationCanceledException) when (lingerCts.IsCancellationRequested)
-            {
-                // Expected during shutdown
-            }
-        }, cancellationToken);
-
-        try
-        {
-            try
-            {
-                await ConsumeIntoBatchesAsync().ConfigureAwait(false);
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                // The pipeline is shutting down. Publish what is already batched, bounded by ShutdownFlushTimeout, so
-                // messages taken from the input are not dropped; then report the cancellation.
-                await lingerCts.CancelAsync().ConfigureAwait(false);
-                await FlushOnShutdownAsync(batch, flushTask).ConfigureAwait(false);
-                throw;
-            }
-
-            // Stop the linger flush before the final flush, so the two cannot run together.
-            await lingerCts.CancelAsync().ConfigureAwait(false);
-            await flushTask.ConfigureAwait(false);
-
-            // Flush remaining
-            await FlushBatchAsync(batch, cancellationToken).ConfigureAwait(false);
-        }
-        finally
-        {
-            await lingerCts.CancelAsync().ConfigureAwait(false);
-
-            try
-            {
-                await flushTask.ConfigureAwait(false);
-            }
-            catch (Exception)
-            {
-                // Already surfaced above, or superseded by the exception leaving this block.
-            }
-        }
-
-        async Task ConsumeIntoBatchesAsync()
-        {
-            await foreach (var item in input.WithCancellation(cancellationToken).ConfigureAwait(false))
-            {
-                // A linger flush that failed has already stopped the timer; fail the node now rather than at the end.
-                if (flushTask.IsFaulted)
-                    await flushTask.ConfigureAwait(false);
-
-                var body = SerializeItem(item);
-                var sourceMsg = ExtractSourceMessage(item);
-
-                await batchLock.WaitAsync(cancellationToken).ConfigureAwait(false);
-
-                try
-                {
-                    batch.Add((item, body, sourceMsg));
-
-                    if (batch.Count >= batchOptions.BatchSize)
-                        await FlushBatchAsync(batch, cancellationToken).ConfigureAwait(false);
-                }
-                finally
-                {
-                    _ = batchLock.Release();
-                }
-            }
-        }
-    }
-
-    /// <summary>
-    ///     Publishes what is left in the batch after the pipeline was cancelled, with its own token bounded by
-    ///     <see cref="RabbitMqSinkOptions.ShutdownFlushTimeout" />. A message that cannot be published in time stays
-    ///     unacknowledged, so the broker redelivers it.
-    /// </summary>
-    private async Task FlushOnShutdownAsync(
-        List<(T Item, ReadOnlyMemory<byte> Body, IAcknowledgableMessage? SourceMsg)> batch,
-        Task lingerFlush)
-    {
-        try
-        {
-            // Wait for an in-flight linger flush, so the two never publish together.
-            await lingerFlush.ConfigureAwait(false);
-        }
-        catch (Exception)
-        {
-            // The linger flush's own failure does not stop the shutdown flush.
-        }
-
-        if (batch.Count == 0)
-            return;
-
-        using var shutdownCts = new CancellationTokenSource(_options.ShutdownFlushTimeout);
-
-        try
-        {
-            await FlushBatchAsync(batch, shutdownCts.Token).ConfigureAwait(false);
-        }
-        catch (Exception ex)
-        {
-            // Cancellation is what the caller reports; the unpublished messages are redelivered by the broker.
-            LogMessages.PublishFailed(_logger, ex, _options.ExchangeName, ex.Message);
-        }
-    }
-
-    /// <summary>
-    ///     Publishes the batch in order, each message retried on its own, and acknowledges every source message whose
-    ///     publish succeeded, even when a later message fails. The caller must hold the batch lock.
-    /// </summary>
-    private async Task FlushBatchAsync(
-        List<(T Item, ReadOnlyMemory<byte> Body, IAcknowledgableMessage? SourceMsg)> batch,
-        CancellationToken cancellationToken)
-    {
-        if (batch.Count == 0)
-            return;
-
+        // Settle what was published before dealing with failures: RabbitMQ settles messages one by one, so a published
+        // message left unacknowledged would only be delivered and published again.
         var published = 0;
-        ExceptionDispatchInfo? failure = null;
-        var failedRoutingKey = _options.RoutingKey;
-        var lease = new ChannelLease(await _connectionManager.GetPooledChannelAsync(_options.EnablePublisherConfirms, cancellationToken).ConfigureAwait(false));
+        var acknowledgements = new List<Task>();
+
+        for (var i = 0; i < batch.Length; i++)
+        {
+            if (errors[i] is not null)
+                continue;
+
+            published++;
+
+            if (batch[i].Source is { } from)
+                acknowledgements.Add(from.AcknowledgeAsync(cancellationToken));
+        }
+
+        // Settled together: a broker that settles each message with its own request (Service Bus) takes one round trip, not one per message.
+        await Task.WhenAll(acknowledgements).ConfigureAwait(false);
+        ConnectorDiagnostics.RecordRowsWritten(RabbitMqSourceNode<T>.ConnectorName, RabbitMqSourceNode<T>.ConnectorName, published);
+
+        for (var i = 0; i < batch.Length; i++)
+        {
+            if (errors[i] is not { } error)
+                continue;
+
+            LogMessages.PublishFailed(_logger, error, _options.Exchange, error.Message);
+
+            switch (_options.FailedMessages)
+            {
+                case FailedMessageAction.Requeue:
+                    // A plain body has no source message to requeue, so its failure fails the write.
+                    if (batch[i].Source is not { } requeue)
+                        throw error;
+
+                    await requeue.RejectAsync(true, cancellationToken).ConfigureAwait(false);
+                    break;
+                case FailedMessageAction.DeadLetter:
+                    await deadLetters.SendAsync(batch[i].Body!, error, cancellationToken).ConfigureAwait(false);
+
+                    if (batch[i].Source is { } handled)
+                        await handled.AcknowledgeAsync(cancellationToken).ConfigureAwait(false);
+
+                    break;
+                default:
+                    // The failed message and the rest of the batch's failures stay unsettled, so they are delivered again.
+                    throw error;
+            }
+        }
+    }
+
+    private async ValueTask PublishOnceAsync(Outgoing message, CancellationToken cancellationToken)
+    {
+        var channel = await _options.Connection.GetPooledChannelAsync(_options.PublisherConfirms, cancellationToken).ConfigureAwait(false);
 
         try
         {
-            // Retrying the whole batch would publish the messages before the failure a second time.
-            foreach (var (item, body, _) in batch)
-            {
-                try
-                {
-                    failedRoutingKey = _options.RoutingKey;
-                    var routingKey = ResolveRoutingKey(item);
-                    failedRoutingKey = routingKey;
-                    var properties = BuildBasicProperties(item);
+            using var confirm = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
-                    await PublishWithRetryAsync(lease, routingKey, properties, body, cancellationToken).ConfigureAwait(false);
-                }
-                catch (Exception ex)
-                {
-                    failure = ExceptionDispatchInfo.Capture(ex);
-                    break;
-                }
+            if (_options.PublisherConfirms)
+                confirm.CancelAfter(_options.ConfirmTimeout);
 
-                published++;
-            }
+            await Publish(channel, message, confirm.Token, cancellationToken).ConfigureAwait(false);
         }
         finally
         {
-            _connectionManager.ReturnChannel(lease.Channel);
+            _options.Connection.ReturnChannel(channel);
         }
-
-        var cancelled = failure?.SourceException is { } error && IsCancellation(error, cancellationToken);
-
-        // The messages before a failure reached the exchange. Leaving them unacknowledged would redeliver them, and the
-        // next run would publish them again. On cancellation the acknowledgements get their own short deadline, since
-        // the pipeline's token has already fired.
-        using (var ackCts = cancelled
-                   ? new CancellationTokenSource(_options.ShutdownFlushTimeout)
-                   : null)
-        {
-            var ackToken = ackCts?.Token ?? cancellationToken;
-
-            for (var i = 0; i < published; i++)
-            {
-                if (batch[i].SourceMsg is { } sourceMsg)
-                    await AcknowledgeSourceMessageAsync(sourceMsg, ackToken).ConfigureAwait(false);
-            }
-        }
-
-        if (published > 0)
-        {
-            _metrics.RecordBatchPublished(_options.ExchangeName, published);
-            LogMessages.BatchPublished(_logger, published, _options.ExchangeName);
-        }
-
-        // Published messages leave the batch whatever happens next, so a later flush never publishes them again.
-        batch.RemoveRange(0, published);
-
-        if (cancelled)
-            failure!.Throw();
-
-        if (failure is not null)
-        {
-            _metrics.RecordPublishError(_options.ExchangeName, failedRoutingKey);
-            LogMessages.PublishFailed(_logger, failure.SourceException, _options.ExchangeName, failure.SourceException.Message);
-
-            // The failed message and those after it stay unacknowledged, so the broker redelivers them.
-            if (!_options.ContinueOnError)
-                failure.Throw();
-        }
-
-        batch.Clear();
     }
 
-    private async Task PublishItemAsync(ChannelLease lease, T item, CancellationToken cancellationToken)
+    /// <summary>Publishes and, with confirms, waits for the broker's until <paramref name="confirm" /> fires.</summary>
+    private async ValueTask Publish(IChannel channel, Outgoing message, CancellationToken confirm, CancellationToken cancellationToken)
     {
-        var routingKey = _options.RoutingKey;
+        try
+        {
+            await channel.BasicPublishAsync(_options.Exchange, message.RoutingKey, _options.Mandatory, message.Properties, message.Bytes, confirm)
+                .ConfigureAwait(false);
+        }
+        catch (OperationCanceledException ex) when (confirm.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+        {
+            // The confirm deadline passed, which the resilience policy treats as a timeout to retry.
+            throw new TimeoutException($"The broker did not confirm the publish to exchange '{_options.Exchange}' within {_options.ConfirmTimeout}.", ex);
+        }
+    }
+
+    private async Task DeclareAsync(CancellationToken cancellationToken)
+    {
+        if (_options.Topology is null)
+            return;
+
+        var channel = await _options.Connection.GetPooledChannelAsync(_options.PublisherConfirms, cancellationToken).ConfigureAwait(false);
 
         try
         {
-            var body = SerializeItem(item);
-            routingKey = ResolveRoutingKey(item);
-
-            // Built once, so every attempt carries the same message ID and a consumer can discard a duplicate.
-            var properties = BuildBasicProperties(item);
-
-            var sw = Stopwatch.StartNew();
-            await PublishWithRetryAsync(lease, routingKey, properties, body, cancellationToken).ConfigureAwait(false);
-            sw.Stop();
-
-            _metrics.RecordPublished(_options.ExchangeName, routingKey, 1);
-            _metrics.RecordPublishLatency(_options.ExchangeName, sw.Elapsed.TotalMilliseconds);
-
-            LogMessages.MessagePublished(_logger, _options.ExchangeName, routingKey);
+            await TopologyDeclarer.DeclareSinkExchangeAsync(channel, _options.Exchange, _options.Topology, _logger, cancellationToken).ConfigureAwait(false);
         }
-        catch (Exception ex) when (!IsCancellation(ex, cancellationToken))
+        finally
         {
-            _metrics.RecordPublishError(_options.ExchangeName, routingKey);
-            LogMessages.PublishFailed(_logger, ex, _options.ExchangeName, ex.Message);
-
-            if (!_options.ContinueOnError)
-                throw;
-
-            return;
+            _options.Connection.ReturnChannel(channel);
         }
-
-        // Acknowledge the source message only once the publish has succeeded, and outside the retried call: a failed
-        // acknowledgement must not publish the message again, because it has already reached the exchange.
-        var sourceMsg = ExtractSourceMessage(item);
-
-        if (sourceMsg is not null)
-            await AcknowledgeSourceMessageAsync(sourceMsg, cancellationToken).ConfigureAwait(false);
     }
 
-    /// <summary>
-    ///     Publishes one message, retrying as <see cref="RabbitMqSinkOptions.Resilience" /> allows. Nothing but the
-    ///     publish itself runs inside the retried call.
-    /// </summary>
-    private ValueTask PublishWithRetryAsync(
-        ChannelLease lease,
-        string routingKey,
-        BasicProperties properties,
-        ReadOnlyMemory<byte> body,
-        CancellationToken cancellationToken)
-    {
-        return _publishPolicy.RunAsync(
-            static (state, ct) => state.Node.PublishOnceAsync(state.Lease, state.RoutingKey, state.Properties, state.Body, ct),
-            (Node: this, Lease: lease, RoutingKey: routingKey, Properties: properties, Body: body),
-            cancellationToken);
-    }
-
-    private async ValueTask PublishOnceAsync(
-        ChannelLease lease,
-        string routingKey,
-        BasicProperties properties,
-        ReadOnlyMemory<byte> body,
-        CancellationToken cancellationToken)
-    {
-        var channel = await EnsureOpenChannelAsync(lease, cancellationToken).ConfigureAwait(false);
-        var sw = Stopwatch.StartNew();
-
-        // With publisher confirms, BasicPublishAsync waits for the broker's confirm. Bound that wait: a confirm that
-        // never arrives fails this attempt as a timeout, which the policy retries. Without confirms there is no wait
-        // to bound; the publish completes once the message is written to the connection.
-        using var confirmCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-
-        if (_options.EnablePublisherConfirms)
-            confirmCts.CancelAfter(_options.ConfirmTimeout);
-
-        try
-        {
-            await channel.BasicPublishAsync(
-                _options.ExchangeName,
-                routingKey,
-                _options.Mandatory,
-                properties,
-                body,
-                confirmCts.Token).ConfigureAwait(false);
-        }
-        catch (OperationCanceledException ex) when (confirmCts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
-        {
-            throw new TimeoutException(
-                $"The broker did not confirm the publish to exchange '{_options.ExchangeName}' within {_options.ConfirmTimeout}.",
-                ex);
-        }
-
-        sw.Stop();
-
-        // Publisher confirms are handled by BasicPublishAsync when
-        // PublisherConfirmationTrackingEnabled is set on the channel.
-        if (_options.EnablePublisherConfirms)
-            _metrics.RecordConfirmLatency(_options.ExchangeName, sw.Elapsed.TotalMilliseconds);
-    }
-
-    /// <summary>
-    ///     Replaces the leased channel when it has closed. A closed channel never reopens, so retrying a publish on it
-    ///     fails the same way every time; a fresh channel from the pool reconnects if the connection was lost.
-    /// </summary>
-    private async ValueTask<IChannel> EnsureOpenChannelAsync(ChannelLease lease, CancellationToken cancellationToken)
-    {
-        if (lease.Channel.IsOpen)
-            return lease.Channel;
-
-        _connectionManager.ReturnChannel(lease.Channel);
-        lease.Channel = await _connectionManager.GetPooledChannelAsync(_options.EnablePublisherConfirms, cancellationToken).ConfigureAwait(false);
-        return lease.Channel;
-    }
-
-    private void OnResilienceEvent(CallEvent callEvent)
-    {
-        if (callEvent.Kind != CallEventKind.Retrying)
-            return;
-
-        LogMessages.PublishRetrying(
-            _logger,
-            callEvent.Exception,
-            _options.ExchangeName,
-            (callEvent.Delay ?? TimeSpan.Zero).TotalMilliseconds,
-            callEvent.AttemptNumber,
-            _options.Resilience.Attempts);
-    }
-
-    private static bool IsCancellation(Exception exception, CancellationToken cancellationToken) =>
-        exception is OperationCanceledException && cancellationToken.IsCancellationRequested;
-
-    private ReadOnlyMemory<byte> SerializeItem(T item)
-    {
-        // If the item is an IAcknowledgableMessage, serialize the body
-        if (item is IAcknowledgableMessage ackMsg)
-            return _serializer.Serialize(ackMsg.Body);
-
-        return _serializer.Serialize(item);
-    }
-
-    private string ResolveRoutingKey(T item)
-    {
-        if (_options.RoutingKeySelector is not null)
-        {
-            if (item is IAcknowledgableMessage ackMsg)
-                return _options.RoutingKeySelector(ackMsg.Body);
-
-            return _options.RoutingKeySelector(item!);
-        }
-
-        return _options.RoutingKey;
-    }
-
-    private BasicProperties BuildBasicProperties(T item)
+    private BasicProperties Properties(IAcknowledgableMessage? source)
     {
         var properties = new BasicProperties
         {
-            ContentType = _options.ContentType ?? _serializer.ContentType,
+            ContentType = _options.ContentType ?? _options.Serializer.ContentType,
             Persistent = _options.Persistent,
-            MessageId = Guid.NewGuid().ToString(),
+            MessageId = Guid.NewGuid().ToString("N"),
             Timestamp = new AmqpTimestamp(DateTimeOffset.UtcNow.ToUnixTimeSeconds()),
+            AppId = _options.AppId,
         };
 
-        if (_options.AppId is not null)
-            properties.AppId = _options.AppId;
+        if (!_options.CopyMessageProperties || source is null)
+            return properties;
 
-        // Forward metadata from source message if available
-        if (item is IRabbitMqMessageMetadata sourceMeta)
+        // The message keeps its id across the hop, so a consumer can drop a duplicate a retry produced.
+        properties.MessageId = source.MessageId;
+
+        if (source is IRabbitMqReceived { Properties: var received })
         {
-            if (sourceMeta.CorrelationId is not null)
-                properties.CorrelationId = sourceMeta.CorrelationId;
+            properties.CorrelationId = received.CorrelationId;
+            properties.Type = received.Type;
+            properties.Priority = received.Priority;
 
-            if (sourceMeta.Headers is not null)
-            {
-                properties.Headers ??= new Dictionary<string, object?>();
-
-                foreach (var header in sourceMeta.Headers)
-                {
-                    properties.Headers[header.Key] = header.Value;
-                }
-            }
+            if (received.Headers is { Count: > 0 } headers)
+                properties.Headers = new Dictionary<string, object?>(headers);
         }
 
         return properties;
     }
 
-    private static IAcknowledgableMessage? ExtractSourceMessage(T item) => item as IAcknowledgableMessage;
-
-    private async Task AcknowledgeSourceMessageAsync(IAcknowledgableMessage message, CancellationToken cancellationToken)
+    private void OnResilienceEvent(CallEvent callEvent)
     {
-        if (_options is not null &&
-            ExtractAckStrategy() == AcknowledgmentStrategy.AutoOnSinkSuccess &&
-            !message.IsAcknowledged)
+        if (callEvent.Kind == CallEventKind.Retrying)
         {
-            await message.AcknowledgeAsync(cancellationToken).ConfigureAwait(false);
-            _metrics.RecordAck("source", 1);
+            LogMessages.PublishRetrying(_logger, callEvent.Exception, _options.Exchange, (callEvent.Delay ?? TimeSpan.Zero).TotalMilliseconds,
+                callEvent.AttemptNumber, _options.Resilience.Attempts);
         }
     }
 
-    private AcknowledgmentStrategy ExtractAckStrategy() =>
-
-        // The source options are not available in the sink, but
-        // we default to AutoOnSinkSuccess which is the most common pattern.
-        AcknowledgmentStrategy.AutoOnSinkSuccess;
-
-    /// <summary>
-    ///     The channel a sequence of publishes uses, replaced when it closes. The holder keeps the current channel so
-    ///     it is the one returned to the pool.
-    /// </summary>
-    private sealed class ChannelLease(IChannel channel)
-    {
-        public IChannel Channel { get; set; } = channel;
-    }
+    private sealed record Outgoing(T Body, IAcknowledgableMessage? Source, string RoutingKey, BasicProperties Properties, byte[] Bytes);
 }

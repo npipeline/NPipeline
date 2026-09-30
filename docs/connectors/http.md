@@ -139,6 +139,7 @@ A request that still fails once retries are spent is handled as `FailedRequests`
 | `Method` | `Post` | `Post`, `Put` or `Patch` |
 | `Headers` | none | Headers sent with every request |
 | `BatchSize` | 1 | The most items per request |
+| `BatchLinger` | 1 s | A partial batch is sent once this long has passed since its first item |
 | `BatchWrapperKey` | `null` | The property to wrap a batch in |
 | `JsonOptions`, `TypeInfo` | web defaults | How items are serialized |
 | `FailedRequests` | `Fail` | See above |

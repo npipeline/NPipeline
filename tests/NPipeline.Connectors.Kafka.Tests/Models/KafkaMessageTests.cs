@@ -1,367 +1,191 @@
 using System.Text;
 using Confluent.Kafka;
-using NPipeline.Connectors.Abstractions;
+using FakeItEasy;
 using NPipeline.Connectors.Kafka.Models;
+using NPipeline.Connectors.Messaging;
 
 namespace NPipeline.Connectors.Kafka.Tests.Models;
 
 /// <summary>
 ///     Unit tests for <see cref="KafkaMessage{T}" />.
 /// </summary>
-public class KafkaMessageTests
+public sealed class KafkaMessageTests
 {
-    #region IKafkaMessageMetadata Tests
+    private static readonly DateTimeOffset ProducedAt = new(2026, 9, 30, 10, 0, 0, TimeSpan.Zero);
 
     [Fact]
-    public void KafkaMessage_ShouldImplementIKafkaMessageMetadata()
+    public void Properties_DescribeThePositionAndTheRecord()
     {
-        // Arrange
-        var headers = new Headers();
-        headers.Add("h", Encoding.UTF8.GetBytes("v"));
+        var headers = new Headers { { "trace", Encoding.UTF8.GetBytes("abc") } };
+        var message = Message(new TestMessage { Id = 1, Name = "Test" }, headers: headers);
 
-        var message = new KafkaMessage<TestMessage>(
-            new TestMessage { Id = 1, Name = "Test" },
-            "test-topic",
-            1,
-            100,
-            "key",
-            DateTime.UtcNow,
-            headers,
-            _ => Task.CompletedTask);
-
-        // Act
-        var metadata = (IKafkaMessageMetadata)message;
-
-        // Assert
-        metadata.Topic.Should().Be("test-topic");
-        metadata.Partition.Should().Be(1);
-        metadata.Offset.Should().Be(100);
-        metadata.Key.Should().Be("key");
+        message.Body.Id.Should().Be(1);
+        message.Position.Should().Be(new TopicPartitionOffset("orders", 2, 100));
+        message.Topic.Should().Be("orders");
+        message.Partition.Should().Be(2);
+        message.Offset.Should().Be(100);
+        message.Key.Should().Be("order-1");
+        message.Timestamp.Should().Be(ProducedAt);
+        message.Headers.Should().BeSameAs(headers);
+        message.IsTombstone.Should().BeFalse();
+        message.IsSettled.Should().BeFalse();
     }
-
-    #endregion
-
-    #region IAcknowledgableMessage Tests
 
     [Fact]
-    public void KafkaMessage_ShouldImplementIAcknowledgableMessage()
+    public void MessageId_IsTopicPartitionOffset()
     {
-        // Arrange & Act
-        var message = new KafkaMessage<TestMessage>(
-            new TestMessage { Id = 1, Name = "Test" },
-            "test-topic",
-            0,
-            0,
-            "key",
-            DateTime.UtcNow,
-            new Headers(),
-            _ => Task.CompletedTask);
-
-        // Assert
-        message.Should().BeAssignableTo<IAcknowledgableMessage<TestMessage>>();
+        Message("body").MessageId.Should().Be("orders/2/100");
     }
-
-    #endregion
-
-    #region MessageId Tests
 
     [Fact]
-    public void MessageId_ShouldReturnTopicPartitionOffsetFormat()
+    public void UntypedBody_IsTheBody()
     {
-        // Arrange
-        var message = new KafkaMessage<TestMessage>(
-            new TestMessage { Id = 1, Name = "Test" },
-            "my-topic",
-            5,
-            12345,
-            "key",
-            DateTime.UtcNow,
-            new Headers(),
-            _ => Task.CompletedTask);
+        IAcknowledgableMessage message = Message("body");
 
-        // Act & Assert
-        message.MessageId.Should().Be("my-topic-5-12345");
+        message.Body.Should().Be("body");
     }
 
-    #endregion
+    [Fact]
+    public void Metadata_HasThePositionKeyTimestampAndHeaders()
+    {
+        var headers = new Headers { { "trace", Encoding.UTF8.GetBytes("abc") }, { "tenant", Encoding.UTF8.GetBytes("acme") } };
+        var message = Message("body", headers: headers);
 
-    #region Test Helpers
+        message.Metadata.Should().BeEquivalentTo(new Dictionary<string, object>
+        {
+            ["Topic"] = "orders",
+            ["Partition"] = 2,
+            ["Offset"] = 100L,
+            ["Timestamp"] = ProducedAt,
+            ["Key"] = "order-1",
+            ["Header.trace"] = "abc",
+            ["Header.tenant"] = "acme",
+        });
+    }
+
+    [Fact]
+    public void Metadata_WithoutAKey_HasNoKey()
+    {
+        Message("body", key: null).Metadata.Should().NotContainKey("Key");
+    }
+
+    [Fact]
+    public async Task AcknowledgeAsync_SettlesOnce()
+    {
+        var acknowledged = 0;
+        var rejected = 0;
+        var message = Message("body", Settlement(() => acknowledged++, _ => rejected++));
+
+        await message.AcknowledgeAsync();
+        await message.AcknowledgeAsync();
+        await message.RejectAsync(true);
+
+        acknowledged.Should().Be(1);
+        rejected.Should().Be(0, "the first settlement wins");
+        message.IsSettled.Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RejectAsync_PassesRequeue(bool requeue)
+    {
+        var requeues = new List<bool>();
+        var message = Message("body", Settlement(() => { }, requeues.Add));
+
+        await message.RejectAsync(requeue);
+        await message.AcknowledgeAsync();
+
+        requeues.Should().Equal(requeue);
+        message.IsSettled.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task AcknowledgeAsync_WhenTheSettlementFails_ReportsTheFailure()
+    {
+        var message = Message("body", new MessageSettlement(_ => throw new InvalidOperationException("broker gone"), (_, _) => Task.CompletedTask));
+
+        var act = () => message.AcknowledgeAsync();
+
+        _ = await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("broker gone");
+    }
+
+    [Fact]
+    public void WithBody_KeepsTheRecord_WithTheNewBody()
+    {
+        var headers = new Headers { { "trace", Encoding.UTF8.GetBytes("abc") } };
+        var original = Message(new TestMessage { Id = 7, Name = "Seven" }, headers: headers);
+
+        var mapped = original.WithBody(original.Body.Name);
+
+        var kafka = mapped.Should().BeOfType<KafkaMessage<string>>().Subject;
+        kafka.Body.Should().Be("Seven");
+        kafka.Position.Should().Be(original.Position);
+        kafka.Key.Should().Be(original.Key);
+        kafka.Timestamp.Should().Be(original.Timestamp);
+        kafka.Headers.Should().BeSameAs(headers);
+        kafka.MessageId.Should().Be(original.MessageId);
+        kafka.Metadata.Should().BeSameAs(original.Metadata, "the metadata is shared");
+    }
+
+    [Fact]
+    public async Task WithBody_SharesSettlement()
+    {
+        var acknowledged = 0;
+        var original = Message("body", Settlement(() => acknowledged++, _ => { }));
+        var mapped = original.WithBody(42);
+
+        await mapped.AcknowledgeAsync();
+        await original.AcknowledgeAsync();
+        await original.RejectAsync(false);
+
+        acknowledged.Should().Be(1);
+        original.IsSettled.Should().BeTrue("settling the copy settles the original");
+        mapped.IsSettled.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Tombstone_IsReported()
+    {
+        var message = new KafkaMessage<string>(default!, new TopicPartitionOffset("orders", 0, 5), "deleted-key", ProducedAt, [], true,
+            Settlement(() => { }, _ => { }), null);
+
+        message.IsTombstone.Should().BeTrue();
+        message.Body.Should().BeNull();
+    }
+
+    [Fact]
+    public void GroupMetadata_ComesFromTheConsumer_WhenThereIsOne()
+    {
+        var group = A.Fake<IConsumerGroupMetadata>();
+        IKafkaReceived withGroup = new KafkaMessage<string>("body", new TopicPartitionOffset("orders", 0, 1), null, ProducedAt, [], false,
+            Settlement(() => { }, _ => { }), () => group);
+
+        IKafkaReceived withoutGroup = Message("body");
+
+        withGroup.GroupMetadata().Should().BeSameAs(group);
+        withoutGroup.GroupMetadata().Should().BeNull();
+    }
+
+    private static KafkaMessage<T> Message<T>(T body, MessageSettlement? settlement = null, string? key = "order-1", Headers? headers = null) =>
+        new(body, new TopicPartitionOffset("orders", 2, 100), key, ProducedAt, headers ?? [], false, settlement ?? Settlement(() => { }, _ => { }), null);
+
+    private static MessageSettlement Settlement(Action acknowledge, Action<bool> reject) =>
+        new(_ =>
+            {
+                acknowledge();
+                return Task.CompletedTask;
+            },
+            (requeue, _) =>
+            {
+                reject(requeue);
+                return Task.CompletedTask;
+            });
 
     private sealed class TestMessage
     {
         public int Id { get; init; }
+
         public string Name { get; init; } = string.Empty;
     }
-
-    #endregion
-
-    #region Constructor Tests
-
-    [Fact]
-    public void Constructor_ShouldSetProperties()
-    {
-        // Arrange
-        var body = new TestMessage { Id = 1, Name = "Test" };
-        var topic = "test-topic";
-        var partition = 1;
-        var offset = 100L;
-        var key = "test-key";
-        var timestamp = DateTime.UtcNow;
-        var headers = new Headers();
-        headers.Add("header1", Encoding.UTF8.GetBytes("value1"));
-        Func<CancellationToken, Task> acknowledgeCallback = _ => Task.CompletedTask;
-
-        // Act
-        var message = new KafkaMessage<TestMessage>(
-            body,
-            topic,
-            partition,
-            offset,
-            key,
-            timestamp,
-            headers,
-            acknowledgeCallback);
-
-        // Assert
-        message.Body.Should().Be(body);
-        message.Topic.Should().Be(topic);
-        message.Partition.Should().Be(partition);
-        message.Offset.Should().Be(offset);
-        message.Key.Should().Be(key);
-        message.Timestamp.Should().Be(timestamp);
-        message.Headers.Should().NotBeEmpty();
-        message.IsAcknowledged.Should().BeFalse();
-    }
-
-    [Fact]
-    public void Constructor_WithNullHeaders_ShouldInitializeEmptyHeaders()
-    {
-        // Arrange & Act
-        var message = new KafkaMessage<TestMessage>(
-            new TestMessage { Id = 1, Name = "Test" },
-            "test-topic",
-            0,
-            0,
-            "key",
-            DateTime.UtcNow,
-            null!,
-            _ => Task.CompletedTask);
-
-        // Assert
-        message.Headers.Should().NotBeNull();
-        message.Headers.Should().BeEmpty();
-    }
-
-    [Fact]
-    public void Constructor_WithNullAcknowledgeCallback_ShouldNotThrow()
-    {
-        // Arrange & Act - null acknowledge callback is valid for exactly-once semantics
-        // where acknowledgment is handled via SendOffsetsToTransaction in the sink
-        var message = new KafkaMessage<TestMessage>(
-            new TestMessage { Id = 1, Name = "Test" },
-            "test-topic",
-            0,
-            0,
-            "key",
-            DateTime.UtcNow,
-            new Headers(),
-            null);
-
-        // Assert
-        message.Should().NotBeNull();
-        message.IsAcknowledged.Should().BeFalse();
-    }
-
-    #endregion
-
-    #region AcknowledgeAsync Tests
-
-    [Fact]
-    public async Task AcknowledgeAsync_WhenCalled_ShouldSetIsAcknowledgedToTrue()
-    {
-        // Arrange
-        var message = new KafkaMessage<TestMessage>(
-            new TestMessage { Id = 1, Name = "Test" },
-            "test-topic",
-            0,
-            0,
-            "key",
-            DateTime.UtcNow,
-            new Headers(),
-            _ => Task.CompletedTask);
-
-        // Act
-        await message.AcknowledgeAsync();
-
-        // Assert
-        message.IsAcknowledged.Should().BeTrue();
-    }
-
-    [Fact]
-    public async Task AcknowledgeAsync_WhenCalledMultipleTimes_ShouldOnlyInvokeOnce()
-    {
-        // Arrange
-        var invokeCount = 0;
-
-        var message = new KafkaMessage<TestMessage>(
-            new TestMessage { Id = 1, Name = "Test" },
-            "test-topic",
-            0,
-            0,
-            "key",
-            DateTime.UtcNow,
-            new Headers(),
-            _ =>
-            {
-                invokeCount++;
-                return Task.CompletedTask;
-            });
-
-        // Act
-        await message.AcknowledgeAsync();
-        await message.AcknowledgeAsync();
-        await message.AcknowledgeAsync();
-
-        // Assert
-        invokeCount.Should().Be(1);
-        message.IsAcknowledged.Should().BeTrue();
-    }
-
-    [Fact]
-    public async Task AcknowledgeAsync_WhenAcknowledgeFuncThrows_ShouldNotMarkAsAcknowledged()
-    {
-        // Arrange
-        var message = new KafkaMessage<TestMessage>(
-            new TestMessage { Id = 1, Name = "Test" },
-            "test-topic",
-            0,
-            0,
-            "key",
-            DateTime.UtcNow,
-            new Headers(),
-            _ => throw new InvalidOperationException("Commit failed"));
-
-        // Act
-        var act = () => message.AcknowledgeAsync();
-
-        // Assert
-        await act.Should().ThrowAsync<InvalidOperationException>();
-        message.IsAcknowledged.Should().BeFalse();
-    }
-
-    #endregion
-
-    #region WithBody Tests
-
-    [Fact]
-    public void WithBody_ShouldCreateNewMessageWithNewBody()
-    {
-        // Arrange
-        var originalBody = new TestMessage { Id = 1, Name = "Original" };
-        var newBody = new TestMessage { Id = 2, Name = "New" };
-        var headers = new Headers();
-        headers.Add("h", Encoding.UTF8.GetBytes("v"));
-
-        var message = new KafkaMessage<TestMessage>(
-            originalBody,
-            "test-topic",
-            1,
-            100,
-            "key",
-            DateTime.UtcNow,
-            headers,
-            _ => Task.CompletedTask);
-
-        // Act
-        var newMessage = message.WithBody(newBody);
-
-        // Assert
-        newMessage.Body.Should().Be(newBody);
-
-        // Cast to access KafkaMessage properties
-        var kafkaMessage = (KafkaMessage<TestMessage>)newMessage;
-        kafkaMessage.Topic.Should().Be(message.Topic);
-        kafkaMessage.Partition.Should().Be(message.Partition);
-        kafkaMessage.Offset.Should().Be(message.Offset);
-        kafkaMessage.Key.Should().Be(message.Key);
-    }
-
-    [Fact]
-    public void WithBody_WithDifferentType_ShouldCreateNewMessageWithNewType()
-    {
-        // Arrange
-        var originalBody = new TestMessage { Id = 1, Name = "Original" };
-        var newBody = "String body";
-
-        var message = new KafkaMessage<TestMessage>(
-            originalBody,
-            "test-topic",
-            1,
-            100,
-            "key",
-            DateTime.UtcNow,
-            new Headers(),
-            _ => Task.CompletedTask);
-
-        // Act
-        var newMessage = message.WithBody(newBody);
-
-        // Assert
-        newMessage.Body.Should().Be(newBody);
-    }
-
-    #endregion
-
-    #region Metadata Tests
-
-    [Fact]
-    public void Metadata_ShouldContainKafkaProperties()
-    {
-        // Arrange
-        var timestamp = DateTime.UtcNow;
-
-        var message = new KafkaMessage<TestMessage>(
-            new TestMessage { Id = 1, Name = "Test" },
-            "test-topic",
-            1,
-            100,
-            "test-key",
-            timestamp,
-            new Headers(),
-            _ => Task.CompletedTask);
-
-        // Act & Assert
-        message.Metadata.Should().ContainKey("Topic");
-        message.Metadata["Topic"].Should().Be("test-topic");
-        message.Metadata.Should().ContainKey("Partition");
-        message.Metadata["Partition"].Should().Be(1);
-        message.Metadata.Should().ContainKey("Offset");
-        message.Metadata["Offset"].Should().Be(100L);
-        message.Metadata.Should().ContainKey("Key");
-        message.Metadata["Key"].Should().Be("test-key");
-    }
-
-    [Fact]
-    public void Metadata_ShouldContainHeaders()
-    {
-        // Arrange
-        var headers = new Headers();
-        headers.Add("Content-Type", Encoding.UTF8.GetBytes("application/json"));
-
-        var message = new KafkaMessage<TestMessage>(
-            new TestMessage { Id = 1, Name = "Test" },
-            "test-topic",
-            0,
-            0,
-            "key",
-            DateTime.UtcNow,
-            headers,
-            _ => Task.CompletedTask);
-
-        // Act & Assert
-        message.Metadata.Should().ContainKey("Header.Content-Type");
-        message.Metadata["Header.Content-Type"].Should().Be("application/json");
-    }
-
-    #endregion
 }

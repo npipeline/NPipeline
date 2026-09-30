@@ -1,224 +1,111 @@
 using Confluent.Kafka;
-using NPipeline.Connectors.Configuration;
-using NPipeline.Connectors.Kafka.Configuration;
-using NPipeline.Connectors.Kafka.Metrics;
+using NPipeline.Connectors.Errors;
+using NPipeline.Connectors.Kafka;
+using NPipeline.Connectors.Kafka.DeadLetter;
 using NPipeline.Connectors.Kafka.Models;
-using NPipeline.Connectors.Kafka.Nodes;
 using NPipeline.Connectors.Kafka.Reliability;
+using NPipeline.Connectors.Messaging;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
-using DeliverySemantic = NPipeline.Connectors.Kafka.Configuration.DeliverySemantic;
 
 namespace Sample_KafkaConnector;
 
 /// <summary>
-///     Pipeline demonstrating Kafka connector usage for streaming event processing.
+///     Consumes events from <c>input-events</c>, enriches them, and produces them to <c>output-events</c>. Each input
+///     message is acknowledged (its offset committed) once its enriched copy is on the output topic.
 /// </summary>
-public sealed class KafkaConnectorPipeline : IPipelineDefinition
+/// <param name="deadLetterProducer">The producer the dead-letter sink uses; the caller owns it.</param>
+/// <param name="exactlyOnce">Whether the sink writes in transactions that also commit the input offsets.</param>
+public sealed class KafkaConnectorPipeline(IProducer<byte[]?, byte[]> deadLetterProducer, bool exactlyOnce) : IPipelineDefinition
 {
+    public const string BootstrapServers = "localhost:9092";
+    public const string InputTopic = "input-events";
+    public const string OutputTopic = "output-events";
+    public const string DeadLetterTopic = "dead-letter-events";
+    public const string ConsumerGroup = "sample-consumer-group";
+
     /// <inheritdoc />
     public void Define(PipelineBuilder builder, PipelineContext context)
     {
-        var source = builder.AddSource<KafkaSourceNode<SampleMessage>, KafkaMessage<SampleMessage>>(
+        var source = builder.AddSource(
+            KafkaConnector.Source<SampleMessage>(BootstrapServers, InputTopic, ConsumerGroup, o => o with
+            {
+                ClientId = "sample-kafka-connector",
+                AutoOffsetReset = AutoOffsetReset.Earliest,
+
+                // A message that isn't a valid SampleMessage goes to the dead-letter topic, and the read moves on.
+                RowErrorHandler = _ => RowErrorAction.DeadLetter,
+
+                // Retry a retriable consume error up to three times, waiting at most five seconds between attempts.
+                Resilience = KafkaConnectorResilience.Default with
+                {
+                    Backoff = KafkaConnectorResilience.Default.Backoff with { MaximumDelay = TimeSpan.FromSeconds(5) },
+                },
+            }),
             "kafka-source");
 
-        var enrich = builder.AddTransform<MessageEnricher, KafkaMessage<SampleMessage>, SampleMessage>(
-            "message-enricher");
+        var enrich = builder.AddTransform<MessageEnricher, KafkaMessage<SampleMessage>, IAcknowledgableMessage<SampleMessage>>("message-enricher");
 
-        var sink = builder.AddSink<KafkaSinkNode<SampleMessage>, SampleMessage>(
+        // Acknowledging() settles each input message once the broker has its output. Keying by customer keeps each
+        // customer's events on one partition, in order.
+        var sink = builder.AddSink(
+            KafkaConnector.Sink<SampleMessage>(BootstrapServers, OutputTopic, o => o with
+            {
+                ClientId = "sample-kafka-connector",
+                KeySelector = message => message.CustomerId,
+                BatchSize = 100,
+
+                // Exactly-once: each batch and the offsets of the messages it came from commit in one transaction.
+                // Each running instance needs its own id.
+                TransactionalId = exactlyOnce ? "sample-kafka-connector-1" : null,
+            }).Acknowledging(),
             "kafka-sink");
 
         builder.Connect(source, enrich);
         builder.Connect(enrich, sink);
+
+        builder.AddDeadLetterSink(new KafkaDeadLetterSink(deadLetterProducer, DeadLetterTopic));
     }
 
-    /// <summary>
-    ///     Creates the default Kafka configuration for this sample.
-    /// </summary>
-    public static KafkaConfiguration CreateConfiguration() =>
-        new()
-        {
-            BootstrapServers = "localhost:9092",
-            ClientId = "sample-kafka-connector",
-            SourceTopic = "input-events",
-            ConsumerGroupId = "sample-consumer-group",
-            AutoOffsetReset = AutoOffsetReset.Earliest,
-            EnableAutoCommit = true,
-            SinkTopic = "output-events",
-            EnableIdempotence = true,
-            BatchSize = 100,
-            LingerMs = 10,
-            Acks = Acks.All,
-            DeliverySemantic = DeliverySemantic.AtLeastOnce,
-            AcknowledgmentStrategy = AcknowledgmentStrategy.AutoOnSinkSuccess,
-            ContinueOnError = false,
+    /// <summary>Describes what the pipeline does.</summary>
+    public static string GetDescription(bool exactlyOnce) =>
+        $"""
+         KafkaConnector.Source<SampleMessage>   ({InputTopic}, group {ConsumerGroup})
+           -> MessageEnricher                   (message.WithBody(enriched))
+             -> KafkaConnector.Sink<SampleMessage>.Acknowledging()   ({OutputTopic}, keyed by CustomerId)
 
-            // Retries a retriable consume error up to three times, waiting at most five seconds between attempts.
-            // The sink does not retry: librdkafka and the idempotent producer already do.
-            Resilience = KafkaConnectorResilience.Default with
-            {
-                Backoff = KafkaConnectorResilience.Default.Backoff with { MaximumDelay = TimeSpan.FromSeconds(5) },
-            },
-        };
-
-    /// <summary>
-    ///     Gets a description of what the Kafka pipeline demonstrates.
-    /// </summary>
-    public static string GetDescription() =>
-        """
-        Kafka Connector Sample:
-
-        This sample demonstrates an end-to-end Kafka pipeline using NPipeline:
-
-        Pipeline Flow:
-        KafkaSourceNode<SampleMessage>
-          -> MessageEnricher (adds processing metadata)
-            -> KafkaSinkNode<SampleMessage>
-
-        Key Features:
-        - Kafka consumer group processing from input-events
-        - Simple enrichment transform with metadata
-        - Batched Kafka production to output-events
-        - Consume retries through NResilience, and configurable partitioning
-        """;
+         Undeserializable messages -> KafkaDeadLetterSink ({DeadLetterTopic})
+         Mode: {(exactlyOnce ? "exactly-once (transactional sink)" : "at-least-once")}
+         """;
 }
 
-/// <summary>
-///     Transform node that enriches messages with processing metadata.
-/// </summary>
-public sealed class MessageEnricher : TransformNode<KafkaMessage<SampleMessage>, SampleMessage>
+/// <summary>Adds processing metadata to each event, keeping the Kafka message so it can be acknowledged downstream.</summary>
+public sealed class MessageEnricher : TransformNode<KafkaMessage<SampleMessage>, IAcknowledgableMessage<SampleMessage>>
 {
     /// <inheritdoc />
-    public override ValueTask<SampleMessage> TransformAsync(
-        KafkaMessage<SampleMessage> input,
-        PipelineContext context,
+    public override ValueTask<IAcknowledgableMessage<SampleMessage>> TransformAsync(KafkaMessage<SampleMessage> input, PipelineContext context,
         CancellationToken cancellationToken)
     {
-        var message = input.Body;
-
-        var enriched = new SampleMessage
+        var enriched = input.Body with
         {
-            Id = message.Id,
-            CustomerId = message.CustomerId,
-            EventType = message.EventType,
-            Timestamp = message.Timestamp,
-            Payload = message.Payload,
             ProcessedAt = DateTime.UtcNow,
             ProcessingNode = Environment.MachineName,
         };
 
-        Console.WriteLine($"Processed {enriched.Id} from {input.Topic}/{input.Partition} - {enriched.EventType}");
+        Console.WriteLine($"Processed {enriched.Id} from {input.Topic}/{input.Partition}@{input.Offset} - {enriched.EventType}");
 
-        return ValueTask.FromResult<SampleMessage>(enriched);
+        return ValueTask.FromResult(input.WithBody(enriched));
     }
 }
 
-/// <summary>
-///     Sample message type for demonstration.
-/// </summary>
-public sealed class SampleMessage
+/// <summary>An event read from and written to Kafka as JSON.</summary>
+public sealed record SampleMessage
 {
-    public Guid Id { get; set; }
-    public string CustomerId { get; set; } = string.Empty;
-    public string EventType { get; set; } = string.Empty;
-    public DateTime Timestamp { get; set; }
-    public object? Payload { get; set; }
-    public DateTime? ProcessedAt { get; set; }
-    public string? ProcessingNode { get; set; }
-}
-
-/// <summary>
-///     Simple console-based metrics implementation for demonstration.
-/// </summary>
-public sealed class ConsoleKafkaMetrics : IKafkaMetrics
-{
-    public void RecordProduced(string topic, int count)
-    {
-        Log("Produced", topic, count);
-    }
-
-    public void RecordProduceLatency(string topic, TimeSpan latency)
-    {
-        Log("ProduceLatency", topic, latency.TotalMilliseconds);
-    }
-
-    public void RecordProduceError(string topic, Exception ex)
-    {
-        Log("ProduceError", topic, ex.Message);
-    }
-
-    public void RecordBatchSize(string topic, int size)
-    {
-        Log("BatchSize", topic, size);
-    }
-
-    public void RecordConsumed(string topic, int count)
-    {
-        Log("Consumed", topic, count);
-    }
-
-    public void RecordPollLatency(string topic, TimeSpan latency)
-    {
-        Log("PollLatency", topic, latency.TotalMilliseconds);
-    }
-
-    public void RecordConsumeError(string topic, Exception ex)
-    {
-        Log("ConsumeError", topic, ex.Message);
-    }
-
-    public void RecordCommitLatency(string topic, TimeSpan latency)
-    {
-        Log("CommitLatency", topic, latency.TotalMilliseconds);
-    }
-
-    public void RecordCommitError(string topic, Exception ex)
-    {
-        Log("CommitError", topic, ex.Message);
-    }
-
-    public void RecordLag(string topic, int partition, long lag)
-    {
-        Log($"Lag[{partition}]", topic, lag);
-    }
-
-    public void RecordSerializeLatency(Type type, TimeSpan latency)
-    {
-        Console.WriteLine($"[METRIC] SerializeLatency - Type: {type.Name}, Latency: {latency.TotalMilliseconds}ms");
-    }
-
-    public void RecordDeserializeLatency(Type type, TimeSpan latency)
-    {
-        Console.WriteLine($"[METRIC] DeserializeLatency - Type: {type.Name}, Latency: {latency.TotalMilliseconds}ms");
-    }
-
-    public void RecordSerializeError(Type type, Exception ex)
-    {
-        Console.WriteLine($"[METRIC] SerializeError - Type: {type.Name}, Error: {ex.Message}");
-    }
-
-    public void RecordDeserializeError(Type type, Exception ex)
-    {
-        Console.WriteLine($"[METRIC] DeserializeError - Type: {type.Name}, Error: {ex.Message}");
-    }
-
-    public void RecordTransactionCommit(TimeSpan latency)
-    {
-        Console.WriteLine($"[METRIC] TransactionCommit - Latency: {latency.TotalMilliseconds}ms");
-    }
-
-    public void RecordTransactionAbort(TimeSpan latency)
-    {
-        Console.WriteLine($"[METRIC] TransactionAbort - Latency: {latency.TotalMilliseconds}ms");
-    }
-
-    public void RecordTransactionError(Exception ex)
-    {
-        Console.WriteLine($"[METRIC] TransactionError - Error: {ex.Message}");
-    }
-
-    private static void Log(string metric, string topic, object? value = null)
-    {
-        Console.WriteLine($"[METRIC] {metric} - Topic: {topic}{(value != null ? $", Value: {value}" : string.Empty)}");
-    }
+    public Guid Id { get; init; }
+    public string CustomerId { get; init; } = string.Empty;
+    public string EventType { get; init; } = string.Empty;
+    public DateTime Timestamp { get; init; }
+    public object? Payload { get; init; }
+    public DateTime? ProcessedAt { get; init; }
+    public string? ProcessingNode { get; init; }
 }

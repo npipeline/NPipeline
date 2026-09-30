@@ -1,9 +1,7 @@
-using Microsoft.Extensions.Logging.Abstractions;
+using NPipeline.Connectors.Messaging;
 using NPipeline.Connectors.RabbitMQ.Configuration;
 using NPipeline.Connectors.RabbitMQ.Connection;
 using NPipeline.Connectors.RabbitMQ.Models;
-using NPipeline.Connectors.RabbitMQ.Nodes;
-using NPipeline.Connectors.RabbitMQ.Serialization;
 using NPipeline.Pipeline;
 using RabbitMQ.Client;
 
@@ -12,24 +10,11 @@ namespace NPipeline.Connectors.RabbitMQ.Tests.Integration;
 [Collection("RabbitMQ")]
 public sealed class RabbitMqSourceNodeIntegrationTests : IAsyncDisposable
 {
-    private readonly RabbitMqConnectionManager _connectionManager;
-    private readonly RabbitMqContainerFixture _fixture;
+    private readonly IRabbitMqConnectionManager _connectionManager;
 
     public RabbitMqSourceNodeIntegrationTests(RabbitMqContainerFixture fixture)
     {
-        _fixture = fixture;
-
-        var connectionOptions = new RabbitMqConnectionOptions
-        {
-            HostName = _fixture.HostName,
-            Port = _fixture.Port,
-            UserName = RabbitMqContainerFixture.TestUsername,
-            Password = RabbitMqContainerFixture.TestPassword,
-        };
-
-        _connectionManager = new RabbitMqConnectionManager(
-            connectionOptions,
-            NullLogger<RabbitMqConnectionManager>.Instance);
+        _connectionManager = fixture.Connect();
     }
 
     public async ValueTask DisposeAsync()
@@ -42,39 +27,13 @@ public sealed class RabbitMqSourceNodeIntegrationTests : IAsyncDisposable
     {
         // Arrange
         var queueName = $"test-source-{Guid.NewGuid():N}";
-        var serializer = new RabbitMqJsonSerializer();
-
-        var sourceOptions = new RabbitMqSourceOptions
-        {
-            QueueName = queueName,
-            PrefetchCount = 10,
-        };
-
-        // Publish some messages first
-        var connection = await _connectionManager.GetConnectionAsync();
-
-        var pubChannel = await connection.CreateChannelAsync(
-            new CreateChannelOptions(true, true));
-
-        await pubChannel.QueueDeclareAsync(queueName, true, false, true);
-
-        for (var i = 0; i < 5; i++)
-        {
-            var body = serializer.Serialize(new TestMessage($"Message-{i}", i));
-            await pubChannel.BasicPublishAsync("", queueName, false, new BasicProperties(), body);
-        }
-
-        await pubChannel.CloseAsync();
+        await PublishAsync(queueName, true, Enumerable.Range(0, 5).Select(i => new TestMessage($"Message-{i}", i)));
 
         // Act - consume the messages
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-
-        var sourceNode = new RabbitMqSourceNode<TestMessage>(
-            sourceOptions, _connectionManager, serializer,
-            logger: NullLogger<RabbitMqSourceNode<TestMessage>>.Instance);
+        await using var sourceNode = RabbitMqConnector.Source<TestMessage>(_connectionManager, queueName, o => o with { PrefetchCount = 10 });
 
         var pipe = sourceNode.OpenStream(new PipelineContext(), cts.Token);
-
         var consumed = new List<RabbitMqMessage<TestMessage>>();
 
         await foreach (var msg in pipe.WithCancellation(cts.Token))
@@ -87,12 +46,8 @@ public sealed class RabbitMqSourceNodeIntegrationTests : IAsyncDisposable
         }
 
         // Assert
-        consumed.Should().HaveCount(5);
-
-        consumed.Select(m => m.Body.Name).Should().BeEquivalentTo(
-            Enumerable.Range(0, 5).Select(i => $"Message-{i}"));
-
-        await sourceNode.DisposeAsync();
+        consumed.Select(m => m.Body.Name).Should().BeEquivalentTo(Enumerable.Range(0, 5).Select(i => $"Message-{i}"));
+        consumed.Should().AllSatisfy(m => m.RoutingKey.Should().Be(queueName));
     }
 
     [Fact]
@@ -100,51 +55,78 @@ public sealed class RabbitMqSourceNodeIntegrationTests : IAsyncDisposable
     {
         // Arrange
         var queueName = $"test-ack-{Guid.NewGuid():N}";
-        var serializer = new RabbitMqJsonSerializer();
-
-        var sourceOptions = new RabbitMqSourceOptions
-        {
-            QueueName = queueName,
-            PrefetchCount = 10,
-        };
-
-        // Publish a message
-        var connection = await _connectionManager.GetConnectionAsync();
-
-        var pubChannel = await connection.CreateChannelAsync(
-            new CreateChannelOptions(true, true));
-
-        await pubChannel.QueueDeclareAsync(queueName, true, false, false);
-
-        var body = serializer.Serialize(new TestMessage("ack-test", 1));
-        await pubChannel.BasicPublishAsync("", queueName, false, new BasicProperties(), body);
-        await pubChannel.CloseAsync();
+        await PublishAsync(queueName, false, [new TestMessage("ack-test", 1)]);
 
         // Consume and ack
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
 
-        var sourceNode = new RabbitMqSourceNode<TestMessage>(
-            sourceOptions, _connectionManager, serializer,
-            logger: NullLogger<RabbitMqSourceNode<TestMessage>>.Instance);
-
-        var pipe = sourceNode.OpenStream(new PipelineContext(), cts.Token);
-
-        await foreach (var msg in pipe.WithCancellation(cts.Token))
+        await using (var sourceNode = RabbitMqConnector.Source<TestMessage>(_connectionManager, queueName, o => o with { PrefetchCount = 10 }))
         {
-            msg.IsAcknowledged.Should().BeFalse();
-            await msg.AcknowledgeAsync(cts.Token);
-            msg.IsAcknowledged.Should().BeTrue();
-            break;
+            var pipe = sourceNode.OpenStream(new PipelineContext(), cts.Token);
+
+            await foreach (var msg in pipe.WithCancellation(cts.Token))
+            {
+                msg.IsSettled.Should().BeFalse();
+                await msg.AcknowledgeAsync(cts.Token);
+                msg.IsSettled.Should().BeTrue();
+                break;
+            }
         }
 
-        await sourceNode.DisposeAsync();
-
         // Verify queue is empty (message was acked)
-        var checkChannel = await connection.CreateChannelAsync();
+        var connection = await _connectionManager.GetConnectionAsync();
+        await using var checkChannel = await connection.CreateChannelAsync();
         var result = await checkChannel.BasicGetAsync(queueName, true);
         result.Should().BeNull();
         await checkChannel.CloseAsync();
     }
+
+    [Fact]
+    public async Task SourceNode_Skips_A_Message_That_Does_Not_Deserialize()
+    {
+        var queueName = $"test-skip-{Guid.NewGuid():N}";
+        var connection = await _connectionManager.GetConnectionAsync();
+
+        await using (var channel = await connection.CreateChannelAsync(new CreateChannelOptions(true, true)))
+        {
+            _ = await channel.QueueDeclareAsync(queueName, true, false, false);
+            await channel.BasicPublishAsync("", queueName, false, new BasicProperties(), "not json"u8.ToArray());
+            await channel.BasicPublishAsync("", queueName, false, new BasicProperties(), Serialize(new TestMessage("good", 2)));
+            await channel.CloseAsync();
+        }
+
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+
+        await using var sourceNode = RabbitMqConnector.Source<TestMessage>(_connectionManager, queueName,
+            o => o with { RowErrorHandler = _ => NPipeline.Connectors.Errors.RowErrorAction.Skip });
+
+        await foreach (var msg in sourceNode.OpenStream(new PipelineContext(), cts.Token).WithCancellation(cts.Token))
+        {
+            msg.Body.Name.Should().Be("good");
+            await msg.AcknowledgeAsync(cts.Token);
+            break;
+        }
+
+        await using var checkChannel = await connection.CreateChannelAsync();
+        (await checkChannel.BasicGetAsync(queueName, true)).Should().BeNull("the undeserializable message was rejected and the good one acknowledged");
+        await checkChannel.CloseAsync();
+    }
+
+    private async Task PublishAsync(string queueName, bool autoDelete, IEnumerable<TestMessage> messages)
+    {
+        var connection = await _connectionManager.GetConnectionAsync();
+        await using var channel = await connection.CreateChannelAsync(new CreateChannelOptions(true, true));
+        _ = await channel.QueueDeclareAsync(queueName, true, false, autoDelete);
+
+        foreach (var message in messages)
+        {
+            await channel.BasicPublishAsync("", queueName, false, new BasicProperties(), Serialize(message));
+        }
+
+        await channel.CloseAsync();
+    }
+
+    private static byte[] Serialize(TestMessage message) => JsonMessageSerializer.Default.Serialize(message, new MessageContext("test"));
 
     private sealed record TestMessage(string Name, int Value);
 }

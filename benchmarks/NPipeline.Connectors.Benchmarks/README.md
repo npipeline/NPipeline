@@ -22,6 +22,8 @@ serialisation, not disk or network I/O.
 | `SqlServerBenchmarks`, `PostgresBenchmarks`, `MySqlBenchmarks`, `DuckDBBenchmarks`: `Read` | 20,000 | The SQL source reading a 20-column table |
 | … `WriteBatch` | 20,000 | Multi-row `INSERT` statements (DuckDB: its SQL strategy) |
 | … `WriteBulk` | 20,000 | The connector's bulk path: `SqlBulkCopy`, binary `COPY`, `LOAD DATA`, DuckDB's appender |
+| `KafkaBenchmarks`, `RabbitMqBenchmarks`, `SqsBenchmarks`, `ServiceBusBenchmarks`: `Publish` | 2,000 (Service Bus 200) | The sink publishing JSON messages with its defaults |
+| … `Consume` | 2,000 (Service Bus 200) | The source reading and acknowledging each message from a queue or topic filled beforehand |
 
 ## Run
 
@@ -32,8 +34,8 @@ dotnet run -c Release -f net10.0 -- --filter '*'
 ```
 
 To run one connector, filter by class name, for example `--filter '*Parquet*'`. The database benchmarks start SQL
-Server, PostgreSQL and MySQL in Docker (Testcontainers, reused between runs) and run in process, so Docker must be
-running. Use `-f net8.0` to measure the LTS
+Server, PostgreSQL and MySQL in Docker (Testcontainers, reused between runs), and the messaging benchmarks Kafka,
+RabbitMQ, LocalStack and the Service Bus emulator; they run in process, so Docker must be running. Use `-f net8.0` to measure the LTS
 target. Results are written to `BenchmarkDotNet.Artifacts/results/` as GitHub markdown and full JSON.
 
 The **Connector Benchmarks** GitHub workflow runs the same command on demand (`workflow_dispatch`) and uploads the

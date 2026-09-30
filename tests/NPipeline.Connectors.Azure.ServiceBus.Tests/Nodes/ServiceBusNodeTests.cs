@@ -1,245 +1,221 @@
+using System.Reflection;
 using Azure.Messaging.ServiceBus;
-using FakeItEasy;
-using Microsoft.Extensions.Logging;
 using NPipeline.Connectors.Azure.ServiceBus.Configuration;
 using NPipeline.Connectors.Azure.ServiceBus.Nodes;
+using NPipeline.Connectors.Messaging;
+using static NPipeline.Connectors.Azure.ServiceBus.Tests.Configuration.ServiceBusOptionsTests;
 
 namespace NPipeline.Connectors.Azure.ServiceBus.Tests.Nodes;
 
-public class ServiceBusQueueSourceNodeTests
+internal static class NodeInternals
 {
-    private static ServiceBusConfiguration CreateValidConfig() =>
-        new()
-        {
-            ConnectionString = "Endpoint=sb://test.servicebus.windows.net/;SharedAccessKeyName=k;SharedAccessKey=abc=",
-            QueueName = "test-queue",
-        };
+    public static TValue Field<TValue>(object node, string name) =>
+        (TValue)node.GetType().GetField(name, BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(node)!;
 
-    public class Constructor_WithConfiguration
+    public static ServiceBusReadOptions ReadOptions<T>(ServiceBusSourceNode<T> node) => Field<ServiceBusReadOptions>(node, "_options");
+
+    public static bool Sessions<T>(ServiceBusSourceNode<T> node) => Field<bool>(node, "_sessions");
+
+    public static ServiceBusWriteOptions<T> WriteOptions<T>(ServiceBusSinkNode<T> node) => Field<ServiceBusWriteOptions<T>>(node, "_options");
+}
+
+public class ServiceBusSourceNodeTests
+{
+    [Fact]
+    public void Constructor_WithNullOptions_Throws()
     {
-        [Fact]
-        public void Constructor_WithNullConfiguration_ThrowsArgumentNullException()
-        {
-            Assert.Throws<ArgumentNullException>(() =>
-                new ServiceBusQueueSourceNode<TestModel>(null!, A.Fake<ILogger>()));
-        }
+        var create = () => new ServiceBusSourceNode<int>(null!);
 
-        [Fact]
-        public void Constructor_WithInvalidConfiguration_ThrowsInvalidOperationException()
-        {
-            var config = new ServiceBusConfiguration(); // Missing connection string and queue
-
-            Assert.Throws<InvalidOperationException>(() =>
-                new ServiceBusQueueSourceNode<TestModel>(config));
-        }
-
-        [Fact]
-        public void Constructor_WithMissingQueueName_ThrowsInvalidOperationException()
-        {
-            var config = new ServiceBusConfiguration
-            {
-                ConnectionString = "Endpoint=sb://test.servicebus.windows.net/;SharedAccessKeyName=k;SharedAccessKey=abc=",
-            };
-
-            Assert.Throws<InvalidOperationException>(() =>
-                new ServiceBusQueueSourceNode<TestModel>(config));
-        }
+        create.Should().Throw<ArgumentNullException>();
     }
 
-    public class Constructor_WithClient
+    [Fact]
+    public void Constructor_WithInvalidOptions_Throws()
     {
-        [Fact]
-        public void Constructor_WithNullClient_ThrowsArgumentNullException()
-        {
-            var config = CreateValidConfig();
+        var create = () => new ServiceBusSourceNode<int>(new ServiceBusReadOptions { ConnectionString = ConnectionString, Entity = "q", MaxInFlight = 0 });
 
-            Assert.Throws<ArgumentNullException>(() =>
-                new ServiceBusQueueSourceNode<TestModel>(null!, config));
-        }
-
-        [Fact]
-        public void Constructor_WithNullConfiguration_ThrowsArgumentNullException()
-        {
-            var client = A.Fake<ServiceBusClient>();
-
-            Assert.Throws<ArgumentNullException>(() =>
-                new ServiceBusQueueSourceNode<TestModel>(client, null!));
-        }
+        create.Should().Throw<ArgumentOutOfRangeException>();
     }
 
-    private class TestModel
+    [Fact]
+    public void Constructor_WithNoConnection_Throws()
     {
-        public int Id { get; set; }
-        public string Name { get; set; } = string.Empty;
+        var create = () => new ServiceBusSourceNode<int>(new ServiceBusReadOptions { Entity = "q" });
+
+        create.Should().ThrowExactly<ArgumentException>();
+    }
+
+    [Fact]
+    public async Task OpenStream_AfterDispose_Throws()
+    {
+        var source = new ServiceBusSourceNode<int>(new ServiceBusReadOptions { ConnectionString = ConnectionString, Entity = "q" });
+        await source.DisposeAsync();
+
+        var open = () => source.OpenStream(new NPipeline.Pipeline.PipelineContext(), CancellationToken.None);
+
+        open.Should().Throw<ObjectDisposedException>();
+    }
+
+    [Fact]
+    public async Task DisposeAsync_Twice_DoesNotThrow()
+    {
+        var source = new ServiceBusSourceNode<int>(new ServiceBusReadOptions { ConnectionString = ConnectionString, Entity = "q" });
+        await source.DisposeAsync();
+
+        var again = async () => await source.DisposeAsync();
+
+        await again.Should().NotThrowAsync();
     }
 }
 
-public class ServiceBusSubscriptionSourceNodeTests
+public class ServiceBusSinkNodeTests
 {
-    private static ServiceBusConfiguration CreateValidConfig() =>
-        new()
-        {
-            ConnectionString = "Endpoint=sb://test.servicebus.windows.net/;SharedAccessKeyName=k;SharedAccessKey=abc=",
-            TopicName = "test-topic",
-            SubscriptionName = "test-subscription",
-        };
-
-    public class Constructor
+    [Fact]
+    public void Constructor_WithNullOptions_Throws()
     {
-        [Fact]
-        public void Constructor_WithNullConfiguration_ThrowsArgumentNullException()
-        {
-            Assert.Throws<ArgumentNullException>(() =>
-                new ServiceBusSubscriptionSourceNode<TestModel>(null!, A.Fake<ILogger>()));
-        }
+        var create = () => new ServiceBusSinkNode<int>(null!);
 
-        [Fact]
-        public void Constructor_WithMissingSubscriptionName_ThrowsInvalidOperationException()
-        {
-            var config = new ServiceBusConfiguration
-            {
-                ConnectionString = "Endpoint=sb://test.servicebus.windows.net/;SharedAccessKeyName=k;SharedAccessKey=abc=",
-                TopicName = "test-topic",
-            };
-
-            Assert.Throws<InvalidOperationException>(() =>
-                new ServiceBusSubscriptionSourceNode<TestModel>(config));
-        }
-
-        [Fact]
-        public void Constructor_WithNullClientAndValidConfig_ThrowsArgumentNullException()
-        {
-            var config = CreateValidConfig();
-
-            Assert.Throws<ArgumentNullException>(() =>
-                new ServiceBusSubscriptionSourceNode<TestModel>(null!, config));
-        }
+        create.Should().Throw<ArgumentNullException>();
     }
 
-    private class TestModel
+    [Fact]
+    public void Constructor_WithInvalidOptions_Throws()
     {
-        public int Id { get; set; }
+        var create = () => new ServiceBusSinkNode<int>(new ServiceBusWriteOptions<int> { ConnectionString = ConnectionString, Entity = "q", BatchSize = 0 });
+
+        create.Should().Throw<ArgumentOutOfRangeException>();
+    }
+
+    [Fact]
+    public async Task DisposeAsync_WithOwnClient_DisposesIt()
+    {
+        var sink = new ServiceBusSinkNode<int>(new ServiceBusWriteOptions<int> { ConnectionString = ConnectionString, Entity = "q" });
+        var client = NodeInternals.Field<ServiceBusClient>(sink, "_client");
+
+        await sink.DisposeAsync();
+
+        client.IsClosed.Should().BeTrue();
+        NodeInternals.Field<ServiceBusSender>(sink, "_sender").IsClosed.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task DisposeAsync_WithSharedClient_LeavesItOpen()
+    {
+        await using var client = new ServiceBusClient(ConnectionString);
+        var sink = ServiceBusConnector.Sink<int>(client, "q");
+
+        await sink.DisposeAsync();
+
+        client.IsClosed.Should().BeFalse();
+        NodeInternals.Field<ServiceBusSender>(sink, "_sender").IsClosed.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Sinks_OnOneClient_HaveTheirOwnSenders()
+    {
+        await using var client = new ServiceBusClient(ConnectionString);
+        await using var first = ServiceBusConnector.Sink<int>(client, "q");
+        var second = ServiceBusConnector.Sink<int>(client, "q");
+
+        await second.DisposeAsync();
+
+        NodeInternals.Field<ServiceBusSender>(first, "_sender").IsClosed.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Sink_IsAMessageSink()
+    {
+        await using var client = new ServiceBusClient(ConnectionString);
+        await using var sink = ServiceBusConnector.Sink<int>(client, "q");
+
+        sink.Should().BeAssignableTo<IMessageSink<int>>();
+        sink.Acknowledging().Should().BeOfType<AcknowledgingSink<int>>().Which.Inner.Should().BeSameAs(sink);
     }
 }
 
-public class ServiceBusQueueSinkNodeTests
+public class ServiceBusConnectorTests
 {
-    private static ServiceBusConfiguration CreateValidConfig() =>
-        new()
-        {
-            ConnectionString = "Endpoint=sb://test.servicebus.windows.net/;SharedAccessKeyName=k;SharedAccessKey=abc=",
-            QueueName = "test-queue",
-        };
-
-    public class Constructor_WithConfiguration
+    [Fact]
+    public async Task Source_ReadsTheQueue()
     {
-        [Fact]
-        public void Constructor_WithNullConfiguration_ThrowsArgumentNullException()
-        {
-            Assert.Throws<ArgumentNullException>(() =>
-                new ServiceBusQueueSinkNode<TestModel>(null!, A.Fake<ILogger>()));
-        }
+        await using var client = new ServiceBusClient(ConnectionString);
+        await using var source = ServiceBusConnector.Source<int>(client, "orders");
 
-        [Fact]
-        public void Constructor_WithInvalidConfiguration_ThrowsInvalidOperationException()
-        {
-            var config = new ServiceBusConfiguration(); // No connection or queue
-
-            Assert.Throws<InvalidOperationException>(() =>
-                new ServiceBusQueueSinkNode<TestModel>(config));
-        }
+        var options = NodeInternals.ReadOptions(source);
+        options.Client.Should().BeSameAs(client);
+        options.Entity.Should().Be("orders");
+        options.Subscription.Should().BeNull();
+        NodeInternals.Sessions(source).Should().BeFalse();
     }
 
-    public class Constructor_WithSender
+    [Fact]
+    public async Task Source_AppliesConfigure()
     {
-        [Fact]
-        public void Constructor_WithNullSender_ThrowsArgumentNullException()
-        {
-            var config = CreateValidConfig();
+        await using var client = new ServiceBusClient(ConnectionString);
+        await using var source = ServiceBusConnector.Source<int>(client, "orders", o => o with { MaxInFlight = 7, SubQueue = SubQueue.DeadLetter });
 
-            Assert.Throws<ArgumentNullException>(() =>
-                new ServiceBusQueueSinkNode<TestModel>(null!, config));
-        }
-
-        [Fact]
-        public void Constructor_WithNullConfiguration_ThrowsArgumentNullException()
-        {
-            var sender = A.Fake<ServiceBusSender>();
-
-            Assert.Throws<ArgumentNullException>(() =>
-                new ServiceBusQueueSinkNode<TestModel>(sender, null!));
-        }
-
-        [Fact]
-        public void Constructor_WithValidSenderAndConfig_DoesNotThrow()
-        {
-            var sender = A.Fake<ServiceBusSender>();
-            var config = CreateValidConfig();
-
-            var exception = Record.Exception(() => new ServiceBusQueueSinkNode<TestModel>(sender, config));
-            exception.Should().BeNull();
-        }
-
-        [Fact]
-        public void Constructor_WithSenderAndInvalidConfig_ThrowsInvalidOperationException()
-        {
-            var sender = A.Fake<ServiceBusSender>();
-            var config = new ServiceBusConfiguration(); // Missing queue name
-
-            Assert.Throws<InvalidOperationException>(() =>
-                new ServiceBusQueueSinkNode<TestModel>(sender, config));
-        }
+        var options = NodeInternals.ReadOptions(source);
+        options.MaxInFlight.Should().Be(7);
+        options.SubQueue.Should().Be(SubQueue.DeadLetter);
+        options.Entity.Should().Be("orders");
     }
 
-    private class TestModel
+    [Fact]
+    public async Task Source_WithInvalidConfigure_Throws()
     {
-        public int Id { get; set; }
-        public string Name { get; set; } = string.Empty;
-    }
-}
+        await using var client = new ServiceBusClient(ConnectionString);
 
-public class ServiceBusTopicSinkNodeTests
-{
-    private static ServiceBusConfiguration CreateValidConfig() =>
-        new()
-        {
-            ConnectionString = "Endpoint=sb://test.servicebus.windows.net/;SharedAccessKeyName=k;SharedAccessKey=abc=",
-            TopicName = "test-topic",
-        };
+        var create = () => ServiceBusConnector.Source<int>(client, "orders", o => o with { MaxInFlight = 0 });
 
-    public class Constructor_WithSender
-    {
-        [Fact]
-        public void Constructor_WithNullSender_ThrowsArgumentNullException()
-        {
-            var config = CreateValidConfig();
-
-            Assert.Throws<ArgumentNullException>(() =>
-                new ServiceBusTopicSinkNode<TestModel>(null!, config));
-        }
-
-        [Fact]
-        public void Constructor_WithNullConfiguration_ThrowsArgumentNullException()
-        {
-            var sender = A.Fake<ServiceBusSender>();
-
-            Assert.Throws<ArgumentNullException>(() =>
-                new ServiceBusTopicSinkNode<TestModel>(sender, null!));
-        }
-
-        [Fact]
-        public void Constructor_WithValidSenderAndConfig_DoesNotThrow()
-        {
-            var sender = A.Fake<ServiceBusSender>();
-            var config = CreateValidConfig();
-
-            var exception = Record.Exception(() => new ServiceBusTopicSinkNode<TestModel>(sender, config));
-            exception.Should().BeNull();
-        }
+        create.Should().Throw<ArgumentOutOfRangeException>();
     }
 
-    private class TestModel
+    [Fact]
+    public void Source_WithNullClient_Throws()
     {
-        public int Id { get; set; }
+        var create = () => ServiceBusConnector.Source<int>(null!, "orders");
+
+        create.Should().ThrowExactly<ArgumentException>();
+    }
+
+    [Fact]
+    public async Task SubscriptionSource_ReadsTheSubscription()
+    {
+        await using var client = new ServiceBusClient(ConnectionString);
+        await using var source = ServiceBusConnector.SubscriptionSource<int>(client, "orders-topic", "billing");
+
+        var options = NodeInternals.ReadOptions(source);
+        options.Entity.Should().Be("orders-topic");
+        options.Subscription.Should().Be("billing");
+        NodeInternals.Sessions(source).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task SessionSource_ReadsSessions()
+    {
+        await using var client = new ServiceBusClient(ConnectionString);
+        await using var queue = ServiceBusConnector.SessionSource<int>(client, "orders");
+        await using var subscription = ServiceBusConnector.SessionSource<int>(client, "orders-topic", "billing", o => o with { MaxConcurrentSessions = 2 });
+
+        NodeInternals.Sessions(queue).Should().BeTrue();
+        NodeInternals.ReadOptions(queue).Subscription.Should().BeNull();
+
+        NodeInternals.Sessions(subscription).Should().BeTrue();
+        NodeInternals.ReadOptions(subscription).Subscription.Should().Be("billing");
+        NodeInternals.ReadOptions(subscription).MaxConcurrentSessions.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task Sink_SendsToTheEntity()
+    {
+        await using var client = new ServiceBusClient(ConnectionString);
+        await using var sink = ServiceBusConnector.Sink<int>(client, "invoices", o => o with { BatchSize = 5, FailedMessages = FailedMessageAction.DeadLetter });
+
+        var options = NodeInternals.WriteOptions(sink);
+        options.Client.Should().BeSameAs(client);
+        options.Entity.Should().Be("invoices");
+        options.BatchSize.Should().Be(5);
+        options.FailedMessages.Should().Be(FailedMessageAction.DeadLetter);
+        NodeInternals.Field<ServiceBusSender>(sink, "_sender").EntityPath.Should().Be("invoices");
     }
 }

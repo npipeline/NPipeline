@@ -1,74 +1,45 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using NPipeline.Connectors.RabbitMQ.Configuration;
 using NPipeline.Connectors.RabbitMQ.Connection;
-using NPipeline.Connectors.RabbitMQ.Metrics;
 using NPipeline.Connectors.RabbitMQ.Nodes;
-using NPipeline.Connectors.RabbitMQ.Serialization;
-using NPipeline.Connectors.Serialization;
 
 namespace NPipeline.Connectors.RabbitMQ.DependencyInjection;
 
-/// <summary>
-///     Extension methods for registering RabbitMQ connector services.
-/// </summary>
+/// <summary>Registers the RabbitMQ connector.</summary>
 public static class RabbitMqServiceCollectionExtensions
 {
-    /// <summary>
-    ///     Registers the RabbitMQ connection manager and shared services.
-    /// </summary>
-    /// <param name="services">The service collection.</param>
-    /// <param name="configureConnection">Action to configure connection options.</param>
-    /// <returns>The service collection for chaining.</returns>
-    public static IServiceCollection AddRabbitMq(
-        this IServiceCollection services,
-        Action<RabbitMqConnectionOptions> configureConnection)
+    /// <summary>Registers one connection, shared by every node, and <see cref="RabbitMqNodeFactory" />.</summary>
+    public static IServiceCollection AddRabbitMq(this IServiceCollection services, Func<RabbitMqConnectionOptions, RabbitMqConnectionOptions> configureConnection)
     {
-        var connectionOptions = new RabbitMqConnectionOptions();
-        configureConnection(connectionOptions);
-        connectionOptions.Validate();
-
-        services.AddSingleton(connectionOptions);
-        services.AddSingleton<IRabbitMqConnectionManager, RabbitMqConnectionManager>();
-        services.TryAddSingleton<IRabbitMqMetrics>(NullRabbitMqMetrics.Instance);
-        services.TryAddSingleton<IMessageSerializer, RabbitMqJsonSerializer>();
-
-        return services;
+        ArgumentNullException.ThrowIfNull(configureConnection);
+        return services.AddRabbitMq(configureConnection(new RabbitMqConnectionOptions()));
     }
 
-    /// <summary>
-    ///     Registers a <see cref="Nodes.RabbitMqSourceNode{T}" /> and its source options.
-    /// </summary>
-    /// <typeparam name="T">The message body type.</typeparam>
-    /// <param name="services">The service collection.</param>
-    /// <param name="options">The source options. Must have <see cref="RabbitMqSourceOptions.QueueName" /> set.</param>
-    /// <returns>The service collection for chaining.</returns>
-    public static IServiceCollection AddRabbitMqSource<T>(
-        this IServiceCollection services,
-        RabbitMqSourceOptions options)
+    /// <summary>Registers one connection, shared by every node, and <see cref="RabbitMqNodeFactory" />.</summary>
+    public static IServiceCollection AddRabbitMq(this IServiceCollection services, RabbitMqConnectionOptions options)
     {
+        ArgumentNullException.ThrowIfNull(options);
         options.Validate();
-        services.AddSingleton(options);
-        services.AddTransient<RabbitMqSourceNode<T>>();
 
+        services.TryAddSingleton(options);
+        services.TryAddSingleton<IRabbitMqConnectionManager>(sp =>
+            new RabbitMqConnectionManager(sp.GetRequiredService<RabbitMqConnectionOptions>(), sp.GetService<ILogger<RabbitMqConnectionManager>>()));
+
+        services.TryAddSingleton<RabbitMqNodeFactory>();
         return services;
     }
+}
 
-    /// <summary>
-    ///     Registers a <see cref="Nodes.RabbitMqSinkNode{T}" /> and its sink options.
-    /// </summary>
-    /// <typeparam name="T">The message body type.</typeparam>
-    /// <param name="services">The service collection.</param>
-    /// <param name="options">The sink options. Must have <see cref="RabbitMqSinkOptions.ExchangeName" /> set.</param>
-    /// <returns>The service collection for chaining.</returns>
-    public static IServiceCollection AddRabbitMqSink<T>(
-        this IServiceCollection services,
-        RabbitMqSinkOptions options)
-    {
-        options.Validate();
-        services.AddSingleton(options);
-        services.AddTransient<RabbitMqSinkNode<T>>();
+/// <summary>Creates RabbitMQ nodes on the registered connection.</summary>
+public sealed class RabbitMqNodeFactory(IRabbitMqConnectionManager connection)
+{
+    /// <summary>A source that consumes <paramref name="queue" />.</summary>
+    public RabbitMqSourceNode<T> CreateSource<T>(string queue, Func<RabbitMqReadOptions, RabbitMqReadOptions>? configure = null) =>
+        RabbitMqConnector.Source<T>(connection, queue, configure);
 
-        return services;
-    }
+    /// <summary>A sink that publishes to <paramref name="exchange" /> with <paramref name="routingKey" />.</summary>
+    public RabbitMqSinkNode<T> CreateSink<T>(string exchange, string routingKey = "", Func<RabbitMqWriteOptions<T>, RabbitMqWriteOptions<T>>? configure = null) =>
+        RabbitMqConnector.Sink<T>(connection, exchange, routingKey, configure);
 }

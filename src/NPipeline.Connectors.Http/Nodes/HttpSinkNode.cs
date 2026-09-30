@@ -9,6 +9,7 @@ using NPipeline.Connectors.Http.Configuration;
 using NPipeline.Connectors.Http.Metrics;
 using NPipeline.Connectors.Http.Models;
 using NPipeline.Connectors.Http.Reliability;
+using NPipeline.Connectors.Messaging;
 using NPipeline.DataFlow;
 using NPipeline.ErrorHandling;
 using NPipeline.Nodes;
@@ -23,7 +24,7 @@ namespace NPipeline.Connectors.Http.Nodes;
 ///     <see cref="HttpSinkOptions{T}.FailedRequests" /> says.
 /// </summary>
 /// <typeparam name="T">The item type.</typeparam>
-public sealed partial class HttpSinkNode<T> : SinkNode<T>, IAsyncDisposable
+public sealed partial class HttpSinkNode<T> : SinkNode<T>, IAsyncDisposable, IReportsWrites
 {
     private const int ResponseExcerptLength = 512;
 
@@ -38,6 +39,7 @@ public sealed partial class HttpSinkNode<T> : SinkNode<T>, IAsyncDisposable
     private readonly ResilientHttpSender _sender;
     private readonly JsonTypeInfo<T> _typeInfo;
     private readonly JsonWriterOptions _writerOptions;
+    private Func<long, CancellationToken, ValueTask>? _written;
 
     // The node sends one request at a time, so the retry listener reads the request in flight from here.
     private string? _currentEndpoint;
@@ -104,33 +106,51 @@ public sealed partial class HttpSinkNode<T> : SinkNode<T>, IAsyncDisposable
     }
 
     /// <inheritdoc />
+    public void ReportWritesTo(Func<long, CancellationToken, ValueTask> written) => _written = written ?? throw new ArgumentNullException(nameof(written));
+
+    /// <inheritdoc />
     public override async Task ConsumeAsync(IDataStream<T> input, PipelineContext context, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(input);
 
         var deadLetters = OpenDeadLetterChannel(context);
-        var batch = new List<T>(_options.BatchSize);
+        var run = new List<T>(_options.BatchSize);
         var body = new ArrayBufferWriter<byte>(16 * 1024);
-        Uri? batchUri = null;
+        long handled = 0;
 
-        await foreach (var item in input.WithCancellation(cancellationToken).ConfigureAwait(false))
+        await foreach (var batch in input.BatchAsync(_options.BatchSize, _options.BatchLinger, cancellationToken).ConfigureAwait(false))
         {
-            var uri = _options.UriFactory is { } factory ? factory(item) : _options.Uri!;
+            Uri? runUri = null;
 
-            // A request carries items for one URI only, so a change of URI ends the batch. Items stay in input order
-            // and at most BatchSize items are buffered, however many distinct URIs the factory produces.
-            if (batch.Count > 0 && (batch.Count >= _options.BatchSize || uri != batchUri))
+            // A request carries items for one URI only, so a change of URI ends the request. Items stay in input order.
+            foreach (var item in batch)
             {
-                await SendBatchAsync(batch, batchUri!, body, deadLetters, cancellationToken).ConfigureAwait(false);
-                batch.Clear();
+                var uri = _options.UriFactory is { } factory ? factory(item) : _options.Uri!;
+
+                if (run.Count > 0 && uri != runUri)
+                    handled = await SendAsync(run, runUri!, body, deadLetters, handled, cancellationToken).ConfigureAwait(false);
+
+                run.Add(item);
+                runUri = uri;
             }
 
-            batch.Add(item);
-            batchUri = uri;
+            if (run.Count > 0)
+                handled = await SendAsync(run, runUri!, body, deadLetters, handled, cancellationToken).ConfigureAwait(false);
         }
+    }
 
-        if (batch.Count > 0)
-            await SendBatchAsync(batch, batchUri!, body, deadLetters, cancellationToken).ConfigureAwait(false);
+    /// <summary>Sends one request's items and reports them handled: sent, skipped or dead-lettered.</summary>
+    private async Task<long> SendAsync(List<T> run, Uri uri, ArrayBufferWriter<byte> body, DeadLetterChannel deadLetters, long handled,
+        CancellationToken cancellationToken)
+    {
+        await SendBatchAsync(run, uri, body, deadLetters, cancellationToken).ConfigureAwait(false);
+        handled += run.Count;
+        run.Clear();
+
+        if (_written is not null)
+            await _written(handled, cancellationToken).ConfigureAwait(false);
+
+        return handled;
     }
 
     private async Task SendBatchAsync(List<T> items, Uri uri, ArrayBufferWriter<byte> body, DeadLetterChannel deadLetters, CancellationToken cancellationToken)

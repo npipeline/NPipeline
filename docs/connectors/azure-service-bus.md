@@ -1,12 +1,15 @@
 ---
 title: "Azure Service Bus Connector"
-description: "Consume from and send to Azure Service Bus queues and topics with sessions, dead-letter, and batch sending."
-order: 17
+description: "Receive from and send to Azure Service Bus queues, topics and sessions, with lock renewal, dead-lettering and batched sends."
+order: 18
 ---
 
 # Azure Service Bus Connector
 
-The `NPipeline.Connectors.Azure.ServiceBus` package provides source and sink nodes for [Azure Service Bus](https://learn.microsoft.com/en-us/azure/service-bus-messaging/). Supports queues, topics/subscriptions, session-based message grouping, dead-letter queues, message lock auto-renewal, batch sending, and transactional sends.
+The `NPipeline.Connectors.Azure.ServiceBus` package receives from Service Bus queues, topic subscriptions and
+session-enabled entities in peek-lock mode, and sends to queues and topics. Serialization, settlement, undeserializable
+messages and failed writes work as in every message-queue connector; see
+[Message Queues: Shared Behaviour](message-queues.md).
 
 ## Installation
 
@@ -14,279 +17,96 @@ The `NPipeline.Connectors.Azure.ServiceBus` package provides source and sink nod
 dotnet add package NPipeline.Connectors.Azure.ServiceBus
 ```
 
-**Dependencies:** [Azure.Messaging.ServiceBus](https://www.nuget.org/packages/Azure.Messaging.ServiceBus) 7.x, [Azure.Identity](https://www.nuget.org/packages/Azure.Identity) 1.x
+**Dependencies:** [Azure.Messaging.ServiceBus](https://www.nuget.org/packages/Azure.Messaging.ServiceBus) 7.x,
+[Azure.Identity](https://www.nuget.org/packages/Azure.Identity)
 
-## Node Types
+## Connection
 
-| Node | Description |
-|------|-------------|
-| `ServiceBusQueueSourceNode<T>` | Consume from a queue |
-| `ServiceBusSubscriptionSourceNode<T>` | Consume from a topic subscription |
-| `ServiceBusSessionSourceNode<T>` | Consume session-enabled queues |
-| `ServiceBusQueueSinkNode<T>` | Send to a queue |
-| `ServiceBusTopicSinkNode<T>` | Publish to a topic |
-
-## Source Nodes
-
-### Queue Source
+Share one `ServiceBusClient` between nodes, preferably with Microsoft Entra ID:
 
 ```csharp
-// Connection string
-public ServiceBusQueueSourceNode(
-    ServiceBusConfiguration configuration,
-    ILogger? logger = null)
-
-// Pre-configured ServiceBusClient
-public ServiceBusQueueSourceNode(
-    ServiceBusClient client,
-    ServiceBusConfiguration configuration,
-    ILogger? logger = null)
+await using var client = new ServiceBusClient("mynamespace.servicebus.windows.net", new DefaultAzureCredential());
 ```
 
-### Example
+Instead of `Client`, a node's options can take a `ConnectionString`, or a `FullyQualifiedNamespace` with a `Credential`
+(`DefaultAzureCredential` when `null`); the node then creates its own client and disposes it. The SDK retries each
+operation itself, as `Retry` (a `ServiceBusRetryOptions`, for a client the node creates) says; the connector adds no
+retries of its own, and a failure the SDK gives up on reaches the pipeline.
+
+## Receiving
 
 ```csharp
-var config = new ServiceBusConfiguration
-{
-    ConnectionString = "Endpoint=sb://mynamespace.servicebus.windows.net/;SharedAccessKeyName=...;SharedAccessKey=...",
-    QueueName = "orders",
-    PrefetchCount = 50,
-    MaxConcurrentCalls = 4,
-    AcknowledgmentStrategy = AcknowledgmentStrategy.AutoOnSinkSuccess
-};
-
-var source = new ServiceBusQueueSourceNode<Order>(config);
+var orders = ServiceBusConnector.Source<Order>(client, "orders");
+var billing = ServiceBusConnector.SubscriptionSource<Order>(client, "order-events", "billing");
+var deadLetters = ServiceBusConnector.Source<Order>(client, "orders", o => o with { SubQueue = SubQueue.DeadLetter });
 ```
 
-### Session Source
+The source receives in batches while fewer than `MaxInFlight` (100) messages are unsettled, and renews each held
+message's lock while it waits, for up to `MaxLockRenewal` (5 minutes). A sink can therefore hold and batch up to
+`MaxInFlight` messages before it settles any, and a slow transform doesn't lose its locks. When the read ends, messages
+received but not handed on are abandoned at once, and the source keeps its receivers until the messages handed on are
+settled (up to `SettleTimeout`), abandoning any left.
 
-For session-enabled queues (ordered processing within a session):
-
-```csharp
-var config = new ServiceBusConfiguration
-{
-    ConnectionString = "...",
-    QueueName = "orders-sessions",
-    EnableSessions = true,
-    MaxConcurrentSessions = 8,
-    SessionIdleTimeout = TimeSpan.FromMinutes(1)
-};
-
-var source = new ServiceBusSessionSourceNode<Order>(config);
-```
-
-## Sink Nodes
-
-### Queue Sink
-
-```csharp
-public ServiceBusQueueSinkNode(
-    ServiceBusConfiguration configuration,
-    ILogger? logger = null)
-```
-
-### Topic Sink
-
-```csharp
-public ServiceBusTopicSinkNode(
-    ServiceBusConfiguration configuration,
-    ILogger? logger = null)
-```
-
-### Example: Batch Sending
-
-```csharp
-var config = new ServiceBusConfiguration
-{
-    ConnectionString = "...",
-    QueueName = "processed-orders",
-    EnableBatchSending = true,
-    BatchSize = 50
-};
-
-var sink = new ServiceBusQueueSinkNode<ProcessedOrder>(config);
-```
-
-## Authentication
-
-| Mode | Description |
-|------|-------------|
-| `ConnectionString` (default) | Standard Service Bus connection string |
-| `AzureAdCredential` | Azure AD / Managed Identity (recommended for production) |
-| `EndpointWithKey` | Explicit endpoint + shared access key |
-
-```csharp
-// Azure AD authentication
-var config = new ServiceBusConfiguration
-{
-    AuthenticationMode = AzureAuthenticationMode.AzureAdCredential,
-    FullyQualifiedNamespace = "mynamespace.servicebus.windows.net",
-    QueueName = "orders"
-};
-```
-
-## Configuration
-
-### Connection
-
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `ConnectionString` | `string?` | `null` | Service Bus connection string |
-| `FullyQualifiedNamespace` | `string?` | `null` | Namespace (for Azure AD auth) |
-| `AuthenticationMode` | `AzureAuthenticationMode` | `ConnectionString` | Auth mode |
-| `QueueName` | `string?` | `null` | Queue name |
-| `TopicName` | `string?` | `null` | Topic name |
-| `SubscriptionName` | `string?` | `null` | Subscription name |
-
-### Source
-
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `PrefetchCount` | `int` | `0` | Prefetch count |
-| `MaxConcurrentCalls` | `int` | `1` | Concurrent message handlers |
-| `MaxAutoLockRenewalDuration` | `TimeSpan` | `5 min` | Auto-renew message lock |
-| `SubQueue` | `SubQueue` | `None` | `None`, `DeadLetter`, or `TransferDeadLetter` |
-| `AcknowledgmentStrategy` | `AcknowledgmentStrategy` | `AutoOnSinkSuccess` | When to complete messages |
-
-### Sink
-
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `EnableBatchSending` | `bool` | `true` | Batch messages |
-| `BatchSize` | `int` | `100` | Max messages per batch (Service Bus limit: 100) |
-| `EnableTransactionalSends` | `bool` | `false` | Transactional sending |
+Each message is a `ServiceBusMessage<T>` with its `Body`, `MessageId`, `SessionId`, `CorrelationId`, `Subject`,
+`ContentType`, `DeliveryCount`, `EnqueuedTime`, `ApplicationProperties`, and the SDK's `Received` message. Besides
+`AcknowledgeAsync` (complete) and `RejectAsync` (abandon, or dead-letter without requeue), it can be settled with
+`DeadLetterAsync(reason, description)` or `DeferAsync()`.
 
 ### Sessions
 
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `EnableSessions` | `bool` | `false` | Enable session-based processing |
-| `MaxConcurrentSessions` | `int` | `8` | Concurrent sessions |
-| `SessionIdleTimeout` | `TimeSpan` | `1 min` | Session idle timeout |
+For a session-enabled queue or subscription, `SessionSource` receives up to `MaxConcurrentSessions` (8) sessions at
+once, each in order, moving to the next session once one has had no messages for `SessionIdleTimeout` (5 seconds):
 
-### Error Handling
+```csharp
+var orders = ServiceBusConnector.SessionSource<Order>(client, "orders-by-customer");
+```
 
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `ContinueOnError` | `bool` | `true` | Continue on errors |
-| `ContinueOnDeserializationError` | `bool` | `false` | Skip deserialization failures |
-| `DeadLetterOnDeserializationError` | `bool` | `true` | Dead-letter bad messages |
+### Source options
 
-## Resilience
+| Option | Default | Description |
+| --- | --- | --- |
+| `Entity`, `Subscription` | required, `null` | The queue, or the topic and its subscription |
+| `SubQueue` | `None` | Read the `DeadLetter` or `TransferDeadLetter` sub-queue instead |
+| `MaxInFlight` | 100 | The most messages received and not settled |
+| `PrefetchCount` | 0 | Messages the SDK fetches ahead; keep it 0 for slow processing, so prefetched locks don't expire |
+| `MaxLockRenewal` | 5 min | How long a held message's lock is renewed |
+| `RowErrorHandler`, `RawExcerptLength` | fail, 256 | See [Messages that don't deserialize](message-queues.md#messages-that-dont-deserialize); `Skip` dead-letters with reason `DeserializationFailed`, and `Fail` abandons the message, so the broker dead-letters it after its maximum delivery count |
+| `MaxConcurrentSessions`, `SessionIdleTimeout` | 8, 5 s | Session receiving |
+| `SettleTimeout` | 30 s | How long receivers stay open after the read ends |
 
-The Azure Service Bus SDK retries each operation natively, and NPipeline adds no retry layer on top. `Retry`
-(`ServiceBusRetryConfiguration`) maps directly to the SDK's `ServiceBusRetryOptions`: `Mode` (default `Exponential`),
-`MaxRetries` (default 3), `Delay` (default 1 s), `MaxDelay` (default 30 s), and `TryTimeout` (default 1 minute).
-Failures the SDK gives up on surface to the pipeline, where node-level resilience and message settlement apply.
+## Sending
+
+```csharp
+var invoices = ServiceBusConnector.Sink<Invoice>(client, "invoices", o => o with { SessionId = invoice => invoice.CustomerId });
+builder.AddSink(invoices.Acknowledging(), "invoices");
+```
+
+The sink sends each batch in as few Service Bus message batches as the size limit allows, and settles each source
+message once its body is sent. A message received from Service Bus keeps its message id (so duplicate detection works
+across the hop), session, correlation id, subject, time to live and application properties (`CopyMessageProperties`).
+The sink creates its own sender, so disposing it never closes one another node uses.
+
+### Sink options
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `Entity` | required | The queue or topic |
+| `BatchSize`, `BatchLinger` | 100, 10 ms | Messages per send, and the longest a batch waits to fill |
+| `CopyMessageProperties` | `true` | Carry a received message's properties to the one sent |
+| `MessageId`, `SessionId`, `Subject` | `null` | Choose each message's id, session (required by a session-enabled entity) and subject from its body |
+| `TimeToLive` | entity's | How long each message lives unless received |
+| `FailedMessages` | `Fail` | See [Failed writes](message-queues.md#failed-writes) |
 
 ## Dependency Injection
 
 ```csharp
-services.AddServiceBusConnector(options =>
-{
-    options.ConnectionString = "Endpoint=sb://mynamespace.servicebus.windows.net/;...";
-});
-
-services.AddServiceBusQueueSource<Order>("orders", config =>
-{
-    config.PrefetchCount = 50;
-    config.MaxConcurrentCalls = 4;
-});
-
-services.AddServiceBusQueueSink<ProcessedOrder>("processed-orders");
-services.AddServiceBusTopicSink<AuditEvent>("audit-events");
+services.AddServiceBusConnector("mynamespace.servicebus.windows.net", credential: null);   // DefaultAzureCredential
 ```
+
+Registers one shared `ServiceBusClient` and `ServiceBusNodeFactory` (`CreateSource`, `CreateSubscriptionSource`,
+`CreateSessionSource`, `CreateSink`). Overloads take a connection string, or a factory for the client.
 
 ## Next Steps
 
-- [Kafka Connector](kafka.md) - self-managed distributed streaming
-- [RabbitMQ Connector](rabbitmq.md) - self-managed message broker
-- [AWS SQS Connector](aws-sqs.md) - AWS managed queuing
-
-## Source Node Variants
-
-| Class | Description |
-|-------|-------------|
-| `ServiceBusQueueSourceNode<T>` | Receive from a queue |
-| `ServiceBusSubscriptionSourceNode<T>` | Receive from a topic subscription |
-| `ServiceBusSessionSourceNode<T>` | Session-based processing (ordered within session) |
-
-## Message Settlement
-
-| Method | Description |
-|--------|-------------|
-| `CompleteAsync()` | Mark message as processed - removes from queue |
-| `AbandonAsync()` | Release lock - message becomes available again |
-| `DeadLetterAsync(reason)` | Move to dead-letter sub-queue with reason |
-| `DeferAsync()` | Defer for later processing by sequence number |
-
-```csharp
-pipeline.AddTransform<ServiceBusMessage<Order>, ProcessedOrder>(async (msg, ct) =>
-{
-    try
-    {
-        var result = Process(msg.Body);
-        await msg.CompleteAsync(ct);
-        return result;
-    }
-    catch (ValidationException ex)
-    {
-        await msg.DeadLetterAsync(ex.Message, ct);
-        throw;
-    }
-});
-```
-
-## Dead-Letter Processing
-
-Read from the dead-letter sub-queue:
-
-```csharp
-var dlqConfig = new ServiceBusConfiguration
-{
-    ConnectionString = "...",
-    QueueName = "orders",
-    SubQueue = SubQueue.DeadLetter
-};
-
-var dlqSource = new ServiceBusQueueSourceNode<Order>(dlqConfig);
-```
-
-## Session-Based Processing
-
-Sessions guarantee FIFO ordering within a session and enable stateful processing:
-
-```csharp
-var config = new ServiceBusConfiguration
-{
-    ConnectionString = "...",
-    QueueName = "orders",
-    EnableSessions = true,
-    MaxConcurrentSessions = 8,
-    SessionIdleTimeout = TimeSpan.FromMinutes(1)
-};
-```
-
-Messages with the same `SessionId` are processed in order. Different sessions process in parallel.
-
-## Lock Renewal
-
-For long-running processing, configure auto-lock renewal:
-
-```csharp
-var config = new ServiceBusConfiguration
-{
-    MaxAutoLockRenewalDuration = TimeSpan.FromMinutes(30),
-    PrefetchCount = 0  // disable prefetch for long processing
-};
-```
-
-## Best Practices
-
-1. **Use Azure AD auth** in production - avoid connection strings
-2. **Set `PrefetchCount`** based on processing speed (0 for slow consumers)
-3. **Use sessions** when ordering matters within a logical group
-4. **Configure `MaxAutoLockRenewalDuration`** to exceed worst-case processing time
-5. **Dead-letter with reason** - include diagnostic information
-6. **Use topics + subscriptions** for pub/sub fan-out
-7. **Monitor dead-letter queue depth** - alerts on rising DLQ count
+- [Message Queues: Shared Behaviour](message-queues.md)
+- [Kafka](kafka.md), [RabbitMQ](rabbitmq.md), [AWS SQS](aws-sqs.md)

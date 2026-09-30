@@ -1,12 +1,11 @@
 using System.Collections.Concurrent;
-using System.Diagnostics;
 using System.Reflection;
 using Confluent.Kafka;
 using Confluent.SchemaRegistry;
 using Confluent.SchemaRegistry.Serdes;
 using Google.Protobuf;
 using NPipeline.Connectors.Kafka.Configuration;
-using NPipeline.Connectors.Kafka.Metrics;
+using NPipeline.Connectors.Messaging;
 
 namespace NPipeline.Connectors.Kafka.Serialization;
 
@@ -14,7 +13,7 @@ namespace NPipeline.Connectors.Kafka.Serialization;
 ///     Protobuf serializer for Kafka messages using Confluent Schema Registry.
 ///     Requires message types to be generated Protobuf classes implementing IMessage.
 /// </summary>
-public sealed class ProtobufMessageSerializer : ISerializerProvider, IDisposable
+public sealed class ProtobufMessageSerializer : IMessageSerializer, IDisposable
 {
     // Cached reflection methods for creating typed serializers/deserializers
     private static readonly MethodInfo CreateSerializerMethod = typeof(ProtobufMessageSerializer)
@@ -25,7 +24,6 @@ public sealed class ProtobufMessageSerializer : ISerializerProvider, IDisposable
 
     private readonly ProtobufDeserializerConfig? _deserializerConfig;
     private readonly ConcurrentDictionary<Type, object> _deserializers = new();
-    private readonly IKafkaMetrics _metrics;
     private readonly CachedSchemaRegistryClient _schemaRegistryClient;
     private readonly ProtobufSerializerConfig? _serializerConfig;
     private readonly ConcurrentDictionary<Type, object> _serializers = new();
@@ -35,17 +33,14 @@ public sealed class ProtobufMessageSerializer : ISerializerProvider, IDisposable
     ///     Initializes a new instance with Schema Registry configuration.
     /// </summary>
     /// <param name="schemaRegistryConfig">The Schema Registry configuration.</param>
-    /// <param name="metrics">The metrics recorder.</param>
     /// <param name="serializerConfig">Optional Protobuf serializer configuration.</param>
     /// <param name="deserializerConfig">Optional Protobuf deserializer configuration.</param>
     public ProtobufMessageSerializer(
         SchemaRegistryConfiguration schemaRegistryConfig,
-        IKafkaMetrics metrics,
         ProtobufSerializerConfig? serializerConfig = null,
         ProtobufDeserializerConfig? deserializerConfig = null)
     {
         ArgumentNullException.ThrowIfNull(schemaRegistryConfig);
-        _metrics = metrics ?? throw new ArgumentNullException(nameof(metrics));
 
         var schemaRegistryConfigDict = BuildSchemaRegistryConfig(schemaRegistryConfig);
         _schemaRegistryClient = new CachedSchemaRegistryClient(schemaRegistryConfigDict);
@@ -64,17 +59,14 @@ public sealed class ProtobufMessageSerializer : ISerializerProvider, IDisposable
     ///     Initializes a new instance with an existing Schema Registry client.
     /// </summary>
     /// <param name="schemaRegistryClient">The Schema Registry client.</param>
-    /// <param name="metrics">The metrics recorder.</param>
     /// <param name="serializerConfig">Optional Protobuf serializer configuration.</param>
     /// <param name="deserializerConfig">Optional Protobuf deserializer configuration.</param>
     public ProtobufMessageSerializer(
         CachedSchemaRegistryClient schemaRegistryClient,
-        IKafkaMetrics metrics,
         ProtobufSerializerConfig? serializerConfig = null,
         ProtobufDeserializerConfig? deserializerConfig = null)
     {
         _schemaRegistryClient = schemaRegistryClient ?? throw new ArgumentNullException(nameof(schemaRegistryClient));
-        _metrics = metrics ?? throw new ArgumentNullException(nameof(metrics));
         _serializerConfig = serializerConfig;
         _deserializerConfig = deserializerConfig;
     }
@@ -106,78 +98,30 @@ public sealed class ProtobufMessageSerializer : ISerializerProvider, IDisposable
     }
 
     /// <inheritdoc />
-    public byte[] Serialize<T>(T value) =>
+    /// <inheritdoc />
+    public string ContentType => "application/x-protobuf";
 
-        // No topic: the subject becomes "-value". The sink calls the overload below with the real topic.
-        Serialize(value, new SerializationContext(MessageComponentType.Value, string.Empty));
-
-    /// <summary>
-    ///     Serializes a value for the topic and component in <paramref name="context" />. The Schema Registry subject
-    ///     follows the configured subject name strategy, so under the default it is <c>&lt;topic&gt;-value</c>.
-    /// </summary>
-    /// <typeparam name="T">The value type; it chooses the schema.</typeparam>
-    /// <param name="value">The value to serialize.</param>
-    /// <param name="context">The topic and component (key or value) being written.</param>
-    /// <returns>The serialized bytes.</returns>
-    public byte[] Serialize<T>(T value, SerializationContext context)
+    /// <summary>Serializes <paramref name="value" />, registering or looking up its schema under the destination's subject.</summary>
+    public byte[] Serialize<T>(T value, MessageContext context)
     {
         if (value is null)
             return [];
 
-        var sw = Stopwatch.StartNew();
-
-        try
-        {
-            var serializer = GetOrCreateSerializer<T>();
-
-            // Confluent serializers are async-only; Kafka expects sync serializers, so we block here.
-            return serializer.SerializeAsync(value, context).GetAwaiter().GetResult();
-        }
-        catch (Exception ex)
-        {
-            _metrics.RecordSerializeError(typeof(T), ex);
-            throw;
-        }
-        finally
-        {
-            _metrics.RecordSerializeLatency(typeof(T), sw.Elapsed);
-        }
+        // Confluent's serializers are asynchronous; the connector serializes synchronously, so this blocks.
+        return GetOrCreateSerializer<T>().SerializeAsync(value, Context(context)).GetAwaiter().GetResult();
     }
 
     /// <inheritdoc />
-    public T Deserialize<T>(byte[] data) => Deserialize<T>(data, new SerializationContext(MessageComponentType.Value, string.Empty));
-
-    /// <summary>
-    ///     Deserializes a value read from the topic and component in <paramref name="context" />.
-    /// </summary>
-    /// <typeparam name="T">The target type.</typeparam>
-    /// <param name="data">The bytes to deserialize.</param>
-    /// <param name="context">The topic and component (key or value) being read.</param>
-    /// <returns>The deserialized value.</returns>
-    public T Deserialize<T>(byte[] data, SerializationContext context)
+    public T Deserialize<T>(ReadOnlySpan<byte> body, MessageContext context)
     {
-        if (data is null || data.Length == 0)
-            return default!;
+        if (body.IsEmpty)
+            throw new InvalidDataException("The body is empty, which is not a serialized message.");
 
-        var sw = Stopwatch.StartNew();
-
-        try
-        {
-            var deserializer = GetOrCreateDeserializer<T>();
-
-            // Confluent deserializers are async-only; Kafka expects sync deserializers, so we block here.
-            return deserializer.DeserializeAsync(data, data == null, context).GetAwaiter().GetResult();
-        }
-        catch (Exception ex)
-        {
-            _metrics.RecordDeserializeError(typeof(T), ex);
-            throw;
-        }
-        finally
-        {
-            _metrics.RecordDeserializeLatency(typeof(T), sw.Elapsed);
-        }
+        return GetOrCreateDeserializer<T>().DeserializeAsync(body.ToArray(), false, Context(context)).GetAwaiter().GetResult();
     }
+
+    private static SerializationContext Context(MessageContext context) =>
+        new(context.IsKey ? MessageComponentType.Key : MessageComponentType.Value, context.Destination);
 
     private IAsyncSerializer<T> GetOrCreateSerializer<T>()
     {
@@ -247,6 +191,6 @@ public sealed class ProtobufMessageSerializer : ISerializerProvider, IDisposable
     private ProtobufDeserializer<T> CreateProtobufDeserializer<T>() where T : class, IMessage<T>, new() =>
 
         // ProtobufDeserializer requires ISchemaRegistryClient interface, not the concrete type
-        new(_schemaRegistryClient);
+        new(_schemaRegistryClient, _deserializerConfig);
 #pragma warning restore CA1822
 }

@@ -1,14 +1,14 @@
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using FakeItEasy;
-using NPipeline.Connectors.Aws.Sqs.Configuration;
 using NPipeline.Connectors.Aws.Sqs.Nodes;
 using NPipeline.Pipeline;
+using static NPipeline.Connectors.Aws.Sqs.Tests.SqsTestSupport;
 
 namespace NPipeline.Connectors.Aws.Sqs.Tests.Reliability.Behavior;
 
 /// <summary>
-///     Cancellation handling in the SQS source's polling loop (S1 in <c>plans/resilience-improvements.md</c>).
+///     Cancellation handling in the SQS source's receive loop (S1 in <c>plans/resilience-improvements.md</c>).
 /// </summary>
 public sealed class SqsSourceCancellationBehaviorTests
 {
@@ -21,10 +21,22 @@ public sealed class SqsSourceCancellationBehaviorTests
             .Returns(new ReceiveMessageResponse { Messages = [] });
 
         using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
+        await using var node = CreateNode(client);
 
-        var act = () => DrainAsync(CreateNode(client), cts.Token);
+        var act = () => DrainAsync(node, cts.Token);
 
         _ = await act.Should().ThrowAsync<OperationCanceledException>("a cancelled source must not look like one that drained");
+    }
+
+    [Fact]
+    public async Task PipelineCancellation_DuringALongPoll_SurfacesAsCancellation()
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
+        await using var node = CreateNode(ReceivingClient());
+
+        var act = () => DrainAsync(node, cts.Token);
+
+        _ = await act.Should().ThrowAsync<OperationCanceledException>();
     }
 
     [Fact]
@@ -36,21 +48,14 @@ public sealed class SqsSourceCancellationBehaviorTests
         A.CallTo(() => client.ReceiveMessageAsync(A<ReceiveMessageRequest>._, A<CancellationToken>._))
             .ThrowsAsync(new TaskCanceledException("request timed out"));
 
-        var act = () => DrainAsync(CreateNode(client), CancellationToken.None);
+        await using var node = CreateNode(client);
+
+        var act = () => DrainAsync(node, CancellationToken.None);
 
         _ = await act.Should().ThrowAsync<OperationCanceledException>("the stream must not end as if it had succeeded");
     }
 
-    private static SqsSourceNode<string> CreateNode(IAmazonSQS client)
-    {
-        var configuration = new SqsConfiguration
-        {
-            SourceQueueUrl = "https://sqs.us-east-1.amazonaws.com/123456789012/source-queue",
-            PollingIntervalMs = 10,
-        };
-
-        return new SqsSourceNode<string>(client, configuration);
-    }
+    private static SqsSourceNode<string> CreateNode(IAmazonSQS client) => SqsConnector.Source<string>(QueueUrl, o => o with { Client = client });
 
     private static async Task DrainAsync(SqsSourceNode<string> node, CancellationToken cancellationToken)
     {

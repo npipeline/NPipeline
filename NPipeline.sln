@@ -320,6 +320,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NPipeline.Connectors.Benchm
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NPipeline.Connectors.Database.RoundTrip.Tests", "tests\NPipeline.Connectors.Database.RoundTrip.Tests\NPipeline.Connectors.Database.RoundTrip.Tests.csproj", "{5CBB1C71-BEA0-438E-BBDA-E0F1EE9E928F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NPipeline.Connectors.Messaging.RoundTrip.Tests", "tests\NPipeline.Connectors.Messaging.RoundTrip.Tests\NPipeline.Connectors.Messaging.RoundTrip.Tests.csproj", "{D51AA366-1D88-4811-8E56-3C13AD3BA8FB}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -2166,6 +2168,18 @@ Global
 		{5CBB1C71-BEA0-438E-BBDA-E0F1EE9E928F}.Release|x64.Build.0 = Release|Any CPU
 		{5CBB1C71-BEA0-438E-BBDA-E0F1EE9E928F}.Release|x86.ActiveCfg = Release|Any CPU
 		{5CBB1C71-BEA0-438E-BBDA-E0F1EE9E928F}.Release|x86.Build.0 = Release|Any CPU
+		{D51AA366-1D88-4811-8E56-3C13AD3BA8FB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D51AA366-1D88-4811-8E56-3C13AD3BA8FB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D51AA366-1D88-4811-8E56-3C13AD3BA8FB}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{D51AA366-1D88-4811-8E56-3C13AD3BA8FB}.Debug|x64.Build.0 = Debug|Any CPU
+		{D51AA366-1D88-4811-8E56-3C13AD3BA8FB}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{D51AA366-1D88-4811-8E56-3C13AD3BA8FB}.Debug|x86.Build.0 = Debug|Any CPU
+		{D51AA366-1D88-4811-8E56-3C13AD3BA8FB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D51AA366-1D88-4811-8E56-3C13AD3BA8FB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D51AA366-1D88-4811-8E56-3C13AD3BA8FB}.Release|x64.ActiveCfg = Release|Any CPU
+		{D51AA366-1D88-4811-8E56-3C13AD3BA8FB}.Release|x64.Build.0 = Release|Any CPU
+		{D51AA366-1D88-4811-8E56-3C13AD3BA8FB}.Release|x86.ActiveCfg = Release|Any CPU
+		{D51AA366-1D88-4811-8E56-3C13AD3BA8FB}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -2323,5 +2337,6 @@ Global
 		{2C135BDC-97CA-4F6E-83FF-9E6EACBBED9B} = {8EBB6475-2F6E-44CF-ABEB-C21A05B26825}
 		{AF231C4A-84E3-4D60-8C72-E444B073CFAE} = {58D4A50D-943D-427B-999E-178DC2F65C4D}
 		{5CBB1C71-BEA0-438E-BBDA-E0F1EE9E928F} = {8EBB6475-2F6E-44CF-ABEB-C21A05B26825}
+		{D51AA366-1D88-4811-8E56-3C13AD3BA8FB} = {8EBB6475-2F6E-44CF-ABEB-C21A05B26825}
 	EndGlobalSection
 EndGlobal

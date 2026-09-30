@@ -1,57 +1,57 @@
-﻿using System.Reflection;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using NPipeline.Connectors.Abstractions;
-using NPipeline.Connectors.Azure.ServiceBus.Nodes;
-using NPipeline.Extensions.DependencyInjection;
+using Azure.Messaging.ServiceBus;
+using NPipeline.Configuration;
+using NPipeline.Execution;
+using NPipeline.Pipeline;
 using Sample_AzureServiceBusConnector;
 
 Console.WriteLine("=== NPipeline Sample: Azure Service Bus Connector for Order Processing ===");
 Console.WriteLine();
 
+var connectionString = Environment.GetEnvironmentVariable("SERVICEBUS_CONNECTION_STRING");
+
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+    Console.WriteLine("Set SERVICEBUS_CONNECTION_STRING to your namespace's connection string, and create the " +
+                      $"'{ServiceBusConnectorPipeline.InputQueue}' and '{ServiceBusConnectorPipeline.OutputQueue}' queues.");
+
+    Environment.ExitCode = 1;
+    return;
+}
+
+Console.WriteLine(ServiceBusConnectorPipeline.GetDescription());
+Console.WriteLine();
+Console.WriteLine("Press Ctrl+C to stop.");
+Console.WriteLine();
+
+using var cts = new CancellationTokenSource();
+
+Console.CancelKeyPress += (_, e) =>
+{
+    e.Cancel = true;
+    cts.Cancel();
+};
+
+// One client, shared by the source and the sink.
+await using var client = new ServiceBusClient(connectionString);
+
 try
 {
-    var host = Host.CreateDefaultBuilder(args)
-        .ConfigureServices((_, services) =>
-        {
-            // Register NPipeline and scan for pipeline definitions
-            services.AddNPipeline(Assembly.GetExecutingAssembly());
-
-            // Register source and sink configurations so nodes can be constructed via DI
-            services.AddSingleton(ServiceBusConnectorPipeline.CreateSourceConfiguration());
-
-            // Register source and sink nodes explicitly, referencing configurations
-            services.AddTransient(_ =>
-                new ServiceBusQueueSourceNode<Order>(
-                    ServiceBusConnectorPipeline.CreateSourceConfiguration()));
-
-            services.AddTransient(_ =>
-                new ServiceBusQueueSinkNode<IAcknowledgableMessage<ProcessedOrder>>(
-                    ServiceBusConnectorPipeline.CreateSinkConfiguration()));
-        })
-        .Build();
-
-    Console.WriteLine("Pipeline Description:");
-    Console.WriteLine(ServiceBusConnectorPipeline.GetDescription());
-    Console.WriteLine();
-
-    Console.WriteLine(
-        "NOTE: This sample requires an Azure Service Bus namespace." +
-        " Set SERVICEBUS_CONNECTION_STRING to your connection string, " +
-        "then create 'input-orders' and 'processed-orders' queues.");
-
-    Console.WriteLine();
-    Console.WriteLine("Starting pipeline execution... Press Ctrl+C to stop.");
-
-    await host.Services.RunPipelineAsync<ServiceBusConnectorPipeline>();
-
-    Console.WriteLine("Pipeline execution completed.");
+    await using var context = new PipelineContext(PipelineContextConfiguration.WithCancellation(cts.Token));
+    await PipelineRunner.Create().RunAsync(new ServiceBusConnectorPipeline(client), context, cts.Token);
+}
+catch (Exception) when (cts.IsCancellationRequested)
+{
+    // Ctrl+C: messages that were not completed are abandoned and delivered again.
 }
 catch (Exception ex)
 {
     Console.ForegroundColor = ConsoleColor.Red;
     Console.WriteLine($"Error: {ex.Message}");
     Console.ResetColor();
-    Console.WriteLine(ex.ToString());
+    Console.WriteLine(ex);
     Environment.ExitCode = 1;
+    return;
 }
+
+Console.WriteLine();
+Console.WriteLine("Pipeline stopped.");

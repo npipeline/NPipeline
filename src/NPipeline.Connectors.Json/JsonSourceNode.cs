@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
 using NPipeline.Connectors.Errors;
 using NPipeline.Connectors.Files;
+using NPipeline.Connectors.Serialization;
 
 namespace NPipeline.Connectors.Json;
 
@@ -54,8 +55,8 @@ public sealed class JsonSourceNode<T> : FileSourceNode<T>
     {
         _options = options;
         _map = map;
-        _serializerOptions = JsonSerialization.Resolve(options.SerializerOptions);
-        _typeInfo = map is null ? typeInfo ?? JsonSerialization.TypeInfo<T>(_serializerOptions) : null;
+        _serializerOptions = ConnectorJson.Resolve(options.SerializerOptions);
+        _typeInfo = map is null ? typeInfo ?? ConnectorJson.TypeInfo<T>(_serializerOptions) : null;
         _itemsPath = options.ItemsPath is null ? null : JsonItemsPath.Parse(options.ItemsPath);
 
         _readerOptions = new JsonReaderOptions

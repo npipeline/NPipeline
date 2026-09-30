@@ -20,6 +20,11 @@
     "paths": ["src/NPipeline.Connectors.Kafka/", "tests/NPipeline.Connectors.Kafka.Tests/"]
   },
   {
+    "name": "Connectors.Messaging.RoundTrip",
+    "test": "tests/NPipeline.Connectors.Messaging.RoundTrip.Tests/NPipeline.Connectors.Messaging.RoundTrip.Tests.csproj",
+    "paths": ["src/NPipeline.Connectors/", "src/NPipeline.Connectors.Aws.Sqs/", "src/NPipeline.Connectors.Azure.ServiceBus/", "src/NPipeline.Connectors.Kafka/", "src/NPipeline.Connectors.RabbitMQ/", "tests/NPipeline.Connectors.Messaging.RoundTrip.Tests/"]
+  },
+  {
     "name": "Connectors.MongoDB",
     "test": "tests/NPipeline.Connectors.MongoDB.Tests/NPipeline.Connectors.MongoDB.Tests.csproj",
     "paths": ["src/NPipeline.Connectors.MongoDB/", "tests/NPipeline.Connectors.MongoDB.Tests/"]

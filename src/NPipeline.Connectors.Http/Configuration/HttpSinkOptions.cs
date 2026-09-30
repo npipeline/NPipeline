@@ -51,6 +51,12 @@ public sealed record HttpSinkOptions<T>
     /// </summary>
     public int BatchSize { get; init; } = 1;
 
+    /// <summary>
+    ///     The longest a batch waits to fill: a partial batch is sent once this long has passed since its first item.
+    ///     Defaults to one second; <see cref="Timeout.InfiniteTimeSpan" /> waits for full batches.
+    /// </summary>
+    public TimeSpan BatchLinger { get; init; } = TimeSpan.FromSeconds(1);
+
     /// <summary>The property to wrap a batch in, such as <c>items</c> for <c>{"items":[…]}</c>. <c>null</c> sends a bare array.</summary>
     public string? BatchWrapperKey { get; init; }
 
@@ -98,6 +104,9 @@ public sealed record HttpSinkOptions<T>
             throw new ArgumentException("Uri must be an absolute URI.", nameof(Uri));
 
         ArgumentOutOfRangeException.ThrowIfLessThan(BatchSize, 1, nameof(BatchSize));
+
+        if (BatchLinger < TimeSpan.Zero && BatchLinger != Timeout.InfiniteTimeSpan)
+            throw new ArgumentOutOfRangeException(nameof(BatchLinger), "BatchLinger must be zero or more, or Timeout.InfiniteTimeSpan.");
         ArgumentNullException.ThrowIfNull(Headers, nameof(Headers));
         ArgumentNullException.ThrowIfNull(Auth, nameof(Auth));
         ArgumentNullException.ThrowIfNull(Resilience, nameof(Resilience));

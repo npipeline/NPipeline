@@ -1,12 +1,14 @@
 ---
 title: "RabbitMQ Connector"
-description: "Consume from and publish to RabbitMQ with quorum queues, publisher confirms, and dead-letter handling."
-order: 16
+description: "Consume from and publish to RabbitMQ with prefetch, publisher confirms, batched publishing, topology declaration and dead-letter exchanges."
+order: 17
 ---
 
 # RabbitMQ Connector
 
-The `NPipeline.Connectors.RabbitMQ` package provides source and sink nodes for [RabbitMQ](https://www.rabbitmq.com/). Supports quorum queues, QoS prefetch, publisher confirms, batch publishing, TLS, automatic topology declaration, dead-letter exchanges, and poison message detection.
+The `NPipeline.Connectors.RabbitMQ` package consumes RabbitMQ queues and publishes to exchanges, over one shared
+connection, with publisher confirms by default. Serialization, settlement, undeserializable messages and failed writes
+work as in every message-queue connector; see [Message Queues: Shared Behaviour](message-queues.md).
 
 ## Installation
 
@@ -16,322 +18,153 @@ dotnet add package NPipeline.Connectors.RabbitMQ
 
 **Dependencies:** [RabbitMQ.Client](https://www.nuget.org/packages/RabbitMQ.Client) 7.x
 
-## Source Node - `RabbitMqSourceNode<T>`
+## Connection
 
-### Constructor
+Sources and sinks share one connection, which connects on first use and recovers automatically:
 
 ```csharp
-public RabbitMqSourceNode(
-    RabbitMqSourceOptions options,
-    IRabbitMqConnectionManager connectionManager,
-    IMessageSerializer serializer,
-    IRabbitMqMetrics? metrics = null,
-    ILogger<RabbitMqSourceNode<T>>? logger = null)
+await using var connection = RabbitMqConnector.Connect(new RabbitMqConnectionOptions
+{
+    HostName = "rabbit.example.com",
+    UserName = "pipeline",
+    Password = secret,
+});
 ```
 
-### Example
+| Option | Default | Description |
+| --- | --- | --- |
+| `HostName`, `Port`, `VirtualHost` | `localhost`, 5672, `/` | The broker |
+| `UserName`, `Password` | `guest` | Credentials; RabbitMQ allows `guest` only from localhost |
+| `Uri` | `null` | A full `amqp://` or `amqps://` URI, instead of the settings above |
+| `Tls` | `null` | TLS: `Enabled`, `ServerName`, `CertificatePath`, `SslProtocols` |
+| `AutomaticRecoveryEnabled`, `NetworkRecoveryInterval` | `true`, 5 s | Reconnects after a failure (it doesn't replay a failed publish; the sink retries that) |
+| `RequestedHeartbeat` | 60 s | The heartbeat interval |
+| `MaxChannelPoolSize` | 4 | Publishing channels kept for reuse |
+
+## Consuming
 
 ```csharp
-var sourceOptions = new RabbitMqSourceOptions("order-queue")
+var orders = RabbitMqConnector.Source<Order>(connection, "orders", o => o with { PrefetchCount = 200 });
+```
+
+Each message is a `RabbitMqMessage<T>` with its `Body`, `Exchange`, `RoutingKey`, `DeliveryTag`, `Redelivered`,
+`CorrelationId`, `Headers` and all its `Properties`. The source has its own channel, and the broker delivers at most
+`PrefetchCount` unsettled messages ahead: once that many are neither acknowledged nor rejected, it waits, which is the
+source's backpressure. When the read ends, the consumer is cancelled, messages delivered but not handed on go back on
+the queue, and the channel stays open until the messages handed on are settled (up to `SettleTimeout`).
+
+`RejectAsync(requeue: false)` sends a message to the queue's dead-letter exchange, if it has one.
+
+### Source options
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `Queue` | required | The queue |
+| `PrefetchCount` | 100 | Unsettled messages the broker delivers ahead |
+| `ConsumerTag`, `Exclusive` | broker's, `false` | The consumer's tag, and whether it is the queue's only consumer |
+| `Topology` | `null` | Declares the queue and its bindings first; see [Topology](#topology) |
+| `RowErrorHandler`, `RawExcerptLength` | fail, 256 | See [Messages that don't deserialize](message-queues.md#messages-that-dont-deserialize); `Skip` rejects without requeue |
+| `MaxDeliveryAttempts` | `null` | Rejects, without requeue, a message delivered more than this many times |
+| `SettleTimeout` | 30 s | How long the channel stays open after the read ends |
+
+`MaxDeliveryAttempts` counts from the `x-delivery-count` header that quorum queues set, or `x-death` after dead-letter
+cycles; classic queues count neither. Quorum queues also enforce a delivery limit of their own (20 by default in
+RabbitMQ 4), so a message that keeps failing is dead-lettered by the broker without it.
+
+## Publishing
+
+```csharp
+var sink = RabbitMqConnector.Sink<Invoice>(connection, exchange: "billing", routingKey: "invoices");
+var toQueue = RabbitMqConnector.Sink<Invoice>(connection, exchange: "", routingKey: "invoices");   // the default exchange routes to the queue
+var byRegion = RabbitMqConnector.Sink<Order>(connection, "orders", configure: o => o with { RoutingKeySelector = order => $"orders.{order.Region}" });
+```
+
+The sink publishes each batch's messages together on one channel and awaits their confirms together, so a batch costs
+about one round trip. A message received from RabbitMQ keeps its message id, correlation id, headers, type and
+priority (`CopyMessageProperties`); others get a new message id, which stays the same across retries so a consumer can
+drop a duplicate.
+
+### Sink options
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `Exchange`, `RoutingKey` | required, `""` | Where messages go; `""` is the default exchange |
+| `RoutingKeySelector` | `null` | Chooses each message's routing key from its body |
+| `PublisherConfirms`, `ConfirmTimeout` | `true`, 5 s | Wait for the broker's confirm before a message counts as published |
+| `Persistent` | `true` | Delivery mode 2 |
+| `Mandatory` | `false` | The broker returns a message no queue is bound for, which fails its publish |
+| `ContentType`, `AppId` | the serializer's, none | Set on every message |
+| `BatchSize`, `BatchLinger` | 100, 10 ms | Messages published together, and the longest a batch waits to fill |
+| `FailedMessages` | `Fail` | See [Failed writes](message-queues.md#failed-writes) |
+| `CopyMessageProperties` | `true` | Carry a received message's properties to the one published |
+| `Topology` | `null` | Declares the exchange first |
+| `Resilience` | `RabbitMqConnectorResilience.Default` | How a failed publish is retried |
+
+With `PublisherConfirms = false`, a publish completes once the message is written to the connection, so a message lost
+after that goes undetected and its source message is still acknowledged: delivery is at-most-once.
+
+## Resilience
+
+A batch's publish is each message's first attempt. A message whose publish failed with an error the classifier calls
+transient is retried on its own with the rest of `Resilience`'s attempts, on a fresh channel if the old one closed;
+messages already published are never published again. `RabbitMqConnectorResilience.Default`:
+
+- Makes up to four attempts in all, with exponential backoff and full jitter from 100 ms up to 30 s.
+- Retries a lost connection, a closed channel, an unreachable broker, a forced close (320), an internal error (541), a
+  publish the broker nacked, and a confirm that didn't arrive within `ConfirmTimeout`.
+- Doesn't retry access refused (403), not found (404), resource locked (405), precondition failed (406), a message
+  returned as unroutable (312, with `Mandatory`), failed authentication, or a close the application asked for.
+
+A confirm that times out may still have reached the broker, so its retry can publish the message twice. To publish at
+most once per message, use `Resilience.None`.
+
+## Topology
+
+`RabbitMqTopologyOptions` declares what a node needs before it starts:
+
+```csharp
+var orders = RabbitMqConnector.Source<Order>(connection, "orders", o => o with
 {
-    PrefetchCount = 100,
-    AcknowledgmentStrategy = AcknowledgmentStrategy.AutoOnSinkSuccess,
-    MaxDeliveryAttempts = 5,
     Topology = new RabbitMqTopologyOptions
     {
-        AutoDeclare = true,
         QueueType = QueueType.Quorum,
-        DeadLetterExchange = "dlx"
-    }
-};
+        DeadLetterExchange = "orders-dlx",
+        ExchangeType = "topic",
+        Bindings = [new BindingOptions("orders-exchange", "orders.#")],
+    },
+});
 ```
 
-## Sink Node - `RabbitMqSinkNode<T>`
+| Option | Default | Description |
+| --- | --- | --- |
+| `AutoDeclare` | `true` | Declare when the topology is set |
+| `QueueType` | `Quorum` | `Classic`, `Quorum` (replicated, recommended) or `Stream` |
+| `Durable`, `AutoDelete`, `Exclusive` | `true`, `false`, `false` | Queue and exchange flags |
+| `ExchangeType` | `null` | Declares the bindings' exchanges (source) or the sink's exchange, of this type |
+| `DeadLetterExchange`, `DeadLetterRoutingKey` | `null` | Where rejected messages go |
+| `MessageTtlMs`, `MaxLength`, `MaxLengthBytes` | `null` | Queue limits |
+| `Bindings` | none | Bindings from exchanges to the source's queue |
+| `PassiveDeclare` | `false` | Check that the queue or exchange exists instead of declaring it |
 
-### Constructor
+## Dead letters
+
+`RabbitMqDeadLetterSink` is a pipeline dead-letter sink that publishes failed items to an exchange, with the error in
+`x-death-*` headers. A `MessageFailure` is published with its original body and message id, so it can be replayed.
 
 ```csharp
-public RabbitMqSinkNode(
-    RabbitMqSinkOptions options,
-    IRabbitMqConnectionManager connectionManager,
-    IMessageSerializer serializer,
-    IRabbitMqMetrics? metrics = null,
-    ILogger<RabbitMqSinkNode<T>>? logger = null)
+builder.AddDeadLetterSink(new RabbitMqDeadLetterSink(connection, exchange: "orders-dlx", routingKey: "orders"));
 ```
-
-### Example
-
-```csharp
-var sinkOptions = new RabbitMqSinkOptions("order-exchange")
-{
-    RoutingKey = "processed",
-    EnablePublisherConfirms = true,
-    Persistent = true,
-    Batching = new BatchPublishOptions
-    {
-        BatchSize = 100,
-        LingerTime = TimeSpan.FromMilliseconds(50)
-    }
-};
-```
-
-## Configuration
-
-### Connection - `RabbitMqConnectionOptions`
-
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `HostName` | `string` | `"localhost"` | RabbitMQ server hostname |
-| `Port` | `int` | `5672` | AMQP port |
-| `VirtualHost` | `string` | `"/"` | Virtual host |
-| `UserName` | `string` | `"guest"` | Username |
-| `Password` | `string` | `"guest"` | Password |
-| `Uri` | `Uri?` | `null` | Full AMQP URI (overrides individual settings) |
-| `AutomaticRecoveryEnabled` | `bool` | `true` | Auto-reconnect on failure |
-| `RequestedHeartbeat` | `TimeSpan` | `60s` | Heartbeat interval |
-| `MaxChannelPoolSize` | `int` | `4` | Max pooled channels |
-
-### TLS - `RabbitMqTlsOptions`
-
-```csharp
-var connection = new RabbitMqConnectionOptions
-{
-    HostName = "rabbitmq.example.com",
-    Port = 5671,
-    Tls = new RabbitMqTlsOptions
-    {
-        Enabled = true,
-        ServerName = "rabbitmq.example.com",
-        CertificatePath = "/path/to/client.pfx",
-        SslProtocols = SslProtocols.Tls12
-    }
-};
-```
-
-### Source - `RabbitMqSourceOptions`
-
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `QueueName` | `string` | (required) | Queue to consume from |
-| `PrefetchCount` | `ushort` | `100` | QoS prefetch count |
-| `AcknowledgmentStrategy` | `AcknowledgmentStrategy` | `AutoOnSinkSuccess` | When to ACK messages |
-| `RequeueOnNack` | `bool` | `true` | Requeue rejected messages |
-| `MaxDeliveryAttempts` | `int?` | `5` | Poison message threshold |
-| `RejectOnMaxDeliveryAttempts` | `bool` | `true` | Reject after max attempts |
-| `ConsumerDispatchConcurrency` | `int` | `1` | Concurrent dispatch |
-| `InternalBufferCapacity` | `int` | `1000` | Internal buffer size |
-
-### Sink - `RabbitMqSinkOptions`
-
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `ExchangeName` | `string` | (required) | Exchange to publish to |
-| `RoutingKey` | `string` | `""` | Default routing key |
-| `RoutingKeySelector` | `Func<object, string>?` | `null` | Per-message routing key |
-| `EnablePublisherConfirms` | `bool` | `true` | Wait for broker confirmation (off: at-most-once, see [Resilience](#resilience)) |
-| `Persistent` | `bool` | `true` | Mark messages as persistent |
-| `Mandatory` | `bool` | `false` | Require at least one queue binding |
-| `ContinueOnError` | `bool` | `false` | Skip a message whose publish fails instead of failing the node |
-| `ConfirmTimeout` | `TimeSpan` | `5s` | How long one publish attempt waits for the broker's confirm |
-| `ShutdownFlushTimeout` | `TimeSpan` | `30s` | How long the batched sink keeps publishing after the pipeline is cancelled |
-| `Resilience` | `Resilience` | `RabbitMqConnectorResilience.Default` | How each publish is retried (see [Resilience](#resilience)) |
-
-### Batch Publishing - `BatchPublishOptions`
-
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `BatchSize` | `int` | `100` | Messages per batch |
-| `LingerTime` | `TimeSpan` | `50ms` | Time to wait before sending partial batch |
-
-### Topology - `RabbitMqTopologyOptions`
-
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `AutoDeclare` | `bool` | `true` | Auto-declare exchanges, queues, and bindings |
-| `QueueType` | `QueueType` | `Quorum` | `Classic`, `Quorum` (recommended), or `Stream` |
-| `Durable` | `bool` | `true` | Durable queue/exchange |
-| `DeadLetterExchange` | `string?` | `null` | Dead-letter exchange name |
-| `DeadLetterRoutingKey` | `string?` | `null` | Dead-letter routing key |
-| `MessageTtlMs` | `int?` | `null` | Message TTL in milliseconds |
-| `MaxLength` | `int?` | `null` | Max queue length (messages) |
-| `MaxLengthBytes` | `int?` | `null` | Max queue size (bytes) |
 
 ## Dependency Injection
 
 ```csharp
-services.AddRabbitMq(connection =>
-{
-    connection.HostName = "rabbitmq.example.com";
-    connection.UserName = "app";
-    connection.Password = "secret";
-});
-
-services.AddRabbitMqSource<Order>(new RabbitMqSourceOptions("order-queue")
-{
-    PrefetchCount = 200,
-    AcknowledgmentStrategy = AcknowledgmentStrategy.AutoOnSinkSuccess
-});
-
-services.AddRabbitMqSink<ProcessedOrder>(new RabbitMqSinkOptions("processed-exchange")
-{
-    RoutingKey = "orders.processed",
-    EnablePublisherConfirms = true
-});
+services.AddRabbitMq(o => o with { HostName = "rabbit.example.com", UserName = "pipeline", Password = secret });
 ```
+
+Registers one shared `IRabbitMqConnectionManager` and `RabbitMqNodeFactory`, whose `CreateSource<T>(queue, configure)`
+and `CreateSink<T>(exchange, routingKey, configure)` build nodes on it.
 
 ## Next Steps
 
-- [Kafka Connector](kafka.md) - distributed streaming platform
-- [Azure Service Bus Connector](azure-service-bus.md) - managed cloud messaging
-- [AWS SQS Connector](aws-sqs.md) - managed cloud queuing
-
-## Topology Auto-Declaration
-
-When `AutoDeclare = true` (default), the connector creates exchanges, queues, and bindings on startup:
-
-```csharp
-var topology = new RabbitMqTopologyOptions
-{
-    AutoDeclare = true,
-    QueueType = QueueType.Quorum,
-    Durable = true,
-    DeadLetterExchange = "dlx",
-    DeadLetterRoutingKey = "dead-letter"
-};
-```
-
-### Queue Types
-
-| Type | Description |
-|------|-------------|
-| `Classic` | Traditional RabbitMQ queues |
-| `Quorum` (default) | Replicated, fault-tolerant - recommended for production |
-| `Stream` | Append-only log - for replay scenarios |
-
-## Dynamic Routing Keys
-
-Route messages per-item using `RoutingKeySelector`:
-
-```csharp
-var sink = new RabbitMqSinkNode<Order>(new RabbitMqSinkOptions("order-exchange")
-{
-    RoutingKeySelector = order => $"orders.{order.Region.ToLower()}"
-});
-```
-
-## Resilience
-
-The sink retries each publish through [NResilience](https://github.com/nresilience/NResilience). The
-`Resilience` property on `RabbitMqSinkOptions` configures it. The default, `RabbitMqConnectorResilience.Default`,
-does the following:
-
-- Makes up to four attempts (three retries).
-- Waits with exponential backoff and full jitter, from 100 milliseconds up to 30 seconds.
-- Retries a lost connection, a closed channel, an unreachable broker, a forced close (320), a broker internal error
-  (541), and a publish the broker nacked.
-- Does not retry access refused (403), not found (404), resource locked (405), precondition failed (406), a message
-  returned as unroutable (312, with `Mandatory`), failed authentication, or a close the application asked for.
-- Has no attempt timeout and no overall deadline, so the attempt count bounds the call.
-
-A closed channel never reopens, so a retry that finds its channel closed takes a fresh one from the pool. Every
-attempt carries the same `MessageId`, so a consumer can discard a duplicate.
-
-Each attempt waits up to `ConfirmTimeout` (5 seconds) for the broker's publisher confirm. A confirm that doesn't
-arrive in time fails the attempt with a `TimeoutException` and the policy retries it. The
-unconfirmed message may still have reached the broker, so the retry can publish it twice.
-
-With `EnablePublisherConfirms = false`, the sink publishes on channels that don't track confirms, and a publish
-completes once the message is written to the connection; `ConfirmTimeout` doesn't apply. A message lost after that
-(the connection drops, or the broker fails before routing it) goes undetected, and the source message is still
-acknowledged, so delivery is **at-most-once**. Channels with and without confirms are pooled apart, so sinks with
-either setting can share one `IRabbitMqConnectionManager`.
-
-With batching on, messages are published in order and each one is retried on its own; the messages published
-before it are not published again. If a message still fails, the source messages published before it are
-acknowledged, and the failed message and those after it are not. The node then fails, or, with
-`ContinueOnError`, drops the rest of the batch and carries on. Only one flush runs at a time: the linger timer and
-a full batch never publish together.
-
-When the pipeline is cancelled, the batched sink publishes and acknowledges the messages it has already taken from
-the input, for up to `ShutdownFlushTimeout` (30 seconds), and then reports the cancellation. Messages it can't publish
-in that time stay unacknowledged, so the broker redelivers them. A message already published is never published again
-by the shutdown flush.
-
-To change a setting, derive a policy with a `with` expression:
-
-```csharp
-var options = new RabbitMqSinkOptions
-{
-    ExchangeName = "orders",
-    Resilience = RabbitMqConnectorResilience.Default with
-    {
-        Attempts = 6,
-        AttemptTimeout = TimeSpan.FromSeconds(10),
-    },
-};
-```
-
-A publish that times out while it waits for a publisher confirm may still have reached the broker, so its retry can
-publish the message twice. To publish once, use `Resilience.None`.
-
-The sink is the only layer that retries a publish. The client's automatic connection recovery
-(`AutomaticRecoveryEnabled`) still reconnects in the background, but it does not replay a failed publish.
-
-The source message is acknowledged after its publish succeeds, outside the retried call. A failed acknowledgement
-never publishes the message again, and a failed publish never acknowledges it.
-
-## Connection Management
-
-- **Lazy connection**: Connections are created on first use
-- **Automatic recovery**: The underlying RabbitMQ client reconnects on failure
-- **Channel pooling**: Channels are pooled and reused across operations
-
-## Push-to-Pull Bridge
-
-`RabbitMqSourceNode<T>` internally bridges RabbitMQ's push-based consumer to NPipeline's pull-based model using a bounded `Channel<T>`:
-
-```csharp
-var source = new RabbitMqSourceNode<Order>(new RabbitMqSourceOptions("order-queue")
-{
-    InternalBufferCapacity = 1000,  // bounded channel capacity
-    PrefetchCount = 200             // QoS prefetch
-});
-```
-
-If the buffer fills, RabbitMQ backpressure kicks in (broker stops delivering until space is available).
-
-## Acknowledgment Strategies
-
-| Strategy | Description |
-|----------|-------------|
-| `AutoOnSinkSuccess` (default) | ACK after sink processing completes |
-| `Manual` | Call `message.AcknowledgeAsync()` explicitly |
-
-### Poison Message Handling
-
-```csharp
-var source = new RabbitMqSourceNode<Order>(new RabbitMqSourceOptions("order-queue")
-{
-    MaxDeliveryAttempts = 5,
-    RejectOnMaxDeliveryAttempts = true,  // NACK without requeue → goes to DLX
-    RequeueOnNack = true                 // requeue on failure (before max attempts)
-});
-```
-
-## Observability
-
-Implement `IRabbitMqMetrics` to collect connection, channel, publish, and consume metrics:
-
-```csharp
-services.AddSingleton<IRabbitMqMetrics, MyRabbitMqMetrics>();
-```
-
-## Best Practices
-
-1. **Use quorum queues** - fault-tolerant and recommended for production
-2. **Enable publisher confirms** - ensures messages reach the broker
-3. **Configure DLX** for poison message handling
-4. **Set `PrefetchCount`** proportional to consumer throughput
-5. **Use TLS** in production (`Tls.Enabled = true`)
-6. **Tune `InternalBufferCapacity`** - too small causes backpressure, too large wastes memory
-7. **Use batch publishing** for high-throughput sinks (`BatchSize`, `LingerTime`)
+- [Message Queues: Shared Behaviour](message-queues.md)
+- [Kafka](kafka.md), [Azure Service Bus](azure-service-bus.md), [AWS SQS](aws-sqs.md)

@@ -1,3 +1,5 @@
+using NPipeline.Connectors.RabbitMQ.Configuration;
+using NPipeline.Connectors.RabbitMQ.Connection;
 using Testcontainers.RabbitMq;
 
 namespace NPipeline.Connectors.RabbitMQ.Tests.Integration;
@@ -28,6 +30,15 @@ public sealed class RabbitMqContainerFixture : IAsyncLifetime
     {
         await _container.DisposeAsync();
     }
+
+    /// <summary>A connection to the container; the caller disposes it.</summary>
+    public IRabbitMqConnectionManager Connect() => RabbitMqConnector.Connect(new RabbitMqConnectionOptions
+    {
+        HostName = HostName,
+        Port = Port,
+        UserName = TestUsername,
+        Password = TestPassword,
+    });
 }
 
 [CollectionDefinition("RabbitMQ")]

@@ -1,13 +1,12 @@
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using System.Runtime.ExceptionServices;
+using System.Text;
 using Confluent.Kafka;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
+using NPipeline.Connectors.Diagnostics;
 using NPipeline.Connectors.Kafka.Configuration;
-using NPipeline.Connectors.Kafka.Metrics;
+using NPipeline.Connectors.Kafka.Internal;
 using NPipeline.Connectors.Kafka.Models;
-using NPipeline.Connectors.Kafka.Serialization;
+using NPipeline.Connectors.Messaging;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
@@ -17,335 +16,238 @@ using NResilience;
 namespace NPipeline.Connectors.Kafka.Nodes;
 
 /// <summary>
-///     Source node that consumes messages from a Kafka topic with consumer group support.
+///     Consumes a Kafka topic as a member of a consumer group. Each message is handed on as a <see cref="KafkaMessage{T}" />;
+///     acknowledging it stores its offset, in partition order, and the consumer commits stored offsets every
+///     <see cref="KafkaReadOptions.CommitInterval" />. When the read ends, the consumer stays until the messages handed on are
+///     settled (up to <see cref="KafkaReadOptions.SettleTimeout" />), then commits and leaves the group, so its partitions
+///     move to another member at once. Create one with <see cref="KafkaConnector.Source{T}" />.
 /// </summary>
-/// <typeparam name="T">The type of messages to consume.</typeparam>
-public sealed class KafkaSourceNode<T> : SourceNode<KafkaMessage<T>>
+/// <typeparam name="T">The body type.</typeparam>
+public sealed class KafkaSourceNode<T> : SourceNode<KafkaMessage<T>>, IAsyncDisposable
 {
+    internal const string ConnectorName = "kafka";
+
     private static readonly Action<ILogger, double, int, int, Exception?> LogConsumeRetrying =
         LoggerMessage.Define<double, int, int>(LogLevel.Warning, new EventId(1, nameof(LogConsumeRetrying)),
             "Consume failed, retrying in {Delay}ms (attempt {Attempt} of {Attempts})");
 
-    private readonly KafkaConfiguration _configuration;
-    private readonly Resilience _consumePolicy;
-    private readonly IConsumer<string, T> _consumer;
-    private readonly IKafkaMetrics _metrics;
-    private readonly bool _ownsConsumer;
-    private readonly ISerializerProvider _serializer;
-    private ILogger _logger = NullLogger.Instance;
+    private readonly List<Task> _closing = [];
+    private readonly MessageDecoder<T> _decoder;
+    private readonly CancellationTokenSource _disposing = new();
+    private bool _disposed;
+    private readonly KafkaReadOptions _options;
 
-    /// <summary>
-    ///     Creates a new KafkaSourceNode with the specified configuration.
-    /// </summary>
-    /// <param name="configuration">The Kafka configuration.</param>
-    public KafkaSourceNode(KafkaConfiguration configuration)
-        : this(configuration, NullKafkaMetrics.Instance)
+    /// <summary>Creates a source and validates <paramref name="options" />.</summary>
+    public KafkaSourceNode(KafkaReadOptions options)
     {
+        ArgumentNullException.ThrowIfNull(options);
+        options.Validate();
+        _options = options;
+        _decoder = new MessageDecoder<T>(ConnectorName, options.Topic, options.Serializer, options.RowErrorHandler, options.RawExcerptLength);
     }
 
-    /// <summary>
-    ///     Creates a new KafkaSourceNode with the specified configuration and metrics.
-    /// </summary>
-    /// <param name="configuration">The Kafka configuration. <see cref="KafkaConfiguration.Resilience" /> sets how a failed consume is retried.</param>
-    /// <param name="metrics">The metrics recorder.</param>
-    public KafkaSourceNode(
-        KafkaConfiguration configuration,
-        IKafkaMetrics metrics)
+    /// <summary>Closes the consumers of finished reads now, committing what was acknowledged, without waiting for the rest.</summary>
+    public async ValueTask DisposeAsync()
     {
-        _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-        _configuration.ValidateSource();
+        if (_disposed)
+            return;
 
-        _metrics = metrics ?? throw new ArgumentNullException(nameof(metrics));
-        _consumePolicy = _configuration.Resilience.WithListener(OnResilienceEvent);
-        _serializer = CreateSerializer(configuration, metrics);
+        _disposed = true;
+        await _disposing.CancelAsync().ConfigureAwait(false);
 
-        var consumerConfig = BuildConsumerConfig(configuration);
+        Task[] closing;
 
-        _consumer = new ConsumerBuilder<string, T>(consumerConfig)
-            .SetValueDeserializer(new MessageDeserializer<T>(_serializer))
-            .Build();
+        lock (_closing)
+        {
+            closing = [.. _closing];
+        }
 
-        _ownsConsumer = true;
-    }
-
-    /// <summary>
-    ///     Creates a new KafkaSourceNode with a custom consumer.
-    /// </summary>
-    /// <param name="consumer">The Kafka consumer to use.</param>
-    /// <param name="configuration">The Kafka configuration.</param>
-    /// <param name="metrics">The metrics recorder.</param>
-    public KafkaSourceNode(
-        IConsumer<string, T> consumer,
-        KafkaConfiguration configuration,
-        IKafkaMetrics metrics)
-    {
-        _consumer = consumer ?? throw new ArgumentNullException(nameof(consumer));
-        _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-        _configuration.ValidateSource();
-
-        _metrics = metrics ?? throw new ArgumentNullException(nameof(metrics));
-        _consumePolicy = _configuration.Resilience.WithListener(OnResilienceEvent);
-        _serializer = CreateSerializer(configuration, metrics);
-        _ownsConsumer = false;
+        await Task.WhenAll(closing).ConfigureAwait(false);
+        _disposing.Dispose();
     }
 
     /// <inheritdoc />
     public override IDataStream<KafkaMessage<T>> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
-        _logger = context.Observability.LoggerFactory.CreateLogger(nameof(KafkaSourceNode<T>));
-
-        var stream = ConsumeMessagesAsync(cancellationToken);
-        return new DataStream<KafkaMessage<T>>(stream, $"KafkaSourceNode<{typeof(T).Name}>");
+        ArgumentNullException.ThrowIfNull(context);
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        return new DataStream<KafkaMessage<T>>(ConsumeAsync(context, cancellationToken), $"KafkaSourceNode<{typeof(T).Name}>");
     }
 
-    private async IAsyncEnumerable<KafkaMessage<T>> ConsumeMessagesAsync(
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    private async IAsyncEnumerable<KafkaMessage<T>> ConsumeAsync(PipelineContext context, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        // Subscribe to the topic
-        _consumer.Subscribe(_configuration.SourceTopic);
+        var logger = context.Observability.LoggerFactory.CreateLogger(typeof(KafkaSourceNode<T>).FullName ?? nameof(KafkaSourceNode<T>));
+        var deadLetters = OpenDeadLetterChannel(context);
+        var inFlight = new InFlightMessages();
+        OffsetTracker? tracker = null;
 
-        var maxPollRecords = _configuration.MaxPollRecords;
-        var pollTimeout = TimeSpan.FromMilliseconds(_configuration.PollTimeoutMs);
+        var consumer = new ConsumerBuilder<byte[]?, byte[]?>(ConsumerConfig())
+            .SetPartitionsRevokedHandler((_, partitions) => tracker?.Revoked(partitions))
+            .Build();
 
-        while (!cancellationToken.IsCancellationRequested)
-        {
-            List<KafkaMessage<T>>? messagesToYield = null;
-            ExceptionDispatchInfo? failure = null;
+        tracker = new OffsetTracker(consumer);
+        var policy = _options.Resilience.WithListener(e => OnResilienceEvent(logger, e));
+        Func<IConsumerGroupMetadata> groupMetadata = () => consumer.ConsumerGroupMetadata;
+        long sequence = 0;
 
-            try
-            {
-                // Batch consume up to MaxPollRecords messages per poll cycle
-                var sw = Stopwatch.StartNew();
-                messagesToYield = new List<KafkaMessage<T>>(maxPollRecords);
-
-                for (var i = 0; i < maxPollRecords; i++)
-                {
-                    ConsumeResult<string, T>? consumeResult;
-
-                    try
-                    {
-                        // Each consume is one call to the policy, so its attempt count applies to that consume: an error
-                        // that clears restarts the count, and one that persists surfaces once the attempts are spent.
-                        consumeResult = await _consumePolicy.RunAsync(
-                            static (state, _) => state.Node.ConsumeOnce(state.PollTimeout),
-                            (Node: this, PollTimeout: pollTimeout),
-                            cancellationToken).ConfigureAwait(false);
-                    }
-                    catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
-                    {
-                        // Hand over the messages already consumed in this batch before failing, so none are lost.
-                        failure = ExceptionDispatchInfo.Capture(ex);
-                        break;
-                    }
-
-                    if (consumeResult == null || consumeResult.IsPartitionEOF)
-                    {
-                        // No more messages available in this poll cycle
-                        break;
-                    }
-
-                    // Create KafkaMessage with acknowledgment callback
-                    var message = CreateKafkaMessage(consumeResult);
-                    messagesToYield.Add(message);
-                }
-
-                sw.Stop();
-                _metrics.RecordPollLatency(_configuration.SourceTopic, sw.Elapsed);
-
-                if (messagesToYield.Count > 0)
-                    _metrics.RecordConsumed(_configuration.SourceTopic, messagesToYield.Count);
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                // Graceful shutdown - commit offsets and close consumer
-                await ShutdownAsync().ConfigureAwait(false);
-                break;
-            }
-
-            // Yield messages outside the try-catch block
-            foreach (var message in messagesToYield)
-            {
-                yield return message;
-            }
-
-            if (failure is not null)
-            {
-                // Leave the consumer group now rather than when the session times out, so the partitions move on.
-                try
-                {
-                    await ShutdownAsync().ConfigureAwait(false);
-                }
-                catch (Exception)
-                {
-                    // Closing a failed consumer can fail too; the consume failure is the one to surface.
-                }
-
-                failure.Throw();
-            }
-        }
-
-        // Final cleanup
-        await ShutdownAsync().ConfigureAwait(false);
-    }
-
-    /// <summary>
-    ///     One consume attempt. Every failure is recorded, including one the policy then retries.
-    /// </summary>
-    private ValueTask<ConsumeResult<string, T>?> ConsumeOnce(TimeSpan pollTimeout)
-    {
         try
         {
-            return ValueTask.FromResult<ConsumeResult<string, T>?>(_consumer.Consume(pollTimeout));
-        }
-        catch (Exception ex)
-        {
-            _metrics.RecordConsumeError(_configuration.SourceTopic, ex);
-            throw;
-        }
-    }
+            consumer.Subscribe(_options.Topic);
 
-    private void OnResilienceEvent(CallEvent callEvent)
-    {
-        if (callEvent.Kind != CallEventKind.Retrying)
-            return;
-
-        LogConsumeRetrying(
-            _logger,
-            (callEvent.Delay ?? TimeSpan.Zero).TotalMilliseconds,
-            callEvent.AttemptNumber,
-            _configuration.Resilience.Attempts,
-            callEvent.Exception);
-    }
-
-    private KafkaMessage<T> CreateKafkaMessage(ConsumeResult<string, T> consumeResult)
-    {
-        var timestamp = consumeResult.Message.Timestamp.UnixTimestampMs > 0
-            ? DateTimeOffset.FromUnixTimeMilliseconds(consumeResult.Message.Timestamp.UnixTimestampMs).UtcDateTime
-            : DateTime.UtcNow;
-
-        // For exactly-once semantics, offsets are committed via SendOffsetsToTransaction in the sink
-        // For at-least-once semantics, offsets are committed directly via the consumer
-        var topicPartitionOffset = consumeResult.TopicPartitionOffset;
-
-        Func<CancellationToken, Task>? acknowledgeCallback = null;
-        IConsumerGroupMetadata? consumerGroupMetadata = null;
-
-        if (_configuration.DeliverySemantic == DeliverySemantic.AtLeastOnce)
-        {
-            acknowledgeCallback = ct =>
+            while (true)
             {
-                var sw = Stopwatch.StartNew();
+                cancellationToken.ThrowIfCancellationRequested();
 
-                try
+                var result = await policy.RunAsync(static (state, _) => ValueTask.FromResult(state.Consumer.Consume(state.Timeout)),
+                    (Consumer: consumer, Timeout: _options.PollTimeout), cancellationToken).ConfigureAwait(false);
+
+                if (result is null || result.IsPartitionEOF)
+                    continue;
+
+                sequence++;
+                var position = result.TopicPartitionOffset;
+                var partition = result.TopicPartition;
+                var offset = result.Offset.Value;
+                var value = result.Message.Value;
+                tracker.Delivered(partition, offset);
+
+                T body;
+                var tombstone = value is null;
+
+                if (tombstone)
                 {
-                    _consumer.Commit([topicPartitionOffset]);
-                    sw.Stop();
-                    _metrics.RecordCommitLatency(_configuration.SourceTopic, sw.Elapsed);
-                    return Task.CompletedTask;
+                    if (_options.SkipTombstones)
+                    {
+                        tracker.Settled(partition, offset, true);
+                        continue;
+                    }
+
+                    body = default!;
                 }
-                catch (Exception ex)
+                else if (!_decoder.TryDecode(value, out body!, out var error))
                 {
-                    sw.Stop();
-                    _metrics.RecordCommitError(_configuration.SourceTopic, ex);
-                    throw;
+                    // Throws for Fail, which fails the read with the offset unstored, so a restart reads the message again.
+                    _ = await _decoder.HandleFailureAsync(error, value, $"{position.Topic}/{position.Partition.Value}/{offset}", offset, Metadata(result),
+                        deadLetters, cancellationToken).ConfigureAwait(false);
+
+                    tracker.Settled(partition, offset, true);
+                    continue;
                 }
-            };
-        }
-        else if (_configuration.DeliverySemantic == DeliverySemantic.ExactlyOnce)
-        {
-            // Get consumer group metadata for SendOffsetsToTransaction
-            consumerGroupMetadata = _consumer.ConsumerGroupMetadata;
-        }
 
-        return new KafkaMessage<T>(
-            consumeResult.Message.Value,
-            consumeResult.Topic,
-            consumeResult.Partition,
-            consumeResult.Offset,
-            consumeResult.Message.Key ?? string.Empty,
-            timestamp,
-            consumeResult.Message.Headers ?? [],
-            acknowledgeCallback,
-            consumerGroupMetadata);
-    }
+                inFlight.Add();
 
-    private Task ShutdownAsync()
-    {
-        try
-        {
-            if (_ownsConsumer && _configuration.EnableAutoCommit)
-            {
-                // Only commit on shutdown when auto-commit is enabled to avoid
-                // acknowledging messages that haven't been explicitly processed.
-                _consumer.Commit();
+                var settlement = new MessageSettlement(
+                    _ =>
+                    {
+                        Settle(tracker, inFlight, partition, offset, true, "acknowledged");
+                        return Task.CompletedTask;
+                    },
+                    (requeue, _) =>
+                    {
+                        Settle(tracker, inFlight, partition, offset, !requeue, requeue ? "requeued" : "rejected");
+                        return Task.CompletedTask;
+                    });
+
+                var key = result.Message.Key is { } keyBytes ? Encoding.UTF8.GetString(keyBytes) : null;
+                var timestamp = DateTimeOffset.FromUnixTimeMilliseconds(result.Message.Timestamp.UnixTimestampMs);
+
+                ConnectorDiagnostics.RecordRowsRead(ConnectorName, ConnectorName, 1);
+
+                yield return new KafkaMessage<T>(body, position, key, timestamp, result.Message.Headers ?? [], tombstone, settlement, groupMetadata);
             }
-        }
-        catch (Exception ex)
-        {
-            _metrics.RecordCommitError(_configuration.SourceTopic, ex);
         }
         finally
         {
-            if (_ownsConsumer)
+            lock (_closing)
             {
-                _consumer.Close();
-                _consumer.Dispose();
+                _closing.Add(CloseWhenSettledAsync(consumer, inFlight));
             }
         }
-
-        return Task.CompletedTask;
     }
 
-    private static ConsumerConfig BuildConsumerConfig(KafkaConfiguration config) =>
-        new()
-        {
-            BootstrapServers = config.BootstrapServers,
-            ClientId = config.ClientId,
-            GroupId = config.ConsumerGroupId,
-            GroupInstanceId = config.GroupInstanceId,
-            AutoOffsetReset = config.AutoOffsetReset,
-            EnableAutoCommit = config.EnableAutoCommit,
-            EnableAutoOffsetStore = config.EnableAutoOffsetStore,
-            FetchMinBytes = config.FetchMinBytes,
-            FetchMaxBytes = config.FetchMaxBytes,
-            MaxPartitionFetchBytes = config.MaxPartitionFetchBytes,
-            SecurityProtocol = config.SecurityProtocol,
-            SaslMechanism = config.SaslMechanism,
-            SaslUsername = config.SaslUsername,
-            SaslPassword = config.SaslPassword,
-            IsolationLevel = config.IsolationLevel,
-            StatisticsIntervalMs = config.StatisticsIntervalMs,
-        };
-
-    private static ISerializerProvider CreateSerializer(KafkaConfiguration config, IKafkaMetrics metrics)
+    private static void Settle(OffsetTracker tracker, InFlightMessages inFlight, TopicPartition partition, long offset, bool advance, string outcome)
     {
-        return config.SerializationFormat switch
+        try
         {
-            SerializationFormat.Json => new JsonMessageSerializer(metrics),
-            SerializationFormat.Avro => config.SchemaRegistry != null
-                ? new AvroMessageSerializer(config.SchemaRegistry, metrics)
-                : throw new InvalidOperationException(
-                    "SchemaRegistry configuration is required for Avro serialization."),
-            SerializationFormat.Protobuf => config.SchemaRegistry != null
-                ? new ProtobufMessageSerializer(config.SchemaRegistry, metrics)
-                : throw new InvalidOperationException(
-                    "SchemaRegistry configuration is required for Protobuf serialization."),
-            _ => new JsonMessageSerializer(metrics),
-        };
-    }
-
-    /// <summary>
-    ///     Deserializer that uses the ISerializerProvider.
-    /// </summary>
-    private sealed class MessageDeserializer<TValue>(ISerializerProvider serializer) : IDeserializer<TValue>
-    {
-        public TValue Deserialize(ReadOnlySpan<byte> data, bool isNull, SerializationContext context)
-        {
-            if (isNull || data.IsEmpty)
-                return default!;
-
-            // The real topic and component, so a schema-registry deserializer resolves the right subject.
-            return serializer.Deserialize<TValue>(data.ToArray(), context);
+            tracker.Settled(partition, offset, advance);
+            ConnectorDiagnostics.RecordMessagesSettled(ConnectorName, outcome);
         }
+        finally
+        {
+            inFlight.Remove();
+        }
+    }
+
+    private async Task CloseWhenSettledAsync(IConsumer<byte[]?, byte[]?> consumer, InFlightMessages inFlight)
+    {
+        try
+        {
+            _ = await inFlight.WhenSettledAsync(_options.SettleTimeout, _disposing.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            // Disposed: close now.
+        }
+
+        try
+        {
+            // Commits the stored offsets and leaves the group, so its partitions are reassigned without waiting for a timeout.
+            consumer.Close();
+        }
+        catch (KafkaException)
+        {
+            // The group will expire the member instead.
+        }
+        finally
+        {
+            consumer.Dispose();
+        }
+    }
+
+    private ConsumerConfig ConsumerConfig()
+    {
+        var config = new ConsumerConfig
+        {
+            GroupId = _options.GroupId,
+            GroupInstanceId = _options.GroupInstanceId,
+            AutoOffsetReset = _options.AutoOffsetReset,
+
+            // Offsets are stored as messages are acknowledged, and committed in the background from what is stored.
+            EnableAutoCommit = true,
+            EnableAutoOffsetStore = false,
+            AutoCommitIntervalMs = (int)Math.Min(_options.CommitInterval.TotalMilliseconds, int.MaxValue),
+        };
+
+        if (_options.IsolationLevel is { } isolation)
+            config.IsolationLevel = isolation;
+
+        _options.Apply(config);
+        return config;
+    }
+
+    private void OnResilienceEvent(ILogger logger, CallEvent callEvent)
+    {
+        if (callEvent.Kind == CallEventKind.Retrying)
+            LogConsumeRetrying(logger, (callEvent.Delay ?? TimeSpan.Zero).TotalMilliseconds, callEvent.AttemptNumber, _options.Resilience.Attempts, callEvent.Exception);
+    }
+
+    private static Dictionary<string, object> Metadata(ConsumeResult<byte[]?, byte[]?> result)
+    {
+        var metadata = new Dictionary<string, object>
+        {
+            ["Topic"] = result.Topic,
+            ["Partition"] = result.Partition.Value,
+            ["Offset"] = result.Offset.Value,
+        };
+
+        if (result.Message.Key is { } key)
+            metadata["Key"] = Encoding.UTF8.GetString(key);
+
+        foreach (var header in result.Message.Headers ?? [])
+        {
+            metadata[$"Header.{header.Key}"] = Encoding.UTF8.GetString(header.GetValueBytes());
+        }
+
+        return metadata;
     }
 }

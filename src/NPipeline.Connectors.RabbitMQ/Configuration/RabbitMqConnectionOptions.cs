@@ -8,68 +8,68 @@ public sealed record RabbitMqConnectionOptions
     /// <summary>
     ///     Gets or sets the RabbitMQ server hostname. Default is "localhost".
     /// </summary>
-    public string HostName { get; set; } = "localhost";
+    public string HostName { get; init; } = "localhost";
 
     /// <summary>
     ///     Gets or sets the AMQP port. Default is 5672.
     /// </summary>
-    public int Port { get; set; } = 5672;
+    public int Port { get; init; } = 5672;
 
     /// <summary>
     ///     Gets or sets the virtual host. Default is "/".
     /// </summary>
-    public string VirtualHost { get; set; } = "/";
+    public string VirtualHost { get; init; } = "/";
 
     /// <summary>
     ///     Gets or sets the username. Default is "guest".
     /// </summary>
-    public string UserName { get; set; } = "guest";
+    public string UserName { get; init; } = "guest";
 
     /// <summary>
     ///     Gets or sets the password. Default is "guest".
     /// </summary>
-    public string Password { get; set; } = "guest";
+    public string Password { get; init; } = "guest";
 
     /// <summary>
     ///     Gets or sets an AMQP URI that overrides individual connection properties.
     ///     Example: amqp://user:pass@host:port/vhost
     /// </summary>
-    public Uri? Uri { get; set; }
+    public Uri? Uri { get; init; }
 
     /// <summary>
     ///     Gets or sets TLS configuration. Null disables TLS.
     /// </summary>
-    public RabbitMqTlsOptions? Tls { get; set; }
+    public RabbitMqTlsOptions? Tls { get; init; }
 
     /// <summary>
     ///     Gets or sets the heartbeat interval. Default is 60 seconds.
     /// </summary>
-    public TimeSpan RequestedHeartbeat { get; set; } = TimeSpan.FromSeconds(60);
+    public TimeSpan RequestedHeartbeat { get; init; } = TimeSpan.FromSeconds(60);
 
     /// <summary>
     ///     Gets or sets the network recovery interval. Default is 5 seconds.
     /// </summary>
-    public TimeSpan NetworkRecoveryInterval { get; set; } = TimeSpan.FromSeconds(5);
+    public TimeSpan NetworkRecoveryInterval { get; init; } = TimeSpan.FromSeconds(5);
 
     /// <summary>
     ///     Gets or sets whether automatic connection recovery is enabled. Default is true.
     /// </summary>
-    public bool AutomaticRecoveryEnabled { get; set; } = true;
+    public bool AutomaticRecoveryEnabled { get; init; } = true;
 
     /// <summary>
     ///     Gets or sets whether topology recovery is enabled. Default is true.
     /// </summary>
-    public bool TopologyRecoveryEnabled { get; set; } = true;
+    public bool TopologyRecoveryEnabled { get; init; } = true;
 
     /// <summary>
     ///     Gets or sets the client-provided connection name (visible in RabbitMQ management UI).
     /// </summary>
-    public string? ClientProvidedName { get; set; }
+    public string? ClientProvidedName { get; init; }
 
     /// <summary>
     ///     Gets or sets the maximum size of the channel pool for publisher channels. Default is 4.
     /// </summary>
-    public int MaxChannelPoolSize { get; set; } = 4;
+    public int MaxChannelPoolSize { get; init; } = 4;
 
     /// <summary>
     ///     Validates the connection options and throws if invalid.

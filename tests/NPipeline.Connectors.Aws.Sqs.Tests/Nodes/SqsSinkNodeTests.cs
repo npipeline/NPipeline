@@ -1,836 +1,376 @@
-using System.Reflection;
+using System.Text.Json;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using FakeItEasy;
+using NPipeline.Configuration;
 using NPipeline.Connectors.Aws.Sqs.Configuration;
-using NPipeline.Connectors.Aws.Sqs.Models;
 using NPipeline.Connectors.Aws.Sqs.Nodes;
-using NPipeline.Connectors.Configuration;
-using NPipeline.DataFlow;
+using NPipeline.Connectors.Messaging;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Pipeline;
+using static NPipeline.Connectors.Aws.Sqs.Tests.SqsTestSupport;
 
 namespace NPipeline.Connectors.Aws.Sqs.Tests.Nodes;
 
-public class SqsSinkNodeTests
+public sealed class SqsSinkNodeTests
 {
-    private static IDataStream<T> CreateDataStream<T>(T[] items) => new TestDataStream<T>(items);
+    private static readonly Order[] Orders = [.. Enumerable.Range(1, 5).Select(i => new Order(i, $"order-{i}"))];
 
-    private static SqsMessage<TestModel> CreateSqsMessage(
-        string messageId = "test-id",
-        string receiptHandle = "test-handle",
-        TestModel? body = null)
+    private readonly IAmazonSQS _client = A.Fake<IAmazonSQS>();
+    private readonly List<SendMessageBatchRequest> _requests = [];
+    private Func<SendMessageBatchRequest, SendMessageBatchResponse> _respond = _ => new SendMessageBatchResponse();
+
+    public SqsSinkNodeTests()
     {
-        body ??= new TestModel { Id = 1, Name = "Test" };
-        var attributes = new Dictionary<string, MessageAttributeValue>();
-        var timestamp = DateTime.UtcNow;
-        Func<CancellationToken, Task> callback = _ => Task.CompletedTask;
+        A.CallTo(() => _client.SendMessageBatchAsync(A<SendMessageBatchRequest>._, A<CancellationToken>._))
+            .ReturnsLazily((SendMessageBatchRequest request, CancellationToken _) =>
+            {
+                lock (_requests)
+                {
+                    _requests.Add(request);
+                }
 
-        var messageType = typeof(SqsMessage<>).MakeGenericType(typeof(TestModel));
-
-        var constructor = messageType.GetConstructors(
-                BindingFlags.NonPublic | BindingFlags.Instance)
-            .First(c => c.GetParameters().Length == 6);
-
-        return (SqsMessage<TestModel>)constructor.Invoke(
-            [body, messageId, receiptHandle, attributes, timestamp, callback]);
+                return Task.FromResult(_respond(request));
+            });
     }
 
-    private static SqsConfiguration CreateValidConfiguration() =>
-        new()
+    private IEnumerable<SendMessageBatchRequestEntry> Entries => _requests.SelectMany(request => request.Entries);
+
+    [Fact]
+    public void Constructor_WithNullOptions_Throws()
+    {
+        var act = () => new SqsSinkNode<Order>(null!);
+
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void Constructor_ValidatesTheOptions()
+    {
+        var act = () => new SqsSinkNode<Order>(new SqsWriteOptions<Order> { QueueUrl = QueueUrl, Client = _client, BatchSize = 11 });
+
+        act.Should().Throw<ArgumentOutOfRangeException>().WithParameterName(nameof(SqsWriteOptions<Order>.BatchSize));
+    }
+
+    [Fact]
+    public async Task Consume_SendsEachBodyAsJson()
+    {
+        await RunAsync(Sink(), Orders[..2]);
+
+        _requests.Should().ContainSingle().Which.QueueUrl.Should().Be(QueueUrl);
+        Entries.Select(entry => entry.Id).Should().Equal("0", "1");
+        Entries.Select(entry => entry.MessageBody).Should().Equal("""{"id":1,"name":"order-1"}""", """{"id":2,"name":"order-2"}""");
+        Entries.Should().AllSatisfy(entry =>
         {
-            SourceQueueUrl = "https://sqs.us-east-1.amazonaws.com/123456789012/source-queue",
-            SinkQueueUrl = "https://sqs.us-east-1.amazonaws.com/123456789012/sink-queue",
+            entry.DelaySeconds.Should().BeNull("a zero delay is left unset, since FIFO queues reject one");
+            entry.MessageAttributes.Should().BeNullOrEmpty();
+            entry.MessageGroupId.Should().BeNull();
+            entry.MessageDeduplicationId.Should().BeNull();
+        });
+    }
+
+    [Fact]
+    public async Task Consume_WithACustomSerializer_UsesIt()
+    {
+        await RunAsync(Sink(o => o with { Serializer = new TextSerializer() }), Orders[..1]);
+
+        Entries.Single().MessageBody.Should().Be(Orders[0].ToString());
+    }
+
+    [Fact]
+    public async Task Consume_SendsBatchesOfBatchSize()
+    {
+        await RunAsync(Sink(o => o with { BatchSize = 2 }), Orders);
+
+        _requests.Select(request => request.Entries.Count).Should().Equal(2, 2, 1);
+        _requests.Should().AllSatisfy(request => request.Entries.Select(entry => entry.Id).Should().Equal(
+            Enumerable.Range(0, request.Entries.Count).Select(i => $"{i}")));
+    }
+
+    [Fact]
+    public async Task Consume_SplitsABatchOverTheSizeLimit()
+    {
+        var bodies = Enumerable.Range(0, 3).Select(i => new string((char)('a' + i), 100_000)).ToArray();
+
+        var sink = new SqsSinkNode<string>(new SqsWriteOptions<string> { QueueUrl = QueueUrl, Client = _client, BatchLinger = TimeSpan.FromMinutes(1) });
+        await using var input = new InMemoryDataStream<string>(bodies);
+        await sink.ConsumeAsync(input, new PipelineContext(), CancellationToken.None);
+
+        _requests.Select(request => request.Entries.Count).Should().Equal(2, 1);
+        Entries.Select(entry => JsonSerializer.Deserialize<string>(entry.MessageBody)).Should().Equal(bodies);
+    }
+
+    [Fact]
+    public async Task Consume_WithADelay_SetsDelaySeconds()
+    {
+        await RunAsync(Sink(o => o with { Delay = TimeSpan.FromSeconds(30) }), Orders[..2]);
+
+        Entries.Should().AllSatisfy(entry => entry.DelaySeconds.Should().Be(30));
+    }
+
+    [Fact]
+    public async Task Consume_AddsTheConfiguredMessageAttributes()
+    {
+        var attributes = new Dictionary<string, MessageAttributeValue> { ["source"] = new() { DataType = "String", StringValue = "tests" } };
+
+        await RunAsync(Sink(o => o with { MessageAttributes = attributes }), Orders[..2]);
+
+        Entries.Should().AllSatisfy(entry => entry.MessageAttributes.Should().ContainKey("source")
+            .WhoseValue.StringValue.Should().Be("tests"));
+    }
+
+    [Fact]
+    public async Task ConsumeMessages_CopiesTheReceivedAttributes_AndTheConfiguredOnesWin()
+    {
+        var received = new Dictionary<string, MessageAttributeValue>
+        {
+            ["tenant"] = new() { DataType = "String", StringValue = "acme" },
+            ["source"] = new() { DataType = "String", StringValue = "upstream" },
         };
 
-    public class Constructor
+        var configured = new Dictionary<string, MessageAttributeValue> { ["source"] = new() { DataType = "String", StringValue = "sink" } };
+
+        await RunMessagesAsync(Sink(o => o with { MessageAttributes = configured }), Message(Orders[0], attributes: received));
+
+        var attributes = Entries.Single().MessageAttributes;
+        attributes["tenant"].StringValue.Should().Be("acme");
+        attributes["source"].StringValue.Should().Be("sink");
+    }
+
+    [Fact]
+    public async Task ConsumeMessages_WithoutCopyMessageAttributes_DropsTheReceivedAttributes()
     {
-        [Fact]
-        public void Constructor_WithValidConfiguration_DoesNotThrow()
+        var received = new Dictionary<string, MessageAttributeValue> { ["tenant"] = new() { DataType = "String", StringValue = "acme" } };
+
+        await RunMessagesAsync(Sink(o => o with { CopyMessageAttributes = false }), Message(Orders[0], attributes: received));
+
+        Entries.Single().MessageAttributes.Should().BeNullOrEmpty();
+    }
+
+    [Fact]
+    public async Task ConsumeMessages_CopiesAttributesThroughWithBody()
+    {
+        var received = new Dictionary<string, MessageAttributeValue> { ["tenant"] = new() { DataType = "String", StringValue = "acme" } };
+        var message = Message("raw", attributes: received).WithBody(Orders[0]);
+
+        await RunMessagesAsync(Sink(), message);
+
+        Entries.Single().MessageAttributes["tenant"].StringValue.Should().Be("acme");
+    }
+
+    [Fact]
+    public async Task Fifo_SetsTheGroup_AndDeduplicatesOnTheSourceMessageId()
+    {
+        await RunMessagesAsync(Sink(o => o with { MessageGroupId = order => $"group-{order.Id % 2}" }),
+            Message(Orders[0], "source-1"), Message(Orders[1], "source-2"));
+
+        Entries.Select(entry => entry.MessageGroupId).Should().Equal("group-1", "group-0");
+        Entries.Select(entry => entry.MessageDeduplicationId).Should().Equal("source-1", "source-2");
+    }
+
+    [Fact]
+    public async Task Fifo_WithADeduplicationId_UsesIt()
+    {
+        await RunMessagesAsync(Sink(o => o with { MessageGroupId = _ => "g", DeduplicationId = order => $"order-{order.Id}" }),
+            Message(Orders[0], "source-1"));
+
+        Entries.Single().MessageDeduplicationId.Should().Be("order-1");
+    }
+
+    [Fact]
+    public async Task Fifo_WithoutASourceMessage_LeavesDeduplicationToTheQueue()
+    {
+        await RunAsync(Sink(o => o with { MessageGroupId = _ => "g" }), Orders[..1]);
+
+        Entries.Single().MessageGroupId.Should().Be("g");
+        Entries.Single().MessageDeduplicationId.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task WithoutAGroup_TheSourceMessageIdIsNotUsed()
+    {
+        await RunMessagesAsync(Sink(), Message(Orders[0], "source-1"));
+
+        Entries.Single().MessageDeduplicationId.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ConsumeMessages_AcknowledgesEachMessageAfterItIsSent()
+    {
+        var messages = FakeMessages(3);
+
+        await RunMessagesAsync(Sink(), messages);
+
+        foreach (var message in messages)
         {
-            // Arrange
-            var configuration = CreateValidConfiguration();
+            A.CallTo(() => _client.SendMessageBatchAsync(A<SendMessageBatchRequest>._, A<CancellationToken>._)).MustHaveHappenedOnceExactly()
+                .Then(A.CallTo(() => message.AcknowledgeAsync(A<CancellationToken>._)).MustHaveHappenedOnceExactly());
 
-            // Act & Assert
-            var exception = Record.Exception(() => new SqsSinkNode<SqsMessage<TestModel>>(configuration));
-            exception.Should().BeNull();
-        }
-
-        [Fact]
-        public void Constructor_WithNullConfiguration_ThrowsArgumentNullException()
-        {
-            // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new SqsSinkNode<SqsMessage<TestModel>>(null!));
-        }
-
-        [Fact]
-        public void Constructor_WithInvalidConfiguration_ThrowsInvalidOperationException()
-        {
-            // Arrange
-            var configuration = new SqsConfiguration(); // Missing queue URLs
-
-            // Act & Assert
-            Assert.Throws<InvalidOperationException>(() => new SqsSinkNode<SqsMessage<TestModel>>(configuration));
-        }
-
-        [Fact]
-        public void Constructor_WithCustomSqsClient_DoesNotThrow()
-        {
-            // Arrange
-            var configuration = CreateValidConfiguration();
-            var sqsClientFake = A.Fake<IAmazonSQS>();
-
-            // Act & Assert
-            var exception = Record.Exception(() => new SqsSinkNode<SqsMessage<TestModel>>(sqsClientFake, configuration));
-            exception.Should().BeNull();
-        }
-
-        [Fact]
-        public void Constructor_WithNullSqsClient_ThrowsArgumentNullException()
-        {
-            // Arrange
-            var configuration = CreateValidConfiguration();
-
-            // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new SqsSinkNode<SqsMessage<TestModel>>(null!, configuration));
+            A.CallTo(() => message.RejectAsync(A<bool>._, A<CancellationToken>._)).MustNotHaveHappened();
         }
     }
 
-    public class AcknowledgmentStrategy_AutoOnSinkSuccess
+    [Fact]
+    public async Task FailedEntry_WithFail_ThrowsAfterSettlingTheSentMessages()
     {
-        [Fact]
-        public async Task ExecuteAsync_WithAutoOnSinkStrategy_AcknowledgesImmediately()
+        FailEntries("1");
+        var messages = FakeMessages(3);
+
+        var act = () => RunMessagesAsync(Sink(), messages);
+
+        (await act.Should().ThrowAsync<AmazonSQSException>()).Which.ErrorCode.Should().Be("InvalidParameterValue");
+        A.CallTo(() => messages[0].AcknowledgeAsync(A<CancellationToken>._)).MustHaveHappenedOnceExactly();
+        A.CallTo(() => messages[2].AcknowledgeAsync(A<CancellationToken>._)).MustHaveHappenedOnceExactly();
+        A.CallTo(() => messages[1].AcknowledgeAsync(A<CancellationToken>._)).MustNotHaveHappened();
+        A.CallTo(() => messages[1].RejectAsync(A<bool>._, A<CancellationToken>._)).MustNotHaveHappened();
+    }
+
+    [Fact]
+    public async Task FailedEntry_WithFail_FailsAPlainWrite()
+    {
+        FailEntries("0");
+
+        var act = () => RunAsync(Sink(), Orders[..2]);
+
+        await act.Should().ThrowAsync<AmazonSQSException>();
+    }
+
+    [Fact]
+    public async Task FailedEntry_WithRequeue_RejectsItWithRequeue_AndContinues()
+    {
+        FailEntries("1");
+        var messages = FakeMessages(4);
+
+        await RunMessagesAsync(Sink(o => o with { FailedMessages = FailedMessageAction.Requeue, BatchSize = 2 }), messages);
+
+        // Entry "1" fails in both batches: the second message of each.
+        _requests.Should().HaveCount(2);
+
+        foreach (var failed in new[] { messages[1], messages[3] })
         {
-            // Arrange
-            var configuration = CreateValidConfiguration();
-            configuration.AcknowledgmentStrategy = AcknowledgmentStrategy.AutoOnSinkSuccess;
-
-            configuration.BatchAcknowledgment = new BatchAcknowledgmentOptions
-            {
-                EnableAutomaticBatching = false,
-            };
-
-            var sqsClientFake = A.Fake<IAmazonSQS>();
-
-            A.CallTo(() => sqsClientFake.SendMessageAsync(A<SendMessageRequest>._, A<CancellationToken>._))
-                .Returns(new SendMessageResponse());
-
-            var node = new SqsSinkNode<SqsMessage<TestModel>>(sqsClientFake, configuration);
-            var context = new PipelineContext();
-            var cts = new CancellationTokenSource();
-
-            var message = CreateSqsMessage();
-
-            // Act
-            await node.ConsumeAsync(CreateDataStream([message]), context, cts.Token);
-
-            // Assert
-            message.IsAcknowledged.Should().BeTrue();
+            A.CallTo(() => failed.RejectAsync(true, A<CancellationToken>._)).MustHaveHappenedOnceExactly();
+            A.CallTo(() => failed.AcknowledgeAsync(A<CancellationToken>._)).MustNotHaveHappened();
         }
 
-        [Fact]
-        public async Task ExecuteAsync_WithAutoOnSinkStrategyAndBatching_AcknowledgesInBatch()
+        foreach (var sent in new[] { messages[0], messages[2] })
         {
-            // Arrange
-            var configuration = CreateValidConfiguration();
-            configuration.AcknowledgmentStrategy = AcknowledgmentStrategy.AutoOnSinkSuccess;
-
-            configuration.BatchAcknowledgment = new BatchAcknowledgmentOptions
-            {
-                EnableAutomaticBatching = true,
-                BatchSize = 2,
-            };
-
-            var sqsClientFake = A.Fake<IAmazonSQS>();
-
-            A.CallTo(() => sqsClientFake.SendMessageAsync(A<SendMessageRequest>._, A<CancellationToken>._))
-                .Returns(new SendMessageResponse());
-
-            A.CallTo(() => sqsClientFake.SendMessageBatchAsync(A<SendMessageBatchRequest>._, A<CancellationToken>._))
-                .Returns(new SendMessageBatchResponse());
-
-            A.CallTo(() => sqsClientFake.DeleteMessageBatchAsync(A<DeleteMessageBatchRequest>._, A<CancellationToken>._))
-                .Returns(new DeleteMessageBatchResponse());
-
-            var node = new SqsSinkNode<SqsMessage<TestModel>>(sqsClientFake, configuration);
-            var context = new PipelineContext();
-            var cts = new CancellationTokenSource();
-
-            var message1 = CreateSqsMessage("msg-1", "handle-1");
-            var message2 = CreateSqsMessage("msg-2", "handle-2");
-
-            // Act
-            await node.ConsumeAsync(CreateDataStream([message1, message2]), context, cts.Token);
-
-            // Assert
-            message1.IsAcknowledged.Should().BeTrue();
-            message2.IsAcknowledged.Should().BeTrue();
-
-            A.CallTo(() => sqsClientFake.DeleteMessageBatchAsync(A<DeleteMessageBatchRequest>._, A<CancellationToken>._))
-                .MustHaveHappened();
+            A.CallTo(() => sent.AcknowledgeAsync(A<CancellationToken>._)).MustHaveHappenedOnceExactly();
         }
     }
 
-    public class AcknowledgmentStrategy_Manual
+    [Fact]
+    public async Task FailedEntry_WithDeadLetter_SendsTheBodyToTheDeadLetterSink_AndAcknowledges()
     {
-        [Fact]
-        public async Task ExecuteAsync_WithManualStrategy_DoesNotAcknowledge()
+        FailEntries("1");
+        var messages = FakeMessages(3);
+        var deadLetters = new CapturingDeadLetterSink();
+
+        await using var context = new PipelineContext(new PipelineContextConfiguration(DeadLetterSink: deadLetters));
+        await using var input = new InMemoryDataStream<IAcknowledgableMessage<Order>>(messages);
+        await Sink(o => o with { FailedMessages = FailedMessageAction.DeadLetter }).ConsumeMessagesAsync(input, context, CancellationToken.None);
+
+        var envelope = deadLetters.Captured.Should().ContainSingle().Subject;
+        envelope.Item.Should().Be(Orders[1]);
+        envelope.Error.Should().BeOfType<AmazonSQSException>().Which.ErrorCode.Should().Be("InvalidParameterValue");
+
+        foreach (var message in messages)
         {
-            // Arrange
-            var configuration = CreateValidConfiguration();
-            configuration.AcknowledgmentStrategy = AcknowledgmentStrategy.Manual;
-
-            var sqsClientFake = A.Fake<IAmazonSQS>();
-
-            A.CallTo(() => sqsClientFake.SendMessageAsync(A<SendMessageRequest>._, A<CancellationToken>._))
-                .Returns(new SendMessageResponse());
-
-            var node = new SqsSinkNode<SqsMessage<TestModel>>(sqsClientFake, configuration);
-            var context = new PipelineContext();
-            var cts = new CancellationTokenSource();
-
-            var message = CreateSqsMessage();
-
-            // Act
-            await node.ConsumeAsync(CreateDataStream([message]), context, cts.Token);
-
-            // Assert
-            message.IsAcknowledged.Should().BeFalse();
-        }
-
-        [Fact]
-        public async Task ExecuteAsync_WithManualStrategy_CanManuallyAcknowledge()
-        {
-            // Arrange
-            var configuration = CreateValidConfiguration();
-            configuration.AcknowledgmentStrategy = AcknowledgmentStrategy.Manual;
-
-            var sqsClientFake = A.Fake<IAmazonSQS>();
-
-            A.CallTo(() => sqsClientFake.SendMessageAsync(A<SendMessageRequest>._, A<CancellationToken>._))
-                .Returns(new SendMessageResponse());
-
-            A.CallTo(() => sqsClientFake.DeleteMessageAsync(A<string>._, A<string>._, A<CancellationToken>._))
-                .Returns(new DeleteMessageResponse());
-
-            var node = new SqsSinkNode<SqsMessage<TestModel>>(sqsClientFake, configuration);
-            var context = new PipelineContext();
-            var cts = new CancellationTokenSource();
-
-            var message = CreateSqsMessage();
-
-            // Act
-            await node.ConsumeAsync(CreateDataStream([message]), context, cts.Token);
-            await message.AcknowledgeAsync();
-
-            // Assert
-            message.IsAcknowledged.Should().BeTrue();
+            A.CallTo(() => message.AcknowledgeAsync(A<CancellationToken>._)).MustHaveHappenedOnceExactly();
+            A.CallTo(() => message.RejectAsync(A<bool>._, A<CancellationToken>._)).MustNotHaveHappened();
         }
     }
 
-    public class AcknowledgmentStrategy_Delayed
+    [Fact]
+    public async Task FailedRequest_WithRequeue_RejectsEveryMessageOfTheBatch()
     {
-        [Fact]
-        public async Task ExecuteAsync_WithDelayedStrategy_AcknowledgesAfterDelay()
+        A.CallTo(() => _client.SendMessageBatchAsync(A<SendMessageBatchRequest>._, A<CancellationToken>._))
+            .ThrowsAsync(new AmazonSQSException("service unavailable"));
+
+        var messages = FakeMessages(2);
+
+        await RunMessagesAsync(Sink(o => o with { FailedMessages = FailedMessageAction.Requeue }), messages);
+
+        foreach (var message in messages)
         {
-            // Arrange
-            var configuration = CreateValidConfiguration();
-            configuration.AcknowledgmentStrategy = AcknowledgmentStrategy.Delayed;
-            configuration.AcknowledgmentDelayMs = 100;
-
-            configuration.BatchAcknowledgment = new BatchAcknowledgmentOptions
-            {
-                EnableAutomaticBatching = false,
-            };
-
-            var sqsClientFake = A.Fake<IAmazonSQS>();
-
-            A.CallTo(() => sqsClientFake.SendMessageAsync(A<SendMessageRequest>._, A<CancellationToken>._))
-                .Returns(new SendMessageResponse());
-
-            A.CallTo(() => sqsClientFake.DeleteMessageAsync(A<string>._, A<string>._, A<CancellationToken>._))
-                .Returns(new DeleteMessageResponse());
-
-            var node = new SqsSinkNode<SqsMessage<TestModel>>(sqsClientFake, configuration);
-            var context = new PipelineContext();
-            var cts = new CancellationTokenSource();
-
-            var message = CreateSqsMessage();
-
-            // Act
-            await node.ConsumeAsync(CreateDataStream([message]), context, cts.Token);
-
-            // Assert - Not acknowledged immediately
-            message.IsAcknowledged.Should().BeFalse();
-
-            // Assert - Should be acknowledged after delay using polling to handle CI timing variability
-            var checkAcknowledged = () =>
-            {
-                message.IsAcknowledged.Should().BeTrue();
-                return Task.CompletedTask;
-            };
-
-            await checkAcknowledged.Should().NotThrowAfterAsync(TimeSpan.FromSeconds(2), TimeSpan.FromMilliseconds(50));
-        }
-
-        [Fact]
-        public async Task ExecuteAsync_WithDelayedStrategy_WhenCancelledBeforeDelay_DoesNotAcknowledge()
-        {
-            // Arrange
-            var configuration = CreateValidConfiguration();
-            configuration.AcknowledgmentStrategy = AcknowledgmentStrategy.Delayed;
-            configuration.AcknowledgmentDelayMs = 5000;
-
-            var sqsClientFake = A.Fake<IAmazonSQS>();
-
-            A.CallTo(() => sqsClientFake.SendMessageAsync(A<SendMessageRequest>._, A<CancellationToken>._))
-                .Returns(new SendMessageResponse());
-
-            var node = new SqsSinkNode<SqsMessage<TestModel>>(sqsClientFake, configuration);
-            var context = new PipelineContext();
-            var cts = new CancellationTokenSource();
-
-            var message = CreateSqsMessage();
-
-            // Act
-            var executeTask = node.ConsumeAsync(CreateDataStream([message]), context, cts.Token);
-            await executeTask;
-
-            // Cancel immediately
-            cts.Cancel();
-
-            // Wait a bit
-            await Task.Delay(100);
-
-            // Assert - Should not be acknowledged
-            message.IsAcknowledged.Should().BeFalse();
+            A.CallTo(() => message.RejectAsync(true, A<CancellationToken>._)).MustHaveHappenedOnceExactly();
+            A.CallTo(() => message.AcknowledgeAsync(A<CancellationToken>._)).MustNotHaveHappened();
         }
     }
 
-    public class AcknowledgmentStrategy_None
+    [Fact]
+    public async Task FailedRequest_WithFail_Throws()
     {
-        [Fact]
-        public async Task ExecuteAsync_WithNoneStrategy_DoesNotAcknowledge()
-        {
-            // Arrange
-            var configuration = CreateValidConfiguration();
-            configuration.AcknowledgmentStrategy = AcknowledgmentStrategy.None;
+        A.CallTo(() => _client.SendMessageBatchAsync(A<SendMessageBatchRequest>._, A<CancellationToken>._))
+            .ThrowsAsync(new AmazonSQSException("service unavailable"));
 
-            var sqsClientFake = A.Fake<IAmazonSQS>();
+        var act = () => RunAsync(Sink(), Orders[..1]);
 
-            A.CallTo(() => sqsClientFake.SendMessageAsync(A<SendMessageRequest>._, A<CancellationToken>._))
-                .Returns(new SendMessageResponse());
-
-            var node = new SqsSinkNode<SqsMessage<TestModel>>(sqsClientFake, configuration);
-            var context = new PipelineContext();
-            var cts = new CancellationTokenSource();
-
-            var message = CreateSqsMessage();
-
-            // Act
-            await node.ConsumeAsync(CreateDataStream([message]), context, cts.Token);
-
-            // Assert
-            message.IsAcknowledged.Should().BeFalse();
-        }
-
-        [Fact]
-        public async Task ExecuteAsync_WithNoneStrategy_DoesNotCallDeleteMessage()
-        {
-            // Arrange
-            var configuration = CreateValidConfiguration();
-            configuration.AcknowledgmentStrategy = AcknowledgmentStrategy.None;
-
-            var sqsClientFake = A.Fake<IAmazonSQS>();
-
-            A.CallTo(() => sqsClientFake.SendMessageAsync(A<SendMessageRequest>._, A<CancellationToken>._))
-                .Returns(new SendMessageResponse());
-
-            var node = new SqsSinkNode<SqsMessage<TestModel>>(sqsClientFake, configuration);
-            var context = new PipelineContext();
-            var cts = new CancellationTokenSource();
-
-            var message = CreateSqsMessage();
-
-            // Act
-            await node.ConsumeAsync(CreateDataStream([message]), context, cts.Token);
-
-            // Assert
-            A.CallTo(() => sqsClientFake.DeleteMessageAsync(A<string>._, A<string>._, A<CancellationToken>._))
-                .MustNotHaveHappened();
-
-            A.CallTo(() => sqsClientFake.DeleteMessageBatchAsync(A<DeleteMessageBatchRequest>._, A<CancellationToken>._))
-                .MustNotHaveHappened();
-        }
+        await act.Should().ThrowAsync<AmazonSQSException>().WithMessage("service unavailable");
     }
 
-    public class BatchAcknowledgment
+    [Fact]
+    public async Task Acknowledging_RoutesMessagesThroughTheSinksOwnSettlement()
     {
-        [Fact]
-        public async Task ExecuteAsync_WithBatchAcknowledgment_AcksInBatches()
-        {
-            // Arrange
-            var configuration = CreateValidConfiguration();
-            configuration.AcknowledgmentStrategy = AcknowledgmentStrategy.AutoOnSinkSuccess;
+        FailEntries("1");
+        var messages = FakeMessages(2);
 
-            configuration.BatchAcknowledgment = new BatchAcknowledgmentOptions
-            {
-                EnableAutomaticBatching = true,
-                BatchSize = 3,
-            };
+        var sink = Sink(o => o with { FailedMessages = FailedMessageAction.Requeue }).Acknowledging();
+        await using var input = new InMemoryDataStream<IAcknowledgableMessage<Order>>(messages);
+        await sink.ConsumeAsync(input, new PipelineContext(), CancellationToken.None);
 
-            var sqsClientFake = A.Fake<IAmazonSQS>();
-
-            A.CallTo(() => sqsClientFake.SendMessageAsync(A<SendMessageRequest>._, A<CancellationToken>._))
-                .Returns(new SendMessageResponse());
-
-            A.CallTo(() => sqsClientFake.SendMessageBatchAsync(A<SendMessageBatchRequest>._, A<CancellationToken>._))
-                .Returns(new SendMessageBatchResponse());
-
-            A.CallTo(() => sqsClientFake.DeleteMessageBatchAsync(A<DeleteMessageBatchRequest>._, A<CancellationToken>._))
-                .Returns(new DeleteMessageBatchResponse());
-
-            var node = new SqsSinkNode<SqsMessage<TestModel>>(sqsClientFake, configuration);
-            var context = new PipelineContext();
-            var cts = new CancellationTokenSource();
-
-            var messages = new[]
-            {
-                CreateSqsMessage("msg-1", "handle-1"),
-                CreateSqsMessage("msg-2", "handle-2"),
-                CreateSqsMessage("msg-3", "handle-3"),
-                CreateSqsMessage("msg-4", "handle-4"),
-            };
-
-            // Act
-            await node.ConsumeAsync(CreateDataStream(messages), context, cts.Token);
-
-            // Assert
-            messages.All(m => m.IsAcknowledged).Should().BeTrue();
-
-            A.CallTo(() => sqsClientFake.DeleteMessageBatchAsync(A<DeleteMessageBatchRequest>._, A<CancellationToken>._))
-                .MustHaveHappened();
-        }
-
-        [Fact]
-        public async Task ExecuteAsync_WithDisabledBatchAcknowledgment_AcksIndividually()
-        {
-            // Arrange
-            var configuration = CreateValidConfiguration();
-            configuration.AcknowledgmentStrategy = AcknowledgmentStrategy.AutoOnSinkSuccess;
-
-            configuration.BatchAcknowledgment = new BatchAcknowledgmentOptions
-            {
-                EnableAutomaticBatching = false,
-            };
-
-            configuration.BatchSize = 1; // Set to 1 for individual message processing
-
-            var sqsClientFake = A.Fake<IAmazonSQS>();
-
-            A.CallTo(() => sqsClientFake.SendMessageAsync(A<SendMessageRequest>._, A<CancellationToken>._))
-                .Returns(new SendMessageResponse());
-
-            var node = new SqsSinkNode<SqsMessage<TestModel>>(sqsClientFake, configuration);
-            var context = new PipelineContext();
-            var cts = new CancellationTokenSource();
-
-            var messages = new[]
-            {
-                CreateSqsMessage("msg-1", "handle-1"),
-                CreateSqsMessage("msg-2", "handle-2"),
-                CreateSqsMessage("msg-3", "handle-3"),
-            };
-
-            // Act
-            await node.ConsumeAsync(CreateDataStream(messages), context, cts.Token);
-
-            // Assert
-            messages.All(m => m.IsAcknowledged).Should().BeTrue();
-
-            A.CallTo(() => sqsClientFake.DeleteMessageBatchAsync(A<DeleteMessageBatchRequest>._, A<CancellationToken>._))
-                .MustNotHaveHappened();
-        }
-
-        [Fact]
-        public async Task ExecuteAsync_WithFlushTimeout_FlushesPartialBatch()
-        {
-            // Arrange
-            var configuration = CreateValidConfiguration();
-            configuration.AcknowledgmentStrategy = AcknowledgmentStrategy.AutoOnSinkSuccess;
-
-            configuration.BatchAcknowledgment = new BatchAcknowledgmentOptions
-            {
-                EnableAutomaticBatching = true,
-                BatchSize = 10,
-                FlushTimeoutMs = 100,
-            };
-
-            var sqsClientFake = A.Fake<IAmazonSQS>();
-
-            A.CallTo(() => sqsClientFake.SendMessageAsync(A<SendMessageRequest>._, A<CancellationToken>._))
-                .Returns(new SendMessageResponse());
-
-            A.CallTo(() => sqsClientFake.DeleteMessageBatchAsync(A<DeleteMessageBatchRequest>._, A<CancellationToken>._))
-                .Returns(new DeleteMessageBatchResponse());
-
-            var node = new SqsSinkNode<SqsMessage<TestModel>>(sqsClientFake, configuration);
-            var context = new PipelineContext();
-            var cts = new CancellationTokenSource();
-
-            var message = CreateSqsMessage();
-
-            // Act
-            await node.ConsumeAsync(CreateDataStream([message]), context, cts.Token);
-
-            // Wait for flush timeout
-            await Task.Delay(150);
-
-            // Assert
-            message.IsAcknowledged.Should().BeTrue();
-        }
+        // The generic wrapper would acknowledge everything at the end; the sink's own handling requeues the failure.
+        A.CallTo(() => messages[0].AcknowledgeAsync(A<CancellationToken>._)).MustHaveHappenedOnceExactly();
+        A.CallTo(() => messages[1].RejectAsync(true, A<CancellationToken>._)).MustHaveHappenedOnceExactly();
+        A.CallTo(() => messages[1].AcknowledgeAsync(A<CancellationToken>._)).MustNotHaveHappened();
     }
 
-    public class ParallelVsSequentialProcessing
+    [Fact]
+    public async Task Dispose_LeavesACallerSuppliedClientOpen()
     {
-        [Fact]
-        public async Task ExecuteAsync_WithSequentialProcessing_ProcessesSequentially()
-        {
-            // Arrange
-            var configuration = CreateValidConfiguration();
-            configuration.EnableParallelProcessing = false;
-            configuration.MaxDegreeOfParallelism = 1;
-            configuration.BatchSize = 1; // Set to 1 for individual message processing
+        await Sink().DisposeAsync();
 
-            configuration.BatchAcknowledgment = new BatchAcknowledgmentOptions
-            {
-                EnableAutomaticBatching = false,
-            };
-
-            var sqsClientFake = A.Fake<IAmazonSQS>();
-
-            A.CallTo(() => sqsClientFake.SendMessageAsync(A<SendMessageRequest>._, A<CancellationToken>._))
-                .Returns(new SendMessageResponse());
-
-            var node = new SqsSinkNode<SqsMessage<TestModel>>(sqsClientFake, configuration);
-            var context = new PipelineContext();
-            var cts = new CancellationTokenSource();
-
-            var messages = new[]
-            {
-                CreateSqsMessage("msg-1", "handle-1"),
-                CreateSqsMessage("msg-2", "handle-2"),
-                CreateSqsMessage("msg-3", "handle-3"),
-            };
-
-            // Act
-            await node.ConsumeAsync(CreateDataStream(messages), context, cts.Token);
-
-            // Assert
-            messages.All(m => m.IsAcknowledged).Should().BeTrue();
-        }
-
-        [Fact]
-        public async Task ExecuteAsync_WithParallelProcessing_ProcessesInParallel()
-        {
-            // Arrange
-            var configuration = CreateValidConfiguration();
-            configuration.EnableParallelProcessing = true;
-            configuration.MaxDegreeOfParallelism = 3;
-            configuration.AcknowledgmentStrategy = AcknowledgmentStrategy.AutoOnSinkSuccess;
-
-            configuration.BatchAcknowledgment = new BatchAcknowledgmentOptions
-            {
-                EnableAutomaticBatching = false,
-            };
-
-            var sqsClientFake = A.Fake<IAmazonSQS>();
-
-            A.CallTo(() => sqsClientFake.SendMessageAsync(A<SendMessageRequest>._, A<CancellationToken>._))
-                .Returns(new SendMessageResponse());
-
-            var node = new SqsSinkNode<SqsMessage<TestModel>>(sqsClientFake, configuration);
-            var context = new PipelineContext();
-            var cts = new CancellationTokenSource();
-
-            var messages = new[]
-            {
-                CreateSqsMessage("msg-1", "handle-1"),
-                CreateSqsMessage("msg-2", "handle-2"),
-                CreateSqsMessage("msg-3", "handle-3"),
-            };
-
-            // Act
-            await node.ConsumeAsync(CreateDataStream(messages), context, cts.Token);
-
-            // Assert
-            messages.All(m => m.IsAcknowledged).Should().BeTrue();
-        }
-
-        [Fact]
-        public async Task ExecuteAsync_WithMaxDegreeOfParallelism_LimitsConcurrency()
-        {
-            // Arrange
-            var configuration = CreateValidConfiguration();
-            configuration.EnableParallelProcessing = true;
-            configuration.MaxDegreeOfParallelism = 2;
-            configuration.AcknowledgmentStrategy = AcknowledgmentStrategy.AutoOnSinkSuccess;
-
-            configuration.BatchAcknowledgment = new BatchAcknowledgmentOptions
-            {
-                EnableAutomaticBatching = false,
-            };
-
-            var sqsClientFake = A.Fake<IAmazonSQS>();
-
-            A.CallTo(() => sqsClientFake.SendMessageAsync(A<SendMessageRequest>._, A<CancellationToken>._))
-                .Returns(new SendMessageResponse());
-
-            var node = new SqsSinkNode<SqsMessage<TestModel>>(sqsClientFake, configuration);
-            var context = new PipelineContext();
-            var cts = new CancellationTokenSource();
-
-            var messages = new[]
-            {
-                CreateSqsMessage("msg-1", "handle-1"),
-                CreateSqsMessage("msg-2", "handle-2"),
-                CreateSqsMessage("msg-3", "handle-3"),
-                CreateSqsMessage("msg-4", "handle-4"),
-            };
-
-            // Act
-            await node.ConsumeAsync(CreateDataStream(messages), context, cts.Token);
-
-            // Assert
-            messages.All(m => m.IsAcknowledged).Should().BeTrue();
-        }
+        A.CallTo(() => _client.Dispose()).MustNotHaveHappened();
     }
 
-    public class SendMessageBehavior
+    private SqsSinkNode<Order> Sink(Func<SqsWriteOptions<Order>, SqsWriteOptions<Order>>? configure = null) =>
+        SqsConnector.Sink<Order>(QueueUrl, o =>
+        {
+            // One batch per BatchSize, whatever the timing.
+            var options = o with { Client = _client, BatchLinger = TimeSpan.FromMinutes(1) };
+            return configure?.Invoke(options) ?? options;
+        });
+
+    private void FailEntries(params string[] ids) =>
+        _respond = request => new SendMessageBatchResponse
+        {
+            Successful = [.. request.Entries.Where(entry => !ids.Contains(entry.Id)).Select(entry => new SendMessageBatchResultEntry { Id = entry.Id })],
+            Failed =
+            [
+                .. request.Entries.Where(entry => ids.Contains(entry.Id))
+                    .Select(entry => new BatchResultErrorEntry { Id = entry.Id, Code = "InvalidParameterValue", Message = "bad", SenderFault = true }),
+            ],
+        };
+
+    private static IAcknowledgableMessage<Order>[] FakeMessages(int count) =>
+    [
+        .. Orders.Take(count).Select(order =>
+        {
+            var message = A.Fake<IAcknowledgableMessage<Order>>();
+            A.CallTo(() => message.Body).Returns(order);
+            A.CallTo(() => message.MessageId).Returns($"source-{order.Id}");
+            return message;
+        }),
+    ];
+
+    private static async Task RunAsync(SqsSinkNode<Order> sink, params Order[] items)
     {
-        [Fact]
-        public async Task ExecuteAsync_WithRegularMessage_SendsMessage()
-        {
-            // Arrange
-            var configuration = CreateValidConfiguration();
-            configuration.AcknowledgmentStrategy = AcknowledgmentStrategy.None;
-            var sqsClientFake = A.Fake<IAmazonSQS>();
-            SendMessageRequest? capturedRequest = null;
-
-            A.CallTo(() => sqsClientFake.SendMessageAsync(A<SendMessageRequest>._, A<CancellationToken>._))
-                .Invokes((SendMessageRequest req, CancellationToken ct) => capturedRequest = req)
-                .Returns(new SendMessageResponse());
-
-            var node = new SqsSinkNode<SqsMessage<TestModel>>(sqsClientFake, configuration);
-            var context = new PipelineContext();
-            var cts = new CancellationTokenSource();
-
-            var testModel = new TestModel { Id = 42, Name = "Test" };
-
-            // Act
-            await node.ConsumeAsync(CreateDataStream([CreateSqsMessage(body: testModel)]), context, cts.Token);
-
-            // Assert
-            capturedRequest.Should().NotBeNull();
-            capturedRequest!.QueueUrl.Should().Be(configuration.SinkQueueUrl);
-            capturedRequest.MessageBody.Should().Contain("42");
-            capturedRequest.MessageBody.Should().Contain("Test");
-        }
-
-        [Fact]
-        public async Task ExecuteAsync_WithMessageAttributes_AddsAttributes()
-        {
-            // Arrange
-            var configuration = CreateValidConfiguration();
-            configuration.AcknowledgmentStrategy = AcknowledgmentStrategy.None;
-            configuration.BatchSize = 1; // Set to 1 for individual message processing
-
-            configuration.MessageAttributes = new Dictionary<string, MessageAttributeValue>
-            {
-                ["CustomAttr"] = new()
-                {
-                    DataType = "String",
-                    StringValue = "custom-value",
-                },
-            };
-
-            var sqsClientFake = A.Fake<IAmazonSQS>();
-            SendMessageRequest? capturedRequest = null;
-            Exception? capturedException = null;
-
-            A.CallTo(() => sqsClientFake.SendMessageAsync(A<SendMessageRequest>._, A<CancellationToken>._))
-                .Invokes((SendMessageRequest req, CancellationToken ct) =>
-                {
-                    try
-                    {
-                        capturedRequest = req;
-                        Console.WriteLine($"Callback executed: QueueUrl={req.QueueUrl}, Body={req.MessageBody}");
-                    }
-                    catch (Exception ex)
-                    {
-                        capturedException = ex;
-                        Console.WriteLine($"Callback exception: {ex}");
-                    }
-                })
-                .Returns(new SendMessageResponse());
-
-            var node = new SqsSinkNode<SqsMessage<TestModel>>(sqsClientFake, configuration);
-            var context = new PipelineContext();
-            var cts = new CancellationTokenSource();
-
-            var testModel = new TestModel { Id = 42, Name = "Test" };
-
-            // Act
-            try
-            {
-                await node.ConsumeAsync(CreateDataStream([CreateSqsMessage(body: testModel)]), context, cts.Token);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"ConsumeAsync exception: {ex}");
-                capturedException = ex;
-            }
-
-            Console.WriteLine($"After ConsumeAsync: capturedRequest={capturedRequest != null}, capturedException={capturedException != null}");
-
-            // Assert
-            if (capturedException != null)
-                throw new Exception($"Test failed with exception: {capturedException}", capturedException);
-
-            capturedRequest.Should().NotBeNull("SendMessageAsync callback should have been executed");
-            capturedRequest!.MessageAttributes.Should().ContainKey("CustomAttr");
-            capturedRequest.MessageAttributes["CustomAttr"].StringValue.Should().Be("custom-value");
-        }
-
-        [Fact]
-        public async Task ExecuteAsync_WithDelaySeconds_SetsDelay()
-        {
-            // Arrange
-            var configuration = CreateValidConfiguration();
-            configuration.AcknowledgmentStrategy = AcknowledgmentStrategy.None;
-            configuration.DelaySeconds = 30;
-
-            var sqsClientFake = A.Fake<IAmazonSQS>();
-            SendMessageRequest? capturedRequest = null;
-
-            A.CallTo(() => sqsClientFake.SendMessageAsync(A<SendMessageRequest>._, A<CancellationToken>._))
-                .Invokes((SendMessageRequest req, CancellationToken ct) => capturedRequest = req)
-                .Returns(new SendMessageResponse());
-
-            var node = new SqsSinkNode<SqsMessage<TestModel>>(sqsClientFake, configuration);
-            var context = new PipelineContext();
-            var cts = new CancellationTokenSource();
-
-            var testModel = new TestModel { Id = 42, Name = "Test" };
-
-            // Act
-            await node.ConsumeAsync(CreateDataStream([CreateSqsMessage(body: testModel)]), context, cts.Token);
-
-            // Assert
-            capturedRequest.Should().NotBeNull();
-            capturedRequest!.DelaySeconds.Should().Be(30);
-        }
-
-        [Fact]
-        public async Task ExecuteAsync_WithContinueOnError_ContinuesOnFailure()
-        {
-            // Arrange
-            var configuration = CreateValidConfiguration();
-            configuration.ContinueOnError = true;
-            configuration.AcknowledgmentStrategy = AcknowledgmentStrategy.None;
-            configuration.BatchSize = 1; // Set to 1 for individual message processing
-
-            var sqsClientFake = A.Fake<IAmazonSQS>();
-            var callCount = 0;
-
-            A.CallTo(() => sqsClientFake.SendMessageAsync(A<SendMessageRequest>._, A<CancellationToken>._))
-                .Invokes(() => callCount++)
-                .Throws(new Exception("Simulated error"));
-
-            var node = new SqsSinkNode<SqsMessage<TestModel>>(sqsClientFake, configuration);
-            var context = new PipelineContext();
-            var cts = new CancellationTokenSource();
-
-            var testModels = new[]
-            {
-                CreateSqsMessage(body: new TestModel { Id = 1, Name = "Test1" }),
-                CreateSqsMessage(body: new TestModel { Id = 2, Name = "Test2" }),
-                CreateSqsMessage(body: new TestModel { Id = 3, Name = "Test3" }),
-            };
-
-            // Act
-            await node.ConsumeAsync(CreateDataStream(testModels), context, cts.Token);
-
-            // Assert - Should have attempted to send all messages
-            callCount.Should().Be(3);
-        }
-
-        [Fact]
-        public async Task ExecuteAsync_WithContinueOnErrorFalse_StopsOnFailure()
-        {
-            // Arrange
-            var configuration = CreateValidConfiguration();
-            configuration.ContinueOnError = false;
-            configuration.AcknowledgmentStrategy = AcknowledgmentStrategy.None;
-            configuration.BatchSize = 1; // Set to 1 for individual message processing
-
-            var sqsClientFake = A.Fake<IAmazonSQS>();
-            var callCount = 0;
-
-            A.CallTo(() => sqsClientFake.SendMessageAsync(A<SendMessageRequest>._, A<CancellationToken>._))
-                .Invokes(() => callCount++)
-                .Throws(new Exception("Simulated error"));
-
-            var node = new SqsSinkNode<SqsMessage<TestModel>>(sqsClientFake, configuration);
-            var context = new PipelineContext();
-            var cts = new CancellationTokenSource();
-
-            var testModels = new[]
-            {
-                CreateSqsMessage(body: new TestModel { Id = 1, Name = "Test1" }),
-                CreateSqsMessage(body: new TestModel { Id = 2, Name = "Test2" }),
-                CreateSqsMessage(body: new TestModel { Id = 3, Name = "Test3" }),
-            };
-
-            // Act & Assert
-            await Assert.ThrowsAsync<Exception>(async () =>
-                await node.ConsumeAsync(CreateDataStream(testModels), context, cts.Token));
-
-            // Assert - Should have stopped after first error
-            callCount.Should().Be(1);
-        }
+        await using var input = new InMemoryDataStream<Order>(items);
+        await sink.ConsumeAsync(input, new PipelineContext(), CancellationToken.None);
     }
 
-    private class TestModel
+    private static async Task RunMessagesAsync(SqsSinkNode<Order> sink, params IAcknowledgableMessage<Order>[] messages)
     {
-        public int Id { get; set; }
-        public string Name { get; set; } = string.Empty;
-    }
-
-    private class TestDataStream<T> : IDataStream<T>
-    {
-        private readonly T[] _items;
-
-        public TestDataStream(T[] items)
-        {
-            _items = items;
-        }
-
-        public string StreamName => "test-stream";
-
-        public Type GetDataType() => typeof(T);
-
-        public IAsyncEnumerable<object?> ToAsyncEnumerable(CancellationToken cancellationToken = default)
-        {
-            return _items.ToAsyncEnumerable().Select(x => (object?)x);
-        }
-
-        public async ValueTask DisposeAsync()
-        {
-            // No resources to dispose
-            await Task.CompletedTask;
-        }
-
-        public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default) =>
-            _items.ToAsyncEnumerable().GetAsyncEnumerator(cancellationToken);
+        await using var input = new InMemoryDataStream<IAcknowledgableMessage<Order>>(messages);
+        await sink.ConsumeMessagesAsync(input, new PipelineContext(), CancellationToken.None);
     }
 }

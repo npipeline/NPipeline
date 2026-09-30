@@ -192,6 +192,7 @@ statement. With `ValidateIdentifiers` (the default), the table, schema and upser
 | `Table` | required | The table |
 | `Schema` | `null` | The table's schema; `null` uses the connection's default |
 | `BatchSize` | 1,000 | Rows per batch |
+| `BatchLinger` | 1 s | A partial batch is written once this long has passed since its first row, so a slow stream is written promptly |
 | `Transaction` | `PerBatch` | See [Transactions](#transactions) |
 | `FailedBatches` | `Fail` | See [Failed batches](#failed-batches) |
 | `Upsert` | `null` | See [Upserts](#upserts) |
@@ -217,6 +218,12 @@ connector pages list them.
   `Resilience = SqlServerConnectorResilience.Default.WithListener(e => ...)`.
 - **One retrying layer.** Leave the driver's own command retries off (SqlClient's `SqlConfigurableRetryFactory`, for
   example), because two retrying layers multiply attempts.
+
+## Acknowledging messages
+
+A SQL sink reports each batch once it is committed, so messages from a message queue written through `Acknowledging()`
+are acknowledged then: `SqlServerConnector.Sink<Order>(connectionString, "Orders").Acknowledging()`. With `WholeRun`
+they are acknowledged after the final commit. See [Message Queues: Shared Behaviour](message-queues.md#writing-messages-through-any-sink).
 
 ## Metrics
 

@@ -1,6 +1,7 @@
 using System.Data.Common;
 using NPipeline.Connectors.Diagnostics;
 using NPipeline.Connectors.Mapping;
+using NPipeline.Connectors.Messaging;
 using NPipeline.DataFlow;
 using NPipeline.ErrorHandling;
 using NPipeline.Nodes;
@@ -10,15 +11,18 @@ using NPipeline.StorageProviders.Abstractions;
 namespace NPipeline.Connectors.Sql;
 
 /// <summary>
-///     A sink that writes records to a table in batches of <see cref="SqlSinkOptions.BatchSize" />. Each record's readable
+///     A sink that writes records to a table in batches of <see cref="SqlSinkOptions.BatchSize" />, or smaller after
+///     <see cref="SqlSinkOptions.BatchLinger" />. It reports each batch once it is committed (<see cref="IReportsWrites" />),
+///     so messages written through <c>Acknowledging()</c> are acknowledged then. Each record's readable
 ///     members become columns through a plan compiled once per type; the connector's writer (row by row, multi-row
 ///     statements or its bulk API) writes each batch, inside the transaction <see cref="SqlSinkOptions.Transaction" />
 ///     asks for.
 /// </summary>
 /// <typeparam name="T">The record type.</typeparam>
-public abstract class SqlSinkNode<T> : SinkNode<T>
+public abstract class SqlSinkNode<T> : SinkNode<T>, IReportsWrites
 {
     private readonly SqlSinkOptions _options;
+    private Func<long, CancellationToken, ValueTask>? _written;
 
     /// <summary>Creates the sink and validates <paramref name="options" />.</summary>
     /// <param name="options">The sink's options.</param>
@@ -84,6 +88,9 @@ public abstract class SqlSinkNode<T> : SinkNode<T>
     protected virtual Task CompleteAsync(DbConnection connection, CancellationToken cancellationToken) => Task.CompletedTask;
 
     /// <inheritdoc />
+    public void ReportWritesTo(Func<long, CancellationToken, ValueTask> written) => _written = written ?? throw new ArgumentNullException(nameof(written));
+
+    /// <inheritdoc />
     public override async Task ConsumeAsync(IDataStream<T> input, PipelineContext context, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(input);
@@ -108,24 +115,26 @@ public abstract class SqlSinkNode<T> : SinkNode<T>
                 if (_options.Transaction == SqlTransactionMode.WholeRun)
                     run = await connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
 
-                var batch = new List<T>(Math.Min(_options.BatchSize, 10_000));
+                long handled = 0;
 
-                await foreach (var item in input.WithCancellation(cancellationToken).ConfigureAwait(false))
+                await foreach (var items in input.BatchAsync(_options.BatchSize, _options.BatchLinger, cancellationToken).ConfigureAwait(false))
                 {
-                    batch.Add(item);
+                    var batch = items as IReadOnlyList<T> ?? [.. items];
+                    written += await WriteBatchAsync(connection, run, writer, batch, deadLetters, cancellationToken).ConfigureAwait(false);
+                    handled += batch.Count;
 
-                    if (batch.Count >= _options.BatchSize)
-                    {
-                        written += await WriteBatchAsync(connection, run, writer, batch, deadLetters, cancellationToken).ConfigureAwait(false);
-                        batch = new List<T>(batch.Capacity);
-                    }
+                    // A whole-run transaction makes nothing durable until it commits.
+                    if (run is null && _written is not null)
+                        await _written(handled, cancellationToken).ConfigureAwait(false);
                 }
 
-                if (batch.Count > 0)
-                    written += await WriteBatchAsync(connection, run, writer, batch, deadLetters, cancellationToken).ConfigureAwait(false);
-
                 if (run is not null)
+                {
                     await run.CommitAsync(cancellationToken).ConfigureAwait(false);
+
+                    if (_written is not null)
+                        await _written(handled, cancellationToken).ConfigureAwait(false);
+                }
 
                 await CompleteAsync(connection, cancellationToken).ConfigureAwait(false);
             }
@@ -163,7 +172,7 @@ public abstract class SqlSinkNode<T> : SinkNode<T>
         }
     }
 
-    private async Task<long> WriteBatchAsync(DbConnection connection, DbTransaction? run, SqlWriter<T> writer, List<T> batch, DeadLetterChannel deadLetters,
+    private async Task<long> WriteBatchAsync(DbConnection connection, DbTransaction? run, SqlWriter<T> writer, IReadOnlyList<T> batch, DeadLetterChannel deadLetters,
         CancellationToken cancellationToken)
     {
         try
@@ -185,7 +194,7 @@ public abstract class SqlSinkNode<T> : SinkNode<T>
         }
     }
 
-    private static async Task InBatchTransactionAsync(DbConnection connection, SqlWriter<T> writer, List<T> batch, CancellationToken cancellationToken)
+    private static async Task InBatchTransactionAsync(DbConnection connection, SqlWriter<T> writer, IReadOnlyList<T> batch, CancellationToken cancellationToken)
     {
         var transaction = await connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
 

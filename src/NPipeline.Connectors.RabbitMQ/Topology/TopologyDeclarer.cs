@@ -12,66 +12,38 @@ internal static class TopologyDeclarer
     /// <summary>
     ///     Declares source topology (queue, optional exchange, bindings).
     /// </summary>
-    public static async Task DeclareSourceTopologyAsync(
-        IChannel channel,
-        RabbitMqSourceOptions options,
-        ILogger logger,
+    /// <summary>Declares a source's queue, its exchanges and bindings, when the topology asks for it.</summary>
+    public static async Task DeclareQueueAsync(IChannel channel, string queue, RabbitMqTopologyOptions? topology, ILogger logger,
         CancellationToken cancellationToken)
     {
-        var topology = options.Topology;
-
-        if (topology is null || !topology.AutoDeclare)
+        if (topology is not { AutoDeclare: true })
             return;
 
-        // Declare exchange if exchange type is specified
         if (topology.ExchangeType is not null && topology.Bindings is { Count: > 0 })
         {
             foreach (var binding in topology.Bindings)
             {
-                await DeclareExchangeAsync(channel, binding.Exchange, topology, logger, cancellationToken)
-                    .ConfigureAwait(false);
+                await DeclareExchangeAsync(channel, binding.Exchange, topology, logger, cancellationToken).ConfigureAwait(false);
             }
         }
 
-        // Declare queue
-        await DeclareQueueAsync(channel, options.QueueName, topology, logger, cancellationToken)
-            .ConfigureAwait(false);
+        await DeclareQueueCoreAsync(channel, queue, topology, logger, cancellationToken).ConfigureAwait(false);
 
-        // Declare bindings
-        if (topology.Bindings is { Count: > 0 })
+        foreach (var binding in topology.Bindings ?? [])
         {
-            foreach (var binding in topology.Bindings)
-            {
-                await channel.QueueBindAsync(
-                    options.QueueName,
-                    binding.Exchange,
-                    binding.RoutingKey,
-                    binding.Arguments,
-                    cancellationToken: cancellationToken).ConfigureAwait(false);
-            }
+            await channel.QueueBindAsync(queue, binding.Exchange, binding.RoutingKey, binding.Arguments, cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
         }
     }
 
-    /// <summary>
-    ///     Declares sink topology (exchange, optional queue, bindings).
-    /// </summary>
-    public static async Task DeclareSinkTopologyAsync(
-        IChannel channel,
-        RabbitMqSinkOptions options,
-        ILogger logger,
+    /// <summary>Declares a sink's exchange, when the topology asks for it and the exchange is not the default one.</summary>
+    public static async Task DeclareSinkExchangeAsync(IChannel channel, string exchange, RabbitMqTopologyOptions? topology, ILogger logger,
         CancellationToken cancellationToken)
     {
-        var topology = options.Topology;
-
-        if (topology is null || !topology.AutoDeclare)
+        if (topology is not { AutoDeclare: true, ExchangeType: not null } || string.IsNullOrEmpty(exchange))
             return;
 
-        // Declare exchange if exchange type is specified and exchange name is not default
-        if (topology.ExchangeType is not null && !string.IsNullOrEmpty(options.ExchangeName))
-        {
-            await DeclareExchangeAsync(channel, options.ExchangeName, topology, logger, cancellationToken)
-                .ConfigureAwait(false);
-        }
+        await DeclareExchangeAsync(channel, exchange, topology, logger, cancellationToken).ConfigureAwait(false);
     }
 
     private static async Task DeclareExchangeAsync(
@@ -102,7 +74,7 @@ internal static class TopologyDeclarer
         LogMessages.ExchangeDeclared(logger, exchangeName, exchangeType, topology.Durable);
     }
 
-    private static async Task DeclareQueueAsync(
+    private static async Task DeclareQueueCoreAsync(
         IChannel channel,
         string queueName,
         RabbitMqTopologyOptions topology,

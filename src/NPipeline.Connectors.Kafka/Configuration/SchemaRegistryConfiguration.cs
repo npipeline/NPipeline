@@ -5,47 +5,47 @@ namespace NPipeline.Connectors.Kafka.Configuration;
 /// <summary>
 ///     Configuration for Confluent Schema Registry integration.
 /// </summary>
-public sealed class SchemaRegistryConfiguration
+public sealed record SchemaRegistryConfiguration
 {
     /// <summary>
     ///     Gets or sets the Schema Registry URL.
     /// </summary>
-    public string Url { get; set; } = string.Empty;
+    public string Url { get; init; } = string.Empty;
 
     /// <summary>
     ///     Gets or sets the basic auth credentials username.
     /// </summary>
-    public string? BasicAuthUsername { get; set; }
+    public string? BasicAuthUsername { get; init; }
 
     /// <summary>
     ///     Gets or sets the basic auth credentials password.
     /// </summary>
-    public string? BasicAuthPassword { get; set; }
+    public string? BasicAuthPassword { get; init; }
 
     /// <summary>
     ///     Gets or sets whether to use TLS for connections.
     /// </summary>
-    public bool EnableSsl { get; set; }
+    public bool EnableSsl { get; init; }
 
     /// <summary>
     ///     Gets or sets the timeout for schema operations in milliseconds.
     /// </summary>
-    public int RequestTimeoutMs { get; set; } = 30000;
+    public int RequestTimeoutMs { get; init; } = 30000;
 
     /// <summary>
     ///     Gets or sets the maximum number of schemas to cache locally.
     /// </summary>
-    public int SchemaCacheCapacity { get; set; } = 1000;
+    public int SchemaCacheCapacity { get; init; } = 1000;
 
     /// <summary>
     ///     Gets or sets whether to automatically register schemas.
     /// </summary>
-    public bool AutoRegisterSchemas { get; set; } = true;
+    public bool AutoRegisterSchemas { get; init; } = true;
 
     /// <summary>
     ///     Gets or sets the subject name strategy for schema registration.
     /// </summary>
-    public SubjectNameStrategy? SubjectNameStrategy { get; set; }
+    public SubjectNameStrategy? SubjectNameStrategy { get; init; }
 
     /// <summary>
     ///     Validates the Schema Registry configuration.

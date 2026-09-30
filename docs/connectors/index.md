@@ -39,14 +39,15 @@ For reading from and writing to relational and document databases.
 
 ### Message Queues
 
-For consuming from and publishing to message brokers.
+For consuming from and publishing to message brokers. Serialization, settlement, acknowledgement through any sink and
+error handling are shared; see [Message Queues: Shared Behaviour](message-queues.md).
 
 | Connector | System | Key Features | Package |
 |-----------|--------|-------------|---------|
-| [Kafka](kafka.md) | Apache Kafka | Consumer groups, idempotent writes, transactions | `NPipeline.Connectors.Kafka` |
-| [RabbitMQ](rabbitmq.md) | RabbitMQ | Topology management, acknowledgment strategies | `NPipeline.Connectors.RabbitMQ` |
-| [AWS SQS](aws-sqs.md) | Amazon SQS | Long polling, batch operations, dead letter | `NPipeline.Connectors.Aws.Sqs` |
-| [Azure Service Bus](azure-service-bus.md) | Azure Service Bus | Queues, topics, sessions, batch sending | `NPipeline.Connectors.Azure.ServiceBus` |
+| [Kafka](kafka.md) | Apache Kafka | Consumer groups, ordered offset commits, exactly-once transactions, Avro/Protobuf | `NPipeline.Connectors.Kafka` |
+| [RabbitMQ](rabbitmq.md) | RabbitMQ | Prefetch, batched publisher confirms, topology, dead-letter exchanges | `NPipeline.Connectors.RabbitMQ` |
+| [AWS SQS](aws-sqs.md) | Amazon SQS | Long polling, batched deletes and sends, FIFO queues | `NPipeline.Connectors.Aws.Sqs` |
+| [Azure Service Bus](azure-service-bus.md) | Azure Service Bus | Queues, topics, sessions, lock renewal, batched sends | `NPipeline.Connectors.Azure.ServiceBus` |
 
 ### Specialized
 

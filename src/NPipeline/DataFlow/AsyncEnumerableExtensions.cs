@@ -39,7 +39,8 @@ public static class AsyncEnumerableExtensions
     /// <param name="batchSize">The maximum number of elements in a batch.</param>
     /// <param name="timespan">
     ///     The maximum time to wait before emitting a batch, measured from the batch's first item.
-    ///     <see cref="TimeSpan.Zero" /> emits whatever is immediately available.
+    ///     <see cref="TimeSpan.Zero" /> emits whatever is immediately available; <see cref="Timeout.InfiniteTimeSpan" /> waits
+    ///     for full batches.
     /// </param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>An asynchronous sequence of batches.</returns>
@@ -55,7 +56,9 @@ public static class AsyncEnumerableExtensions
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(batchSize);
-        ArgumentOutOfRangeException.ThrowIfLessThan(timespan, TimeSpan.Zero);
+
+        if (timespan < TimeSpan.Zero && timespan != Timeout.InfiniteTimeSpan)
+            throw new ArgumentOutOfRangeException(nameof(timespan), timespan, "The time window must be zero or more, or Timeout.InfiniteTimeSpan.");
 
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var channel = Channel.CreateBounded<T>(new BoundedChannelOptions(Math.Max(batchSize * 2, 1))
@@ -103,10 +106,12 @@ public static class AsyncEnumerableExtensions
                     continue;
 
                 // The time window starts at the batch's first item.
-                if (batch.Count < batchSize && timespan > TimeSpan.Zero)
+                if (batch.Count < batchSize && timespan != TimeSpan.Zero)
                 {
                     using var windowCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                    windowCts.CancelAfter(timespan);
+
+                    if (timespan != Timeout.InfiniteTimeSpan)
+                        windowCts.CancelAfter(timespan);
 
                     try
                     {

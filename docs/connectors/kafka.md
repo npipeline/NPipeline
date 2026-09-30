@@ -1,12 +1,15 @@
 ---
 title: "Kafka Connector"
-description: "Consume from and produce to Apache Kafka with consumer groups, exactly-once semantics, and Schema Registry."
-order: 15
+description: "Consume from and produce to Apache Kafka with consumer groups, ordered offset commits, exactly-once transactions and Schema Registry."
+order: 16
 ---
 
 # Kafka Connector
 
-The `NPipeline.Connectors.Kafka` package provides source and sink nodes for [Apache Kafka](https://kafka.apache.org/). Supports consumer groups, exactly-once transactional semantics, multiple serialization formats (JSON, Avro, Protobuf) with Schema Registry integration, configurable acknowledgment strategies, and parallel processing.
+The `NPipeline.Connectors.Kafka` package consumes Kafka topics as a member of a consumer group and produces to topics,
+with at-least-once delivery by default and exactly-once transactions when asked. Serialization, settlement,
+undeserializable messages and failed writes work as in every message-queue connector; see
+[Message Queues: Shared Behaviour](message-queues.md).
 
 ## Installation
 
@@ -14,349 +17,145 @@ The `NPipeline.Connectors.Kafka` package provides source and sink nodes for [Apa
 dotnet add package NPipeline.Connectors.Kafka
 ```
 
-**Dependencies:** [Confluent.Kafka](https://www.nuget.org/packages/Confluent.Kafka) 2.x, [Confluent.SchemaRegistry](https://www.nuget.org/packages/Confluent.SchemaRegistry) 2.x (optional: Avro and Protobuf serializers)
+**Dependencies:** [Confluent.Kafka](https://www.nuget.org/packages/Confluent.Kafka), and
+[Confluent.SchemaRegistry](https://www.nuget.org/packages/Confluent.SchemaRegistry) for the Avro and Protobuf serializers.
 
-## Source Node - `KafkaSourceNode<T>`
-
-### Constructors
-
-```csharp
-public KafkaSourceNode(KafkaConfiguration configuration)
-
-public KafkaSourceNode(
-    KafkaConfiguration configuration,
-    IKafkaMetrics metrics)
-
-// Bring your own consumer
-public KafkaSourceNode(
-    IConsumer<string, T> consumer,
-    KafkaConfiguration configuration,
-    IKafkaMetrics metrics)
-```
-
-### Example
+## Consuming
 
 ```csharp
-var config = new KafkaConfiguration
-{
-    BootstrapServers = "localhost:9092",
-    SourceTopic = "orders",
-    ConsumerGroupId = "order-processor",
-    AutoOffsetReset = AutoOffsetReset.Earliest,
-    SerializationFormat = SerializationFormat.Json
-};
+var orders = KafkaConnector.Source<Order>("kafka:9092", "orders", groupId: "billing",
+    o => o with { AutoOffsetReset = AutoOffsetReset.Earliest });
 
-var source = new KafkaSourceNode<Order>(config);
+builder.AddSource(orders, "orders");
 ```
 
-## Sink Node - `KafkaSinkNode<T>`
+Each message is a `KafkaMessage<T>` with its `Body`, `Key` (UTF-8 text), `Topic`, `Partition`, `Offset`, `Timestamp`,
+`Headers` and `IsTombstone`.
 
-### Constructors
+### Offsets
+
+Acknowledging a message stores its offset, and the consumer commits stored offsets every `CommitInterval` (5 seconds)
+and when it closes. Offsets commit in order: a partition's committed offset only moves past a message once every
+earlier message of that partition is settled, so a message still being written, or one that failed, is never skipped
+by a later acknowledgement. What is committed is the next offset to read, so a restart continues after the last
+acknowledged message.
+
+`RejectAsync(requeue: false)` moves past a message. `RejectAsync(requeue: true)` holds the partition's commits at it,
+since Kafka cannot redeliver one message: a restart reads it, and what follows, again.
+
+When the read ends, the consumer stays until the messages it handed on are settled (up to `SettleTimeout`), then
+commits and leaves the group, so its partitions move to another member at once rather than after a session timeout.
+
+### Source options
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `Topic`, `GroupId` | required | The topic, and the consumer group whose committed offsets a read starts from |
+| `AutoOffsetReset` | `Latest` | Where a group with no committed offset starts: `Latest` (Kafka's default) or `Earliest` |
+| `GroupInstanceId` | `null` | A static member id, so a restarted member keeps its partitions without a rebalance |
+| `IsolationLevel` | librdkafka's, read-committed | Whether transactional messages are read only once committed |
+| `CommitInterval` | 5 s | How often stored offsets are committed |
+| `SkipTombstones` | `true` | Tombstones (null values) are passed over; with `false` they are handed on with a default body and `IsTombstone` set |
+| `RowErrorHandler`, `RawExcerptLength` | fail, 256 | See [Messages that don't deserialize](message-queues.md#messages-that-dont-deserialize); `Skip` moves past the message |
+| `PollTimeout` | 100 ms | How long a poll waits before polling again |
+| `Resilience` | `KafkaConnectorResilience.Default` | How a failed poll is retried; see [Resilience](#resilience) |
+| `SettleTimeout` | 30 s | How long the consumer waits for handed-on messages to be settled after the read ends |
+
+## Producing
 
 ```csharp
-public KafkaSinkNode(KafkaConfiguration configuration)
-
-public KafkaSinkNode(
-    KafkaConfiguration configuration,
-    IKafkaMetrics metrics,
-    IPartitionKeyProvider<T>? partitionKeyProvider = null)
+var invoices = KafkaConnector.Sink<Invoice>("kafka:9092", "invoices", o => o with { KeySelector = invoice => invoice.CustomerId });
+builder.AddSink(invoices.Acknowledging(), "invoices");
 ```
 
-### Example
+The key decides the partition, and so the order: messages with one key keep their order. With no `KeySelector`, a
+message read from Kafka keeps its key, and any other message has none, so librdkafka spreads them over the partitions.
+
+The sink produces each batch of `BatchSize` messages and waits for all their deliveries; written through
+`Acknowledging()`, each source message is acknowledged once the broker has it.
+
+### Sink options
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `Topic` | required | The topic |
+| `KeySelector` | `null` | Chooses each message's key from its body |
+| `CopyHeaders` | `false` | Whether a message read from Kafka keeps its headers |
+| `Acks` | `All` | How many replicas must have a message before the broker acknowledges it |
+| `EnableIdempotence` | `true` | The producer's own retries never duplicate a message |
+| `Linger`, `Compression` | 5 ms, none | librdkafka's batching delay and codec; `CompressionType.Lz4` or `Zstd` suits busy topics |
+| `DeliveryTimeout` | 2 min | How long librdkafka keeps retrying a message before it fails |
+| `BatchSize`, `BatchLinger` | 1,000, 10 ms | Messages whose deliveries are awaited together, and the longest a batch waits to fill |
+| `FailedMessages` | `Fail` | See [Failed writes](message-queues.md#failed-writes) |
+| `TransactionalId`, `TransactionTimeout` | none, 30 s | Exactly-once; see below |
+
+### Exactly-once
+
+With a `TransactionalId`, each batch is one transaction that also commits the offsets of the Kafka messages it came
+from, so reading, transforming and writing are exactly-once: a batch and its source offsets commit or abort together.
 
 ```csharp
-var config = new KafkaConfiguration
-{
-    BootstrapServers = "localhost:9092",
-    SinkTopic = "processed-orders",
-    EnableIdempotence = true,
-    Acks = Acks.All,
-    SerializationFormat = SerializationFormat.Json
-};
-
-var sink = new KafkaSinkNode<ProcessedOrder>(config);
+var orders = KafkaConnector.Source<Order>("kafka:9092", "orders", "billing");
+var invoices = KafkaConnector.Sink<Invoice>("kafka:9092", "invoices", o => o with { TransactionalId = "billing-1" });
 ```
 
-## Configuration
+Each producer instance needs its own id. A failed batch aborts its transaction and fails the write (so
+`FailedMessages` must be `Fail`), and a restart reads the batch's messages again. Consumers of the output should use
+read-committed isolation, librdkafka's default.
 
-### Connection & Security
+## Connections and security
 
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `BootstrapServers` | `string` | - | Broker addresses (comma-separated) |
-| `ClientId` | `string?` | `null` | Client identifier |
-| `SecurityProtocol` | `SecurityProtocol` | `Plaintext` | `Plaintext`, `Ssl`, `SaslPlaintext`, `SaslSsl` |
-| `SaslMechanism` | `SaslMechanism` | `Plain` | `Plain`, `ScramSha256`, `ScramSha512`, `OAuthBearer` |
-| `SaslUsername` | `string?` | `null` | SASL username |
-| `SaslPassword` | `string?` | `null` | SASL password |
+Both options records share the client settings:
 
-### Consumer (Source)
+| Option | Description |
+| --- | --- |
+| `BootstrapServers` | The brokers, `host:port` separated by commas |
+| `ClientId` | The client id the brokers see |
+| `SecurityProtocol`, `SaslMechanism`, `SaslUsername`, `SaslPassword` | Security; SASL with `Plain` or SCRAM needs the user name and password |
+| `ClientSettings` | Any other librdkafka setting by name, such as `ssl.ca.location`, applied last |
 
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `SourceTopic` | `string` | - | Topic to consume from |
-| `ConsumerGroupId` | `string` | - | Consumer group ID |
-| `GroupInstanceId` | `string?` | `null` | Static group membership ID |
-| `AutoOffsetReset` | `AutoOffsetReset` | `Latest` | `Earliest`, `Latest`, or `Error` |
-| `EnableAutoCommit` | `bool` | - | Enable auto-commit |
-| `MaxPollRecords` | `int` | `500` | Max records per poll |
-| `PollTimeoutMs` | `int` | `100` | Poll timeout (ms) |
-| `FetchMinBytes` | `int` | `1` | Min bytes to fetch |
-| `FetchMaxBytes` | `int` | `52428800` | Max bytes to fetch |
-| `Resilience` | `Resilience` | `KafkaConnectorResilience.Default` | How a failed consume is retried (see [Resilience](#resilience)) |
+## Serialization
 
-### Producer (Sink)
-
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `SinkTopic` | `string` | - | Topic to produce to |
-| `EnableIdempotence` | `bool` | `true` | Idempotent producer |
-| `Acks` | `Acks` | `All` | `None`, `Leader`, or `All` |
-| `BatchSize` | `int` | `16384` | Producer batch size (bytes) |
-| `LingerMs` | `int` | `5` | Time to wait before sending a batch |
-| `CompressionType` | `CompressionType` | `None` | `None`, `Gzip`, `Snappy`, `Lz4`, `Zstd` |
-| `MessageMaxBytes` | `int` | `1000000` | Max message size |
-| `DeliveryTimeoutMs` | `int` | `300000` | How long librdkafka retries a produce before failing it (`delivery.timeout.ms`); `0` is unlimited |
-| `RetryBackoffMs` | `int` | `100` | First delay between librdkafka's produce retries (`retry.backoff.ms`) |
-| `RetryBackoffMaxMs` | `int` | `1000` | Longest delay between librdkafka's produce retries (`retry.backoff.max.ms`) |
-| `MetadataTimeoutMs` | `int` | `10000` | How long the sink waits for topic metadata when it starts |
-| `ContinueOnError` | `bool` | `false` | Skip a message whose produce fails instead of failing the node |
-
-### Serialization
-
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `SerializationFormat` | `SerializationFormat` | `Json` | `Json`, `Avro`, or `Protobuf` |
-| `SchemaRegistry` | `SchemaRegistryConfiguration?` | `null` | Schema Registry settings (required for Avro/Protobuf) |
-
-### Delivery Semantics
-
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `DeliverySemantic` | `DeliverySemantic` | `AtLeastOnce` | `AtLeastOnce` or `ExactlyOnce` |
-| `AcknowledgmentStrategy` | `AcknowledgmentStrategy` | `AutoOnSinkSuccess` | When to acknowledge messages |
-| `EnableTransactions` | `bool` | - | Enable transactional producer |
-| `TransactionalId` | `string?` | `null` | Transactional ID (required for exactly-once) |
-
-### Schema Registry
+JSON by default; see [Serialization](message-queues.md#serialization). For Avro or Protobuf with a schema registry:
 
 ```csharp
-var config = new KafkaConfiguration
-{
-    BootstrapServers = "localhost:9092",
-    SerializationFormat = SerializationFormat.Avro,
-    SchemaRegistry = new SchemaRegistryConfiguration
-    {
-        Url = "http://localhost:8081",
-        AutoRegisterSchemas = true,
-        SchemaCacheCapacity = 1000
-    }
-};
+var registry = new SchemaRegistryConfiguration { Url = "http://registry:8081" };
+var orders = KafkaConnector.Source<OrderRecord>("kafka:9092", "orders", "billing", o => o with { Serializer = new AvroMessageSerializer(registry) });
 ```
 
-Schemas are registered and looked up under a subject derived from the topic being written or read. Under the
-default subject name strategy (`Topic`) the value subject is `<topic>-value`, so sinks writing different types to
-different topics each get their own subject. `SubjectNameStrategy` (`Topic`, `Record`, or `TopicRecord`) and
-`AutoRegisterSchemas` apply to the Avro and Protobuf serializers.
-
-A custom `ISerializerProvider` can override `Serialize<T>(T, SerializationContext)` and
-`Deserialize<T>(byte[], SerializationContext)` to receive the topic and component (key or value). The connector calls
-these overloads; their default implementations forward to `Serialize<T>(T)` and `Deserialize<T>(byte[])`.
-
-### Exactly-Once Semantics
-
-```csharp
-var config = new KafkaConfiguration
-{
-    BootstrapServers = "localhost:9092",
-    DeliverySemantic = DeliverySemantic.ExactlyOnce,
-    EnableTransactions = true,
-    TransactionalId = "order-processor-1",
-    EnableIdempotence = true,
-    Acks = Acks.All,
-    IsolationLevel = IsolationLevel.ReadCommitted
-};
-```
-
-## Serialization Formats
-
-| Format | Dependency | Schema | Best For |
-|--------|-----------|--------|----------|
-| `Json` (default) | - | None | Simple messages, debugging |
-| `Avro` | `Confluent.SchemaRegistry.Serdes.Avro` | Schema Registry | Schema evolution, compact encoding |
-| `Protobuf` | `Confluent.SchemaRegistry.Serdes.Protobuf` | Schema Registry | Cross-language, compact encoding |
-
-### Schema Registry
-
-```csharp
-var config = new KafkaConfiguration
-{
-    SerializationFormat = SerializationFormat.Avro,
-    SchemaRegistry = new SchemaRegistryConfiguration
-    {
-        Url = "http://localhost:8081",
-        AutoRegisterSchemas = true,
-        SchemaCacheCapacity = 1000
-    }
-};
-```
-
-## Delivery Semantics
-
-| Semantic | Description | Configuration |
-|----------|-------------|--------------|
-| `AtLeastOnce` (default) | No data loss, possible duplicates | Default - `AcknowledgeAsync()` commits offset |
-| `ExactlyOnce` | No data loss, no duplicates | Requires transactional producer |
-
-### At-Least-Once
-
-```csharp
-// Default: offset committed on AcknowledgeAsync()
-await message.AcknowledgeAsync(ct);
-```
-
-### Exactly-Once (Transactional)
-
-```csharp
-var config = new KafkaConfiguration
-{
-    DeliverySemantic = DeliverySemantic.ExactlyOnce,
-    EnableTransactions = true,
-    TransactionalId = "order-processor-1",
-    EnableIdempotence = true,
-    Acks = Acks.All,
-    IsolationLevel = IsolationLevel.ReadCommitted
-};
-```
-
-With exactly-once, `AcknowledgeAsync()` is a no-op - offsets are committed as part of the transaction by the sink.
+Schemas are registered and looked up under a subject derived from the topic. Under the default subject name strategy
+the value subject is `<topic>-value`, so sinks writing different types to different topics each get their own subject.
+`SubjectNameStrategy` and `AutoRegisterSchemas` on `SchemaRegistryConfiguration` apply to both serializers.
 
 ## Resilience
 
-### Consume
+The source retries a failed poll with [NResilience](https://github.com/nresilience/NResilience).
+`KafkaConnectorResilience.Default`:
 
-The source runs each consume through [NResilience](https://github.com/nresilience/NResilience). The `Resilience`
-property on `KafkaConfiguration` configures it. The default, `KafkaConnectorResilience.Default`, does the following:
-
-- Makes up to four attempts per consume (three retries).
-- Waits with exponential backoff and full jitter, from 100 milliseconds up to 30 seconds.
+- Makes up to four attempts per poll (three retries), with exponential backoff and full jitter from 100 ms up to 30 s.
 - Retries errors Kafka reports as retriable: a lost broker connection, a timeout, a leader or coordinator that moved,
-  a rebalance, too few in-sync replicas, and an exceeded `max.poll.interval.ms`. Quota throttling takes the long
-  backoff curve.
-- Surfaces a fatal error (`Error.IsFatal`), a deserialization error, an authorization failure, and any other error
-  on the first attempt. Retrying a consume moves past a message that failed to deserialize, so retrying it would
-  drop the message silently.
-- Has no attempt timeout and no overall deadline. `PollTimeoutMs` bounds each poll.
+  a rebalance, too few in-sync replicas, an exceeded `max.poll.interval.ms`. Quota throttling takes the longer backoff.
+- Doesn't retry a fatal error, an authorization failure, or any other error.
 
-The count applies to one consume: an error that clears restarts it, and one that persists fails the stream once the
-attempts are spent. Messages consumed before the failure are delivered first. Each failed consume, retried or not,
-is recorded with `IKafkaMetrics.RecordConsumeError`.
+Derive a policy to change it (`KafkaConnectorResilience.Default with { Attempts = 6 }`), or turn retries off with
+`Resilience.None`. `KafkaConnectorResilience.IsRetriable(Error)` exposes the classification.
 
-To change a setting, derive a policy with a `with` expression:
+The sink doesn't retry: librdkafka retries every failed produce until `DeliveryTimeout`, and the idempotent producer
+removes the duplicates those retries would cause. A retry above librdkafka would be a new record the producer could not
+recognize, so a message whose delivery timed out but still reached the broker would be written twice.
 
-```csharp
-var config = new KafkaConfiguration
-{
-    // ...
-    Resilience = KafkaConnectorResilience.Default with { Attempts = 6 },
-};
-```
+## Dead letters
 
-To fail on the first consume error, use `Resilience.None`. `KafkaConnectorResilience.Classifier` and
-`KafkaConnectorResilience.IsRetriable(Error)` expose the classification if you build your own policy.
-
-Cancelling the pipeline ends the stream gracefully, even during a backoff. An `OperationCanceledException` the
-pipeline did not request fails the stream.
-
-### Produce
-
-The sink produces each message once and does not retry. librdkafka retries every failed produce request,
-waiting `RetryBackoffMs` (100 ms) before the first retry and doubling up to `RetryBackoffMaxMs` (1 s), until
-`DeliveryTimeoutMs` (five minutes) has passed since the message was produced. The idempotent producer
-(`EnableIdempotence`, on by default) removes the duplicates those retries would cause. A retry above librdkafka would
-send a new record that the idempotent producer cannot recognize, so a message whose delivery timed out but still
-reached the broker would be written twice. `Resilience` does not apply to the sink; tune the three settings above
-instead. They default to librdkafka's own defaults.
-
-A produce error therefore means librdkafka gave up or the error is not retriable. It fails the node, or skips the
-message when `ContinueOnError` is set. This holds for batched production too: when `BatchSize` is greater than 1 the
-sink produces the batch concurrently, records every failure with `RecordProduceError`, acknowledges every message
-that was delivered, and then fails the node with the first failure unless `ContinueOnError` is set.
-
-When the sink starts, it reads the topic's partition count. If the brokers can't be reached within
-`MetadataTimeoutMs`, the sink fails with an `InvalidOperationException` that names the topic and the brokers.
-Cancelling the pipeline stops that wait at once.
-
-### Acknowledgable messages
-
-A sink of an acknowledgable type, such as `KafkaSinkNode<KafkaMessage<Order>>` fed by a Kafka source, produces
-each message's `Body` (the value serializer writes the body, not the wrapper, as the body's runtime type, so Avro
-records and Protobuf messages serialize with their own schema), turns its `Metadata` into headers,
-and acknowledges the message only after the broker has it. By default the record key is the body's `ToString()`;
-pass an `IPartitionKeyProvider<T>` to choose another key. With transactions, the offsets of consumed
-`KafkaMessage<T>` items are sent to the transaction.
-
-With `EnableTransactions`, the sink initializes transactions when it starts, bounded by `TransactionInitTimeoutMs`.
-Cancelling the pipeline stops that wait at once. Disposing the sink waits for an initialization still in progress
-before it disposes the producer.
-
-## Acknowledgment Strategies
-
-| Strategy | Description |
-|----------|-------------|
-| `AutoOnSinkSuccess` (default) | Offset committed after successful sink processing |
-| `Manual` | Call `message.AcknowledgeAsync()` explicitly |
-
-## Message Metadata
-
-`KafkaMessage<T>` exposes:
-
-| Property | Type | Description |
-|----------|------|-------------|
-| `Body` | `T` | Deserialized message value |
-| `Key` | `string?` | Message key |
-| `Topic` | `string` | Source topic |
-| `Partition` | `int` | Partition number |
-| `Offset` | `long` | Message offset |
-| `Timestamp` | `DateTimeOffset` | Message timestamp |
-| `Headers` | `Headers` | Kafka headers |
-
-## Partitioning
-
-Implement `IPartitionKeyProvider<T>` for custom partition routing:
+`KafkaDeadLetterSink` is a pipeline dead-letter sink that produces failed items to a topic, with the error in
+`x-dead-letter-*` headers. A `MessageFailure` (a message that didn't deserialize) is produced with its original value and
+key, so it can be replayed:
 
 ```csharp
-public class OrderPartitionProvider : IPartitionKeyProvider<Order>
-{
-    public string GetPartitionKey(Order item) => item.CustomerId.ToString();
-}
+using var producer = new ProducerBuilder<byte[]?, byte[]>(new ProducerConfig { BootstrapServers = "kafka:9092" }).Build();
+builder.AddDeadLetterSink(new KafkaDeadLetterSink(producer, "orders-dead-letters"));
 ```
-
-## Dead-Letter Handling
-
-Failed messages can be routed to a dead-letter topic via NPipeline's dead-letter mechanism:
-
-```csharp
-var config = new KafkaConfiguration
-{
-    DeadLetterTopic = "orders-dlq",
-    MaxDeliveryAttempts = 3
-};
-```
-
-## Best Practices
-
-1. **Use `Acks.All` + `EnableIdempotence`** for durability
-2. **Set `ConsumerGroupId`** per logical consumer - enables parallel processing
-3. **Use Avro/Protobuf** with Schema Registry for schema evolution
-4. **Tune `MaxPollRecords`** to control batch sizes (default 500)
-5. **Monitor via `IKafkaMetrics`** - tracks consume/produce rates, lag, and consume, produce, and commit errors
-6. **Use `CompressionType.Lz4`** for high-throughput topics
-7. **Set `LingerMs = 5–50`** to batch small messages for better throughput
-8. **Use exactly-once semantics** only when needed - higher overhead
 
 ## Next Steps
 
-- [RabbitMQ Connector](rabbitmq.md) - alternative message broker
-- [Azure Service Bus Connector](azure-service-bus.md) - managed messaging
-- [Error Handling](../error-handling/index.md) - resilience for message processing
+- [Message Queues: Shared Behaviour](message-queues.md)
+- [RabbitMQ](rabbitmq.md), [Azure Service Bus](azure-service-bus.md), [AWS SQS](aws-sqs.md)

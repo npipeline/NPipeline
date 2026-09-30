@@ -1,13 +1,13 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using Amazon;
 using Amazon.Runtime;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using FakeItEasy;
 using NPipeline.Connectors.Aws.Sqs.Configuration;
 using NPipeline.Connectors.Aws.Sqs.Internal;
-using NPipeline.Connectors.Aws.Sqs.Nodes;
 using NPipeline.Pipeline;
 
 namespace NPipeline.Connectors.Aws.Sqs.Tests.Reliability.Behavior;
@@ -23,56 +23,61 @@ public sealed class SqsRetryBehaviorTests
     [Fact]
     public void Defaults_UseTheSdkStandardRetryWithTheOldAttemptCount()
     {
-        var configuration = new SqsConfiguration { SourceQueueUrl = QueueUrl };
+        var options = new SqsReadOptions { QueueUrl = QueueUrl };
 
         // MaxRetries = 3 used to make four receive calls; MaxErrorRetry = 3 makes four attempts per call.
-        configuration.RetryMode.Should().Be(RequestRetryMode.Standard);
-        configuration.MaxErrorRetry.Should().Be(3);
+        options.RetryMode.Should().Be(RequestRetryMode.Standard);
+        options.MaxErrorRetry.Should().Be(3);
 
-        var clientConfig = SqsClientFactory.CreateClientConfig(configuration);
-        clientConfig.RetryMode.Should().Be(RequestRetryMode.Standard);
-        clientConfig.MaxErrorRetry.Should().Be(3);
+        using var client = CreatedClient(options with { Region = "us-east-1", Credentials = new AnonymousAWSCredentials() });
+        client.Config.RetryMode.Should().Be(RequestRetryMode.Standard);
+        client.Config.MaxErrorRetry.Should().Be(3);
     }
 
     [Fact]
-    public void ClientConfig_AppliesTheConfiguredRetrySettings()
+    public void ClientConfig_AppliesTheConfiguredSettings()
     {
-        var configuration = new SqsConfiguration
+        var options = new SqsWriteOptions<string>
         {
-            SourceQueueUrl = QueueUrl,
+            QueueUrl = QueueUrl,
             RetryMode = RequestRetryMode.Adaptive,
             MaxErrorRetry = 7,
+            ServiceUrl = "http://localhost:4566",
+            Credentials = new BasicAWSCredentials("test", "test"),
         };
 
-        var clientConfig = SqsClientFactory.CreateClientConfig(configuration);
+        using var client = CreatedClient(options);
 
-        clientConfig.RetryMode.Should().Be(RequestRetryMode.Adaptive);
-        clientConfig.MaxErrorRetry.Should().Be(7);
+        client.Config.RetryMode.Should().Be(RequestRetryMode.Adaptive);
+        client.Config.MaxErrorRetry.Should().Be(7);
+        client.Config.ServiceURL.Should().StartWith("http://localhost:4566");
+    }
+
+    [Fact]
+    public void ClientConfig_AppliesTheRegion()
+    {
+        using var client = CreatedClient(new SqsReadOptions { QueueUrl = QueueUrl, Region = "ap-southeast-2", Credentials = new AnonymousAWSCredentials() });
+
+        client.Config.RegionEndpoint.Should().Be(RegionEndpoint.APSoutheast2);
     }
 
     [Fact]
     public void ClientConfig_WithNullSettings_LeavesThemToTheSdk()
     {
-        var configuration = new SqsConfiguration
-        {
-            SourceQueueUrl = QueueUrl,
-            RetryMode = null,
-            MaxErrorRetry = null,
-        };
+        using var client = CreatedClient(new SqsReadOptions { QueueUrl = QueueUrl, RetryMode = null, MaxErrorRetry = null, Region = "us-east-1",
+            Credentials = new AnonymousAWSCredentials() });
 
-        var clientConfig = SqsClientFactory.CreateClientConfig(configuration);
-
-        clientConfig.IsMaxErrorRetrySet.Should().BeFalse();
+        ((ClientConfig)client.Config).IsMaxErrorRetrySet.Should().BeFalse();
     }
 
     [Fact]
     public void Validate_RejectsANegativeMaxErrorRetry()
     {
-        var configuration = new SqsConfiguration { SourceQueueUrl = QueueUrl, MaxErrorRetry = -1 };
+        var options = new SqsReadOptions { QueueUrl = QueueUrl, MaxErrorRetry = -1 };
 
-        var act = configuration.ValidateSource;
+        var act = options.Validate;
 
-        act.Should().Throw<InvalidOperationException>().WithMessage("*MaxErrorRetry*");
+        act.Should().Throw<ArgumentOutOfRangeException>().WithParameterName(nameof(SqsReadOptions.MaxErrorRetry));
     }
 
     [Theory]
@@ -82,19 +87,14 @@ public sealed class SqsRetryBehaviorTests
     {
         using var server = new FailingServer();
 
-        var configuration = new SqsConfiguration
+        // The client the connector builds, pointed at a local server that always answers 503.
+        await using var node = SqsConnector.Source<string>(QueueUrl, o => o with
         {
-            SourceQueueUrl = QueueUrl,
+            ServiceUrl = server.Url,
+            Credentials = new BasicAWSCredentials("test", "test"),
             MaxErrorRetry = maxErrorRetry,
-            PollingIntervalMs = 0,
-        };
-
-        // The client the connector would build, pointed at a local server that always answers 503.
-        var clientConfig = SqsClientFactory.CreateClientConfig(configuration);
-        clientConfig.ServiceURL = server.Url;
-        using var client = new AmazonSQSClient(new BasicAWSCredentials("test", "test"), clientConfig);
-
-        var node = new SqsSourceNode<string>(client, configuration);
+            WaitTime = TimeSpan.Zero,
+        });
 
         var act = async () =>
         {
@@ -123,7 +123,7 @@ public sealed class SqsRetryBehaviorTests
                 throw new AmazonSQSException("Throttled", ErrorType.Sender, "ThrottlingException", null, HttpStatusCode.TooManyRequests);
             });
 
-        var node = new SqsSourceNode<string>(client, new SqsConfiguration { SourceQueueUrl = QueueUrl });
+        await using var node = SqsConnector.Source<string>(QueueUrl, o => o with { Client = client });
 
         var act = async () =>
         {
@@ -134,6 +134,13 @@ public sealed class SqsRetryBehaviorTests
 
         _ = await act.Should().ThrowAsync<AmazonSQSException>();
         calls.Should().Be(1);
+    }
+
+    private static AmazonSQSClient CreatedClient(SqsNodeOptions options)
+    {
+        var (client, owned) = SqsClientFactory.For(options);
+        owned.Should().BeTrue();
+        return client.Should().BeOfType<AmazonSQSClient>().Subject;
     }
 
     /// <summary>A local HTTP server that answers every request with 503 and counts them.</summary>

@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Threading.Channels;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using NPipeline.Connectors.RabbitMQ.Configuration;
 using RabbitMQ.Client;
 
@@ -25,11 +26,11 @@ public sealed class RabbitMqConnectionManager : IRabbitMqConnectionManager
     ///     Initializes a new instance of <see cref="RabbitMqConnectionManager" />.
     /// </summary>
     /// <param name="options">Connection options.</param>
-    /// <param name="logger">Logger instance.</param>
-    public RabbitMqConnectionManager(RabbitMqConnectionOptions options, ILogger<RabbitMqConnectionManager> logger)
+    /// <param name="logger">Logs connections and recoveries; none by default.</param>
+    public RabbitMqConnectionManager(RabbitMqConnectionOptions options, ILogger<RabbitMqConnectionManager>? logger = null)
     {
         _options = options ?? throw new ArgumentNullException(nameof(options));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _logger = logger ?? NullLogger<RabbitMqConnectionManager>.Instance;
         _options.Validate();
 
         _channelPool = CreatePool(_options.MaxChannelPoolSize);

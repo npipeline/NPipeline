@@ -1,68 +1,32 @@
+using Amazon;
+using Amazon.SQS;
+
 namespace Sample_SqsConnector;
 
-/// <summary>
-///     Represents an order message received from the SQS queue.
-/// </summary>
-public class Order
+/// <summary>An order received from the input queue as JSON.</summary>
+public sealed record Order(string OrderId, string CustomerId, decimal TotalAmount, string Status, DateTime CreatedAt);
+
+/// <summary>The result of processing an order, sent to the output queue.</summary>
+public sealed record ProcessedOrder(string OrderId, string CustomerId, decimal TotalAmount, string Status, DateTime ProcessedAt, string? ProcessingNotes);
+
+/// <summary>Where the sample's queues are, read from environment variables.</summary>
+/// <param name="InputQueueUrl">The queue orders are received from (<c>SQS_INPUT_QUEUE_URL</c>).</param>
+/// <param name="OutputQueueUrl">The queue results are sent to (<c>SQS_OUTPUT_QUEUE_URL</c>).</param>
+/// <param name="Region">The AWS region (<c>AWS_REGION</c>, default <c>us-east-1</c>).</param>
+/// <param name="ServiceUrl">An endpoint such as LocalStack's (<c>SQS_SERVICE_URL</c>); <c>null</c> uses AWS.</param>
+public sealed record SqsSampleSettings(string InputQueueUrl, string OutputQueueUrl, string Region, string? ServiceUrl)
 {
-    /// <summary>
-    ///     Gets or sets the unique order identifier.
-    /// </summary>
-    public int OrderId { get; set; }
+    /// <summary>Reads the settings from the environment, with placeholder URLs for anything not set.</summary>
+    public static SqsSampleSettings FromEnvironment() =>
+        new(
+            Environment.GetEnvironmentVariable("SQS_INPUT_QUEUE_URL") ?? "https://sqs.us-east-1.amazonaws.com/123456789012/input-orders-queue",
+            Environment.GetEnvironmentVariable("SQS_OUTPUT_QUEUE_URL") ?? "https://sqs.us-east-1.amazonaws.com/123456789012/processed-orders-queue",
+            Environment.GetEnvironmentVariable("AWS_REGION") ?? "us-east-1",
+            Environment.GetEnvironmentVariable("SQS_SERVICE_URL"));
 
-    /// <summary>
-    ///     Gets or sets the customer identifier who placed the order.
-    /// </summary>
-    public int CustomerId { get; set; }
-
-    /// <summary>
-    ///     Gets or sets the total amount of the order.
-    /// </summary>
-    public decimal TotalAmount { get; set; }
-
-    /// <summary>
-    ///     Gets or sets the order status.
-    /// </summary>
-    public string Status { get; set; } = "Pending";
-
-    /// <summary>
-    ///     Gets or sets the timestamp when the order was created.
-    /// </summary>
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-}
-
-/// <summary>
-///     Represents a processed order ready to be sent to the output queue.
-/// </summary>
-public class ProcessedOrder
-{
-    /// <summary>
-    ///     Gets or sets the unique order identifier.
-    /// </summary>
-    public int OrderId { get; set; }
-
-    /// <summary>
-    ///     Gets or sets the customer identifier.
-    /// </summary>
-    public int CustomerId { get; set; }
-
-    /// <summary>
-    ///     Gets or sets the total amount of the order.
-    /// </summary>
-    public decimal TotalAmount { get; set; }
-
-    /// <summary>
-    ///     Gets or sets the processing status.
-    /// </summary>
-    public string Status { get; set; } = "Processed";
-
-    /// <summary>
-    ///     Gets or sets the timestamp when the order was processed.
-    /// </summary>
-    public DateTime ProcessedAt { get; set; } = DateTime.UtcNow;
-
-    /// <summary>
-    ///     Gets or sets additional processing metadata.
-    /// </summary>
-    public string? ProcessingNotes { get; set; }
+    /// <summary>A client for the region, or for <see cref="ServiceUrl" /> when it is set.</summary>
+    public AmazonSQSClient CreateClient() =>
+        new(ServiceUrl is null
+            ? new AmazonSQSConfig { RegionEndpoint = RegionEndpoint.GetBySystemName(Region) }
+            : new AmazonSQSConfig { ServiceURL = ServiceUrl, AuthenticationRegion = Region });
 }

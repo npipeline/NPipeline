@@ -7,7 +7,7 @@ namespace NPipeline.Connectors.RabbitMQ.Reliability;
 
 /// <summary>
 ///     Resilience presets for <see cref="Nodes.RabbitMqSinkNode{T}" />. Assign one to
-///     <see cref="Configuration.RabbitMqSinkOptions.Resilience" />, or derive your own with a <c>with</c> expression.
+///     <see cref="Configuration.RabbitMqWriteOptions{T}.Resilience" />, or derive your own with a <c>with</c> expression.
 /// </summary>
 /// <remarks>
 ///     <para>
