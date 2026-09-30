@@ -29,7 +29,7 @@ public sealed class AwsS3StorageProviderOptions : S3CoreOptions
 
     /// <summary>
     ///     Gets or sets the optional service URL for S3-compatible endpoints
-    ///     (e.g., MinIO, LocalStack).
+    ///     (e.g., MinIO, Floci).
     ///     If not specified, uses the AWS S3 endpoint.
     /// </summary>
     public Uri? ServiceUrl { get; set; }

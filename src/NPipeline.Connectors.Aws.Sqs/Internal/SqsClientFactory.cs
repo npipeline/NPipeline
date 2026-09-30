@@ -15,7 +15,7 @@ internal static class SqsClientFactory
     {
         var config = new AmazonSQSConfig();
 
-        // Setting RegionEndpoint clears ServiceURL, so with a service URL (LocalStack, a VPC endpoint) the region only signs requests.
+        // Setting RegionEndpoint clears ServiceURL, so with a service URL (Floci, a VPC endpoint) the region only signs requests.
         if (options.ServiceUrl is { } serviceUrl)
         {
             config.ServiceURL = serviceUrl;

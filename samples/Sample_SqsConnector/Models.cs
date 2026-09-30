@@ -13,7 +13,7 @@ public sealed record ProcessedOrder(string OrderId, string CustomerId, decimal T
 /// <param name="InputQueueUrl">The queue orders are received from (<c>SQS_INPUT_QUEUE_URL</c>).</param>
 /// <param name="OutputQueueUrl">The queue results are sent to (<c>SQS_OUTPUT_QUEUE_URL</c>).</param>
 /// <param name="Region">The AWS region (<c>AWS_REGION</c>, default <c>us-east-1</c>).</param>
-/// <param name="ServiceUrl">An endpoint such as LocalStack's (<c>SQS_SERVICE_URL</c>); <c>null</c> uses AWS.</param>
+/// <param name="ServiceUrl">An endpoint such as Floci's (<c>SQS_SERVICE_URL</c>); <c>null</c> uses AWS.</param>
 public sealed record SqsSampleSettings(string InputQueueUrl, string OutputQueueUrl, string Region, string? ServiceUrl)
 {
     /// <summary>Reads the settings from the environment, with placeholder URLs for anything not set.</summary>

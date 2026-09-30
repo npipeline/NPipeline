@@ -19,7 +19,7 @@ Undeserializable messages -> ConsoleDeadLetterSink
 
 - .NET 10 SDK
 - Two standard SQS queues, for example `input-orders-queue` and `processed-orders-queue`, in AWS or in
-  [LocalStack](https://www.localstack.cloud/)
+  [Floci](https://floci.io/)
 - AWS credentials the SDK's default chain can find: environment variables (`AWS_ACCESS_KEY_ID`,
   `AWS_SECRET_ACCESS_KEY`), a shared profile (`AWS_PROFILE`), or an IAM role
 
@@ -32,7 +32,7 @@ The sample reads its settings from environment variables:
 | `SQS_INPUT_QUEUE_URL` | A placeholder URL | Queue that orders are received from |
 | `SQS_OUTPUT_QUEUE_URL` | A placeholder URL | Queue that results are sent to |
 | `AWS_REGION` | `us-east-1` | The queues' region |
-| `SQS_SERVICE_URL` | None | A custom endpoint, such as LocalStack's `http://localhost:4566` |
+| `SQS_SERVICE_URL` | None | A custom endpoint, such as Floci's `http://localhost:4566` |
 
 ## Run the sample
 

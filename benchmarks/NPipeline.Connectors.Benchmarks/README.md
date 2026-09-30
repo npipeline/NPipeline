@@ -35,7 +35,7 @@ dotnet run -c Release -f net10.0 -- --filter '*'
 
 To run one connector, filter by class name, for example `--filter '*Parquet*'`. The database benchmarks start SQL
 Server, PostgreSQL and MySQL in Docker (Testcontainers, reused between runs), and the messaging benchmarks Kafka,
-RabbitMQ, LocalStack and the Service Bus emulator; they run in process, so Docker must be running. Use `-f net8.0` to measure the LTS
+RabbitMQ, Floci and the Service Bus emulator; they run in process, so Docker must be running. Use `-f net8.0` to measure the LTS
 target. Results are written to `BenchmarkDotNet.Artifacts/results/` as GitHub markdown and full JSON.
 
 The **Connector Benchmarks** GitHub workflow runs the same command on demand (`workflow_dispatch`) and uploads the

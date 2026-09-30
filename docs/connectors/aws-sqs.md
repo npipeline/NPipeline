@@ -28,7 +28,7 @@ Pass a shared `IAmazonSQS` as `Client`, or let each node create one from these s
 | `Region` | SDK's | The region (`AWS_REGION`, the profile) |
 | `Credentials` | SDK's default chain | Credentials; otherwise `ProfileName`, then the default chain (environment, instance or task role) |
 | `ProfileName` | `null` | A named profile from the shared credentials file |
-| `ServiceUrl` | `null` | A service URL, such as LocalStack's |
+| `ServiceUrl` | `null` | A service URL, such as Floci's |
 | `RetryMode`, `MaxErrorRetry` | `Standard`, 3 | The SDK's retries; see [Retries](#retries) |
 
 In production, prefer the default chain with an IAM role over explicit credentials.

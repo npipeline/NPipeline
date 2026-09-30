@@ -74,7 +74,7 @@ var options = new AwsS3StorageProviderOptions
 | `DefaultRegion` | `RegionEndpoint?` | `null` | AWS region for S3 API calls |
 | `DefaultCredentials` | `AWSCredentials?` | `null` | Explicit AWS credentials |
 | `UseDefaultCredentialChain` | `bool` | `true` | Fall back to the default credential chain |
-| `ServiceUrl` | `Uri?` | `null` | Custom S3 endpoint (LocalStack, MinIO) |
+| `ServiceUrl` | `Uri?` | `null` | Custom S3 endpoint (Floci, MinIO) |
 | `ForcePathStyle` | `bool` | `false` | Use path-style URLs instead of virtual-hosted |
 | `MultipartUploadThresholdBytes` | `long` | `64 MB` | Switch to multipart upload above this size |
 
@@ -103,7 +103,7 @@ Registers: `IStorageProvider`, `IStorageProviderMetadataProvider`
 
 - **Multipart uploads** - files above `MultipartUploadThresholdBytes` are uploaded using the S3 multipart API
 - **Client caching** - S3 clients are cached and reused per region/endpoint
-- **Virtual-hosted addressing** - default; set `ForcePathStyle = true` for LocalStack or older S3-compatible services
+- **Virtual-hosted addressing** - default; set `ForcePathStyle = true` for Floci or older S3-compatible services
 - **Metadata** - implements `IStorageProviderMetadataProvider` for `Size`, `LastModified`, `ContentType`, `ETag`
 
 ## URI Parameters
@@ -121,7 +121,7 @@ Registers: `IStorageProvider`, `IStorageProviderMetadataProvider`
 // With region override
 var uri = StorageUri.Parse("s3://my-bucket/data/input.csv?region=us-west-2");
 
-// With custom endpoint (LocalStack)
+// With custom endpoint (Floci)
 var uri = StorageUri.Parse("s3://local-bucket/data/file.csv?serviceUrl=http://localhost:4566&pathStyle=true");
 ```
 
@@ -129,7 +129,7 @@ var uri = StorageUri.Parse("s3://local-bucket/data/file.csv?serviceUrl=http://lo
 
 ## Configuration Examples
 
-### LocalStack (Testing)
+### Floci (Testing)
 
 ```csharp
 services.AddAwsS3StorageProvider(options =>

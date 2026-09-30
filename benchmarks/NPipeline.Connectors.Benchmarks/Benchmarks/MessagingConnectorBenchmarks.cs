@@ -20,7 +20,7 @@ using NPipeline.Nodes;
 using NPipeline.Pipeline;
 using RabbitMQ.Client;
 using Testcontainers.Kafka;
-using Testcontainers.LocalStack;
+using Testcontainers.Floci;
 using Testcontainers.RabbitMq;
 using Testcontainers.ServiceBus;
 
@@ -236,7 +236,7 @@ public class SqsBenchmarks : MessagingConnectorBenchmark, IDisposable
 
     protected override async Task StartAsync()
     {
-        var container = new LocalStackBuilder("localstack/localstack:4.14.0").WithEnvironment("SERVICES", "sqs").WithReuse(true)
+        var container = new FlociBuilder("floci/floci:2.1.0").WithReuse(true)
             .WithLabel("npipeline-bench", "sqs").Build();
 
         await container.StartAsync();

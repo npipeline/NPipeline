@@ -125,7 +125,7 @@ public class S3CompatibleClientFactoryTests
     }
 
     [Fact]
-    public async Task GetClientAsync_WithLocalStackOptions_ReturnsClient()
+    public async Task GetClientAsync_WithFlociOptions_ReturnsClient()
     {
         var factory = new S3CompatibleClientFactory(new S3CompatibleStorageProviderOptions
         {

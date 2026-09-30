@@ -9,7 +9,7 @@ AWS S3 storage provider for NPipeline. Implements `IStorageProvider` using the A
 - **Per-URI region overrides** - set region per-request using the `?region=` URI parameter
 - **Multipart uploads** - files above the configurable threshold use the S3 multipart API automatically
 - **Client caching** - `IAmazonS3` clients are cached by region/endpoint/credentials to minimise overhead
-- **Path-style addressing** - opt in with `ForcePathStyle = true` for LocalStack or older S3-compatible endpoints
+- **Path-style addressing** - opt in with `ForcePathStyle = true` for Floci or older S3-compatible endpoints
 - **Async streaming** - all reads, writes, and listings stream data without materialising the full object in memory
 
 ## Installation
@@ -75,7 +75,7 @@ s3://bucket-name/key/path?region=ap-southeast-2
 | `DefaultRegion` | `RegionEndpoint?` | `null` (→ `USEast1`) | AWS region for S3 API calls |
 | `DefaultCredentials` | `AWSCredentials?` | `null` | Explicit AWS credentials |
 | `UseDefaultCredentialChain` | `bool` | `true` | Fall back to the standard AWS credential chain |
-| `ServiceUrl` | `Uri?` | `null` | Custom S3 endpoint (LocalStack, MinIO via AWS provider) |
+| `ServiceUrl` | `Uri?` | `null` | Custom S3 endpoint (Floci, MinIO via AWS provider) |
 | `ForcePathStyle` | `bool` | `false` | Use path-style URLs instead of virtual-hosted-style |
 | `MultipartUploadThresholdBytes` | `long` | `67108864` (64 MB) | Objects above this size use the S3 multipart upload API |
 
@@ -172,7 +172,7 @@ if (metadata is not null)
     Console.WriteLine($"Size: {metadata.Size}, ETag: {metadata.ETag}, Modified: {metadata.LastModified}");
 ```
 
-### LocalStack (Testing)
+### Floci (Testing)
 
 ```csharp
 services.AddAwsS3StorageProvider(options =>

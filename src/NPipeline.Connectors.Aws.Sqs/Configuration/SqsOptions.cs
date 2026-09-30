@@ -22,7 +22,7 @@ public abstract record SqsNodeOptions
     /// <summary>The region for a client the node creates; <c>null</c> lets the SDK resolve it (<c>AWS_REGION</c>, the profile).</summary>
     public string? Region { get; init; }
 
-    /// <summary>A service URL for a client the node creates, such as LocalStack's.</summary>
+    /// <summary>A service URL for a client the node creates, such as Floci's.</summary>
     public string? ServiceUrl { get; init; }
 
     /// <summary>A named profile from the shared credentials file, for a client the node creates.</summary>

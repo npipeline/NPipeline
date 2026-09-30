@@ -119,11 +119,11 @@ Registers: `IStorageProvider`, `IStorageProviderMetadataProvider`
 | Cloudflare R2 | `true` | `auto` | No egress fees |
 | Backblaze B2 | `true` | `us-west-002` etc. | Low-cost archival |
 | Wasabi | `true` | Region name | No API request charges |
-| LocalStack | `true` | `us-east-1` | Accepts any credentials |
+| Floci | `true` | `us-east-1` | Accepts any credentials |
 
 ## Additional Service Examples
 
-### LocalStack (Testing)
+### Floci (Testing)
 
 ```csharp
 new S3CompatibleStorageProviderOptions

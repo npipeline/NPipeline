@@ -6,7 +6,7 @@ namespace Sample_S3CompatibleStorageProvider;
 
 /// <summary>
 ///     Entry point for S3-Compatible Storage Provider sample demonstrating usage with non-AWS
-///     S3-compatible services such as MinIO, DigitalOcean Spaces, Cloudflare R2, and LocalStack.
+///     S3-compatible services such as MinIO, DigitalOcean Spaces, Cloudflare R2, and Floci.
 /// </summary>
 public sealed class Program
 {
@@ -41,7 +41,7 @@ public sealed class Program
     /// <summary>
     ///     The base URL of your S3-compatible service.
     ///     MinIO default: http://localhost:9000
-    ///     LocalStack default: http://localhost:4566
+    ///     Floci default: http://localhost:4566
     /// </summary>
     private static readonly Uri ServiceUrl = new("http://localhost:9000");
 
@@ -64,7 +64,7 @@ public sealed class Program
             Console.WriteLine();
             Console.WriteLine("Common configurations:");
             Console.WriteLine("  MinIO:        http://localhost:9000, minioadmin / minioadmin");
-            Console.WriteLine("  LocalStack:   http://localhost:4566, test / test");
+            Console.WriteLine("  Floci:        http://localhost:4566, test / test");
             Console.WriteLine("  DO Spaces:    https://<region>.digitaloceanspaces.com");
             Console.WriteLine("  Cloudflare R2: https://<account-id>.r2.cloudflarestorage.com, region=auto");
             Console.WriteLine();
@@ -521,8 +521,8 @@ public sealed class Program
         Console.WriteLine("  ForcePathStyle: true (required for MinIO)");
         Console.WriteLine();
 
-        // ── LocalStack ────────────────────────────────────────────────────
-        Console.WriteLine("LocalStack (local AWS simulation):");
+        // ── Floci ─────────────────────────────────────────────────────────
+        Console.WriteLine("Floci (local AWS simulation):");
         Console.WriteLine("─────────────────────────────────────────────────────────────");
 
         _ = new S3CompatibleStorageProviderOptions
@@ -535,8 +535,8 @@ public sealed class Program
         };
 
         Console.WriteLine("  ServiceUrl:    http://localhost:4566");
-        Console.WriteLine("  AccessKey:     test  (any value works with LocalStack)");
-        Console.WriteLine("  SecretKey:     test  (any value works with LocalStack)");
+        Console.WriteLine("  AccessKey:     test  (any value works with Floci)");
+        Console.WriteLine("  SecretKey:     test  (any value works with Floci)");
         Console.WriteLine("  SigningRegion: us-east-1");
         Console.WriteLine("  ForcePathStyle: true");
         Console.WriteLine();

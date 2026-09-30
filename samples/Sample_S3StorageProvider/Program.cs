@@ -538,7 +538,7 @@ public sealed class Program
         Console.WriteLine();
 
         Console.WriteLine("S3-compatible services (MinIO, DigitalOcean Spaces, Cloudflare R2,");
-        Console.WriteLine("LocalStack, etc.) now have their own dedicated provider:");
+        Console.WriteLine("Floci, etc.) now have their own dedicated provider:");
         Console.WriteLine();
         Console.WriteLine("  Package:  NPipeline.StorageProviders.S3.Compatible");
         Console.WriteLine("  Provider: S3CompatibleStorageProvider");
@@ -547,7 +547,7 @@ public sealed class Program
         Console.WriteLine();
         Console.WriteLine("See the 'Sample_S3CompatibleStorageProvider' project for full");
         Console.WriteLine("examples covering MinIO, DigitalOcean Spaces, Cloudflare R2,");
-        Console.WriteLine("and LocalStack configurations.");
+        Console.WriteLine("and Floci configurations.");
         Console.WriteLine();
         Console.WriteLine("✓ See Sample_S3CompatibleStorageProvider for complete examples!");
         Console.WriteLine();

@@ -1,6 +1,6 @@
 # NPipeline.StorageProviders.S3.Compatible
 
-S3-compatible storage provider for NPipeline. Implements `IStorageProvider` for non-AWS S3-compatible object stores - MinIO, Cloudflare R2, DigitalOcean Spaces, Backblaze B2, Wasabi, LocalStack, and any other service that speaks the S3 protocol.
+S3-compatible storage provider for NPipeline. Implements `IStorageProvider` for non-AWS S3-compatible object stores - MinIO, Cloudflare R2, DigitalOcean Spaces, Backblaze B2, Wasabi, Floci, and any other service that speaks the S3 protocol.
 
 ## Features
 
@@ -118,7 +118,7 @@ new S3CompatibleStorageProviderOptions
 }
 ```
 
-### LocalStack (Testing)
+### Floci (Testing)
 
 ```csharp
 new S3CompatibleStorageProviderOptions
@@ -139,7 +139,7 @@ new S3CompatibleStorageProviderOptions
 | DigitalOcean Spaces | `false` | Region name (e.g., `nyc3`) |
 | Backblaze B2 | `true` | Region name (e.g., `us-west-002`) |
 | Wasabi | `true` | Region name (e.g., `us-central-1`) |
-| LocalStack | `true` | `us-east-1` |
+| Floci | `true` | `us-east-1` |
 
 ## Dependency Injection
 

@@ -16,7 +16,7 @@ using Xunit;
 
 namespace NPipeline.Connectors.Tests.Files;
 
-[Collection(MetricCaptureCollection.Name)]
+[Collection(MetricCaptureFixture.Name)]
 public sealed class FileSourceNodeTests
 {
     private readonly InMemoryStorageProvider _provider = new();
@@ -301,7 +301,7 @@ public sealed class FileSourceNodeTests
     }
 }
 
-[Collection(MetricCaptureCollection.Name)]
+[Collection(MetricCaptureFixture.Name)]
 public sealed class FileSinkNodeTests
 {
     private static readonly StorageUri Target = InMemoryStorageProvider.Uri("out/data.txt");
@@ -445,7 +445,7 @@ public sealed class FileSinkNodeTests
 /// no other test in flight.
 /// </summary>
 [CollectionDefinition(Name, DisableParallelization = true)]
-public sealed class MetricCaptureCollection
+public sealed class MetricCaptureFixture
 {
     public const string Name = "Connector metrics";
 }

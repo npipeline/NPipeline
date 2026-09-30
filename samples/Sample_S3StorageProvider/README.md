@@ -12,7 +12,7 @@ The `Sample_S3Connector` application showcases the following S3 storage provider
 - **Checking file existence** with `ExistsAsync`
 - **Retrieving metadata** for S3 objects
 - **Dependency injection** configuration for S3 storage provider
-- **S3-compatible endpoints** configuration (MinIO, LocalStack)
+- **S3-compatible endpoints** configuration (MinIO, Floci)
 
 ## Prerequisites
 
@@ -234,7 +234,7 @@ Points to the dedicated `Sample_S3CompatibleStorageProvider` project, which cove
 - MinIO (local development)
 - DigitalOcean Spaces
 - Cloudflare R2
-- LocalStack (local AWS simulation)
+- Floci (local AWS simulation)
 
 S3-compatible services now have their own package and provider: `NPipeline.StorageProviders.S3.Compatible`.
 
@@ -277,7 +277,7 @@ s3://my-bucket/data/file.json?contentType=application/json
 
 ## S3-Compatible Services
 
-For non-AWS S3-compatible services such as MinIO, DigitalOcean Spaces, Cloudflare R2, and LocalStack, use the dedicated *
+For non-AWS S3-compatible services such as MinIO, DigitalOcean Spaces, Cloudflare R2, and Floci, use the dedicated *
 *`NPipeline.StorageProviders.S3.Compatible`** package with the `S3CompatibleStorageProvider` and `S3CompatibleStorageProviderOptions` types.
 
 See the **[`Sample_S3CompatibleStorageProvider`](../Sample_S3CompatibleStorageProvider/README.md)** project for complete examples.
@@ -354,7 +354,7 @@ catch (IOException ex)
 - [NPipeline Storage Provider Documentation](../../../docs/connectors/storage-provider.md)
 - [AWS SDK for .NET Documentation](https://docs.aws.amazon.com/sdk-for-net/)
 - [MinIO Documentation](https://min.io/docs/minio/linux/index.html)
-- [LocalStack Documentation](https://docs.localstack.cloud/)
+- [Floci Documentation](https://floci.io/)
 
 ## License
 

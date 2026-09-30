@@ -1,5 +1,5 @@
+using Testcontainers.Floci;
 using Testcontainers.Kafka;
-using Testcontainers.LocalStack;
 using Testcontainers.RabbitMq;
 using Testcontainers.ServiceBus;
 
@@ -42,8 +42,7 @@ public sealed class RabbitMqBrokerFixture : IAsyncLifetime
 
 public sealed class SqsBrokerFixture : IAsyncLifetime
 {
-    private readonly LocalStackContainer _container = new LocalStackBuilder("localstack/localstack:4.14.0")
-        .WithEnvironment("SERVICES", "sqs")
+    private readonly FlociContainer _container = new FlociBuilder("floci/floci:2.1.0")
         .WithLabel("npipeline-test", "messaging-roundtrip-sqs")
         .Build();
 

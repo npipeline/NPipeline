@@ -2,7 +2,7 @@
 
 This sample demonstrates how to use the S3-compatible storage provider in NPipeline to read, write, list,
 and manage files on non-AWS S3-compatible services such as MinIO, DigitalOcean Spaces, Cloudflare R2, and
-LocalStack.
+Floci.
 
 ## Overview
 
@@ -14,7 +14,7 @@ The `Sample_S3CompatibleStorageProvider` application showcases the following fea
 - **Checking file existence** with `ExistsAsync`
 - **Retrieving metadata** with `GetMetadataAsync`
 - **Dependency injection** configuration
-- **Provider-specific configurations** for MinIO, LocalStack, DigitalOcean Spaces, and Cloudflare R2
+- **Provider-specific configurations** for MinIO, Floci, DigitalOcean Spaces, and Cloudflare R2
 
 ## Supported Services
 
@@ -23,7 +23,7 @@ The S3-compatible provider works with any storage service that implements the S3
 | Service             | Service URL pattern                             | Notes                               |
 |---------------------|-------------------------------------------------|-------------------------------------|
 | MinIO               | `http://localhost:9000`                         | `ForcePathStyle = true`             |
-| LocalStack          | `http://localhost:4566`                         | Any credentials accepted            |
+| Floci               | `http://localhost:4566`                         | Any credentials accepted            |
 | DigitalOcean Spaces | `https://<region>.digitaloceanspaces.com`       | Virtual-hosted-style addressing     |
 | Cloudflare R2       | `https://<account-id>.r2.cloudflarestorage.com` | `SigningRegion = "auto"` required   |
 | Backblaze B2        | `https://s3.<region>.backblazeb2.com`           | Uses B2 application key credentials |
@@ -46,13 +46,13 @@ docker run -p 9000:9000 -p 9001:9001 \
 
 Then open the MinIO console at `http://localhost:9001` and create a bucket.
 
-#### Start LocalStack with Docker
+#### Start Floci with Docker
 
 ```bash
-docker run -p 4566:4566 localstack/localstack
+docker run -p 4566:4566 floci/floci:latest
 ```
 
-Create a bucket using the AWS CLI pointed at LocalStack:
+Create a bucket using the AWS CLI pointed at Floci:
 
 ```bash
 aws --endpoint-url=http://localhost:4566 s3 mb s3://my-bucket \
@@ -84,7 +84,7 @@ mc alias set local http://localhost:9000 minioadmin minioadmin
 mc cp sample.csv local/my-bucket/data/sample.csv
 ```
 
-With the AWS CLI pointed at LocalStack:
+With the AWS CLI pointed at Floci:
 
 ```bash
 aws --endpoint-url=http://localhost:4566 s3 cp sample.csv s3://my-bucket/data/sample.csv
@@ -194,7 +194,7 @@ new S3CompatibleStorageProviderOptions
     ForcePathStyle = true,
 };
 
-// LocalStack
+// Floci
 new S3CompatibleStorageProviderOptions
 {
     ServiceUrl    = new Uri("http://localhost:4566"),
@@ -288,14 +288,14 @@ catch (IOException ex)
 | Endpoint             | AWS regional endpoints            | Any custom `ServiceUrl`                   |
 | Region configuration | `RegionEndpoint` (AWS SDK type)   | `SigningRegion` string                    |
 | DI method            | `AddAwsS3StorageProvider(action)` | `AddS3CompatibleStorageProvider(options)` |
-| Typical targets      | AWS S3                            | MinIO, DO Spaces, R2, LocalStack          |
+| Typical targets      | AWS S3                            | MinIO, DO Spaces, R2, Floci               |
 
 Both providers share the same core (`S3CoreStorageProvider`) and therefore have identical read/write/list/metadata semantics.
 
 ## Additional Resources
 
 - [MinIO Documentation](https://min.io/docs/)
-- [LocalStack Documentation](https://docs.localstack.cloud/)
+- [Floci Documentation](https://floci.io/)
 - [DigitalOcean Spaces Documentation](https://docs.digitalocean.com/products/spaces/)
 - [Cloudflare R2 Documentation](https://developers.cloudflare.com/r2/)
 - [NPipeline AWS S3 Sample](../Sample_S3StorageProvider/README.md)

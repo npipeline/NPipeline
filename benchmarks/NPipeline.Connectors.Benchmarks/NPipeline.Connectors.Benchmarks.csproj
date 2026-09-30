@@ -16,7 +16,7 @@
     <ItemGroup>
         <PackageReference Include="BenchmarkDotNet"/>
         <PackageReference Include="Testcontainers.Kafka"/>
-        <PackageReference Include="Testcontainers.LocalStack"/>
+        <PackageReference Include="Testcontainers.Floci"/>
         <PackageReference Include="Testcontainers.MsSql"/>
         <PackageReference Include="Testcontainers.MySql"/>
         <PackageReference Include="Testcontainers.PostgreSql"/>
