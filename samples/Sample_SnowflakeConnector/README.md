@@ -11,119 +11,49 @@ with different strategies (PerRow, Batch, StagedCopy), attribute-based and conve
 
 ### 1. Reading from Snowflake
 
-- **SnowflakeSourceNode**: Read data from Snowflake tables and views
-- Parameterized queries for security
-- Streaming results for efficient memory usage
-- Support for custom queries and JOINs
+- **`SnowflakeConnector.Source<T>(connectionString, query, configure)`**: read tables, views and joins as records
+- Parameterized queries (`Parameters = [new DatabaseParameter(":since", value)]`)
+- Streaming results, with nothing buffered
+- Queries with JOINs and aggregates mapped to a record type
 
 ### 2. Writing to Snowflake
 
-- **SnowflakeSinkNode**: Write data to Snowflake tables
-- **PerRow Write Strategy**: Write one row at a time (best for small batches)
-- **Batch Write Strategy**: Write in batches using multi-row INSERT (best for moderate volumes)
-- **StagedCopy Write Strategy**: Bulk load via PUT + COPY INTO (best for large volumes)
-- Transaction support for atomicity (PerRow and Batch)
+- **`SnowflakeConnector.Sink<T>(connectionString, table, configure)`**: write records to Snowflake tables
+- **PerRow Write Strategy**: one statement per row (simplest to debug)
+- **Batch Write Strategy** (default): multi-row `INSERT` statements
+- **StagedCopy Write Strategy**: bulk load via `PUT` + `COPY INTO` (best for large volumes)
+- **`Transaction`**: `PerBatch` by default, so each batch lands whole and a transient failure is retried safely
 
 ### 3. Mapping Strategies
 
 #### Attribute-Based Mapping
 
-- **SnowflakeTableAttribute**: Specify table name and schema
-- **SnowflakeColumnAttribute**: Snowflake-specific features (DbType, NativeTypeName, Size, PrimaryKey, Identity)
-- **ColumnAttribute**: Common attribute for simple column name mappings
-- **IgnoreColumnAttribute**: Exclude computed properties from mapping
+- **`[SnowflakeColumn]`**: Snowflake-specific features (`DbType`, `NativeTypeName`, `Size`, `Identity`; identity columns are read but never written)
+- **`[Column]`**: the common attribute for simple column name mappings
+- **`[IgnoreColumn]`**: exclude computed properties from mapping
 
 #### Convention-Based Mapping
 
-- Automatic PascalCase to UPPER_SNAKE_CASE mapping
+- Members map to UPPER_SNAKE_CASE columns (`CustomerId` to `CUSTOMER_ID`), as Snowflake stores unquoted names
 - No attributes required for simple scenarios
 - Case-insensitive column matching
 
 ### 4. Upsert (MERGE) Operations
 
-- MERGE-based insert-or-update semantics
-- Configurable key columns and merge actions
-- OnMergeAction: Update, Ignore, or Delete
+- `Upsert = SqlUpsert.On("CUSTOMER_ID")` writes `MERGE INTO … USING (SELECT … FROM VALUES …)`
+- `SqlUpsertAction.Update` (the default) updates the other columns of a row whose key exists; `Ignore` inserts only new keys
 
-### 5. Connection Management
+### 5. Connections
 
-- Connection pooling for efficiency
-- Snowflake cloud connectivity
-- Query tagging for observability
-- Password and key-pair authentication support
+- Account, warehouse, role and database are set in the connection string
+- Password and key-pair authentication (`authenticator=snowflake_jwt;private_key_file=…`)
+- `snowflake://` storage URIs, and named connections through `ISnowflakeConnectionPool`
 
 ### 6. Error Handling
 
-- Retry logic for transient errors
-- Row-level error handling
-- Continue-on-error mode
-
-## Prerequisites
-
-### Snowflake Account
-
-You need access to a Snowflake account with:
-
-- A warehouse with compute credits
-- A database and schema for test tables
-- A user with appropriate permissions (CREATE TABLE, INSERT, SELECT, DROP TABLE)
-
-Sign up for a [Snowflake Free Trial](https://signup.snowflake.com/) to get started.
-
-### .NET SDK
-
-- .NET 8.0 SDK or later
-- [Download .NET SDK](https://dotnet.microsoft.com/download)
-
-## Setup Instructions
-
-### 1. Clone the Repository
-
-```bash
-git clone <repository-url>
-cd NPipeline
-```
-
-### 2. Restore Dependencies
-
-```bash
-dotnet restore
-```
-
-### 3. Set Up Connection String
-
-Set the `NPIPELINE_SNOWFLAKE_CONNECTION_STRING` environment variable:
-
-```bash
-# macOS / Linux
-export NPIPELINE_SNOWFLAKE_CONNECTION_STRING="account=myaccount;host=myaccount.snowflakecomputing.com;user=myuser;password=mypassword;db=mydb;schema=PUBLIC;warehouse=COMPUTE_WH"
-
-# Windows (PowerShell)
-$env:NPIPELINE_SNOWFLAKE_CONNECTION_STRING = "account=myaccount;host=myaccount.snowflakecomputing.com;user=myuser;password=mypassword;db=mydb;schema=PUBLIC;warehouse=COMPUTE_WH"
-
-# Windows (Command Prompt)
-set NPIPELINE_SNOWFLAKE_CONNECTION_STRING=account=myaccount;host=myaccount.snowflakecomputing.com;user=myuser;password=mypassword;db=mydb;schema=PUBLIC;warehouse=COMPUTE_WH
-```
-
-For key-pair authentication:
-
-```bash
-export NPIPELINE_SNOWFLAKE_CONNECTION_STRING="account=myaccount;host=myaccount.snowflakecomputing.com;user=myuser;authenticator=snowflake_jwt;private_key_file=/path/to/rsa_key.p8;db=mydb;schema=PUBLIC;warehouse=COMPUTE_WH"
-```
-
-## How to Run
-
-### Option 1: Using Environment Variable
-
-```bash
-dotnet run --project samples/Sample_SnowflakeConnector
-```
-
-### Option 2: Using Command Line Argument
-
-```bash
-dotnet run --project samples/Sample_SnowflakeConnector "account=myaccount;host=myaccount.snowflakecomputing.com;user=myuser;password=mypassword;db=mydb;schema=PUBLIC;warehouse=COMPUTE_WH"
-```
+- Transient statement errors are retried with `SnowflakeConnectorResilience`
+- A row that fails to map goes through `RowErrorHandler` (`Fail`, `Skip`, `DeadLetter`)
+- A batch that fails can fail the write or go to the dead-letter sink (`FailedBatches`)
 
 ## Expected Output
 
@@ -221,28 +151,28 @@ The sample creates the following tables in the `PUBLIC` schema:
 
 ### Write Strategies
 
-| Strategy       | Best For                        | Throughput | Transactional |
-|----------------|---------------------------------|------------|---------------|
-| **PerRow**     | Small batches, debugging        | Low        | Yes           |
-| **Batch**      | Moderate volumes (100-10K rows) | Medium     | Yes           |
-| **StagedCopy** | Large volumes (10K+ rows)       | High       | No*           |
+| Strategy       | Best For                        | Throughput |
+|----------------|---------------------------------|------------|
+| **PerRow**     | Small volumes, debugging        | Low        |
+| **Batch**      | Moderate volumes (100-10K rows) | Medium     |
+| **StagedCopy** | Large volumes (10K+ rows)       | High       |
 
-*StagedCopy uses PUT + COPY INTO which is not wrapped in a transaction. Use PerRow or Batch for ExactlyOnce semantics.
+`StagedCopy` writes each batch as a gzipped CSV file, uploads it with `PUT` and loads it with `COPY INTO … ON_ERROR = ABORT_STATEMENT`,
+so a row Snowflake cannot load fails the batch. A retried batch uploads and loads the same file name, so Snowflake's load
+metadata skips a file it has already loaded. It inserts only; use `Batch` for upserts.
 
 ### Snowflake-Specific Considerations
 
-- **Uppercase Identifiers**: Snowflake uppercases unquoted identifiers. The connector quotes all identifiers with double quotes.
+- **Uppercase Identifiers**: Snowflake uppercases unquoted identifiers. The connector quotes every identifier, so members map to UPPER_SNAKE_CASE columns by default (set `Naming` for another convention).
 - **TIMESTAMP_NTZ**: Use `NativeTypeName = "TIMESTAMP_NTZ"` for timezone-naive timestamps.
 - **NUMBER Type**: Snowflake uses NUMBER for all numeric types. Specify precision with `NativeTypeName = "NUMBER(18,2)"`.
-- **Internal Staging**: StagedCopy uses Snowflake's internal user stage (`~`) by default for file staging.
-- **Query Tagging**: The connector automatically sets `QUERY_TAG` for observability in Snowflake's query history.
+- **Internal Staging**: StagedCopy uses Snowflake's internal user stage (`~`) by default; set `Stage` for a named stage, which must exist and be writable by the role.
 
 ## Troubleshooting
 
 ### Connection Issues
 
 - Verify your account identifier matches the full Snowflake account locator
-- Ensure the host includes `.snowflakecomputing.com`
 - Check that your warehouse is not suspended (auto-resume may need a moment)
 - Verify network access (Snowflake IP allowlisting if configured)
 
@@ -256,6 +186,10 @@ The sample creates the following tables in the `PUBLIC` schema:
 
 - Use `StagedCopy` for bulk loads over 10,000 rows
 - Use `Batch` with appropriate `BatchSize` for moderate volumes
-- Set `StreamResults = true` on source nodes for large result sets
-- Increase `FetchSize` (default 10,000) for read-heavy workloads
-- Use a properly sized warehouse for compute-intensive operations
+- Reuse one connection string: opening a Snowflake session takes seconds, and Snowflake.Data pools sessions per connection string
+- Size the warehouse for the load
+
+## Further Documentation
+
+- [Snowflake Connector Guide](../../docs/connectors/snowflake.md)
+- [SQL Connectors: Shared Behaviour](../../docs/connectors/sql-connectors.md)

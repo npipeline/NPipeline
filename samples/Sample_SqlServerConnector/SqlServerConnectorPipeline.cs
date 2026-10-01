@@ -40,29 +40,28 @@ public sealed class SqlServerConnectorPipeline
         This pipeline demonstrates the following features:
 
         1. Reading from SQL Server
-           - SqlServerSourceNode for data retrieval
+           - SqlServerConnector.Source for data retrieval
            - Parameterized queries
            - Streaming results
 
         2. Writing to SQL Server
-           - SqlServerSinkNode for data insertion
+           - SqlServerConnector.Sink for data insertion
            - PerRow write strategy (row-by-row)
            - Batch write strategy (batched inserts)
 
         3. Mapping Strategies
-           - Attribute-based mapping (SqlServerTable, SqlServerColumn, Column, IgnoreColumn)
+           - Attribute-based mapping (SqlServerColumn, Column, IgnoreColumn)
            - Convention-based mapping (PascalCase to PascalCase)
-           - Custom mappers (Func<T, IEnumerable<DatabaseParameter>>)
+           - Manual mapping over SqlRow
 
-        4. Connection Management
-           - Connection pooling
-           - Named connections
-           - Connection lifecycle management
+        4. Connections
+           - Connection strings used as they are
+           - Windows and SQL Server authentication
 
         5. Error Handling
-           - Retry logic for transient errors
-           - Row-level error handling
-           - Transaction support
+           - Retry of transient errors
+           - Per-batch and whole-run transactions
+           - Dead-lettering of failed batches
 
         6. Transformations
            - Data enrichment
@@ -190,7 +189,7 @@ public sealed class SqlServerConnectorPipeline
             IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Products' AND schema_id = SCHEMA_ID('Sales'))
             BEGIN
                 CREATE TABLE Sales.Products (
-                    ProductID INT IDENTITY(1,1) PRIMARY KEY,
+                    ProductID INT PRIMARY KEY,
                     ProductName NVARCHAR(255) NOT NULL,
                     Category NVARCHAR(100) NOT NULL,
                     Price DECIMAL(18,2) NOT NULL,
@@ -382,14 +381,14 @@ public sealed class SqlServerConnectorPipeline
         // Create sample products
         var products = new List<Product>
         {
-            new() { ProductName = "Laptop", Category = "Electronics", Price = 999.99m, StockQuantity = 50 },
-            new() { ProductName = "Mouse", Category = "Electronics", Price = 29.99m, StockQuantity = 200 },
-            new() { ProductName = "Keyboard", Category = "Electronics", Price = 79.99m, StockQuantity = 150 },
-            new() { ProductName = "Monitor", Category = "Electronics", Price = 299.99m, StockQuantity = 75 },
-            new() { ProductName = "Desk Chair", Category = "Furniture", Price = 199.99m, StockQuantity = 30 },
+            new() { ProductId = 1, ProductName = "Laptop", Category = "Electronics", Price = 999.99m, StockQuantity = 50 },
+            new() { ProductId = 2, ProductName = "Mouse", Category = "Electronics", Price = 29.99m, StockQuantity = 200 },
+            new() { ProductId = 3, ProductName = "Keyboard", Category = "Electronics", Price = 79.99m, StockQuantity = 150 },
+            new() { ProductId = 4, ProductName = "Monitor", Category = "Electronics", Price = 299.99m, StockQuantity = 75 },
+            new() { ProductId = 5, ProductName = "Desk Chair", Category = "Furniture", Price = 199.99m, StockQuantity = 30 },
         };
 
-        // No attributes: members map to columns of the same name.
+        // No attributes: members map to columns of the same name (the products carry their own ids, since ProductID is not an identity column).
         var sinkNode = SqlServerConnector.Sink<Product>(_connectionString, "Products", o => o with { Schema = "Sales" });
 
         Console.WriteLine("Writing products with convention-based mapping...");

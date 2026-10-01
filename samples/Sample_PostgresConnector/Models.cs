@@ -1,3 +1,4 @@
+using NPipeline.Connectors.Attributes;
 using NPipeline.Connectors.Postgres.Mapping;
 
 namespace Sample_PostgresConnector;
@@ -57,6 +58,7 @@ public class Customer
     public string Status { get; set; } = "active";
 
     /// <summary>Gets the customer's full name.</summary>
+    [IgnoreColumn]
     public string FullName => $"{FirstName} {LastName}";
 }
 
@@ -115,6 +117,7 @@ public class Product
     public DateTime UpdatedAt { get; set; }
 
     /// <summary>Gets the profit margin.</summary>
+    [IgnoreColumn]
     public decimal ProfitMargin => Price > 0
         ? (Price - Cost) / Price * 100
         : 0;
@@ -234,6 +237,7 @@ public class OrderItem
     public DateTime CreatedAt { get; set; }
 
     /// <summary>Gets the total after discount.</summary>
+    [IgnoreColumn]
     public decimal TotalAfterDiscount => LineTotal - DiscountAmount;
 }
 
@@ -243,8 +247,8 @@ public class OrderItem
 /// </summary>
 public class OrderSummary
 {
-    /// <summary>Gets or sets the summary identifier.</summary>
-    [PostgresColumn("summary_id")]
+    /// <summary>Gets or sets the summary identifier. The database generates it (SERIAL), so it is not written.</summary>
+    [IgnoreColumn]
     public int SummaryId { get; set; }
 
     /// <summary>Gets or sets the order identifier.</summary>

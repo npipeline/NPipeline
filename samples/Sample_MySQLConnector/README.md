@@ -34,45 +34,51 @@ dotnet run -- --connection-string "Server=myhost;Port=3306;Database=mydb;User=my
 
 ## What This Sample Demonstrates
 
-| Feature               | Description                                                                 |
-|-----------------------|-----------------------------------------------------------------------------|
-| **PerRow strategy**   | Inserts one row at a time - useful for small writes with rich error control |
-| **Batch strategy**    | Builds multi-row `INSERT VALUES (…),(…)` for high throughput                |
-| **Upsert**            | `INSERT … ON DUPLICATE KEY UPDATE`, `INSERT IGNORE`, `REPLACE INTO`         |
-| **Attribute mapping** | `[MySqlTable]`, `[MySqlColumn]`, `[Column]`, `[IgnoreColumn]`               |
-| **Custom mapper**     | `Func<MySqlRow, T>` mapper passed directly to `MySqlSourceNode`             |
-| **StorageUri**        | `mysql://user:pass@host:port/db` and `mariadb://…` schemes                  |
+The sample creates the tables, then builds the nodes for each feature and reports what each is configured to do.
+
+| Feature               | Description                                                                                         |
+|-----------------------|-----------------------------------------------------------------------------------------------------|
+| **PerRow strategy**   | `WriteStrategy = MySqlWriteStrategy.PerRow`: one statement per row, simplest to debug               |
+| **Batch strategy**    | The default: multi-row `INSERT … VALUES (…),(…)` for high throughput; `BulkLoad` uses `LOAD DATA`    |
+| **Upsert**            | `SqlUpsert.On("event_id")` writes `INSERT … ON DUPLICATE KEY UPDATE`; `SqlUpsertAction.Ignore` keeps existing rows |
+| **Attribute mapping** | `[MySqlColumn]` (including `AutoIncrement`, which is read but never written), `[Column]`, `[IgnoreColumn]` |
+| **Manual mapper**     | `MySqlNodes.Source(connectionString, query, row => …)` maps each `SqlRow` yourself                  |
+| **StorageUri**        | `mysql://user:pass@host:port/db` and `mariadb://…` schemes                                          |
+
+The factory is `MySqlNodes`, because the MySqlConnector driver already uses `MySqlConnector` for its namespace.
 
 ## Models
 
-- **`Product`** - uses `[MySqlTable]` + `[MySqlColumn]` / `[Column]` with `AutoIncrement`
-- **`OrderEvent`** - demonstrates upsert on `event_id` primary key
+- **`Product`** - uses `[MySqlColumn]` / `[Column]`, with `AutoIncrement` on the id
+- **`OrderEvent`** - demonstrates upsert on the `event_id` primary key
 - **`ProductSummary`** - shows convention-based mapping (no attributes required)
 
 ## Key NPipeline APIs Used
 
 ```csharp
 // Create a source node
-var source = new MySqlSourceNode<Product>(connectionString, "SELECT * FROM `products`");
+var source = MySqlNodes.Source<Product>(connectionString, "SELECT * FROM `products`");
 
-// Create a sink node
-var sink = new MySqlSinkNode<Product>(connectionString, "products");
+// Create a sink node, with options adjusted by a `with` expression
+var sink = MySqlNodes.Sink<Product>(connectionString, "products", o => o with { BatchSize = 100 });
 
-// Upsert configuration
-var config = new MySqlConfiguration
-{
-    UseUpsert = true,
-    UpsertKeyColumns = ["product_id"],
-    OnDuplicateKeyAction = OnDuplicateKeyAction.Update,
-};
+// Upsert: INSERT … ON DUPLICATE KEY UPDATE on the key columns
+var upsert = MySqlNodes.Sink<OrderEvent>(connectionString, "order_events", o => o with { Upsert = SqlUpsert.On("event_id") });
+
+// A manual mapper over SqlRow
+var mapped = MySqlNodes.Source(connectionString, "SELECT product_id, product_name FROM `products`",
+    row => (Id: row.Get<int>("product_id"), Name: row.Get<string>("product_name")));
 
 // StorageUri
 var uri = StorageUri.Parse("mysql://root:root@localhost:3306/npipeline_sample");
-var source = new MySqlSourceNode<Product>(uri, "SELECT * FROM `products`");
+var fromUri = MySqlNodes.Source<Product>(uri, "SELECT * FROM `products`");
 ```
+
+Bulk loads (`WriteStrategy = MySqlWriteStrategy.BulkLoad`) need `AllowLoadLocalInfile=true` in the connection string and
+`local_infile` enabled on the server.
 
 ## Further Documentation
 
 - [MySQL Connector Guide](../../docs/connectors/mysql.md)
-- [Configuration Reference](../../src/NPipeline.Connectors.MySQL/Configuration/MySqlConfiguration.cs)
+- [SQL Connectors: Shared Behaviour](../../docs/connectors/sql-connectors.md)
 - [NPipeline Documentation](../../docs/index.md)

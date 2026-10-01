@@ -40,12 +40,12 @@ public sealed class PostgresConnectorPipeline
 
         This pipeline demonstrates of following PostgreSQL connector features:
 
-        1. Reading data from PostgreSQL using PostgresSourceNode<T>
-        2. Writing data to PostgreSQL using PostgresSinkNode<T>
-        3. Attribute-based mapping with PostgresTable and PostgresColumn attributes
+        1. Reading data from PostgreSQL with PostgresConnector.Source<T>
+        2. Writing data to PostgreSQL with PostgresConnector.Sink<T>
+        3. Attribute-based mapping with PostgresColumn and IgnoreColumn attributes
         4. Different write strategies (PerRow, Batch)
         5. Error handling and recovery patterns
-        6. Connection pooling and configuration
+        6. Options records and connection strings
         7. In-memory checkpointing for transient recovery
 
         Pipeline Flow:
@@ -153,7 +153,7 @@ public sealed class PostgresConnectorPipeline
         {
             "customers", "products", "orders", "order_items",
             "order_summaries", "customers_copy", "products_copy",
-            "write_test_perrow", "write_test_batch", "checkpoint_test",
+            "write_test_perrow", "write_test_batch", "write_test_perrow_result", "write_test_batch_result", "checkpoint_test",
         };
 
         foreach (var table in tables)
@@ -269,10 +269,20 @@ public sealed class PostgresConnectorPipeline
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )";
 
-        foreach (var tableName in new[] { "customers_copy", "products_copy", "write_test_perrow", "write_test_batch", "checkpoint_test" })
+        // The copy tables take the shape of the tables they copy, since the sink writes every column of the record.
+        await ExecuteNonQueryAsync("CREATE TABLE customers_copy (LIKE customers INCLUDING DEFAULTS)", connection, cancellationToken);
+        await ExecuteNonQueryAsync("CREATE TABLE products_copy (LIKE products INCLUDING DEFAULTS)", connection, cancellationToken);
+
+        foreach (var tableName in new[] { "write_test_perrow", "write_test_batch", "checkpoint_test" })
         {
             var sql = string.Format(CultureInfo.InvariantCulture, createCopyTable, tableName);
             await ExecuteNonQueryAsync(sql, connection, cancellationToken);
+        }
+
+        // The write strategy demonstration copies each test table into a result table of the same shape.
+        foreach (var tableName in new[] { "write_test_perrow", "write_test_batch" })
+        {
+            await ExecuteNonQueryAsync($"CREATE TABLE {tableName}_result (LIKE {tableName} INCLUDING DEFAULTS)", connection, cancellationToken);
         }
     }
 

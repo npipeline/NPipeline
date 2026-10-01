@@ -7,26 +7,25 @@ tables, transform it, and write to PostgreSQL tables using various strategies an
 
 The PostgreSQL Connector sample implements a complete data processing pipeline that:
 
-1. **Reads** customer, product, and order data from PostgreSQL tables using `PostgresSourceNode<T>`
+1. **Reads** customer, product, and order data from PostgreSQL tables with `PostgresConnector.Source<T>`
 2. **Transforms** and aggregates order data into summaries
-3. **Writes** processed data to PostgreSQL tables using `PostgresSinkNode<T>`
+3. **Writes** processed data to PostgreSQL tables with `PostgresConnector.Sink<T>`
 4. **Demonstrates** different write strategies (PerRow, Batch)
-5. **Shows** attribute-based mapping with `PostgresTableAttribute` and `PostgresColumnAttribute`
+5. **Shows** attribute-based mapping with `PostgresColumnAttribute` and the snake_case naming convention
 
 ## Key Concepts Demonstrated
 
 ### PostgreSQL Connector Components
 
-- **PostgresSourceNode<T>**: Reads PostgreSQL data and deserializes it to strongly-typed objects
-- **PostgresSinkNode<T>**: Serializes objects and writes them to PostgreSQL tables
-- **PostgresConfiguration**: Configuration for connection strings, write strategies, and other options
+- **`PostgresConnector.Source<T>(connectionString, query, configure)`**: streams query results into strongly-typed records
+- **`PostgresConnector.Sink<T>(connectionString, table, configure)`**: writes records to a table in batches
+- **`PostgresReadOptions` / `PostgresWriteOptions`**: immutable option records, adjusted with `o => o with { ... }`
 
 ### Attribute-Based Mapping
 
-- **PostgresTableAttribute**: Maps a C# class to a PostgreSQL table
-- **PostgresColumnAttribute**: Maps C# properties to PostgreSQL columns
-- **PrimaryKey**: Specifies primary key columns
-- **Convention-based mapping**: Automatic snake_case conversion for unmapped properties
+- **`PostgresColumnAttribute`**: maps C# properties to PostgreSQL columns, and can set the parameter's `DbType`
+- **Convention-based mapping**: members map to snake_case columns (`CustomerId` to `customer_id`) with no attributes; acronyms stay one word (`HTTPStatus` to `http_status`). Set `Naming = ColumnNamingPolicy.AsIs` for columns named like the members.
+- The table is named when the sink is created, not on the class
 
 ### Common Attributes
 
@@ -47,8 +46,7 @@ To use common attributes, add a reference to `NPipeline.Connectors` and import t
 ```csharp
 using NPipeline.Connectors.Attributes;
 
-[PostgresTable("customers")]
-public class CustomerWithCommonAttributes
+public class Customer
 {
     [Column("customer_id")]
     public int CustomerId { get; set; }
@@ -56,100 +54,41 @@ public class CustomerWithCommonAttributes
     [Column("first_name")]
     public string FirstName { get; set; } = string.Empty;
 
-    [Column("last_name")]
-    public string LastName { get; set; } = string.Empty;
-
-    [IgnoreColumn]
-    public string InternalNotes { get; set; } = string.Empty;
-
     [IgnoreColumn]
     public string FullName => $"{FirstName} {LastName}";
 }
 ```
 
-### Benefits of Common Attributes
-
-- **Cross-connector compatibility**: Same attributes work with CSV, Excel, PostgreSQL, etc.
-- **Simplified code**: Use one set of attributes across different data sources
-- **Future-proof**: New connectors will automatically support common attributes
-- **Easier migration**: Move data between different sources without changing attribute definitions
-
 ### Common vs Connector-Specific Attributes
 
-Both common and connector-specific attributes are fully supported. Choose based on your needs:
+Both are fully supported, and a member with both takes its name from the common `[Column]`:
 
-| Scenario                                | Recommended Approach                                                |
-|-----------------------------------------|---------------------------------------------------------------------|
-| Simple column mapping                   | Common attributes (`Column`, `IgnoreColumn`)                        |
-| Cross-connector compatibility           | Common attributes (`Column`, `IgnoreColumn`)                        |
-| Database-specific features (PostgreSQL) | Connector-specific (`PostgresColumn` with DbType, Size, PrimaryKey) |
-| Legacy code with specific attributes    | Keep existing connector-specific attributes                         |
-
-**Example: Using Common Attributes**
-
-```csharp
-using NPipeline.Connectors.Attributes;
-
-[PostgresTable("customers")]
-public class Customer
-{
-    [Column("customer_id")]
-    public int CustomerId { get; set; }
-
-    [Column("first_name")]
-    public string FirstName { get; set; }
-}
-```
-
-**Example: Using Connector-Specific Attributes (PostgreSQL)**
+| Scenario                                | Recommended Approach                                |
+|-----------------------------------------|-----------------------------------------------------|
+| Simple column mapping                   | Common attributes (`Column`, `IgnoreColumn`)        |
+| Cross-connector compatibility           | Common attributes (`Column`, `IgnoreColumn`)        |
+| Database-specific features (PostgreSQL) | Connector-specific (`PostgresColumn` with `DbType`) |
 
 ```csharp
 using NPipeline.Connectors.Postgres.Mapping;
 using NpgsqlTypes;
 
-[PostgresTable("customers")]
-public class Customer
+public class Event
 {
-    [PostgresColumn("customer_id", PrimaryKey = true, DbType = NpgsqlDbType.Integer)]
-    public int CustomerId { get; set; }
-
-    [PostgresColumn("first_name", DbType = NpgsqlDbType.Varchar, Size = 100)]
-    public string FirstName { get; set; }
-
-    [PostgresColumn("email", DbType = NpgsqlDbType.Varchar, Size = 255)]
-    public string Email { get; set; }
+    [PostgresColumn("payload", DbType = NpgsqlDbType.Jsonb)]
+    public string Payload { get; set; } = "{}";
 }
 ```
 
-### When to Use PostgresColumnAttribute
-
-Use `PostgresColumnAttribute` when you need PostgreSQL-specific features:
-
-- **PrimaryKey**: Mark a column as part of the primary key
-- **DbType**: Specify the exact PostgreSQL data type (e.g., `NpgsqlDbType.Varchar`, `NpgsqlDbType.Integer`)
-- **Size**: Specify the size for variable-length types (e.g., `VARCHAR(100)`)
-
-### Backward Compatibility
-
-Connector-specific attributes (`PostgresColumn`, `PostgresIgnore`) continue to work exactly as before. You can:
-
-- Keep existing code using connector-specific attributes
-- Mix common and connector-specific attributes in the same project
-- Gradually migrate to common attributes at your own pace
-
 ### Sample Code
 
-This sample includes both approaches:
-
-- **`Customer`**: Uses `PostgresColumn` with database-specific properties (PrimaryKey, DbType, Size)
-- **`CustomerWithCommonAttributes`**: Demonstrates common attributes with detailed comments
-
-Both classes work identically with the PostgreSQL connector. The choice of which to use depends on your specific requirements.
+The sample's models (`Customer`, `Product`, `Order`, `OrderItem`, `OrderSummary`) use `PostgresColumn` to name their columns.
 
 ### Write Strategies
 
-- **PerRow**: Writes one row at a time (slowest, best for small batches)
-- **Batch**: Writes in batches (good balance of performance and memory)
+- **PerRow**: Writes one row at a time (slowest, simplest to debug)
+- **Batch**: Writes multi-row `INSERT` statements (good balance of performance and memory)
+- **Copy**: Binary `COPY`, the fastest for large loads (inserts only)
 
 ### Data Models
 
@@ -232,11 +171,12 @@ set NPipeline_PostgreSQL_ConnectionString=Host=localhost;Port=5432;Username=your
 
 The pipeline will:
 
-1. Create database tables (customers, products, orders, order_items, order_summaries)
+1. Create database tables (customers, products, orders, order_items, order_summaries, and copy tables for the demonstrations)
 2. Seed sample data (5 customers, 8 products, 6 orders with items)
 3. Process and copy customers and products
 4. Generate order summaries by joining orders with customers and items
 5. Demonstrate different write strategies with performance comparison
+6. Demonstrate in-memory checkpointing: stop after 5 rows, then resume with the rest
 
 You should see output similar to:
 
@@ -274,12 +214,16 @@ Step 5: Processing orders and generating summaries...
   Generated 6 order summaries.
 
 Step 6: Demonstrating write strategies...
-  PerRow strategy: 150 ms
-  Batch strategy (size 25): 45 ms
-  Performance improvement: Batch is 3.33x faster than PerRow
+  PerRow strategy: 160 ms
+  Batch strategy (size 25): 11 ms
+  Performance improvement: Batch is 14.55x faster than PerRow
+
+Step 7: Demonstrating in-memory checkpointing...
+  Simulating interruption after 5 rows...
+  Resumed and processed 21 remaining rows.
 
 === Pipeline Execution Summary ===
-  Total time: 850 ms
+  Total time: 448 ms
   Customers processed: 5
   Products processed: 8
   Order summaries generated: 6
@@ -339,44 +283,37 @@ The pipeline accepts the following parameters:
 |--------------------|------------------------------|------------------------------------------------------------------------------------------|
 | `ConnectionString` | PostgreSQL connection string | `Host=localhost;Port=5432;Username=postgres;Password=postgres;Database=NPipelineSamples` |
 
-### PostgresConfiguration Options
+### Write Options
 
-The sample demonstrates various configuration options:
+The sample demonstrates various options:
 
 ```csharp
-var config = new PostgresConfiguration
+var sink = PostgresConnector.Sink<Customer>(connectionString, "customers_copy", o => o with
 {
-    ConnectionString = "your_connection_string",
-    WriteStrategy = PostgresWriteStrategy.Batch,  // PerRow or Batch in the free connector
-    BatchSize = 100,                            // For Batch strategy
-    // Additional options available:
-    // CheckpointStrategy = CheckpointStrategy.InMemory,
-    // DeliverySemantic = DeliverySemantic.AtLeastOnce,
-};
+    WriteStrategy = PostgresWriteStrategy.Batch,  // PerRow, Batch or Copy
+    BatchSize = 100,
+    // Transaction = SqlTransactionMode.PerBatch (the default): each batch lands whole and is retried safely
+    // Upsert = SqlUpsert.On("customer_id"): INSERT ... ON CONFLICT
+});
 ```
 
 ### Write Strategy Comparison
 
 | Strategy   | Performance | Memory Usage | Best For                              |
 |------------|-------------|--------------|---------------------------------------|
-| **PerRow** | Slowest     | Lowest       | Small batches, per-row error handling |
+| **PerRow** | Slowest     | Lowest       | Small volumes, debugging              |
 | **Batch**  | Good        | Moderate     | Most scenarios, balanced performance  |
+| **Copy**   | Fastest     | Moderate     | Large loads                           |
 
 ## Code Examples
 
 ### Reading from PostgreSQL
 
 ```csharp
-var config = new PostgresConfiguration
-{
-    ConnectionString = connectionString
-};
-
 var sql = "SELECT customer_id, first_name, last_name, email FROM customers ORDER BY customer_id";
-var sourceNode = new PostgresSourceNode<Customer>(connectionString, sql, configuration: config);
+var sourceNode = PostgresConnector.Source<Customer>(connectionString, sql);
 
-var context = new PipelineContext();
-await foreach (var customer in sourceNode.OpenStream(context, cancellationToken))
+await foreach (var customer in sourceNode.OpenStream(new PipelineContext(), cancellationToken))
 {
     Console.WriteLine($"Customer: {customer.FullName}");
 }
@@ -385,14 +322,7 @@ await foreach (var customer in sourceNode.OpenStream(context, cancellationToken)
 ### Writing to PostgreSQL
 
 ```csharp
-var config = new PostgresConfiguration
-{
-    ConnectionString = connectionString,
-    WriteStrategy = PostgresWriteStrategy.Batch,
-    BatchSize = 100
-};
-
-var sinkNode = new PostgresSinkNode<Customer>(connectionString, "customers_copy", configuration: config);
+var sinkNode = PostgresConnector.Sink<Customer>(connectionString, "customers_copy", o => o with { BatchSize = 100 });
 var context = new PipelineContext();
 
 await sinkNode.ConsumeAsync(sourceNode.OpenStream(context, cancellationToken), context, cancellationToken);
@@ -401,10 +331,9 @@ await sinkNode.ConsumeAsync(sourceNode.OpenStream(context, cancellationToken), c
 ### Attribute-Based Mapping
 
 ```csharp
-[PostgresTable("customers")]
 public class Customer
 {
-    [PostgresColumn("customer_id", PrimaryKey = true)]
+    [PostgresColumn("customer_id")]
     public int CustomerId { get; set; }
 
     [PostgresColumn("first_name")]
@@ -413,7 +342,8 @@ public class Customer
     [PostgresColumn("last_name")]
     public string LastName { get; set; } = string.Empty;
 
-    // Computed property (not mapped)
+    // Computed property (not written)
+    [IgnoreColumn]
     public string FullName => $"{FirstName} {LastName}";
 }
 ```
@@ -422,21 +352,20 @@ public class Customer
 
 ### Adding New Models
 
-Create a new model class with attributes:
+Create a new model class; members map to snake_case columns, and `[PostgresColumn]` names one explicitly:
 
 ```csharp
-[PostgresTable("your_table")]
 public class YourModel
 {
-    [PostgresColumn("id", PrimaryKey = true)]
     public int Id { get; set; }
 
     [PostgresColumn("name")]
     public string Name { get; set; } = string.Empty;
 
-    [PostgresColumn("created_at")]
-    public DateTime CreatedAt { get; set; }
+    public DateTime CreatedAt { get; set; }  // created_at
 }
+
+var sink = PostgresConnector.Sink<YourModel>(connectionString, "your_table");
 ```
 
 ### Adding Custom Transformations
@@ -469,21 +398,14 @@ private async IAsyncEnumerable<EnrichedOrder> EnrichOrders(IAsyncEnumerable<Orde
 Experiment with different strategies:
 
 ```csharp
-// PerRow for small batches
-var perRowConfig = new PostgresConfiguration
-{
-    ConnectionString = connectionString,
-    WriteStrategy = PostgresWriteStrategy.PerRow
-};
+// PerRow for small volumes
+var perRow = PostgresConnector.Sink<Customer>(connectionString, "customers", o => o with { WriteStrategy = PostgresWriteStrategy.PerRow });
 
 // Batch for most scenarios
-var batchConfig = new PostgresConfiguration
-{
-    ConnectionString = connectionString,
-    WriteStrategy = PostgresWriteStrategy.Batch,
-    BatchSize = 100
-};
+var batch = PostgresConnector.Sink<Customer>(connectionString, "customers", o => o with { WriteStrategy = PostgresWriteStrategy.Batch, BatchSize = 100 });
 
+// Binary COPY for large loads
+var copy = PostgresConnector.Sink<Customer>(connectionString, "customers", o => o with { WriteStrategy = PostgresWriteStrategy.Copy });
 ```
 
 ## Troubleshooting
@@ -502,7 +424,7 @@ If you get connection errors:
 If you get table not found errors:
 
 1. Check that tables are created in the pipeline setup
-2. Verify table names match the [`PostgresTableAttribute`](Models.cs)
+2. Verify the table name passed to `PostgresConnector.Sink` (and that column names match, `customer_id` not `CustomerId`)
 3. Check schema name (default is "public")
 
 ### Permission Errors
@@ -517,10 +439,10 @@ If you get permission errors:
 
 If performance is poor:
 
-1. Use Batch write strategy instead of PerRow
-2. Increase batch size for Batch strategy
+1. Use the Batch or Copy write strategy instead of PerRow
+2. Increase `BatchSize`
 3. Add appropriate indexes on your tables
-4. Consider using connection pooling
+4. Npgsql pools connections per connection string, so reuse one connection string across nodes
 
 ## Best Practices Demonstrated
 
@@ -549,6 +471,7 @@ External dependencies:
 ## Additional Resources
 
 - [PostgreSQL Connector Documentation](../../docs/connectors/postgres.md)
+- [SQL Connectors: Shared Behaviour](../../docs/connectors/sql-connectors.md)
 - [NPipeline Documentation](../../docs/)
 - [PostgreSQL Documentation](https://www.postgresql.org/docs/)
 - [Npgsql Documentation](https://www.npgsql.org/doc/)

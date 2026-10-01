@@ -11,52 +11,47 @@ data with different strategies, attribute-based and convention-based mapping, cu
 
 ### 1. Reading from SQL Server
 
-- **SqlServerSourceNode**: Read data from SQL Server tables
-- Parameterized queries for security
-- Streaming results for efficient memory usage
-- Support for custom queries
+- **`SqlServerConnector.Source<T>(connectionString, query)`**: stream query results into records, with nothing buffered
+- Columns bind to members by name (case-insensitively) through a mapper compiled once per query
+- Parameterized queries (`Parameters = [new DatabaseParameter("@since", value)]`)
+- A manual mapper over `SqlRow` for full control
 
 ### 2. Writing to SQL Server
 
-- **SqlServerSinkNode**: Write data to SQL Server tables
-- **PerRow Write Strategy**: Write one row at a time (best for small batches)
-- **Batch Write Strategy**: Write in batches (best for most scenarios)
-- Transaction support for atomicity
+- **`SqlServerConnector.Sink<T>(connectionString, table, configure)`**: write records in batches
+- **`PerRow`**: one statement per row (slowest, simplest to debug)
+- **`Batch`** (default): multi-row `INSERT` statements under SQL Server's 2,100-parameter limit
+- **`Transaction`**: `PerBatch` (the default; each batch lands whole and is retried safely), `WholeRun`, or `None`
 
 ### 3. Mapping Strategies
 
 #### Attribute-Based Mapping
 
-- **SqlServerTableAttribute**: Specify table name and schema
-- **SqlServerColumnAttribute**: SQL Server-specific features (DbType, Size, PrimaryKey, Identity)
-- **ColumnAttribute**: Common attribute for simple column name mappings
-- **IgnoreColumnAttribute**: Exclude computed properties from mapping
+- **`[SqlServerColumn]`**: SQL Server-specific features (`DbType`, `Size`, `Identity`; identity columns are read but never written)
+- **`[Column]`**: the common attribute for simple column name mappings
+- **`[IgnoreColumn]`**: exclude computed properties from mapping
 
 #### Convention-Based Mapping
 
-- Automatic PascalCase to PascalCase mapping
+- Members map to columns of the same name, case-insensitively
 - No attributes required for simple scenarios
-- Case-insensitive column matching
 
-#### Custom Mappers
+#### Manual Mapping
 
-- `Func<T, IEnumerable<DatabaseParameter>>` for custom parameter mapping
-- Transform data before writing
-- Apply custom business logic
+- `SqlServerConnector.Source(connectionString, query, row => ...)` maps each `SqlRow` yourself
+- To shape what is written, transform the records in front of the sink
 
-### 4. Connection Management
+### 4. Connections
 
-- Connection pooling for efficiency
-- Named connections support
-- Connection lifecycle management
-- Windows and SQL Server authentication
+- Connection strings are used as they are: pool sizes, timeouts and encryption belong in them
+- Windows and SQL Server authentication, `mssql://` storage URIs, and named connections through `ISqlServerConnectionPool`
 
 ### 5. Error Handling
 
-- Retry logic for transient errors
-- Row-level error handling
-- Continue-on-error mode
-- Transaction rollback support
+- Transient errors (deadlocks, timeouts, lost connections) are retried with `SqlServerConnectorResilience`, because each batch is its own transaction
+- A row that fails to map goes through `RowErrorHandler` (`Fail`, `Skip`, `DeadLetter`)
+- A batch that fails can fail the write or go to the dead-letter sink (`FailedBatches`)
+- `Transaction = WholeRun` rolls everything back when one batch fails
 
 ### 6. Transformations
 
@@ -202,8 +197,8 @@ The sample executes the following steps in sequence:
 ### Step 4: Attribute-Based Mapping
 
 - Reads customers using attribute-based mapping
-- Demonstrates SqlServerTable, SqlServerColumn, Column, and IgnoreColumn attributes
-- Shows SQL Server-specific features (DbType, Size, PrimaryKey, Identity)
+- Demonstrates SqlServerColumn, Column, and IgnoreColumn attributes
+- Shows SQL Server-specific features (DbType, Size, Identity)
 - Displays mapped data
 
 ### Step 5: Convention-Based Mapping
@@ -215,9 +210,8 @@ The sample executes the following steps in sequence:
 
 ### Step 6: Custom Mappers
 
-- Writes orders using custom mapper function
-- Demonstrates data transformation before writing
-- Shows custom business logic application
+- Shapes orders (status prefix, default address) before writing them
+- Reads them back with a manual mapper over `SqlRow`
 - Displays transformed data
 
 ### Step 7: Transformation and Enrichment
@@ -230,10 +224,10 @@ The sample executes the following steps in sequence:
 
 ### Step 8: Error Handling
 
-- Attempts to write orders with invalid customer IDs
-- Demonstrates error handling with ContinueOnError = false
-- Demonstrates error handling with ContinueOnError = true
-- Shows retry logic and transient error handling
+- Attempts to write orders with an invalid customer ID
+- With the default `PerBatch` transactions, the orders before the failed one stay written
+- With `Transaction = WholeRun`, the failure rolls back every order
+- Transient errors are retried by the connector's `Resilience` policy; a foreign key violation is not
 
 ## Expected Output
 
@@ -254,12 +248,12 @@ SQL Server Connector Sample Pipeline
 This pipeline demonstrates the following features:
 
 1. Reading from SQL Server
-   - SqlServerSourceNode for data retrieval
+   - SqlServerConnector.Source for data retrieval
    - Parameterized queries
    - Streaming results
 
 2. Writing to SQL Server
-   - SqlServerSinkNode for data insertion
+   - SqlServerConnector.Sink for data insertion
    - PerRow write strategy (row-by-row)
    - Batch write strategy (batched inserts)
 
@@ -320,7 +314,7 @@ Pipeline execution completed successfully!
 
 | Column        | Type          | Description                 |
 |---------------|---------------|-----------------------------|
-| ProductID     | INT IDENTITY  | Primary key, auto-increment |
+| ProductID     | INT           | Primary key                 |
 | ProductName   | NVARCHAR(255) | Product name                |
 | Category      | NVARCHAR(100) | Product category            |
 | Price         | DECIMAL(18,2) | Product price               |
@@ -349,17 +343,17 @@ Pipeline execution completed successfully!
 
 #### PerRow Strategy
 
-- **Best for**: Small batches (< 10 rows), testing, debugging
+- **Best for**: Small volumes, testing, debugging
 - **Performance**: Slowest (one INSERT per row)
 - **Memory**: Lowest
-- **Error Handling**: Per-row error handling
 
 #### Batch Strategy
 
-- **Best for**: Most scenarios (100-1,000 rows)
-- **Performance**: Good (multiple rows per INSERT)
+- **Best for**: Most scenarios
+- **Performance**: Good (up to ten rows per INSERT, the size SQL Server compiles fastest)
 - **Memory**: Moderate
-- **Error Handling**: Batch-level error handling
+
+For large loads, `SqlServerWriteStrategy.BulkCopy` streams each batch through `SqlBulkCopy`.
 
 ### Mapping Strategies
 
@@ -368,14 +362,13 @@ Pipeline execution completed successfully!
 Use attributes when you need:
 
 - Custom column names
-- SQL Server-specific features (DbType, Size, PrimaryKey, Identity)
+- SQL Server-specific features (DbType, Size, Identity)
 - Explicit control over mapping
 
 ```csharp
-[SqlServerTable("Customers", Schema = "Sales")]
 public class Customer
 {
-    [SqlServerColumn("CustomerID", PrimaryKey = true, Identity = true)]
+    [SqlServerColumn("CustomerID", Identity = true)]
     public int CustomerId { get; set; }
 
     [Column("FirstName")]
@@ -384,6 +377,8 @@ public class Customer
     [IgnoreColumn]
     public string FullName => $"{FirstName} {LastName}";
 }
+
+var sink = SqlServerConnector.Sink<Customer>(connectionString, "Customers", o => o with { Schema = "Sales" });
 ```
 
 #### Convention-Based Mapping
@@ -403,23 +398,25 @@ public class Product
 }
 ```
 
-#### Custom Mappers
+#### Manual Mapping
 
-Use custom mappers when:
-
-- You need to transform data before writing
-- Complex parameter mapping is required
-- Business logic must be applied
+Use a manual mapper when you need full control over how a row becomes a record:
 
 ```csharp
-Func<Order, IEnumerable<DatabaseParameter>> mapper = order =>
-[
-    new DatabaseParameter("@CustomerID", order.CustomerId),
-    new DatabaseParameter("@OrderDate", order.OrderDate),
-    new DatabaseParameter("@TotalAmount", order.TotalAmount),
-    new DatabaseParameter("@Status", "Custom-" + order.Status)
-];
+var source = SqlServerConnector.Source(connectionString, "SELECT OrderID, Status FROM Sales.Orders",
+    row => (Id: row.Get<int>("OrderID"), Status: row.GetOrDefault("Status", "Unknown")));
 ```
+
+### Transactions and Failed Batches
+
+| `Transaction` | Behaviour |
+|---------------|-----------|
+| `PerBatch` (default) | Each batch commits in its own transaction and is retried safely on a transient error |
+| `WholeRun` | One transaction for the whole write, rolled back if anything fails |
+| `None` | No transaction of the sink's own; failed batches are not retried |
+
+With `FailedBatches = FailedBatchAction.DeadLetter`, a batch that fails goes to the pipeline's dead-letter sink and the
+write continues. See [SQL Connectors: Shared Behaviour](../../docs/connectors/sql-connectors.md).
 
 ## Troubleshooting
 
@@ -451,15 +448,16 @@ Func<Order, IEnumerable<DatabaseParameter>> mapper = order =>
 
 **Solutions**:
 
-1. Increase `CommandTimeout` in configuration
+1. Increase `CommandTimeout` in the source or sink options (30 seconds by default)
 2. Optimize your queries
 3. Check for blocking locks
-4. Increase `ConnectTimeout` in connection string
+4. Increase `Connect Timeout` in the connection string
 
 ## Additional Resources
 
 - [NPipeline Documentation](../../docs/)
-- [SQL Server Connector Documentation](../../src/NPipeline.Connectors.SqlServer/README.md)
+- [SQL Server Connector Documentation](../../docs/connectors/sqlserver.md)
+- [SQL Connectors: Shared Behaviour](../../docs/connectors/sql-connectors.md)
 - [Microsoft.Data.SqlClient Documentation](https://learn.microsoft.com/en-us/dotnet/api/microsoft.data.sqlclient)
 - [SQL Server Connection Strings](https://www.connectionstrings.com/sql-server/)
 
