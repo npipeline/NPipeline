@@ -36,10 +36,29 @@ await using var connection = RabbitMqConnector.Connect(new RabbitMqConnectionOpt
 | `HostName`, `Port`, `VirtualHost` | `localhost`, 5672, `/` | The broker |
 | `UserName`, `Password` | `guest` | Credentials; RabbitMQ allows `guest` only from localhost |
 | `Uri` | `null` | A full `amqp://` or `amqps://` URI, instead of the settings above |
-| `Tls` | `null` | TLS: `Enabled`, `ServerName`, `CertificatePath`, `SslProtocols` |
+| `Tls` | `null` | TLS: `Enabled`, `ServerName`, `CertificatePath`, `CertificatePassphrase`, `SslProtocols` |
 | `AutomaticRecoveryEnabled`, `NetworkRecoveryInterval` | `true`, 5 s | Reconnects after a failure (it doesn't replay a failed publish; the sink retries that) |
+| `TopologyRecoveryEnabled` | `true` | Redeclares the client's exchanges, queues and bindings after a reconnect |
 | `RequestedHeartbeat` | 60 s | The heartbeat interval |
 | `MaxChannelPoolSize` | 4 | Publishing channels kept for reuse |
+| `ClientProvidedName` | `null` | The connection name shown in the management UI |
+
+For production, use TLS (port 5671):
+
+```csharp
+var connection = RabbitMqConnector.Connect(new RabbitMqConnectionOptions
+{
+    HostName = "rabbit.example.com",
+    Port = 5671,
+    Tls = new RabbitMqTlsOptions
+    {
+        Enabled = true,
+        ServerName = "rabbit.example.com",
+        CertificatePath = "/path/to/client.pfx",
+        SslProtocols = SslProtocols.Tls12,
+    },
+});
+```
 
 ## Consuming
 
@@ -70,6 +89,10 @@ the queue, and the channel stays open until the messages handed on are settled (
 `MaxDeliveryAttempts` counts from the `x-delivery-count` header that quorum queues set, or `x-death` after dead-letter
 cycles; classic queues count neither. Quorum queues also enforce a delivery limit of their own (20 by default in
 RabbitMQ 4), so a message that keeps failing is dead-lettered by the broker without it.
+
+To route poison messages away, give the queue a dead-letter exchange through [Topology](#topology) and set
+`MaxDeliveryAttempts`: a message past the limit is rejected without requeue and the broker moves it to that exchange.
+A message rejected with `requeue: true` goes back on the queue and is delivered again.
 
 ## Publishing
 
@@ -118,6 +141,12 @@ messages already published are never published again. `RabbitMqConnectorResilien
 A confirm that times out may still have reached the broker, so its retry can publish the message twice. To publish at
 most once per message, use `Resilience.None`.
 
+Once a batch's retries are done, the source messages whose publish succeeded are acknowledged first, then each failed
+message is handled as `FailedMessages` says. With `Fail`, the write fails and the failed messages stay unacknowledged,
+so the broker delivers them again; a published message is never left unacknowledged and published again.
+The client's automatic recovery only reconnects; a failed publish is retried by the sink alone. To change the policy,
+derive one: `RabbitMqConnectorResilience.Default with { Attempts = 6 }`.
+
 ## Topology
 
 `RabbitMqTopologyOptions` declares what a node needs before it starts:
@@ -145,6 +174,7 @@ var orders = RabbitMqConnector.Source<Order>(connection, "orders", o => o with
 | `MessageTtlMs`, `MaxLength`, `MaxLengthBytes` | `null` | Queue limits |
 | `Bindings` | none | Bindings from exchanges to the source's queue |
 | `PassiveDeclare` | `false` | Check that the queue or exchange exists instead of declaring it |
+| `ExtraArguments` | `null` | Other queue or exchange arguments by name, such as `x-max-priority` |
 
 ## Dead letters
 
@@ -163,6 +193,16 @@ services.AddRabbitMq(o => o with { HostName = "rabbit.example.com", UserName = "
 
 Registers one shared `IRabbitMqConnectionManager` and `RabbitMqNodeFactory`, whose `CreateSource<T>(queue, configure)`
 and `CreateSink<T>(exchange, routingKey, configure)` build nodes on it.
+
+## Best practices
+
+1. **Use quorum queues** (the default): they are replicated and fault tolerant, which production needs.
+2. **Keep publisher confirms on.** Without them a lost message goes undetected.
+3. **Declare a dead-letter exchange** for the queues you consume, so poison messages are set aside.
+4. **Size `PrefetchCount` to the consumer's throughput.** Too low starves the pipeline; too high holds messages that
+   another consumer could process.
+5. **Use TLS** in production.
+6. **Raise `BatchSize`** on high-throughput sinks; a batch costs about one round trip.
 
 ## Next Steps
 

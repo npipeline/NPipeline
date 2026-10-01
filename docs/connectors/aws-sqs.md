@@ -62,6 +62,15 @@ handed on are settled (up to `SettleTimeout`).
 | `DeleteLinger` | 50 ms | How long an acknowledged message waits to be deleted with others |
 | `SettleTimeout` | 30 s | How long the source waits for handed-on messages after the read ends |
 
+`ReceiveCount` is how many times SQS has delivered the message, so a rising count flags a message that keeps failing.
+
+A node that does its own settling calls `AcknowledgeAsync` (delete) once a message is handled, or `RejectAsync` to
+release or delete it:
+
+```csharp
+await message.AcknowledgeAsync(cancellationToken);
+```
+
 ### Dead-letter queues
 
 SQS moves a message to a dead-letter queue only through the queue's redrive policy, after `maxReceiveCount`
@@ -109,6 +118,15 @@ Both apply only to a client the node creates. A `Client` you pass keeps its own 
 
 Standard queues deliver at least once, and a retried send whose first attempt reached SQS can enqueue a message twice.
 Use a FIFO queue with deduplication, or make consumers idempotent, where duplicates matter.
+
+## Best practices
+
+1. **Use long polling** (`WaitTime` of 20 s, the default): fewer empty responses, lower cost.
+2. **Set `VisibilityTimeout` longer than a message takes to write**, so it isn't delivered again while it is in flight.
+3. **Use IAM roles** for credentials in production (an EC2 instance role or ECS task role).
+4. **Configure a dead-letter queue** on the SQS queue for poison messages.
+5. **Use FIFO queues** when order matters, with a `MessageGroupId`.
+6. **Keep batching on.** SQS charges per request, and batched deletes and sends cost a tenth as many.
 
 ## Next Steps
 

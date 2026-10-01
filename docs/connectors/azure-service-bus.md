@@ -52,6 +52,27 @@ Each message is a `ServiceBusMessage<T>` with its `Body`, `MessageId`, `SessionI
 `AcknowledgeAsync` (complete) and `RejectAsync` (abandon, or dead-letter without requeue), it can be settled with
 `DeadLetterAsync(reason, description)` or `DeferAsync()`.
 
+| Method | Means |
+| --- | --- |
+| `AcknowledgeAsync()` | Complete: the message is removed from the entity |
+| `RejectAsync(requeue: true)` | Abandon: the lock is released and the message is available again |
+| `RejectAsync(requeue: false)` | Dead-letter it, with the reason `Rejected` |
+| `DeadLetterAsync(reason, description)` | Move it to the dead-letter sub-queue with your own reason and description |
+| `DeferAsync()` | Set it aside to be received later by its sequence number |
+
+A node that can't process a message settles it itself, with a reason that helps whoever reads the dead-letter queue:
+
+```csharp
+if (!message.Body.IsValid)
+    await message.DeadLetterAsync("InvalidOrder", $"Order {message.Body.Id} failed validation", cancellationToken);
+```
+
+Read the dead-letter queue back with `SubQueue = SubQueue.DeadLetter`, as shown above; each message's
+`DeadLetterReason` and `DeadLetterErrorDescription` are on `Received`.
+
+For long-running processing, set `MaxLockRenewal` above the worst-case time a message is held (renewing stops there and
+the lock then expires), and keep `PrefetchCount` at 0.
+
 ### Sessions
 
 For a session-enabled queue or subscription, `SessionSource` receives up to `MaxConcurrentSessions` (8) sessions at
@@ -105,6 +126,15 @@ services.AddServiceBusConnector("mynamespace.servicebus.windows.net", credential
 
 Registers one shared `ServiceBusClient` and `ServiceBusNodeFactory` (`CreateSource`, `CreateSubscriptionSource`,
 `CreateSessionSource`, `CreateSink`). Overloads take a connection string, or a factory for the client.
+
+## Best practices
+
+1. **Use Microsoft Entra ID** (`DefaultAzureCredential`, or a managed identity) in production, rather than a connection string.
+2. **Use sessions** when messages must be processed in order within a logical group; different sessions run in parallel.
+3. **Set `MaxLockRenewal`** above the worst-case time a message is held, and `PrefetchCount` to 0 for slow consumers.
+4. **Dead-letter with a reason** and a description, so the dead-letter queue explains itself.
+5. **Use a topic with subscriptions** to fan a message out to several consumers.
+6. **Alert on the dead-letter queue's depth**: a rising count means messages are failing.
 
 ## Next Steps
 

@@ -30,7 +30,8 @@ builder.AddSource(orders, "orders");
 ```
 
 Each message is a `KafkaMessage<T>` with its `Body`, `Key` (UTF-8 text), `Topic`, `Partition`, `Offset`, `Timestamp`,
-`Headers` and `IsTombstone`.
+`Headers` and `IsTombstone`. `MessageId` is `topic/partition/offset`, which is unique, and `Metadata` holds the same
+values (`Topic`, `Partition`, `Offset`, `Timestamp`, `Key`) with each header as `Header.<name>`.
 
 ### Offsets
 
@@ -114,18 +115,56 @@ Both options records share the client settings:
 | `SecurityProtocol`, `SaslMechanism`, `SaslUsername`, `SaslPassword` | Security; SASL with `Plain` or SCRAM needs the user name and password |
 | `ClientSettings` | Any other librdkafka setting by name, such as `ssl.ca.location`, applied last |
 
+### Tuning with `ClientSettings`
+
+The options cover what most pipelines change. For the rest, set the librdkafka property directly. These are the ones
+earlier versions of the connector exposed as properties:
+
+| librdkafka setting | Applies to | Default | Effect |
+| --- | --- | --- | --- |
+| `fetch.min.bytes`, `fetch.max.bytes` | Source | 1, 52428800 | The least and most data a fetch returns; raise the minimum to trade latency for throughput |
+| `max.poll.interval.ms` | Source | 300000 | How long the consumer may go without polling before the group removes it |
+| `session.timeout.ms` | Source | 45000 | How long the broker waits for a heartbeat before it moves the member's partitions |
+| `batch.size` | Sink | 1000000 | The producer's batch size in bytes (this is separate from the sink's `BatchSize`, which counts messages) |
+| `message.max.bytes` | Sink | 1000000 | The largest message the producer accepts |
+| `retry.backoff.ms`, `retry.backoff.max.ms` | Sink | 100, 1000 | The first and longest delay between librdkafka's produce retries |
+
+```csharp
+var orders = KafkaConnector.Source<Order>("kafka:9092", "orders", "billing", o => o with
+{
+    ClientSettings = new Dictionary<string, string> { ["fetch.min.bytes"] = "65536", ["max.poll.interval.ms"] = "600000" },
+});
+```
+
 ## Serialization
 
-JSON by default; see [Serialization](message-queues.md#serialization). For Avro or Protobuf with a schema registry:
+JSON by default; see [Serialization](message-queues.md#serialization). Avro and Protobuf use a schema registry:
+
+| Serializer | Format | Best for |
+| --- | --- | --- |
+| `JsonMessageSerializer` (default) | JSON, no schema | Simple messages, debugging |
+| `AvroMessageSerializer` | Avro | Schema evolution, compact encoding |
+| `ProtobufMessageSerializer` | Protobuf | Cross-language use, compact encoding |
 
 ```csharp
 var registry = new SchemaRegistryConfiguration { Url = "http://registry:8081" };
 var orders = KafkaConnector.Source<OrderRecord>("kafka:9092", "orders", "billing", o => o with { Serializer = new AvroMessageSerializer(registry) });
 ```
 
+| `SchemaRegistryConfiguration` option | Default | Description |
+| --- | --- | --- |
+| `Url` | required | The registry's address |
+| `BasicAuthUsername`, `BasicAuthPassword` | `null` | Basic authentication |
+| `EnableSsl` | `false` | Use TLS to reach the registry |
+| `RequestTimeoutMs` | 30000 | How long a registry call may take |
+| `SchemaCacheCapacity` | 1000 | The most schemas cached locally |
+| `AutoRegisterSchemas` | `true` | Register a schema the registry doesn't have yet |
+| `SubjectNameStrategy` | `Topic` | `Topic`, `Record` or `TopicRecord` |
+
 Schemas are registered and looked up under a subject derived from the topic. Under the default subject name strategy
 the value subject is `<topic>-value`, so sinks writing different types to different topics each get their own subject.
-`SubjectNameStrategy` and `AutoRegisterSchemas` on `SchemaRegistryConfiguration` apply to both serializers.
+`SubjectNameStrategy` and `AutoRegisterSchemas` apply to both serializers. To use another format or registry, implement
+`IMessageSerializer`; it receives the topic as `MessageContext.Destination`, and `IsKey` tells a key from a body.
 
 ## Resilience
 
@@ -154,6 +193,17 @@ key, so it can be replayed:
 using var producer = new ProducerBuilder<byte[]?, byte[]>(new ProducerConfig { BootstrapServers = "kafka:9092" }).Build();
 builder.AddDeadLetterSink(new KafkaDeadLetterSink(producer, "orders-dead-letters"));
 ```
+
+## Best practices
+
+1. **Keep `Acks.All` and `EnableIdempotence`** (the defaults) for durability.
+2. **Give each logical consumer its own `GroupId`.** Members of one group share a topic's partitions, so run more
+   members, up to the partition count, to read in parallel.
+3. **Use Avro or Protobuf with a schema registry** when the schema will evolve.
+4. **Use `CompressionType.Lz4` or `Zstd`** on busy topics, and keep `Linger` at 5 to 50 ms so small messages batch.
+5. **Choose keys deliberately.** Messages with one key keep their order, and a hot key overloads one partition.
+6. **Use exactly-once only where duplicates matter.** A transaction per batch costs more than at-least-once delivery.
+7. **Watch the metrics** ([Metrics](message-queues.md#metrics)) for rows read and written, row errors and settlements.
 
 ## Next Steps
 
