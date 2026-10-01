@@ -1,14 +1,13 @@
 using NPipeline.Graph;
 using NPipeline.Nodes;
 using NPipeline.Nodes.Internal;
-using NPipeline.Pipeline;
 
-namespace NPipeline;
+namespace NPipeline.Pipeline;
 
 /// <summary>
 ///     Provides extension methods for adding self-join nodes to a pipeline.
 /// </summary>
-public static class SelfJoinExtensions
+public static class JoinPipelineBuilderExtensions
 {
     /// <summary>
     ///     Adds a self-join node to the pipeline, allowing you to join two streams of the same item type from different sources.
@@ -73,10 +72,10 @@ public static class SelfJoinExtensions
     ///     <code>
     /// // Create a pipeline with two sources of the same type
     /// var builder = new PipelineBuilder();
-    /// 
+    ///
     /// var orders2024 = builder.AddSource(() => GetOrders(2024), "orders_2024");
     /// var orders2023 = builder.AddSource(() => GetOrders(2023), "orders_2023");
-    /// 
+    ///
     /// // Join orders from both years by customer ID
     /// var joinedOrders = builder.AddSelfJoin(
     ///     leftSource: orders2024,
@@ -92,7 +91,7 @@ public static class SelfJoinExtensions
     ///     leftKeySelector: order => order.CustomerId,
     ///     rightKeySelector: order => order.CustomerId,
     ///     joinType: JoinType.Inner);
-    /// 
+    ///
     /// var sink = builder.AddSink(result => Console.WriteLine(result), "output");
     /// builder.Connect(joinedOrders, sink);
     /// </code>

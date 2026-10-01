@@ -15,7 +15,7 @@ namespace NPipeline.Tests.Nodes.Join;
 ///     Tests cover various join types, edge cases, and error scenarios to ensure
 ///     the self-join feature works correctly for joining same-type items from different sources.
 /// </summary>
-public sealed class SelfJoinExtensionsTests
+public sealed class JoinPipelineBuilderExtensionsTests
 {
     #region Null Fallbacks Tests
 
@@ -25,7 +25,7 @@ public sealed class SelfJoinExtensionsTests
         // Arrange
         var services = new ServiceCollection();
         services.AddSingleton<ConcurrentQueue<OutputRecord>>();
-        services.AddNPipeline(typeof(SelfJoinExtensionsTests).Assembly);
+        services.AddNPipeline(typeof(JoinPipelineBuilderExtensionsTests).Assembly);
         var provider = services.BuildServiceProvider();
 
         var runner = provider.GetRequiredService<IPipelineRunner>();
@@ -65,7 +65,7 @@ public sealed class SelfJoinExtensionsTests
         // Arrange
         var services = new ServiceCollection();
         services.AddSingleton<ConcurrentQueue<OutputRecord>>();
-        services.AddNPipeline(typeof(SelfJoinExtensionsTests).Assembly);
+        services.AddNPipeline(typeof(JoinPipelineBuilderExtensionsTests).Assembly);
         var provider = services.BuildServiceProvider();
 
         var runner = provider.GetRequiredService<IPipelineRunner>();
@@ -95,7 +95,7 @@ public sealed class SelfJoinExtensionsTests
         // Arrange
         var services = new ServiceCollection();
         services.AddSingleton<ConcurrentQueue<OutputRecord>>();
-        services.AddNPipeline(typeof(SelfJoinExtensionsTests).Assembly);
+        services.AddNPipeline(typeof(JoinPipelineBuilderExtensionsTests).Assembly);
         var provider = services.BuildServiceProvider();
 
         var runner = provider.GetRequiredService<IPipelineRunner>();
@@ -119,7 +119,7 @@ public sealed class SelfJoinExtensionsTests
         // Arrange
         var services = new ServiceCollection();
         services.AddSingleton<ConcurrentQueue<OutputRecord>>();
-        services.AddNPipeline(typeof(SelfJoinExtensionsTests).Assembly);
+        services.AddNPipeline(typeof(JoinPipelineBuilderExtensionsTests).Assembly);
         var provider = services.BuildServiceProvider();
 
         var runner = provider.GetRequiredService<IPipelineRunner>();
@@ -154,7 +154,7 @@ public sealed class SelfJoinExtensionsTests
         // Arrange
         var services = new ServiceCollection();
         services.AddSingleton<ConcurrentQueue<OutputRecord>>();
-        services.AddNPipeline(typeof(SelfJoinExtensionsTests).Assembly);
+        services.AddNPipeline(typeof(JoinPipelineBuilderExtensionsTests).Assembly);
         var provider = services.BuildServiceProvider();
 
         var runner = provider.GetRequiredService<IPipelineRunner>();
@@ -186,7 +186,7 @@ public sealed class SelfJoinExtensionsTests
         // Arrange
         var services = new ServiceCollection();
         services.AddSingleton<ConcurrentQueue<OutputRecord>>();
-        services.AddNPipeline(typeof(SelfJoinExtensionsTests).Assembly);
+        services.AddNPipeline(typeof(JoinPipelineBuilderExtensionsTests).Assembly);
         var provider = services.BuildServiceProvider();
 
         var runner = provider.GetRequiredService<IPipelineRunner>();
@@ -221,7 +221,7 @@ public sealed class SelfJoinExtensionsTests
         // Arrange
         var services = new ServiceCollection();
         services.AddSingleton<ConcurrentQueue<OutputRecord>>();
-        services.AddNPipeline(typeof(SelfJoinExtensionsTests).Assembly);
+        services.AddNPipeline(typeof(JoinPipelineBuilderExtensionsTests).Assembly);
         var provider = services.BuildServiceProvider();
 
         var runner = provider.GetRequiredService<IPipelineRunner>();
@@ -253,7 +253,7 @@ public sealed class SelfJoinExtensionsTests
         // Arrange
         var services = new ServiceCollection();
         services.AddSingleton<ConcurrentQueue<OutputRecord>>();
-        services.AddNPipeline(typeof(SelfJoinExtensionsTests).Assembly);
+        services.AddNPipeline(typeof(JoinPipelineBuilderExtensionsTests).Assembly);
         var provider = services.BuildServiceProvider();
 
         var runner = provider.GetRequiredService<IPipelineRunner>();
@@ -293,7 +293,7 @@ public sealed class SelfJoinExtensionsTests
         // Arrange
         var services = new ServiceCollection();
         services.AddSingleton<ConcurrentQueue<OutputRecord>>();
-        services.AddNPipeline(typeof(SelfJoinExtensionsTests).Assembly);
+        services.AddNPipeline(typeof(JoinPipelineBuilderExtensionsTests).Assembly);
         var provider = services.BuildServiceProvider();
 
         var runner = provider.GetRequiredService<IPipelineRunner>();
@@ -327,7 +327,7 @@ public sealed class SelfJoinExtensionsTests
         // Arrange
         var services = new ServiceCollection();
         services.AddSingleton<ConcurrentQueue<OutputRecord>>();
-        services.AddNPipeline(typeof(SelfJoinExtensionsTests).Assembly);
+        services.AddNPipeline(typeof(JoinPipelineBuilderExtensionsTests).Assembly);
         var provider = services.BuildServiceProvider();
 
         var runner = provider.GetRequiredService<IPipelineRunner>();
@@ -347,7 +347,7 @@ public sealed class SelfJoinExtensionsTests
         // Arrange
         var services = new ServiceCollection();
         services.AddSingleton<ConcurrentQueue<OutputRecord>>();
-        services.AddNPipeline(typeof(SelfJoinExtensionsTests).Assembly);
+        services.AddNPipeline(typeof(JoinPipelineBuilderExtensionsTests).Assembly);
         var provider = services.BuildServiceProvider();
 
         var runner = provider.GetRequiredService<IPipelineRunner>();
@@ -371,7 +371,7 @@ public sealed class SelfJoinExtensionsTests
         // Arrange
         var services = new ServiceCollection();
         services.AddSingleton<ConcurrentQueue<OutputRecord>>();
-        services.AddNPipeline(typeof(SelfJoinExtensionsTests).Assembly);
+        services.AddNPipeline(typeof(JoinPipelineBuilderExtensionsTests).Assembly);
         var provider = services.BuildServiceProvider();
 
         var runner = provider.GetRequiredService<IPipelineRunner>();
@@ -391,7 +391,7 @@ public sealed class SelfJoinExtensionsTests
         // Arrange
         var services = new ServiceCollection();
         services.AddSingleton<ConcurrentQueue<OutputRecord>>();
-        services.AddNPipeline(typeof(SelfJoinExtensionsTests).Assembly);
+        services.AddNPipeline(typeof(JoinPipelineBuilderExtensionsTests).Assembly);
         var provider = services.BuildServiceProvider();
 
         var runner = provider.GetRequiredService<IPipelineRunner>();
@@ -412,7 +412,7 @@ public sealed class SelfJoinExtensionsTests
         // Arrange
         var services = new ServiceCollection();
         services.AddSingleton<ConcurrentQueue<OutputRecord>>();
-        services.AddNPipeline(typeof(SelfJoinExtensionsTests).Assembly);
+        services.AddNPipeline(typeof(JoinPipelineBuilderExtensionsTests).Assembly);
         var provider = services.BuildServiceProvider();
 
         var runner = provider.GetRequiredService<IPipelineRunner>();
@@ -433,7 +433,7 @@ public sealed class SelfJoinExtensionsTests
         // Arrange
         var services = new ServiceCollection();
         services.AddSingleton<ConcurrentQueue<OutputRecord>>();
-        services.AddNPipeline(typeof(SelfJoinExtensionsTests).Assembly);
+        services.AddNPipeline(typeof(JoinPipelineBuilderExtensionsTests).Assembly);
         var provider = services.BuildServiceProvider();
 
         var runner = provider.GetRequiredService<IPipelineRunner>();
@@ -457,7 +457,7 @@ public sealed class SelfJoinExtensionsTests
         // Arrange
         var services = new ServiceCollection();
         services.AddSingleton<ConcurrentQueue<OutputRecord>>();
-        services.AddNPipeline(typeof(SelfJoinExtensionsTests).Assembly);
+        services.AddNPipeline(typeof(JoinPipelineBuilderExtensionsTests).Assembly);
         var provider = services.BuildServiceProvider();
 
         var runner = provider.GetRequiredService<IPipelineRunner>();
@@ -488,7 +488,7 @@ public sealed class SelfJoinExtensionsTests
         // Arrange
         var services = new ServiceCollection();
         services.AddSingleton<ConcurrentQueue<OutputRecord>>();
-        services.AddNPipeline(typeof(SelfJoinExtensionsTests).Assembly);
+        services.AddNPipeline(typeof(JoinPipelineBuilderExtensionsTests).Assembly);
         var provider = services.BuildServiceProvider();
 
         var runner = provider.GetRequiredService<IPipelineRunner>();
@@ -635,7 +635,7 @@ public sealed class SelfJoinExtensionsTests
         // Arrange
         var services = new ServiceCollection();
         services.AddSingleton<ConcurrentQueue<OutputRecord>>();
-        services.AddNPipeline(typeof(SelfJoinExtensionsTests).Assembly);
+        services.AddNPipeline(typeof(JoinPipelineBuilderExtensionsTests).Assembly);
         var provider = services.BuildServiceProvider();
 
         var runner = provider.GetRequiredService<IPipelineRunner>();
