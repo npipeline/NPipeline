@@ -63,7 +63,7 @@ typed at its ordinal:
 | Positional record or primary constructor | Constructor parameters matched to columns by name |
 | `required` members | Must have a column, or the query fails before its first row |
 | `[Column("order_id")]` or the connector's column attribute | Sets the column name; the shared `[Column]` wins when a member has both |
-| `[IgnoreColumn]` | Leaves the member out |
+| `[IgnoreColumn]` | Leaves the member out, when reading and when writing; see [Which members are written](#which-members-are-written) |
 | `int`, `string` and other single values | The result's first column |
 
 A value the column already holds as the member's type is read as it is. Otherwise it converts strictly and
@@ -144,10 +144,44 @@ var source = PostgresConnector.Source<Order>(connectionString, "SELECT * FROM or
 
 ## Writing
 
-A sink writes each record's readable members as columns, through a plan compiled once per type, in batches of
+A sink writes every readable member of the record as a column, through a plan compiled once per type, in batches of
 `BatchSize` rows. How a batch is written depends on the connector's write strategy: one statement per row, multi-row
 `INSERT` statements (split to stay under the database's parameter limit), or the database's bulk API. Enums are
 written as their underlying integer and `char` as text.
+
+### Which members are written
+
+**Every public property with a getter, and every public field, is written, including read-only and computed
+properties.** The table needs a column for each, or the write fails. Mark anything that has no column with `[IgnoreColumn]`:
+
+```csharp
+public class Customer
+{
+    public int Id { get; set; }
+    public string FirstName { get; set; } = "";
+    public string LastName { get; set; } = "";
+
+    [IgnoreColumn]                                  // computed: the table has no full_name column
+    public string FullName => $"{FirstName} {LastName}";
+}
+```
+
+Without the attribute, the sink writes a `full_name` column, and the database rejects it, for example PostgreSQL's
+`column "full_name" of relation "customers" does not exist`. This differs from reading, where a column with no member
+is simply left out.
+
+The same applies to columns the database fills in:
+
+| Column | How to leave it out of writes |
+| --- | --- |
+| SQL Server `IDENTITY`, Snowflake `AUTOINCREMENT` | `Identity = true` on `[SqlServerColumn]` or `[SnowflakeColumn]`: the member is read but never written |
+| MySQL `AUTO_INCREMENT` | `AutoIncrement = true` on `[MySqlColumn]`: read but never written |
+| PostgreSQL `SERIAL` or identity, DuckDB sequences | `[IgnoreColumn]`, since the member would otherwise write its default value (`0`) into every row and collide |
+
+A member you ignore is not read back either. To read a generated column but not write it, use two types: one with the
+member for the query, and one without it for the sink. The same goes for a column with a default the database should
+fill (a `created_at`): the sink writes the member whenever it exists, so a write type without the member lets the
+default apply.
 
 ### Transactions
 

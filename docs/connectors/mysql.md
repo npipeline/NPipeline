@@ -70,6 +70,9 @@ Plus the [options every SQL sink has](sql-connectors.md#options-every-sink-has).
 `[Column]` and `[IgnoreColumn]` work as in every connector. `[MySqlColumn(AutoIncrement = true)]` marks a column the
 database generates: it is read, but never written.
 
+A sink writes every readable member, so mark computed and generated members `[IgnoreColumn]`; see
+[Which members are written](sql-connectors.md#which-members-are-written).
+
 ## Connections
 
 A source or sink takes a connection string, a `mysql://` or `mariadb://` storage URI (see

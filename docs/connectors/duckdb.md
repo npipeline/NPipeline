@@ -93,6 +93,9 @@ fail.
 `[Column]` and `[IgnoreColumn]` work as in every connector, and so does `[DuckDBColumn]` (`Name`, `Ignore`). Its
 `PrimaryKey` makes the column part of the primary key of a table the sink creates.
 
+A sink writes every readable member, so mark computed and generated members `[IgnoreColumn]`; see
+[Which members are written](sql-connectors.md#which-members-are-written).
+
 ## Dependency Injection
 
 ```csharp

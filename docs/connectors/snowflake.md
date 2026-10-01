@@ -70,6 +70,9 @@ Plus the [options every SQL sink has](sql-connectors.md#options-every-sink-has).
 `[Column]` and `[IgnoreColumn]` work as in every connector. `[SnowflakeColumn]` adds `Identity` (read, never written)
 and `DbType`/`Size` to type the parameter explicitly.
 
+A sink writes every readable member, so mark computed and generated members `[IgnoreColumn]`; see
+[Which members are written](sql-connectors.md#which-members-are-written).
+
 ## Connections
 
 A source or sink takes a connection string, a `snowflake://` storage URI (the account as the host and the database as

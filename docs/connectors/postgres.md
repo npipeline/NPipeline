@@ -79,6 +79,9 @@ public sealed class Event
 }
 ```
 
+A sink writes every readable member, so mark computed and generated members `[IgnoreColumn]`; see
+[Which members are written](sql-connectors.md#which-members-are-written).
+
 ## Connections
 
 A source or sink takes a connection string, a `postgres://` storage URI, or an `IPostgresConnectionPool` of named data
