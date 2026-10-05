@@ -1,3 +1,4 @@
+using NPipeline.StorageProviders.Abstractions;
 using Npgsql;
 using NPipeline.Connectors.Postgres.Tests.Fixtures;
 using NPipeline.StorageProviders.Exceptions;
@@ -26,7 +27,7 @@ public sealed class PostgresDatabaseStorageProviderTests
         var uri = StorageUri.Parse("postgres://localhost/mydb");
 
         // Act
-        var result = _provider.CanHandle(uri);
+        var result = _provider.Schemes.Contains(uri.Scheme);
 
         // Assert
         Assert.True(result);
@@ -39,7 +40,7 @@ public sealed class PostgresDatabaseStorageProviderTests
         var uri = StorageUri.Parse("postgresql://localhost/mydb");
 
         // Act
-        var result = _provider.CanHandle(uri);
+        var result = _provider.Schemes.Contains(uri.Scheme);
 
         // Assert
         Assert.True(result);
@@ -52,7 +53,7 @@ public sealed class PostgresDatabaseStorageProviderTests
         var uri = StorageUri.Parse("sqlserver://localhost/mydb");
 
         // Act
-        var result = _provider.CanHandle(uri);
+        var result = _provider.Schemes.Contains(uri.Scheme);
 
         // Assert
         Assert.False(result);
@@ -152,56 +153,46 @@ public sealed class PostgresDatabaseStorageProviderTests
     [Fact]
     public void GetMetadata_ReturnsCorrectProviderMetadata()
     {
-        // Act
-        var metadata = _provider.GetMetadata();
-
         // Assert
-        Assert.Equal("PostgreSQL", metadata.Name);
-        Assert.Contains("postgres", metadata.SupportedSchemes);
-        Assert.Contains("postgresql", metadata.SupportedSchemes);
-        Assert.False(metadata.SupportsRead);
-        Assert.False(metadata.SupportsWrite);
-        Assert.False(metadata.SupportsListing);
-        Assert.False(metadata.SupportsMetadata);
-        Assert.False(metadata.SupportsHierarchy);
+        Assert.Equal("PostgreSQL", _provider.Name);
+        Assert.Equal(StorageCapabilities.None, _provider.Capabilities);
+        Assert.Contains(new StorageScheme("postgres"), _provider.Schemes);
+        Assert.Contains(new StorageScheme("postgresql"), _provider.Schemes);
     }
 
     // Unit Tests - Unsupported Operations
 
     [Fact]
-    public async Task OpenReadAsync_ThrowsNotSupportedException()
+    public async Task OpenReadAsync_ThrowsUnsupportedStorageCapability()
     {
         // Arrange
         var uri = StorageUri.Parse("postgres://localhost/mydb");
 
         // Act & Assert
-        var exception = await Assert.ThrowsAsync<NotSupportedException>(() => _provider.OpenReadAsync(uri));
-        Assert.Contains("OpenReadAsync is not supported", exception.Message);
-        Assert.Contains(nameof(PostgresDatabaseStorageProvider), exception.Message);
+        var exception = await Assert.ThrowsAsync<UnsupportedStorageCapabilityException>(() => _provider.OpenReadAsync(uri));
+        Assert.Equal(_provider.Name, exception.ProviderName);
     }
 
     [Fact]
-    public async Task OpenWriteAsync_ThrowsNotSupportedException()
+    public async Task OpenWriteAsync_ThrowsUnsupportedStorageCapability()
     {
         // Arrange
         var uri = StorageUri.Parse("postgres://localhost/mydb");
 
         // Act & Assert
-        var exception = await Assert.ThrowsAsync<NotSupportedException>(() => _provider.OpenWriteAsync(uri));
-        Assert.Contains("OpenWriteAsync is not supported", exception.Message);
-        Assert.Contains(nameof(PostgresDatabaseStorageProvider), exception.Message);
+        var exception = await Assert.ThrowsAsync<UnsupportedStorageCapabilityException>(() => _provider.OpenWriteAsync(uri));
+        Assert.Equal(_provider.Name, exception.ProviderName);
     }
 
     [Fact]
-    public async Task ExistsAsync_ThrowsNotSupportedException()
+    public async Task ExistsAsync_ThrowsUnsupportedStorageCapability()
     {
         // Arrange
         var uri = StorageUri.Parse("postgres://localhost/mydb");
 
         // Act & Assert
-        var exception = await Assert.ThrowsAsync<NotSupportedException>(() => _provider.ExistsAsync(uri));
-        Assert.Contains("ExistsAsync is not supported", exception.Message);
-        Assert.Contains(nameof(PostgresDatabaseStorageProvider), exception.Message);
+        var exception = await Assert.ThrowsAsync<UnsupportedStorageCapabilityException>(() => _provider.ExistsAsync(uri));
+        Assert.Equal(_provider.Name, exception.ProviderName);
     }
 
     // Integration Tests

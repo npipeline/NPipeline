@@ -20,6 +20,8 @@ dotnet add package NPipeline.StorageProviders.Sftp
 ### Basic Usage with Password Authentication
 
 ```csharp
+using NPipeline.StorageProviders.Abstractions;
+using NPipeline.StorageProviders.DependencyInjection;
 using NPipeline.StorageProviders.Sftp;
 using NPipeline.StorageProviders.Models;
 
@@ -31,10 +33,11 @@ services.AddSftpStorageProvider(options =>
     options.DefaultUsername = "user";
     options.DefaultPassword = "password";
 });
+services.AddStorageResolver(); // routes sftp:// URIs to the provider
 
 // Use the provider
-var provider = serviceProvider.GetRequiredService<SftpStorageProvider>();
 var uri = StorageUri.Parse("sftp://sftp.example.com/data/file.csv");
+var provider = serviceProvider.GetRequiredService<IStorageResolver>().Resolve(uri);
 
 // Read a file
 using var stream = await provider.OpenReadAsync(uri);
@@ -138,42 +141,25 @@ sftp://hostname:2222/path/to/file.csv?username=user&password=secret
 
 ### SftpStorageProvider
 
-The main implementation of `IStorageProvider` for SFTP operations.
+Derives from `StorageProvider` and implements `IStorageProvider`. `AddSftpStorageProvider` registers it as an `IStorageProvider`, so resolve it through `IStorageResolver` (add `AddStorageResolver()`), not as the concrete type.
+
+#### Capabilities
+
+`Read | Write | List | Delete | Move | AtomicMove | Hierarchy`. A move is an SFTP rename, which is atomic on POSIX servers. When the destination exists, the provider removes it first because a plain rename does not overwrite, so only a move onto a new path is a single atomic step.
 
 #### Methods
 
-| Method                                            | Description                                   |
-|---------------------------------------------------|-----------------------------------------------|
-| `OpenReadAsync(uri, cancellationToken)`           | Opens a readable stream for the specified URI |
-| `OpenWriteAsync(uri, cancellationToken)`          | Opens a writable stream for the specified URI |
-| `ExistsAsync(uri, cancellationToken)`             | Checks if a file exists at the specified URI  |
-| `ListAsync(prefix, recursive, cancellationToken)` | Lists files at the specified prefix           |
-| `GetMetadataAsync(uri, cancellationToken)`        | Gets metadata for the specified file          |
+| Method                                                   | Description                                                                               |
+|----------------------------------------------------------|-------------------------------------------------------------------------------------------|
+| `OpenReadAsync(uri, cancellationToken)`                  | Opens a readable stream. Throws `FileNotFoundException` when the file is missing          |
+| `OpenWriteAsync(uri, options, cancellationToken)`        | Opens a writable stream, creating missing parent directories and truncating an old file   |
+| `ExistsAsync(uri, cancellationToken)`                    | Returns whether a file or directory exists                                                |
+| `ListAsync(directory, recursive, cancellationToken)`     | Lists a directory. Non-recursive listings include directory entries; recursive ones list files only |
+| `GetMetadataAsync(uri, cancellationToken)`               | Gets metadata, or `null` when the path is missing                                         |
+| `DeleteAsync(uri, cancellationToken)`                    | Deletes a file. Deleting a missing file succeeds                                          |
+| `MoveAsync(source, destination, cancellationToken)`      | Renames a file on the same server, overwriting the destination                            |
 
-### SftpStorageException
-
-Exception thrown when SFTP operations fail.
-
-#### Properties
-
-| Property    | Type            | Description          |
-|-------------|-----------------|----------------------|
-| `Host`      | `string?`       | The SFTP server host |
-| `Path`      | `string?`       | The remote path      |
-| `ErrorCode` | `SftpErrorCode` | The SFTP error code  |
-
-#### Error Codes
-
-| Code                   | Description                                  |
-|------------------------|----------------------------------------------|
-| `Unknown`              | An unknown error occurred                    |
-| `ConnectionFailed`     | Connection to the SFTP server failed         |
-| `AuthenticationFailed` | Authentication failed                        |
-| `FileNotFound`         | The specified file was not found             |
-| `PermissionDenied`     | Permission denied for the operation          |
-| `PathNotFound`         | The specified path was not found             |
-| `OperationTimeout`     | The operation timed out                      |
-| `ConnectionLost`       | The connection was lost during the operation |
+Directory entries from `ListAsync` have a URI that ends with `/`, and a `null` `Size` and `LastModified`. A `LastModified` the server does not report is `null`.
 
 ## Connection Pooling
 
@@ -195,23 +181,25 @@ The provider uses a connection pool for high-performance scenarios:
 
 ## Error Handling
 
-The provider translates SSH.NET exceptions to standard .NET exceptions:
+The provider translates SSH.NET and socket failures to standard .NET exceptions, with the original as the inner exception:
 
-| SSH.NET Exception               | .NET Exception                |
-|---------------------------------|-------------------------------|
-| `SshAuthenticationException`    | `UnauthorizedAccessException` |
-| `SshConnectionException`        | `IOException`                 |
-| `SftpPathNotFoundException`     | `FileNotFoundException`       |
-| `SftpPermissionDeniedException` | `UnauthorizedAccessException` |
-| `OperationCanceledException`    | `OperationCanceledException`  |
+| SSH.NET Exception                               | .NET Exception                |
+|-------------------------------------------------|-------------------------------|
+| `SftpPathNotFoundException`                     | `FileNotFoundException`       |
+| `SftpPermissionDeniedException`                 | `UnauthorizedAccessException` |
+| `SshAuthenticationException`                    | `UnauthorizedAccessException` |
+| `SshConnectionException`, other `SshException`, `SocketException` | `IOException`  |
+| `OperationCanceledException`                    | `OperationCanceledException`  |
+
+`GetMetadataAsync` returns `null`, `ExistsAsync` returns `false`, and `DeleteAsync` succeeds when the path is missing.
 
 ## Examples
 
 ### List Files Recursively
 
 ```csharp
-var provider = serviceProvider.GetRequiredService<SftpStorageProvider>();
 var uri = StorageUri.Parse("sftp://sftp.example.com/data/");
+var provider = serviceProvider.GetRequiredService<IStorageResolver>().Resolve(uri);
 
 await foreach (var item in provider.ListAsync(uri, recursive: true))
 {
@@ -222,8 +210,8 @@ await foreach (var item in provider.ListAsync(uri, recursive: true))
 ### Check File Exists
 
 ```csharp
-var provider = serviceProvider.GetRequiredService<SftpStorageProvider>();
 var uri = StorageUri.Parse("sftp://sftp.example.com/data/file.csv");
+var provider = serviceProvider.GetRequiredService<IStorageResolver>().Resolve(uri);
 
 var exists = await provider.ExistsAsync(uri);
 Console.WriteLine($"File exists: {exists}");
@@ -232,8 +220,8 @@ Console.WriteLine($"File exists: {exists}");
 ### Get File Metadata
 
 ```csharp
-var provider = serviceProvider.GetRequiredService<SftpStorageProvider>();
 var uri = StorageUri.Parse("sftp://sftp.example.com/data/file.csv");
+var provider = serviceProvider.GetRequiredService<IStorageResolver>().Resolve(uri);
 
 var metadata = await provider.GetMetadataAsync(uri);
 

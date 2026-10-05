@@ -26,8 +26,6 @@ public static class PostgresStorageResolverFactory
     /// </remarks>
     public static StorageResolver CreateResolver()
     {
-        var resolver = new StorageResolver();
-        resolver.RegisterProvider(new PostgresDatabaseStorageProvider());
-        return resolver;
+        return new StorageResolver([new PostgresDatabaseStorageProvider()]);
     }
 }

@@ -7,7 +7,7 @@ namespace NPipeline.StorageProviders.S3.Aws;
 /// </summary>
 public class AwsS3StorageProvider : S3CoreStorageProvider
 {
-    private readonly AwsS3StorageProviderOptions _options;
+    private static readonly IReadOnlyList<StorageScheme> SchemeList = [StorageScheme.S3];
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="AwsS3StorageProvider" /> class.
@@ -17,28 +17,11 @@ public class AwsS3StorageProvider : S3CoreStorageProvider
     public AwsS3StorageProvider(AwsS3ClientFactory factory, AwsS3StorageProviderOptions options)
         : base(factory, options)
     {
-        _options = options ?? throw new ArgumentNullException(nameof(options));
     }
 
-    /// <summary>
-    ///     Builds the provider metadata with AWS-specific information.
-    /// </summary>
-    /// <returns>A <see cref="StorageProviderMetadata" /> object.</returns>
-    protected override StorageProviderMetadata BuildMetadata() =>
-        new()
-        {
-            Name = "AWS S3",
-            SupportedSchemes = ["s3"],
-            SupportsRead = true,
-            SupportsWrite = true,
-            SupportsListing = true,
-            SupportsMetadata = true,
-            SupportsHierarchy = false,
-            Capabilities = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
-            {
-                ["multipartUploadThresholdBytes"] = _options.MultipartUploadThresholdBytes,
-                ["supportsPathStyle"] = true,
-                ["supportsServiceUrl"] = true,
-            },
-        };
+    /// <inheritdoc />
+    public override string Name => "AWS S3";
+
+    /// <inheritdoc />
+    public override IReadOnlyList<StorageScheme> Schemes => SchemeList;
 }

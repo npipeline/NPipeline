@@ -56,7 +56,7 @@ public sealed class Program
             Console.WriteLine();
 
             // Get the storage provider for setup
-            var storageProvider = host.Services.GetRequiredService<GcsStorageProvider>();
+            var storageProvider = host.Services.GetServices<IStorageProvider>().OfType<GcsStorageProvider>().Single();
 
             // Seed initial data if using emulator (detected by custom service URL)
             if (!string.IsNullOrWhiteSpace(serviceUrl))

@@ -41,7 +41,7 @@ using var stream = await provider.OpenReadAsync(
 
 ## URI Format
 
-Uses the same `s3://` scheme as the AWS S3 provider:
+Uses the `s3://` scheme by default (see `Schemes` below to register it under another scheme):
 
 ```
 s3://bucket-name/key/path
@@ -66,6 +66,27 @@ s3://bucket-name/key/path
 | `SigningRegion` | `string` | `"us-east-1"` | Region string used only for request signing |
 | `ForcePathStyle` | `bool` | `true` | Use path-style URLs - required by most S3-compatible services |
 | `MultipartUploadThresholdBytes` | `long` | `67108864` (64 MB) | Objects above this size use S3 multipart upload |
+| `Schemes` | `IReadOnlyList<string>` | `["s3"]` | URI schemes the provider handles. Set `["minio"]` to use it beside the AWS provider in one resolver |
+
+## Using a custom scheme
+
+`AWS S3` and an S3-compatible endpoint cannot both claim `s3` in one resolver. Give the compatible provider its own scheme:
+
+```csharp
+services.AddStorageResolver();
+services.AddAwsS3StorageProvider();
+services.AddS3CompatibleStorageProvider(new S3CompatibleStorageProviderOptions
+{
+    ServiceUrl = new Uri("https://minio.example.com:9000"),
+    AccessKey  = "minioadmin",
+    SecretKey  = "minioadmin",
+    Schemes    = ["minio"]
+});
+
+// s3://aws-bucket/in.csv reads from AWS; minio://bucket/out.csv writes to MinIO
+```
+
+Only one S3-compatible provider can be registered per container, because the registration is keyed by provider type.
 
 ## Service-Specific Configuration
 
@@ -156,7 +177,7 @@ services.AddS3CompatibleStorageProvider(new S3CompatibleStorageProviderOptions
 
 > The `required` init properties mean there is no parameterless overload - a pre-built options instance is always required.
 
-Registers `S3CompatibleStorageProvider` as a singleton, along with `S3CompatibleClientFactory` and `S3CompatibleStorageProviderOptions`.
+Registers `S3CompatibleStorageProvider` as a singleton, along with `S3CompatibleClientFactory` and `S3CompatibleStorageProviderOptions`, and adds it to the `IStorageProvider` collection that `AddStorageResolver()` reads. Calling the method twice registers one provider.
 
 ## Examples
 
@@ -188,6 +209,20 @@ await foreach (var item in provider.ListAsync(prefix, recursive: true))
     Console.WriteLine($"{item.Uri}  {item.Size} bytes");
 ```
 
+### Deleting and moving
+
+```csharp
+// Idempotent: succeeds when the key is already gone
+await provider.DeleteAsync(StorageUri.Parse("s3://my-bucket/data/old.csv"));
+
+// Copy then delete (multipart copy above 5 GiB). Overwrites the destination; not atomic.
+await provider.MoveAsync(
+    StorageUri.Parse("s3://my-bucket/staging/orders.csv"),
+    StorageUri.Parse("s3://my-bucket/data/orders.csv"));
+```
+
+The provider declares `Read | Write | List | Delete | Move`.
+
 ### Metadata
 
 ```csharp
@@ -198,11 +233,13 @@ if (metadata is not null)
 
 ## Error Handling
 
-| S3 Error Code | .NET Exception | Cause |
+The HTTP status decides first; the error code only refines the result when the status is missing or generic. The `AmazonS3Exception` is always the inner exception.
+
+| HTTP status / error code | .NET Exception | Cause |
 |---------------|----------------|-------|
-| `AccessDenied`, `InvalidAccessKeyId`, `SignatureDoesNotMatch` | `UnauthorizedAccessException` | Auth or permission failure |
-| `InvalidBucketName`, `InvalidKey` | `ArgumentException` | Malformed bucket or key |
-| `NoSuchBucket`, `NotFound` | `FileNotFoundException` | Bucket or object does not exist |
+| 401, 403, `AccessDenied`, `InvalidAccessKeyId`, `SignatureDoesNotMatch` | `UnauthorizedAccessException` | Auth or permission failure |
+| 400 with `InvalidBucketName` or `InvalidKey` | `ArgumentException` | Malformed bucket or key |
+| 404, `NoSuchKey`, `NoSuchBucket`, `NotFound` | `FileNotFoundException` | Bucket or object does not exist |
 | Other S3 API errors | `IOException` | General failure |
 
 ## Limitations

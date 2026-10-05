@@ -1,6 +1,8 @@
 using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NPipeline.StorageProviders.Abstractions;
+using NPipeline.StorageProviders.DependencyInjection;
+using NPipeline.StorageProviders.Models;
 using Xunit;
 
 namespace NPipeline.StorageProviders.Azure.Tests;
@@ -277,22 +279,28 @@ public class ServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddAzureBlobStorageProvider_ProviderImplementsIStorageProviderMetadataProvider()
+    public void AddAzureBlobStorageProvider_Twice_RegistersOneProvider()
     {
-        // Arrange
         var services = new ServiceCollection();
+        services.AddAzureBlobStorageProvider();
+        services.AddAzureBlobStorageProvider(new AzureBlobStorageProviderOptions());
 
-        // Act
-        services.AddAzureBlobStorageProvider(options =>
-        {
-            options.DefaultConnectionString = "DefaultEndpointsProtocol=https;AccountName=test;AccountKey=test;EndpointSuffix=core.windows.net";
-        });
-
-        // Assert
         var provider = services.BuildServiceProvider();
-        var metadataProvider = provider.GetRequiredService<IStorageProviderMetadataProvider>();
-        metadataProvider.Should().NotBeNull();
-        metadataProvider.Should().BeOfType<AzureBlobStorageProvider>();
+
+        provider.GetServices<IStorageProvider>().OfType<AzureBlobStorageProvider>().Should().ContainSingle();
+    }
+
+    [Fact]
+    public void AddAzureBlobStorageProvider_ProviderIsResolvableThroughIStorageResolver()
+    {
+        var services = new ServiceCollection();
+        services.AddStorageResolver(false);
+        services.AddAzureBlobStorageProvider();
+
+        var provider = services.BuildServiceProvider();
+
+        provider.GetRequiredService<IStorageResolver>().Resolve(StorageUri.Parse("azure://container/blob"))
+            .Should().BeOfType<AzureBlobStorageProvider>();
     }
 
     [Fact]

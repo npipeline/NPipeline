@@ -16,28 +16,18 @@ namespace NPipeline.Connectors.MySql;
 ///     Connection strings are built with <see cref="MySqlConnectionStringBuilder" />.
 ///     Stream-based operations are not supported; use <see cref="IDatabaseConnection" /> instead.
 /// </remarks>
-public sealed class MySqlDatabaseStorageProvider : IDatabaseStorageProvider, IStorageProviderMetadataProvider
+public sealed class MySqlDatabaseStorageProvider : StorageProvider, IDatabaseStorageProvider
 {
-    private static readonly StorageProviderMetadata ProviderMetadata = new()
-    {
-        Name = "MySQL",
-        SupportedSchemes = ["mysql", "mariadb"],
-        SupportsRead = false,
-        SupportsWrite = false,
-        SupportsListing = false,
-        SupportsMetadata = false,
-        SupportsHierarchy = false,
-    };
-
-    /// <summary>Gets the primary URI scheme targeted by this provider.</summary>
-    public StorageScheme Scheme => StorageScheme.MySql;
+    private static readonly IReadOnlyList<StorageScheme> SupportedSchemeList = [new StorageScheme("mysql"), new StorageScheme("mariadb")];
 
     /// <inheritdoc />
-    public bool CanHandle(StorageUri uri)
-    {
-        ArgumentNullException.ThrowIfNull(uri);
-        return uri.Scheme == StorageScheme.MySql || uri.Scheme == StorageScheme.MariaDb;
-    }
+    public override string Name => "MySQL";
+
+    /// <inheritdoc />
+    public override IReadOnlyList<StorageScheme> Schemes => SupportedSchemeList;
+
+    /// <inheritdoc />
+    public override StorageCapabilities Capabilities => StorageCapabilities.None;
 
     /// <summary>
     ///     Builds a MySQL connection string from the specified <see cref="StorageUri" />.
@@ -101,27 +91,6 @@ public sealed class MySqlDatabaseStorageProvider : IDatabaseStorageProvider, ISt
 
         return new MySqlDatabaseConnection(connection);
     }
-
-    /// <inheritdoc />
-    public Task<Stream> OpenReadAsync(StorageUri uri, CancellationToken cancellationToken = default) =>
-        throw new NotSupportedException(
-            $"OpenReadAsync is not supported by {nameof(MySqlDatabaseStorageProvider)}. " +
-            "Use IDatabaseConnection for data access.");
-
-    /// <inheritdoc />
-    public Task<Stream> OpenWriteAsync(StorageUri uri, CancellationToken cancellationToken = default) =>
-        throw new NotSupportedException(
-            $"OpenWriteAsync is not supported by {nameof(MySqlDatabaseStorageProvider)}. " +
-            "Use IDatabaseConnection for data access.");
-
-    /// <inheritdoc />
-    public Task<bool> ExistsAsync(StorageUri uri, CancellationToken cancellationToken = default) =>
-        throw new NotSupportedException(
-            $"ExistsAsync is not supported by {nameof(MySqlDatabaseStorageProvider)}. " +
-            "Use IDatabaseConnection for data access.");
-
-    /// <inheritdoc />
-    public StorageProviderMetadata GetMetadata() => ProviderMetadata;
 
     private static bool IsHandledParameter(string key)
     {

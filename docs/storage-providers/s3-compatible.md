@@ -42,7 +42,7 @@ Uses the same `s3://` scheme as the AWS S3 provider:
 s3://bucket-name/key/path
 ```
 
-> **Note:** When both the AWS S3 and S3-Compatible providers are registered, the `StorageResolver` routes based on the `CanHandle()` check. Register only the provider you need, or use separate resolvers.
+> **Note:** The AWS S3 and S3-Compatible providers both serve the `s3` scheme by default, and a `StorageResolver` that contains both throws `ArgumentException`. Set `Schemes` on `S3CompatibleStorageProviderOptions` (for example `["minio"]`) so the two can coexist, or register only the one you need. One compatible provider can be registered per container; to register several, use `AddStorageProvider(instance)`.
 
 ## Configuration
 
@@ -54,6 +54,7 @@ All three required properties use `required init` - they must be set at construc
 | `AccessKey` | `string` | **(required)** | Access key |
 | `SecretKey` | `string` | **(required)** | Secret key |
 | `SigningRegion` | `string` | `"us-east-1"` | AWS signing region (use `"auto"` for Cloudflare R2) |
+| `Schemes` | `IReadOnlyList<string>` | `["s3"]` | URI schemes this provider serves, for example `["minio"]` |
 | `ForcePathStyle` | `bool` | `true` | Path-style URLs (required by most S3-compatible services) |
 | `MultipartUploadThresholdBytes` | `long` | `64 MB` | Switch to multipart upload above this size |
 
@@ -108,7 +109,7 @@ services.AddS3CompatibleStorageProvider(new S3CompatibleStorageProviderOptions
 
 > The `required` properties mean there is no parameterless overload - you must pass a pre-built options instance.
 
-Registers: `IStorageProvider`, `IStorageProviderMetadataProvider`
+Registers: `IStorageProvider`
 
 ## Supported Services
 

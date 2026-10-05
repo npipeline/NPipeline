@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Net;
 using System.Runtime.CompilerServices;
 using Amazon.S3;
@@ -10,17 +9,20 @@ namespace NPipeline.StorageProviders.S3;
 
 /// <summary>
 ///     Core S3 storage provider implementation that handles common S3 operations.
-///     Subclasses provide environment-specific client factory and metadata.
+///     Subclasses provide the name, the schemes and the environment-specific client factory.
 /// </summary>
 /// <remarks>
-///     - Async-first API design
-///     - Stream-based I/O for scalability
-///     - Proper error handling and exception translation
-///     - Cancellation token support throughout
-///     - Thread-safe implementation
+///     Declares <see cref="StorageCapabilities.Read" />, <see cref="StorageCapabilities.Write" />,
+///     <see cref="StorageCapabilities.List" />, <see cref="StorageCapabilities.Delete" /> and
+///     <see cref="StorageCapabilities.Move" />. A move is a copy followed by a delete, so it is not atomic.
 /// </remarks>
-public class S3CoreStorageProvider : IStorageProvider, IStorageProviderMetadataProvider
+public abstract class S3CoreStorageProvider : StorageProvider, IAsyncDisposable
 {
+    /// <summary>The largest object <c>CopyObject</c> can copy in one request (5 GiB).</summary>
+    internal const long MaxSingleCopyBytes = 5L * 1024 * 1024 * 1024;
+
+    private const long CopyPartBytes = 512L * 1024 * 1024;
+
     private readonly S3ClientFactoryBase _clientFactory;
 
     /// <summary>
@@ -30,8 +32,11 @@ public class S3CoreStorageProvider : IStorageProvider, IStorageProviderMetadataP
     /// <param name="options">The S3 storage provider options.</param>
     protected S3CoreStorageProvider(S3ClientFactoryBase clientFactory, S3CoreOptions options)
     {
-        _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
-        Options = options ?? throw new ArgumentNullException(nameof(options));
+        ArgumentNullException.ThrowIfNull(clientFactory);
+        ArgumentNullException.ThrowIfNull(options);
+
+        _clientFactory = clientFactory;
+        Options = options;
     }
 
     /// <summary>
@@ -39,32 +44,23 @@ public class S3CoreStorageProvider : IStorageProvider, IStorageProviderMetadataP
     /// </summary>
     protected S3CoreOptions Options { get; }
 
-    /// <summary>
-    ///     Gets the storage scheme supported by this provider.
-    /// </summary>
-    public StorageScheme Scheme => StorageScheme.S3;
+    /// <inheritdoc />
+    public override StorageCapabilities Capabilities =>
+        StorageCapabilities.Read | StorageCapabilities.Write | StorageCapabilities.List | StorageCapabilities.Delete | StorageCapabilities.Move;
 
     /// <summary>
-    ///     Determines whether this provider can handle the specified storage URI.
+    ///     Disposes the clients the provider's client factory created.
     /// </summary>
-    /// <param name="uri">The storage URI to check.</param>
-    /// <returns>True if the URI scheme matches "s3"; otherwise false.</returns>
-    public bool CanHandle(StorageUri uri)
+    public virtual ValueTask DisposeAsync()
     {
-        ArgumentNullException.ThrowIfNull(uri);
-        return Scheme.Equals(uri.Scheme);
+        _clientFactory.Dispose();
+        GC.SuppressFinalize(this);
+        return ValueTask.CompletedTask;
     }
 
-    /// <summary>
-    ///     Opens a readable stream for the specified S3 object.
-    /// </summary>
-    /// <param name="uri">The storage URI pointing to the S3 object.</param>
-    /// <param name="cancellationToken">Token to observe while waiting for the task to complete.</param>
-    /// <returns>A task producing a readable stream for the S3 object.</returns>
-    public async Task<Stream> OpenReadAsync(StorageUri uri, CancellationToken cancellationToken = default)
+    /// <inheritdoc />
+    protected override async Task<Stream> OpenReadCoreAsync(StorageUri uri, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(uri);
-
         var (bucket, key) = GetBucketAndKey(uri);
         var client = await _clientFactory.GetClientAsync(uri, cancellationToken).ConfigureAwait(false);
 
@@ -81,90 +77,28 @@ public class S3CoreStorageProvider : IStorageProvider, IStorageProviderMetadataP
         }
         catch (AmazonS3Exception ex)
         {
-            throw TranslateS3Exception(ex, bucket, key);
+            throw S3Errors.Translate(ex, bucket, key);
         }
     }
 
-    /// <summary>
-    ///     Opens a writable stream for the specified S3 object.
-    /// </summary>
-    /// <param name="uri">The storage URI pointing to the S3 object.</param>
-    /// <param name="cancellationToken">Token to observe while waiting for the task to complete.</param>
-    /// <returns>A task producing a writable stream for the S3 object.</returns>
-    public async Task<Stream> OpenWriteAsync(StorageUri uri, CancellationToken cancellationToken = default)
+    /// <inheritdoc />
+    protected override async Task<StorageWriteStream> OpenWriteCoreAsync(StorageUri uri, StorageWriteOptions? options, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(uri);
-
         var (bucket, key) = GetBucketAndKey(uri);
         var client = await _clientFactory.GetClientAsync(uri, cancellationToken).ConfigureAwait(false);
 
-        var contentType = uri.Parameters.TryGetValue("contentType", out var ct) && !string.IsNullOrEmpty(ct)
-            ? ct
-            : null;
+        var contentType = !string.IsNullOrEmpty(options?.ContentType)
+            ? options.ContentType
+            : uri.Parameters.TryGetValue("contentType", out var ct) && !string.IsNullOrEmpty(ct)
+                ? ct
+                : null;
 
-        return new S3WriteStream(client, bucket, key, contentType, Options.MultipartUploadThresholdBytes);
+        return new PassThroughWriteStream(new S3WriteStream(client, bucket, key, contentType, Options.MultipartUploadThresholdBytes));
     }
 
-    /// <summary>
-    ///     Checks whether an S3 object exists at the specified URI.
-    /// </summary>
-    /// <param name="uri">The storage URI to check.</param>
-    /// <param name="cancellationToken">Token to observe while waiting for the task to complete.</param>
-    /// <returns>True if the S3 object exists; otherwise false.</returns>
-    public async Task<bool> ExistsAsync(StorageUri uri, CancellationToken cancellationToken = default)
+    /// <inheritdoc />
+    protected override async Task<StorageMetadata?> GetMetadataCoreAsync(StorageUri uri, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(uri);
-
-        var (bucket, key) = GetBucketAndKey(uri);
-        var client = await _clientFactory.GetClientAsync(uri, cancellationToken).ConfigureAwait(false);
-
-        try
-        {
-            var request = new GetObjectMetadataRequest
-            {
-                BucketName = bucket,
-                Key = key,
-            };
-
-            _ = await client.GetObjectMetadataAsync(request, cancellationToken).ConfigureAwait(false);
-            return true;
-        }
-        catch (AmazonS3Exception ex) when (ex.StatusCode == HttpStatusCode.NotFound)
-        {
-            return false;
-        }
-        catch (AmazonS3Exception ex)
-        {
-            throw TranslateS3Exception(ex, bucket, key);
-        }
-    }
-
-    /// <summary>
-    ///     Lists S3 objects at the specified prefix.
-    /// </summary>
-    /// <param name="prefix">The URI prefix to list.</param>
-    /// <param name="recursive">If true, recursively lists all objects; if false, lists only objects in the specified prefix.</param>
-    /// <param name="cancellationToken">Token to observe while waiting for the task to complete.</param>
-    /// <returns>An async enumerable of <see cref="StorageItem" /> representing S3 objects.</returns>
-    public IAsyncEnumerable<StorageItem> ListAsync(
-        StorageUri prefix,
-        bool recursive = false,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(prefix);
-        return ListAsyncCore(prefix, recursive, cancellationToken);
-    }
-
-    /// <summary>
-    ///     Retrieves metadata for the S3 object at the specified URI.
-    /// </summary>
-    /// <param name="uri">The storage URI pointing to the S3 object.</param>
-    /// <param name="cancellationToken">Token to observe while waiting for the task to complete.</param>
-    /// <returns>A task producing <see cref="StorageMetadata" /> if the object exists; otherwise null.</returns>
-    public async Task<StorageMetadata?> GetMetadataAsync(StorageUri uri, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(uri);
-
         var (bucket, key) = GetBucketAndKey(uri);
         var client = await _clientFactory.GetClientAsync(uri, cancellationToken).ConfigureAwait(false);
 
@@ -180,23 +114,20 @@ public class S3CoreStorageProvider : IStorageProvider, IStorageProviderMetadataP
 
             var customMetadata = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-            // Add S3-specific metadata
             foreach (var metadataKey in response.Metadata.Keys)
             {
                 customMetadata[metadataKey] = response.Metadata[metadataKey];
             }
 
-            var metadata = new StorageMetadata
+            return new StorageMetadata
             {
                 Size = response.ContentLength,
-                LastModified = NormalizeDateTime(response.LastModified),
+                LastModified = ToOffset(response.LastModified),
                 ContentType = response.Headers.ContentType,
                 ETag = response.ETag,
                 CustomMetadata = customMetadata,
                 IsDirectory = false,
             };
-
-            return metadata;
         }
         catch (AmazonS3Exception ex) when (ex.StatusCode == HttpStatusCode.NotFound)
         {
@@ -204,35 +135,148 @@ public class S3CoreStorageProvider : IStorageProvider, IStorageProviderMetadataP
         }
         catch (AmazonS3Exception ex)
         {
-            throw TranslateS3Exception(ex, bucket, key);
+            throw S3Errors.Translate(ex, bucket, key);
         }
     }
 
-    /// <summary>
-    ///     Gets metadata describing this storage provider's capabilities.
-    /// </summary>
-    /// <returns>A <see cref="StorageProviderMetadata" /> object containing information about the provider's supported features.</returns>
-    public StorageProviderMetadata GetMetadata() => BuildMetadata();
+    /// <inheritdoc />
+    protected override async Task DeleteCoreAsync(StorageUri uri, CancellationToken cancellationToken)
+    {
+        var (bucket, key) = GetBucketAndKey(uri);
+        var client = await _clientFactory.GetClientAsync(uri, cancellationToken).ConfigureAwait(false);
 
-    /// <summary>
-    ///     Builds the provider metadata. Subclasses can override this to provide environment-specific metadata.
-    /// </summary>
-    /// <returns>A <see cref="StorageProviderMetadata" /> object.</returns>
-    protected virtual StorageProviderMetadata BuildMetadata() =>
-        new()
+        try
         {
-            Name = "S3",
-            SupportedSchemes = ["s3"],
-            SupportsRead = true,
-            SupportsWrite = true,
-            SupportsListing = true,
-            SupportsMetadata = true,
-            SupportsHierarchy = false, // S3 is flat
-            Capabilities = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
+            // DeleteObject succeeds for a missing key; a missing bucket is also treated as "already gone".
+            _ = await client.DeleteObjectAsync(new DeleteObjectRequest { BucketName = bucket, Key = key }, cancellationToken).ConfigureAwait(false);
+        }
+        catch (AmazonS3Exception ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+        {
+            // Already gone.
+        }
+        catch (AmazonS3Exception ex)
+        {
+            throw S3Errors.Translate(ex, bucket, key);
+        }
+    }
+
+    /// <inheritdoc />
+    protected override async Task MoveCoreAsync(StorageUri source, StorageUri destination, CancellationToken cancellationToken)
+    {
+        var (sourceBucket, sourceKey) = GetBucketAndKey(source);
+        var (destinationBucket, destinationKey) = GetBucketAndKey(destination);
+        var client = await _clientFactory.GetClientAsync(source, cancellationToken).ConfigureAwait(false);
+
+        try
+        {
+            GetObjectMetadataResponse head;
+
+            try
             {
-                ["multipartUploadThresholdBytes"] = Options.MultipartUploadThresholdBytes,
-            },
+                head = await client.GetObjectMetadataAsync(
+                    new GetObjectMetadataRequest { BucketName = sourceBucket, Key = sourceKey }, cancellationToken).ConfigureAwait(false);
+            }
+            catch (AmazonS3Exception ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+            {
+                throw new FileNotFoundException($"S3 object '{sourceBucket}/{sourceKey}' was not found.", ex);
+            }
+
+            // Copying an object onto itself would fail, and the delete that follows would destroy it.
+            if (string.Equals(sourceBucket, destinationBucket, StringComparison.Ordinal) && string.Equals(sourceKey, destinationKey, StringComparison.Ordinal))
+                return;
+
+            if (head.ContentLength <= MaxSingleCopyBytes)
+            {
+                _ = await client.CopyObjectAsync(
+                    new CopyObjectRequest
+                    {
+                        SourceBucket = sourceBucket,
+                        SourceKey = sourceKey,
+                        DestinationBucket = destinationBucket,
+                        DestinationKey = destinationKey,
+                    }, cancellationToken).ConfigureAwait(false);
+            }
+            else
+            {
+                await CopyMultipartAsync(client, head, sourceBucket, sourceKey, destinationBucket, destinationKey, cancellationToken).ConfigureAwait(false);
+            }
+
+            _ = await client.DeleteObjectAsync(new DeleteObjectRequest { BucketName = sourceBucket, Key = sourceKey }, cancellationToken).ConfigureAwait(false);
+        }
+        catch (AmazonS3Exception ex)
+        {
+            throw S3Errors.Translate(ex, sourceBucket, sourceKey);
+        }
+    }
+
+    /// <inheritdoc />
+    protected override async IAsyncEnumerable<StorageItem> ListCoreAsync(
+        StorageUri directory,
+        bool recursive,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var (bucket, prefix) = GetBucketAndKey(directory);
+        var client = await _clientFactory.GetClientAsync(directory, cancellationToken).ConfigureAwait(false);
+
+        var request = new ListObjectsV2Request
+        {
+            BucketName = bucket,
+            Prefix = prefix,
+            Delimiter = recursive
+                ? null
+                : "/",
         };
+
+        do
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            ListObjectsV2Response response;
+
+            try
+            {
+                response = await client.ListObjectsV2Async(request, cancellationToken).ConfigureAwait(false);
+            }
+            catch (AmazonS3Exception ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+            {
+                // The bucket does not exist.
+                yield break;
+            }
+            catch (AmazonS3Exception ex)
+            {
+                throw S3Errors.Translate(ex, bucket, prefix);
+            }
+
+            foreach (var s3Object in response.S3Objects ?? [])
+            {
+                // Zero-byte "folder marker" objects (keys ending in '/') are not files.
+                if (s3Object.Key.EndsWith('/'))
+                    continue;
+
+                yield return new StorageItem
+                {
+                    Uri = directory.WithPath("/" + s3Object.Key),
+                    Size = s3Object.Size,
+                    LastModified = ToOffset(s3Object.LastModified),
+                    IsDirectory = false,
+                };
+            }
+
+            if (!recursive)
+            {
+                foreach (var commonPrefix in response.CommonPrefixes ?? [])
+                {
+                    yield return new StorageItem
+                    {
+                        Uri = directory.WithPath("/" + commonPrefix),
+                        IsDirectory = true,
+                    };
+                }
+            }
+
+            request.ContinuationToken = response.NextContinuationToken;
+        } while (!string.IsNullOrEmpty(request.ContinuationToken));
+    }
 
     /// <summary>
     ///     Extracts the bucket and key from a storage URI.
@@ -250,21 +294,10 @@ public class S3CoreStorageProvider : IStorageProvider, IStorageProviderMetadataP
         return (bucket, key);
     }
 
-    /// <summary>
-    ///     Translates an AmazonS3Exception to a more specific exception type.
-    /// </summary>
-    /// <param name="ex">The Amazon S3 exception.</param>
-    /// <param name="bucket">The bucket name.</param>
-    /// <param name="key">The object key.</param>
-    /// <returns>A translated exception.</returns>
-    protected static Exception TranslateS3Exception(AmazonS3Exception ex, string bucket, string key) => S3Errors.Translate(ex, bucket, key);
-
-    /// <summary>
-    ///     Normalizes a nullable DateTime to a DateTimeOffset.
-    /// </summary>
-    private static DateTimeOffset NormalizeDateTime(DateTime? value)
+    private static DateTimeOffset? ToOffset(DateTime? value)
     {
-        var actual = value ?? DateTime.UtcNow;
+        if (value is not { } actual)
+            return null;
 
         var utc = actual.Kind == DateTimeKind.Unspecified
             ? DateTime.SpecifyKind(actual, DateTimeKind.Utc)
@@ -273,96 +306,78 @@ public class S3CoreStorageProvider : IStorageProvider, IStorageProviderMetadataP
         return new DateTimeOffset(utc);
     }
 
-    private async IAsyncEnumerable<StorageItem> ListAsyncCore(
-        StorageUri prefix,
-        bool recursive,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
+    private static async Task CopyMultipartAsync(
+        IAmazonS3 client,
+        GetObjectMetadataResponse head,
+        string sourceBucket,
+        string sourceKey,
+        string destinationBucket,
+        string destinationKey,
+        CancellationToken cancellationToken)
     {
-        var (bucket, key) = GetBucketAndKey(prefix);
-        var client = await _clientFactory.GetClientAsync(prefix, cancellationToken).ConfigureAwait(false);
-
-        var request = new ListObjectsV2Request
+        var initiate = new InitiateMultipartUploadRequest
         {
-            BucketName = bucket,
-            Prefix = key,
-            Delimiter = recursive
-                ? string.Empty
-                : "/",
+            BucketName = destinationBucket,
+            Key = destinationKey,
+            ContentType = head.Headers.ContentType,
         };
 
-        string? continuationToken = null;
-
-        do
+        foreach (var metadataKey in head.Metadata.Keys)
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            initiate.Metadata[metadataKey] = head.Metadata[metadataKey];
+        }
 
-            if (continuationToken != null)
-                request.ContinuationToken = continuationToken;
+        var upload = await client.InitiateMultipartUploadAsync(initiate, cancellationToken).ConfigureAwait(false);
 
-            ListObjectsV2Response response;
+        try
+        {
+            var parts = new List<PartETag>();
+            var partNumber = 1;
 
+            for (long offset = 0; offset < head.ContentLength; offset += CopyPartBytes, partNumber++)
+            {
+                var last = Math.Min(offset + CopyPartBytes, head.ContentLength) - 1;
+
+                var response = await client.CopyPartAsync(
+                    new CopyPartRequest
+                    {
+                        SourceBucket = sourceBucket,
+                        SourceKey = sourceKey,
+                        DestinationBucket = destinationBucket,
+                        DestinationKey = destinationKey,
+                        UploadId = upload.UploadId,
+                        PartNumber = partNumber,
+                        FirstByte = offset,
+                        LastByte = last,
+                    }, cancellationToken).ConfigureAwait(false);
+
+                parts.Add(new PartETag(partNumber, response.ETag));
+            }
+
+            _ = await client.CompleteMultipartUploadAsync(
+                new CompleteMultipartUploadRequest
+                {
+                    BucketName = destinationBucket,
+                    Key = destinationKey,
+                    UploadId = upload.UploadId,
+                    PartETags = parts,
+                }, cancellationToken).ConfigureAwait(false);
+        }
+        catch
+        {
             try
             {
-                response = await client.ListObjectsV2Async(request, cancellationToken).ConfigureAwait(false);
+                _ = await client.AbortMultipartUploadAsync(
+                    new AbortMultipartUploadRequest { BucketName = destinationBucket, Key = destinationKey, UploadId = upload.UploadId },
+                    CancellationToken.None).ConfigureAwait(false);
             }
-            catch (AmazonS3Exception ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+            catch (AmazonS3Exception)
             {
-                // Bucket doesn't exist, return empty
-                yield break;
-            }
-            catch (AmazonS3Exception ex)
-            {
-                throw TranslateS3Exception(ex, bucket, key);
+                // Best effort; the original failure is the one to report.
             }
 
-            // Yield objects
-            foreach (var s3Object in response.S3Objects)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                var objectKey = s3Object.Key;
-                var itemUri = prefix.WithPath("/" + objectKey);
-                var size = s3Object.Size ?? 0;
-
-#if DEBUG
-                if (s3Object.Size is null)
-                {
-                    Debug.WriteLine(
-                        $"S3 object '{bucket}/{objectKey}' returned without size metadata; defaulting to 0.");
-                }
-#endif
-
-                yield return new StorageItem
-                {
-                    Uri = itemUri,
-                    Size = size,
-                    LastModified = NormalizeDateTime(s3Object.LastModified),
-                    IsDirectory = false,
-                };
-            }
-
-            // Yield common prefixes (directories) for non-recursive listing
-            if (!recursive)
-            {
-                foreach (var commonPrefix in response.CommonPrefixes)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-
-                    var prefixKey = commonPrefix.TrimEnd('/');
-                    var itemUri = prefix.WithPath("/" + prefixKey);
-
-                    yield return new StorageItem
-                    {
-                        Uri = itemUri,
-                        Size = 0,
-                        LastModified = DateTimeOffset.UtcNow,
-                        IsDirectory = true,
-                    };
-                }
-            }
-
-            continuationToken = response.NextContinuationToken;
-        } while (!string.IsNullOrEmpty(continuationToken));
+            throw;
+        }
     }
 
     private sealed class S3ResponseStream : Stream
@@ -379,7 +394,7 @@ public class S3CoreStorageProvider : IStorageProvider, IStorageProviderMetadataP
         public override bool CanRead => _inner.CanRead;
         public override bool CanSeek => _inner.CanSeek;
         public override bool CanWrite => _inner.CanWrite;
-        public override long Length => _inner.Length;
+        public override long Length => _response.ContentLength;
 
         public override long Position
         {

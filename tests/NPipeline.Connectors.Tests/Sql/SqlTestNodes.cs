@@ -55,7 +55,7 @@ public sealed class TestSource<T> : SqlSourceNode<T>
 
     protected override string ConnectorName => "test";
 
-    protected override IStorageResolver DefaultResolver => StorageProviderFactory.CreateResolver();
+    protected override IStorageResolver DefaultResolver => StorageResolver.Default;
 
     protected override DbConnection CreateConnection(string connectionString) => throw new NotSupportedException();
 
@@ -77,7 +77,7 @@ public sealed class TestSink<T> : SqlSinkNode<T>
         _options = options;
     }
 
-    protected override IStorageResolver DefaultResolver => StorageProviderFactory.CreateResolver();
+    protected override IStorageResolver DefaultResolver => StorageResolver.Default;
 
     protected override DbConnection CreateConnection(string connectionString) => throw new NotSupportedException();
 

@@ -31,7 +31,7 @@ internal static class SqlConnections
     private static string ResolveConnectionString(SqlNodeOptions options, Func<IStorageResolver> defaultResolver)
     {
         var uri = options.Uri ?? throw new InvalidOperationException("The options name no connection string or URI.");
-        var provider = options.Provider ?? StorageProviderFactory.GetProviderOrThrow(options.Resolver ?? defaultResolver(), uri);
+        var provider = options.Provider ?? (options.Resolver ?? defaultResolver()).Resolve(uri);
 
         return provider is IDatabaseStorageProvider database
             ? database.GetConnectionString(uri)

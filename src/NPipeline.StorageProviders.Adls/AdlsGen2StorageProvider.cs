@@ -8,24 +8,18 @@ using NPipeline.StorageProviders.Models;
 namespace NPipeline.StorageProviders.Adls;
 
 /// <summary>
-///     Storage provider for Azure Data Lake Storage Gen2 that implements the <see cref="IStorageProvider" /> interface.
+///     Storage provider for Azure Data Lake Storage Gen2.
 ///     Handles "adls" scheme URIs and supports reading, writing, listing, moving, deleting, and metadata operations.
 /// </summary>
 /// <remarks>
-///     - Async-first API design
-///     - Stream-based I/O for scalability
-///     - Proper error handling and exception translation
-///     - Cancellation token support throughout
-///     - Thread-safe implementation
-///     - True hierarchical namespace support (unlike Azure Blob Storage)
-///     - Native atomic rename/move operations
+///     Declares <see cref="StorageCapabilities.Hierarchy" />. <see cref="StorageCapabilities.AtomicMove" /> is not declared
+///     because <see cref="MoveCoreAsync" /> still falls back to copy-and-delete when the rename is rejected; that fallback is
+///     scheduled for removal, after which the provider can declare it.
 /// </remarks>
-public sealed class AdlsGen2StorageProvider
-    : IStorageProvider,
-        IDeletableStorageProvider,
-        IMoveableStorageProvider,
-        IStorageProviderMetadataProvider
+public sealed class AdlsGen2StorageProvider : StorageProvider
 {
+    private static readonly IReadOnlyList<StorageScheme> SchemeList = [StorageScheme.Adls];
+
     private static readonly Regex FilesystemNameRegex = new(
         "^[a-z0-9](?:[a-z0-9-]{1,61}[a-z0-9])?$",
         RegexOptions.Compiled | RegexOptions.CultureInvariant,
@@ -45,16 +39,20 @@ public sealed class AdlsGen2StorageProvider
         _options = options ?? throw new ArgumentNullException(nameof(options));
     }
 
-    /// <summary>
-    ///     Deletes a file at the specified URI.
-    /// </summary>
-    /// <param name="uri">The URI of the file to delete.</param>
-    /// <param name="cancellationToken">The cancellation token.</param>
-    /// <returns>A task representing the asynchronous operation.</returns>
-    public async Task DeleteAsync(StorageUri uri, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(uri);
+    /// <inheritdoc />
+    public override string Name => "Azure Data Lake Storage Gen2";
 
+    /// <inheritdoc />
+    public override IReadOnlyList<StorageScheme> Schemes => SchemeList;
+
+    /// <inheritdoc />
+    public override StorageCapabilities Capabilities =>
+        StorageCapabilities.Read | StorageCapabilities.Write | StorageCapabilities.List | StorageCapabilities.Delete | StorageCapabilities.Move |
+        StorageCapabilities.Hierarchy;
+
+    /// <inheritdoc />
+    protected override async Task DeleteCoreAsync(StorageUri uri, CancellationToken cancellationToken)
+    {
         var (filesystem, path) = GetFilesystemAndPath(uri, true);
         var dataLakeServiceClient = await _clientFactory.GetClientAsync(uri, cancellationToken).ConfigureAwait(false);
         var pathClient = dataLakeServiceClient.GetFileSystemClient(filesystem).GetFileClient(path);
@@ -69,31 +67,21 @@ public sealed class AdlsGen2StorageProvider
         }
         catch (RequestFailedException ex)
         {
-            throw TranslateAdlsException(ex, filesystem, path);
+            throw AdlsErrors.Translate(ex, filesystem, path);
         }
     }
 
-    /// <summary>
-    ///     Moves a file from one location to another using ADLS Gen2's atomic rename operation.
-    /// </summary>
-    /// <param name="sourceUri">The source URI.</param>
-    /// <param name="destinationUri">The destination URI.</param>
-    /// <param name="cancellationToken">The cancellation token.</param>
-    /// <returns>A task representing the asynchronous operation.</returns>
-    /// <exception cref="NotSupportedException">Thrown when attempting to move across storage accounts.</exception>
-    public async Task MoveAsync(StorageUri sourceUri, StorageUri destinationUri, CancellationToken cancellationToken = default)
+    /// <inheritdoc />
+    protected override async Task MoveCoreAsync(StorageUri source, StorageUri destination, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(sourceUri);
-        ArgumentNullException.ThrowIfNull(destinationUri);
+        var (sourceFilesystem, sourcePath) = GetFilesystemAndPath(source, true);
+        var (destFilesystem, destPath) = GetFilesystemAndPath(destination, true);
 
-        var (sourceFilesystem, sourcePath) = GetFilesystemAndPath(sourceUri, true);
-        var (destFilesystem, destPath) = GetFilesystemAndPath(destinationUri, true);
-
-        var sourceServiceClient = await _clientFactory.GetClientAsync(sourceUri, cancellationToken).ConfigureAwait(false);
+        var sourceServiceClient = await _clientFactory.GetClientAsync(source, cancellationToken).ConfigureAwait(false);
 
         // For v1, we only support moves within the same storage account
         // Check if destination uses the same account/connection
-        var destServiceClient = await _clientFactory.GetClientAsync(destinationUri, cancellationToken).ConfigureAwait(false);
+        var destServiceClient = await _clientFactory.GetClientAsync(destination, cancellationToken).ConfigureAwait(false);
 
         if (sourceServiceClient != destServiceClient)
         {
@@ -117,41 +105,18 @@ public sealed class AdlsGen2StorageProvider
         }
         catch (RequestFailedException ex) when (ex.Status == 400)
         {
-            await MoveViaBlobCopyAsync(sourceUri, destinationUri, sourceFilesystem, sourcePath, destFilesystem, destPath, cancellationToken)
+            await MoveViaBlobCopyAsync(source, destination, sourceFilesystem, sourcePath, destFilesystem, destPath, cancellationToken)
                 .ConfigureAwait(false);
         }
         catch (RequestFailedException ex)
         {
-            throw TranslateAdlsException(ex, sourceFilesystem, sourcePath);
+            throw AdlsErrors.Translate(ex, sourceFilesystem, sourcePath);
         }
     }
 
-    /// <summary>
-    ///     Gets the storage scheme supported by this provider.
-    /// </summary>
-    public StorageScheme Scheme => StorageScheme.Adls;
-
-    /// <summary>
-    ///     Determines whether this provider can handle the specified storage URI.
-    /// </summary>
-    /// <param name="uri">The storage URI to check.</param>
-    /// <returns>True if the URI scheme matches "adls"; otherwise false.</returns>
-    public bool CanHandle(StorageUri uri)
+    /// <inheritdoc />
+    protected override async Task<Stream> OpenReadCoreAsync(StorageUri uri, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(uri);
-        return Scheme.Equals(uri.Scheme);
-    }
-
-    /// <summary>
-    ///     Opens a readable stream for the specified ADLS Gen2 file.
-    /// </summary>
-    /// <param name="uri">The storage URI pointing to the ADLS Gen2 file.</param>
-    /// <param name="cancellationToken">Token to observe while waiting for the task to complete.</param>
-    /// <returns>A task producing a readable stream for the ADLS Gen2 file.</returns>
-    public async Task<Stream> OpenReadAsync(StorageUri uri, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(uri);
-
         var (filesystem, path) = GetFilesystemAndPath(uri, true);
         var dataLakeServiceClient = await _clientFactory.GetClientAsync(uri, cancellationToken).ConfigureAwait(false);
         var fileClient = dataLakeServiceClient.GetFileSystemClient(filesystem).GetFileClient(path);
@@ -162,29 +127,24 @@ public sealed class AdlsGen2StorageProvider
         }
         catch (RequestFailedException ex)
         {
-            throw TranslateAdlsException(ex, filesystem, path);
+            throw AdlsErrors.Translate(ex, filesystem, path);
         }
     }
 
-    /// <summary>
-    ///     Opens a writable stream for the specified ADLS Gen2 file.
-    /// </summary>
-    /// <param name="uri">The storage URI pointing to the ADLS Gen2 file.</param>
-    /// <param name="cancellationToken">Token to observe while waiting for the task to complete.</param>
-    /// <returns>A task producing a writable stream for the ADLS Gen2 file.</returns>
-    public async Task<Stream> OpenWriteAsync(StorageUri uri, CancellationToken cancellationToken = default)
+    /// <inheritdoc />
+    protected override async Task<StorageWriteStream> OpenWriteCoreAsync(StorageUri uri, StorageWriteOptions? options, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(uri);
-
         var (filesystem, path) = GetFilesystemAndPath(uri, true);
         _ = await _clientFactory.GetClientAsync(uri, cancellationToken).ConfigureAwait(false);
         var blobServiceClient = await _clientFactory.GetBlobServiceClientAsync(uri, cancellationToken).ConfigureAwait(false);
 
-        var contentType = uri.Parameters.TryGetValue("contentType", out var ct) && !string.IsNullOrEmpty(ct)
-            ? ct
-            : null;
+        var contentType = !string.IsNullOrEmpty(options?.ContentType)
+            ? options.ContentType
+            : uri.Parameters.TryGetValue("contentType", out var ct) && !string.IsNullOrEmpty(ct)
+                ? ct
+                : null;
 
-        return new AdlsGen2WriteStream(
+        return new PassThroughWriteStream(new AdlsGen2WriteStream(
             blobServiceClient,
             filesystem,
             path,
@@ -192,20 +152,14 @@ public sealed class AdlsGen2StorageProvider
             _options.UploadThresholdBytes,
             _options.UploadMaximumConcurrency,
             _options.UploadMaximumTransferSizeBytes,
-            cancellationToken);
+            cancellationToken));
     }
 
-    /// <summary>
-    ///     Checks whether an ADLS Gen2 file exists at the specified URI.
-    /// </summary>
-    /// <param name="uri">The storage URI to check.</param>
-    /// <param name="cancellationToken">Token to observe while waiting for the task to complete.</param>
-    /// <returns>True if the ADLS Gen2 file exists; otherwise false.</returns>
-    public async Task<bool> ExistsAsync(StorageUri uri, CancellationToken cancellationToken = default)
+    /// <inheritdoc />
+    protected override async Task<bool> ExistsCoreAsync(StorageUri uri, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(uri);
-
         var (filesystem, path) = GetFilesystemAndPath(uri, true);
+        path = path.TrimEnd('/'); // A directory URI ends with '/'; the service addresses it without it.
         var dataLakeServiceClient = await _clientFactory.GetClientAsync(uri, cancellationToken).ConfigureAwait(false);
         var fileClient = dataLakeServiceClient.GetFileSystemClient(filesystem).GetFileClient(path);
 
@@ -219,37 +173,15 @@ public sealed class AdlsGen2StorageProvider
         }
         catch (RequestFailedException ex)
         {
-            throw TranslateAdlsException(ex, filesystem, path);
+            throw AdlsErrors.Translate(ex, filesystem, path);
         }
     }
 
-    /// <summary>
-    ///     Lists ADLS Gen2 paths at the specified prefix.
-    /// </summary>
-    /// <param name="prefix">The URI prefix to list.</param>
-    /// <param name="recursive">If true, recursively lists all paths; if false, lists only paths in the specified prefix.</param>
-    /// <param name="cancellationToken">Token to observe while waiting for the task to complete.</param>
-    /// <returns>An async enumerable of <see cref="StorageItem" /> representing ADLS Gen2 paths.</returns>
-    public IAsyncEnumerable<StorageItem> ListAsync(
-        StorageUri prefix,
-        bool recursive = false,
-        CancellationToken cancellationToken = default)
+    /// <inheritdoc />
+    protected override async Task<StorageMetadata?> GetMetadataCoreAsync(StorageUri uri, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(prefix);
-        return ListAsyncCore(prefix, recursive, cancellationToken);
-    }
-
-    /// <summary>
-    ///     Retrieves metadata for the ADLS Gen2 file at the specified URI.
-    /// </summary>
-    /// <param name="uri">The storage URI pointing to the ADLS Gen2 file.</param>
-    /// <param name="cancellationToken">Token to observe while waiting for the task to complete.</param>
-    /// <returns>A task producing <see cref="StorageMetadata" /> if the file exists; otherwise null.</returns>
-    public async Task<StorageMetadata?> GetMetadataAsync(StorageUri uri, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(uri);
-
         var (filesystem, path) = GetFilesystemAndPath(uri, true);
+        path = path.TrimEnd('/'); // A directory URI ends with '/'; the service addresses it without it.
         var dataLakeServiceClient = await _clientFactory.GetClientAsync(uri, cancellationToken).ConfigureAwait(false);
         var pathClient = dataLakeServiceClient.GetFileSystemClient(filesystem).GetFileClient(path);
 
@@ -283,37 +215,9 @@ public sealed class AdlsGen2StorageProvider
         }
         catch (RequestFailedException ex)
         {
-            throw TranslateAdlsException(ex, filesystem, path);
+            throw AdlsErrors.Translate(ex, filesystem, path);
         }
     }
-
-    /// <summary>
-    ///     Gets metadata describing this storage provider's capabilities.
-    /// </summary>
-    /// <returns>A <see cref="StorageProviderMetadata" /> object containing information about the provider's supported features.</returns>
-    public StorageProviderMetadata GetMetadata() =>
-        new()
-        {
-            Name = "Azure Data Lake Storage Gen2",
-            SupportedSchemes = ["adls"],
-            SupportsRead = true,
-            SupportsWrite = true,
-            SupportsListing = true,
-            SupportsMetadata = true,
-            SupportsHierarchy = true, // ADLS Gen2 has true hierarchical namespace
-            Capabilities = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
-            {
-                ["supportsAtomicMove"] = true,
-                ["supportsNativeDelete"] = true,
-                ["supportsHierarchicalListing"] = true,
-                ["uploadThresholdBytes"] = _options.UploadThresholdBytes,
-                ["supportsServiceUrl"] = true,
-                ["supportsConnectionString"] = true,
-                ["supportsSasToken"] = true,
-                ["supportsAccountKey"] = true,
-                ["supportsDefaultCredentialChain"] = true,
-            },
-        };
 
     private async Task MoveViaBlobCopyAsync(
         StorageUri sourceUri,
@@ -339,7 +243,7 @@ public sealed class AdlsGen2StorageProvider
         }
         catch (RequestFailedException ex)
         {
-            throw TranslateAdlsException(ex, destFilesystem, destPath);
+            throw AdlsErrors.Translate(ex, destFilesystem, destPath);
         }
 
         try
@@ -348,7 +252,7 @@ public sealed class AdlsGen2StorageProvider
         }
         catch (RequestFailedException ex)
         {
-            throw TranslateAdlsException(ex, sourceFilesystem, sourcePath);
+            throw AdlsErrors.Translate(ex, sourceFilesystem, sourcePath);
         }
     }
 
@@ -363,14 +267,15 @@ public sealed class AdlsGen2StorageProvider
         return (filesystem, path);
     }
 
-    private async IAsyncEnumerable<StorageItem> ListAsyncCore(
-        StorageUri prefix,
+    /// <inheritdoc />
+    protected override async IAsyncEnumerable<StorageItem> ListCoreAsync(
+        StorageUri directory,
         bool recursive,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var (filesystem, pathPrefix) = GetFilesystemAndPath(prefix);
+        var (filesystem, pathPrefix) = GetFilesystemAndPath(directory);
 
-        await foreach (var item in ListViaBlobFallbackAsync(prefix, filesystem, pathPrefix, recursive, cancellationToken)
+        await foreach (var item in ListViaBlobFallbackAsync(directory, filesystem, pathPrefix, recursive, cancellationToken)
                            .ConfigureAwait(false))
         {
             yield return item;
@@ -398,41 +303,19 @@ public sealed class AdlsGen2StorageProvider
 
         if (recursive)
         {
-            var emittedDirectories = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-            var prefixDepth = string.IsNullOrEmpty(blobPrefix)
-                ? 0
-                : blobPrefix.TrimEnd('/').Split('/').Length;
-
             await foreach (var blobItem in containerClient.GetBlobsAsync(BlobTraits.None, BlobStates.None, blobPrefix, cancellationToken)
                                .ConfigureAwait(false))
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                var relativeName = blobItem.Name;
-                var segments = relativeName.Split('/');
-
-                for (var i = Math.Max(1, prefixDepth + 1); i < segments.Length; i++)
-                {
-                    var dirPath = string.Join("/", segments, 0, i);
-
-                    if (emittedDirectories.Add(dirPath))
-                    {
-                        yield return new StorageItem
-                        {
-                            Uri = prefix.WithPath("/" + dirPath),
-                            Size = 0,
-                            LastModified = default,
-                            IsDirectory = true,
-                        };
-                    }
-                }
+                if (blobItem.Name.EndsWith('/'))
+                    continue;
 
                 yield return new StorageItem
                 {
                     Uri = prefix.WithPath("/" + blobItem.Name),
-                    Size = blobItem.Properties?.ContentLength ?? 0,
-                    LastModified = blobItem.Properties?.LastModified ?? default,
+                    Size = blobItem.Properties?.ContentLength,
+                    LastModified = blobItem.Properties?.LastModified,
                     IsDirectory = false,
                 };
             }
@@ -446,23 +329,22 @@ public sealed class AdlsGen2StorageProvider
 
                 if (item.IsBlob)
                 {
+                    if (item.Blob.Name.EndsWith('/'))
+                        continue;
+
                     yield return new StorageItem
                     {
                         Uri = prefix.WithPath("/" + item.Blob.Name),
-                        Size = item.Blob.Properties?.ContentLength ?? 0,
-                        LastModified = item.Blob.Properties?.LastModified ?? default,
+                        Size = item.Blob.Properties?.ContentLength,
+                        LastModified = item.Blob.Properties?.LastModified,
                         IsDirectory = false,
                     };
                 }
                 else if (item.IsPrefix)
                 {
-                    var dirName = item.Prefix.TrimEnd('/');
-
                     yield return new StorageItem
                     {
-                        Uri = prefix.WithPath("/" + dirName),
-                        Size = 0,
-                        LastModified = default,
+                        Uri = prefix.WithPath("/" + item.Prefix),
                         IsDirectory = true,
                     };
                 }
@@ -496,52 +378,5 @@ public sealed class AdlsGen2StorageProvider
         // ADLS path can be up to 2048 chars
         if (path.Length > 2048 || path.Contains('\\') || path.Contains('?'))
             throw new ArgumentException($"Invalid ADLS path '{path}'.", paramName);
-    }
-
-    private static Exception TranslateAdlsException(RequestFailedException ex, string filesystem, string path)
-    {
-        var errorCode = ex.ErrorCode ?? string.Empty;
-        var status = ex.Status;
-        var message = ex.Message ?? string.Empty;
-
-        var adlsException = new AdlsStorageException(
-            $"ADLS operation failed for filesystem '{filesystem}' and path '{path}'. Status={status}, Code={errorCode}.",
-            filesystem,
-            path,
-            ex);
-
-        return errorCode switch
-        {
-            "AuthenticationFailed" or "AuthorizationFailed" or "AuthorizationFailure" or "TokenAuthenticationFailed"
-                => new UnauthorizedAccessException(
-                    $"Access denied to ADLS filesystem '{filesystem}' and path '{path}'. Status={status}, Code={errorCode}.", ex),
-            "InvalidQueryParameterValue" or "InvalidResourceName"
-                => new ArgumentException(
-                    $"Invalid ADLS filesystem '{filesystem}' or path '{path}'. Status={status}, Code={errorCode}.", ex),
-            "FilesystemNotFound" or "PathNotFound"
-                => new FileNotFoundException(
-                    $"ADLS filesystem '{filesystem}' or path '{path}' not found. Status={status}, Code={errorCode}.", ex),
-            "PathAlreadyExists"
-                => new IOException(
-                    $"Path already exists in ADLS filesystem '{filesystem}' at '{path}'. Status={status}, Code={errorCode}.", adlsException),
-            _ when status is 401 or 403
-                => new UnauthorizedAccessException(
-                    $"Access denied to ADLS filesystem '{filesystem}' and path '{path}'. Status={status}, Code={errorCode}.", ex),
-            _ when status == 400
-                => new ArgumentException(
-                    $"Invalid ADLS filesystem '{filesystem}' or path '{path}'. Status={status}, Code={errorCode}.", ex),
-            _ when status == 404
-                => new FileNotFoundException(
-                    $"ADLS filesystem '{filesystem}' or path '{path}' not found. Status={status}, Code={errorCode}.", ex),
-            _ when status == 409
-                => new IOException(
-                    $"Conflict in ADLS filesystem '{filesystem}' at path '{path}'. Status={status}, Code={errorCode}.", adlsException),
-            _ when status == 429 || status >= 500
-                => new IOException(
-                    $"Transient ADLS failure for filesystem '{filesystem}' at path '{path}'. Status={status}, Code={errorCode}.", adlsException),
-            _
-                => new IOException(
-                    $"Failed to access ADLS filesystem '{filesystem}' and path '{path}'. Status={status}, Code={errorCode}. {message}", adlsException),
-        };
     }
 }

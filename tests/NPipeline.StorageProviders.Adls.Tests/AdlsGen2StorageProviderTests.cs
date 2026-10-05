@@ -6,6 +6,7 @@ using Azure.Storage.Blobs.Models;
 using Azure.Storage.Files.DataLake;
 using Azure.Storage.Files.DataLake.Models;
 using FakeItEasy;
+using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Models;
 using Xunit;
 
@@ -24,73 +25,28 @@ public class AdlsGen2StorageProviderTests
         _provider = new AdlsGen2StorageProvider(_clientFactory, _options);
     }
 
-    #region Scheme Tests
+    #region Identity and Capabilities Tests
 
     [Fact]
-    public void Scheme_ReturnsAdlsScheme()
+    public void Schemes_ContainsOnlyAdls()
     {
-        // Assert
-        _provider.Scheme.Should().Be(StorageScheme.Adls);
-    }
-
-    #endregion
-
-    #region GetMetadata (IStorageProviderMetadataProvider) Tests
-
-    [Fact]
-    public void GetMetadata_ReturnsCorrectMetadata()
-    {
-        // Act
-        var metadata = _provider.GetMetadata();
-
-        // Assert
-        metadata.Should().NotBeNull();
-        metadata.Name.Should().Be("Azure Data Lake Storage Gen2");
-        metadata.SupportedSchemes.Should().Contain("adls");
-        metadata.SupportsRead.Should().BeTrue();
-        metadata.SupportsWrite.Should().BeTrue();
-        metadata.SupportsListing.Should().BeTrue();
-        metadata.SupportsMetadata.Should().BeTrue();
-        metadata.SupportsHierarchy.Should().BeTrue();
-        metadata.Capabilities.Should().ContainKey("supportsAtomicMove");
-        metadata.Capabilities["supportsAtomicMove"].As<bool>().Should().BeTrue();
-    }
-
-    #endregion
-
-    #region CanHandle Tests
-
-    [Fact]
-    public void CanHandle_WithAdlsUri_ReturnsTrue()
-    {
-        // Arrange
-        var uri = StorageUri.Parse("adls://filesystem/path/file.txt");
-
-        // Act
-        var result = _provider.CanHandle(uri);
-
-        // Assert
-        result.Should().BeTrue();
+        _provider.Schemes.Should().ContainSingle().Which.Should().Be(StorageScheme.Adls);
     }
 
     [Fact]
-    public void CanHandle_WithAzureUri_ReturnsFalse()
+    public void Name_IsAdlsGen2()
     {
-        // Arrange
-        var uri = StorageUri.Parse("azure://container/path/file.txt");
-
-        // Act
-        var result = _provider.CanHandle(uri);
-
-        // Assert
-        result.Should().BeFalse();
+        _provider.Name.Should().Be("Azure Data Lake Storage Gen2");
     }
 
     [Fact]
-    public void CanHandle_WithNullUri_ThrowsArgumentNullException()
+    public void Capabilities_DeclaresHierarchy_ButNotAtomicMoveYet()
     {
-        // Act & Assert
-        Assert.Throws<ArgumentNullException>(() => _provider.CanHandle(null!));
+        _provider.Capabilities.Should().HaveFlag(StorageCapabilities.Hierarchy);
+        _provider.Capabilities.Should().HaveFlag(StorageCapabilities.Delete);
+        _provider.Capabilities.Should().HaveFlag(StorageCapabilities.Move);
+        _provider.Capabilities.Should().NotHaveFlag(StorageCapabilities.AtomicMove);
+        _provider.Capabilities.Should().NotHaveFlag(StorageCapabilities.ConditionalWrite);
     }
 
     #endregion
@@ -177,7 +133,7 @@ public class AdlsGen2StorageProviderTests
 
         // Assert
         result.Should().NotBeNull();
-        result.Should().BeOfType<AdlsGen2WriteStream>();
+        result.Should().BeOfType<PassThroughWriteStream>();
     }
 
     [Fact]
@@ -317,6 +273,11 @@ public class AdlsGen2StorageProviderTests
 
         // Assert
         result.Should().HaveCount(3);
+        var directory = result.Single(i => i.IsDirectory);
+        directory.Uri.Path.Should().Be("/path/subdir/");
+        directory.Size.Should().BeNull();
+        directory.LastModified.Should().BeNull();
+        result.Where(i => !i.IsDirectory).Select(i => i.Uri.Path).Should().BeEquivalentTo("/path/file1.txt", "/path/file2.txt");
     }
 
     [Fact]
@@ -353,7 +314,10 @@ public class AdlsGen2StorageProviderTests
         }
 
         // Assert
-        result.Should().HaveCount(3);
+        result.Should().HaveCount(2);
+        result.Should().OnlyContain(i => !i.IsDirectory);
+        result.Select(i => i.Uri.Path).Should().Equal("/path/file1.txt", "/path/subdir/file2.txt");
+        result.Should().OnlyContain(i => i.Size == null && i.LastModified == null);
     }
 
     [Fact]

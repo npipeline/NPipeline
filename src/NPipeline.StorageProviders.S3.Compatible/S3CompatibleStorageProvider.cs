@@ -8,7 +8,7 @@ namespace NPipeline.StorageProviders.S3.Compatible;
 /// </summary>
 public sealed class S3CompatibleStorageProvider : S3CoreStorageProvider
 {
-    private readonly S3CompatibleStorageProviderOptions _options;
+    private readonly IReadOnlyList<StorageScheme> _schemes;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="S3CompatibleStorageProvider" /> class.
@@ -20,29 +20,12 @@ public sealed class S3CompatibleStorageProvider : S3CoreStorageProvider
         S3CompatibleStorageProviderOptions options)
         : base(factory, options)
     {
-        _options = options ?? throw new ArgumentNullException(nameof(options));
+        _schemes = options.Schemes.Select(static s => new StorageScheme(s)).ToArray();
     }
 
-    /// <summary>
-    ///     Builds the provider metadata with S3-compatible-specific information.
-    /// </summary>
-    /// <returns>A <see cref="StorageProviderMetadata" /> object.</returns>
-    protected override StorageProviderMetadata BuildMetadata() =>
-        new()
-        {
-            Name = "S3-Compatible",
-            SupportedSchemes = ["s3"],
-            SupportsRead = true,
-            SupportsWrite = true,
-            SupportsListing = true,
-            SupportsMetadata = true,
-            SupportsHierarchy = false,
-            Capabilities = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
-            {
-                ["endpoint"] = _options.ServiceUrl.ToString(),
-                ["forcePathStyle"] = _options.ForcePathStyle,
-                ["multipartUploadThresholdBytes"] = _options.MultipartUploadThresholdBytes,
-                ["signingRegion"] = _options.SigningRegion,
-            },
-        };
+    /// <inheritdoc />
+    public override string Name => "S3-Compatible";
+
+    /// <inheritdoc />
+    public override IReadOnlyList<StorageScheme> Schemes => _schemes;
 }

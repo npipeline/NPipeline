@@ -261,7 +261,7 @@ public sealed class AdlsGen2WriteStream : Stream
         }
         catch (RequestFailedException ex)
         {
-            throw TranslateAdlsException(ex, _filesystem, _path);
+            throw AdlsErrors.Translate(ex, _filesystem, _path);
         }
     }
 
@@ -317,36 +317,5 @@ public sealed class AdlsGen2WriteStream : Stream
         }
 
         _ = await blobClient.UploadAsync(_tempFileStream, options, cancellationToken).ConfigureAwait(false);
-    }
-
-    private static Exception TranslateAdlsException(RequestFailedException ex, string filesystem, string path)
-    {
-        var code = ex.ErrorCode ?? string.Empty;
-        var status = ex.Status;
-
-        return code switch
-        {
-            "AuthenticationFailed" or "AuthorizationFailed" or "AuthorizationFailure"
-                => new UnauthorizedAccessException(
-                    $"Access denied to ADLS filesystem '{filesystem}' and path '{path}'. Status={status}, Code={code}. {ex.Message}", ex),
-            "InvalidQueryParameterValue" or "InvalidResourceName"
-                => new ArgumentException(
-                    $"Invalid ADLS filesystem '{filesystem}' or path '{path}'. Status={status}, Code={code}. {ex.Message}", ex),
-            "FilesystemNotFound" or "PathNotFound"
-                => new FileNotFoundException(
-                    $"ADLS filesystem '{filesystem}' or path '{path}' not found. Status={status}, Code={code}.", ex),
-            _ when status is 401 or 403
-                => new UnauthorizedAccessException(
-                    $"Access denied to ADLS filesystem '{filesystem}' and path '{path}'. Status={status}, Code={code}. {ex.Message}", ex),
-            _ when status == 400
-                => new ArgumentException(
-                    $"Invalid ADLS filesystem '{filesystem}' or path '{path}'. Status={status}, Code={code}. {ex.Message}", ex),
-            _ when status == 404
-                => new FileNotFoundException(
-                    $"ADLS filesystem '{filesystem}' or path '{path}' not found. Status={status}, Code={code}.", ex),
-            _
-                => new IOException(
-                    $"Failed to upload to ADLS filesystem '{filesystem}' and path '{path}'. Status={status}, Code={code}. {ex.Message}", ex),
-        };
     }
 }

@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using NPipeline.StorageProviders.Abstractions;
 
 namespace NPipeline.StorageProviders.Adls;
@@ -18,24 +19,12 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         Action<AdlsGen2StorageProviderOptions>? configure = null)
     {
-        // Configure options
+        ArgumentNullException.ThrowIfNull(services);
+
         var options = new AdlsGen2StorageProviderOptions();
         configure?.Invoke(options);
 
-        // Register options as singleton
-        _ = services.AddSingleton(options);
-
-        // Register AdlsGen2ClientFactory as singleton
-        _ = services.AddSingleton<AdlsGen2ClientFactory>();
-
-        // Register AdlsGen2StorageProvider as singleton
-        _ = services.AddSingleton<AdlsGen2StorageProvider>();
-        _ = services.AddSingleton<IStorageProvider>(sp => sp.GetRequiredService<AdlsGen2StorageProvider>());
-        _ = services.AddSingleton<IDeletableStorageProvider>(sp => sp.GetRequiredService<AdlsGen2StorageProvider>());
-        _ = services.AddSingleton<IMoveableStorageProvider>(sp => sp.GetRequiredService<AdlsGen2StorageProvider>());
-        _ = services.AddSingleton<IStorageProviderMetadataProvider>(sp => sp.GetRequiredService<AdlsGen2StorageProvider>());
-
-        return services;
+        return Register(services, options);
     }
 
     /// <summary>
@@ -48,15 +37,18 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         AdlsGen2StorageProviderOptions options)
     {
+        ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(options);
 
-        _ = services.AddSingleton(options);
-        _ = services.AddSingleton<AdlsGen2ClientFactory>();
-        _ = services.AddSingleton<AdlsGen2StorageProvider>();
-        _ = services.AddSingleton<IStorageProvider>(sp => sp.GetRequiredService<AdlsGen2StorageProvider>());
-        _ = services.AddSingleton<IDeletableStorageProvider>(sp => sp.GetRequiredService<AdlsGen2StorageProvider>());
-        _ = services.AddSingleton<IMoveableStorageProvider>(sp => sp.GetRequiredService<AdlsGen2StorageProvider>());
-        _ = services.AddSingleton<IStorageProviderMetadataProvider>(sp => sp.GetRequiredService<AdlsGen2StorageProvider>());
+        return Register(services, options);
+    }
+
+    private static IServiceCollection Register(IServiceCollection services, AdlsGen2StorageProviderOptions options)
+    {
+        services.TryAddSingleton(options);
+        services.TryAddSingleton<AdlsGen2ClientFactory>();
+        services.TryAddSingleton<AdlsGen2StorageProvider>();
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IStorageProvider, AdlsGen2StorageProvider>());
 
         return services;
     }

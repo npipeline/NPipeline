@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Json;
 using AwesomeAssertions;
 using Azure.Storage.Blobs.Models;
+using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Models;
 using Xunit;
 
@@ -430,9 +431,8 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
         var items = await CollectAsync(_provider!.ListAsync(prefixUri, true));
 
         // Assert
-        items.Should().HaveCount(5); // 3 files + 2 directories
-        items.Count(i => !i.IsDirectory).Should().Be(3); // 3 files
-        items.Count(i => i.IsDirectory).Should().Be(2); // 2 directories (folder, folder/subfolder)
+        items.Should().HaveCount(3);
+        items.Should().OnlyContain(i => !i.IsDirectory); // a recursive listing yields files only
     }
 
     [Fact]
@@ -913,49 +913,11 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
     #region Provider Metadata Tests
 
     [Fact]
-    public void GetMetadata_ReturnsCorrectProviderMetadata()
+    public void ProviderIdentity_ReportsAdlsSchemeAndHierarchy()
     {
-        // Act
-        var metadata = _provider!.GetMetadata();
-
-        // Assert
-        metadata.Should().NotBeNull();
-        metadata.Name.Should().Be("Azure Data Lake Storage Gen2");
-        metadata.SupportedSchemes.Should().Contain("adls");
-        metadata.SupportsRead.Should().BeTrue();
-        metadata.SupportsWrite.Should().BeTrue();
-        metadata.SupportsListing.Should().BeTrue();
-        metadata.SupportsMetadata.Should().BeTrue();
-        metadata.SupportsHierarchy.Should().BeTrue(); // Key differentiator from Azure Blob
-    }
-
-    [Fact]
-    public void CanHandle_WithAdlsScheme_ReturnsTrue()
-    {
-        // Arrange
-        var uri = StorageUri.Parse("adls://filesystem/path/file.txt");
-
-        // Act
-        var canHandle = _provider!.CanHandle(uri);
-
-        // Assert
-        canHandle.Should().BeTrue();
-    }
-
-    [Fact]
-    public void CanHandle_WithOtherScheme_ReturnsFalse()
-    {
-        // Arrange
-        var azureUri = StorageUri.Parse("azure://container/blob.txt");
-        var fileUri = StorageUri.FromFilePath("/path/to/file.txt");
-
-        // Act
-        var canHandleAzure = _provider!.CanHandle(azureUri);
-        var canHandleFile = _provider.CanHandle(fileUri);
-
-        // Assert
-        canHandleAzure.Should().BeFalse();
-        canHandleFile.Should().BeFalse();
+        _provider!.Name.Should().Be("Azure Data Lake Storage Gen2");
+        _provider.Schemes.Should().ContainSingle().Which.Should().Be(StorageScheme.Adls);
+        _provider.Capabilities.Should().HaveFlag(StorageCapabilities.Hierarchy); // Key differentiator from Azure Blob
     }
 
     #endregion

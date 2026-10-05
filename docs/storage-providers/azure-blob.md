@@ -99,14 +99,14 @@ services.AddAzureBlobStorageProvider(options =>
 });
 ```
 
-Registers: `IStorageProvider`, `IStorageProviderMetadataProvider`
+Registers: `IStorageProvider`
 
 ## Features
 
 - **Chunked uploads** - files above `BlockBlobUploadThresholdBytes` use the staged block upload API
 - **Client caching** - `BlobContainerClient` instances are cached per container; LRU eviction when `ClientCacheSizeLimit` is reached
 - **Azurite emulator** - set `ServiceUrl` for local development
-- **Metadata** - implements `IStorageProviderMetadataProvider` for `Size`, `LastModified`, `ContentType`, `ETag`
+- **Metadata** - `GetMetadataAsync` returns `Size`, `LastModified`, `ContentType`, `ETag`
 
 ## URI Parameters
 

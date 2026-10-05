@@ -329,7 +329,7 @@ public sealed class DataLakeCompactor
         if (records.Count == 0)
             return;
 
-        var stream = await _provider.OpenWriteAsync(fileUri, cancellationToken).ConfigureAwait(false);
+        var stream = await _provider.OpenWriteAsync(fileUri, null, cancellationToken).ConfigureAwait(false);
 
         await using (stream.ConfigureAwait(false))
         {
@@ -349,9 +349,8 @@ public sealed class DataLakeCompactor
             {
                 var fileUri = BuildFileUri(filePath);
 
-                // Check if provider supports deletion
-                if (_provider is IDeletableStorageProvider deletableProvider)
-                    await deletableProvider.DeleteAsync(fileUri, cancellationToken).ConfigureAwait(false);
+                if (_provider.Capabilities.HasFlag(StorageCapabilities.Delete))
+                    await _provider.DeleteAsync(fileUri, cancellationToken).ConfigureAwait(false);
             }
             catch
             {

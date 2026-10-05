@@ -12,23 +12,14 @@ namespace NPipeline.Connectors.Files;
 /// <summary>The plumbing shared by <see cref="FileSourceNode{T}" /> and <see cref="FileSinkNode{T}" />.</summary>
 internal static class FileNodeSupport
 {
-    private static readonly Lazy<IStorageResolver> DefaultResolver = new(
-        () => StorageProviderFactory.CreateResolver(),
-        LazyThreadSafetyMode.ExecutionAndPublication);
-
     public static IStorageProvider ResolveProvider(FileNodeOptions options, bool write)
     {
-        var provider = options.Provider ?? StorageProviderFactory.GetProviderOrThrow(options.Resolver ?? DefaultResolver.Value, options.Uri);
+        var provider = options.Provider ?? (options.Resolver ?? StorageResolver.Default).Resolve(options.Uri);
+        var required = write ? StorageCapabilities.Write : StorageCapabilities.Read;
 
-        if (provider is IStorageProviderMetadataProvider metadataProvider)
-        {
-            var metadata = metadataProvider.GetMetadata();
-
-            if (write ? !metadata.SupportsWrite : !metadata.SupportsRead)
-                throw new UnsupportedStorageCapabilityException(options.Uri, write ? "write" : "read", metadata.Name);
-        }
-
-        return provider;
+        return provider.Capabilities.HasFlag(required)
+            ? provider
+            : throw new UnsupportedStorageCapabilityException(options.Uri, write ? "write" : "read", provider.Name);
     }
 
     public static string StreamName(Type nodeType, Type itemType)
@@ -65,26 +56,17 @@ internal static class FileNodeSupport
 
         var files = new List<StorageUri>();
 
-        try
+        await foreach (var item in provider.ListAsync(listUri, recursive, cancellationToken).ConfigureAwait(false))
         {
-            await foreach (var item in provider.ListAsync(listUri, recursive, cancellationToken).ConfigureAwait(false))
-            {
-                if (item.IsDirectory)
-                    continue;
+            if (item.IsDirectory)
+                continue;
 
-                var itemPath = item.Uri.Path;
-                var matches = pattern?.IsMatch(itemPath)
-                              ?? (directoryExtensions.Count == 0 || directoryExtensions.Any(e => itemPath.EndsWith(e, StringComparison.OrdinalIgnoreCase)));
+            var itemPath = item.Uri.Path;
+            var matches = pattern?.IsMatch(itemPath)
+                          ?? (directoryExtensions.Count == 0 || directoryExtensions.Any(e => itemPath.EndsWith(e, StringComparison.OrdinalIgnoreCase)));
 
-                // The listed URI can lack the original's parameters (credentials, region), so keep everything but the path.
-                if (matches)
-                    files.Add(uri.WithPath(itemPath));
-            }
-        }
-        catch (NotSupportedException ex)
-        {
-            throw new NotSupportedException(
-                $"'{uri}' is a directory or glob, but {provider.GetType().Name} cannot list objects.", ex);
+            if (matches)
+                files.Add(item.Uri);
         }
 
         files.Sort(static (a, b) => string.CompareOrdinal(a.Path, b.Path));
@@ -178,13 +160,13 @@ internal static class FileNodeSupport
 
     public static async Task TryDeleteAsync(IStorageProvider provider, StorageUri uri)
     {
-        if (provider is not IDeletableStorageProvider deletable)
+        if (!provider.Capabilities.HasFlag(StorageCapabilities.Delete))
             return;
 
         try
         {
             // CancellationToken.None: cleanup runs because the operation failed, which is often a cancellation.
-            await deletable.DeleteAsync(uri, CancellationToken.None).ConfigureAwait(false);
+            await provider.DeleteAsync(uri, CancellationToken.None).ConfigureAwait(false);
         }
         catch (Exception)
         {

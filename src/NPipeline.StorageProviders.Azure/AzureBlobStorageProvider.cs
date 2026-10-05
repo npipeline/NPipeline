@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using Azure;
@@ -9,23 +8,21 @@ using NPipeline.StorageProviders.Models;
 namespace NPipeline.StorageProviders.Azure;
 
 /// <summary>
-///     Storage provider for Azure Blob Storage that implements the <see cref="IStorageProvider" /> interface.
-///     Handles "azure" scheme URIs and supports reading, writing, listing, and metadata operations.
+///     Storage provider for Azure Blob Storage.
+///     Handles "azure" scheme URIs and supports reading, writing, listing and metadata operations.
 /// </summary>
 /// <remarks>
-///     - Async-first API design
-///     - Stream-based I/O for scalability
-///     - Proper error handling and exception translation
-///     - Cancellation token support throughout
-///     - Thread-safe implementation
-///     - Consistent with existing S3StorageProvider patterns
+///     Declares <see cref="StorageCapabilities.Read" />, <see cref="StorageCapabilities.Write" /> and
+///     <see cref="StorageCapabilities.List" />. The namespace is flat, so it is not a <see cref="StorageCapabilities.Hierarchy" /> provider.
 /// </remarks>
-public sealed class AzureBlobStorageProvider : IStorageProvider, IStorageProviderMetadataProvider
+public sealed class AzureBlobStorageProvider : StorageProvider
 {
     private static readonly Regex ContainerNameRegex = new(
         "^[a-z0-9](?:[a-z0-9-]{1,61}[a-z0-9])?$",
         RegexOptions.Compiled | RegexOptions.CultureInvariant,
         TimeSpan.FromMilliseconds(250));
+
+    private static readonly IReadOnlyList<StorageScheme> SchemeList = [StorageScheme.Azure];
 
     private readonly AzureBlobClientFactory _clientFactory;
     private readonly AzureBlobStorageProviderOptions _options;
@@ -41,32 +38,18 @@ public sealed class AzureBlobStorageProvider : IStorageProvider, IStorageProvide
         _options = options ?? throw new ArgumentNullException(nameof(options));
     }
 
-    /// <summary>
-    ///     Gets the storage scheme supported by this provider.
-    /// </summary>
-    public StorageScheme Scheme => StorageScheme.Azure;
+    /// <inheritdoc />
+    public override string Name => "Azure Blob Storage";
 
-    /// <summary>
-    ///     Determines whether this provider can handle the specified storage URI.
-    /// </summary>
-    /// <param name="uri">The storage URI to check.</param>
-    /// <returns>True if the URI scheme matches "azure"; otherwise false.</returns>
-    public bool CanHandle(StorageUri uri)
+    /// <inheritdoc />
+    public override IReadOnlyList<StorageScheme> Schemes => SchemeList;
+
+    /// <inheritdoc />
+    public override StorageCapabilities Capabilities => StorageCapabilities.Read | StorageCapabilities.Write | StorageCapabilities.List;
+
+    /// <inheritdoc />
+    protected override async Task<Stream> OpenReadCoreAsync(StorageUri uri, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(uri);
-        return Scheme.Equals(uri.Scheme);
-    }
-
-    /// <summary>
-    ///     Opens a readable stream for the specified Azure blob.
-    /// </summary>
-    /// <param name="uri">The storage URI pointing to the Azure blob.</param>
-    /// <param name="cancellationToken">Token to observe while waiting for the task to complete.</param>
-    /// <returns>A task producing a readable stream for the Azure blob.</returns>
-    public async Task<Stream> OpenReadAsync(StorageUri uri, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(uri);
-
         var (container, blob) = GetContainerAndBlob(uri, true);
         var blobServiceClient = await _clientFactory.GetClientAsync(uri, cancellationToken).ConfigureAwait(false);
         var blobClient = blobServiceClient.GetBlobContainerClient(container).GetBlobClient(blob);
@@ -79,28 +62,23 @@ public sealed class AzureBlobStorageProvider : IStorageProvider, IStorageProvide
         }
         catch (RequestFailedException ex)
         {
-            throw TranslateAzureException(ex, container, blob);
+            throw AzureErrors.Translate(ex, container, blob);
         }
     }
 
-    /// <summary>
-    ///     Opens a writable stream for the specified Azure blob.
-    /// </summary>
-    /// <param name="uri">The storage URI pointing to the Azure blob.</param>
-    /// <param name="cancellationToken">Token to observe while waiting for the task to complete.</param>
-    /// <returns>A task producing a writable stream for the Azure blob.</returns>
-    public async Task<Stream> OpenWriteAsync(StorageUri uri, CancellationToken cancellationToken = default)
+    /// <inheritdoc />
+    protected override async Task<StorageWriteStream> OpenWriteCoreAsync(StorageUri uri, StorageWriteOptions? options, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(uri);
-
         var (container, blob) = GetContainerAndBlob(uri, true);
         var blobServiceClient = await _clientFactory.GetClientAsync(uri, cancellationToken).ConfigureAwait(false);
 
-        var contentType = uri.Parameters.TryGetValue("contentType", out var ct) && !string.IsNullOrEmpty(ct)
-            ? ct
-            : null;
+        var contentType = !string.IsNullOrEmpty(options?.ContentType)
+            ? options.ContentType
+            : uri.Parameters.TryGetValue("contentType", out var ct) && !string.IsNullOrEmpty(ct)
+                ? ct
+                : null;
 
-        return new AzureBlobWriteStream(
+        return new PassThroughWriteStream(new AzureBlobWriteStream(
             blobServiceClient,
             container,
             blob,
@@ -108,19 +86,12 @@ public sealed class AzureBlobStorageProvider : IStorageProvider, IStorageProvide
             _options.BlockBlobUploadThresholdBytes,
             _options.UploadMaximumConcurrency,
             _options.UploadMaximumTransferSizeBytes,
-            cancellationToken);
+            cancellationToken));
     }
 
-    /// <summary>
-    ///     Checks whether an Azure blob exists at the specified URI.
-    /// </summary>
-    /// <param name="uri">The storage URI to check.</param>
-    /// <param name="cancellationToken">Token to observe while waiting for the task to complete.</param>
-    /// <returns>True if the Azure blob exists; otherwise false.</returns>
-    public async Task<bool> ExistsAsync(StorageUri uri, CancellationToken cancellationToken = default)
+    /// <inheritdoc />
+    protected override async Task<bool> ExistsCoreAsync(StorageUri uri, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(uri);
-
         var (container, blob) = GetContainerAndBlob(uri, true);
         var blobServiceClient = await _clientFactory.GetClientAsync(uri, cancellationToken).ConfigureAwait(false);
         var blobClient = blobServiceClient.GetBlobContainerClient(container).GetBlobClient(blob);
@@ -135,36 +106,13 @@ public sealed class AzureBlobStorageProvider : IStorageProvider, IStorageProvide
         }
         catch (RequestFailedException ex)
         {
-            throw TranslateAzureException(ex, container, blob);
+            throw AzureErrors.Translate(ex, container, blob);
         }
     }
 
-    /// <summary>
-    ///     Lists Azure blobs at the specified prefix.
-    /// </summary>
-    /// <param name="prefix">The URI prefix to list.</param>
-    /// <param name="recursive">If true, recursively lists all blobs; if false, lists only blobs in the specified prefix.</param>
-    /// <param name="cancellationToken">Token to observe while waiting for the task to complete.</param>
-    /// <returns>An async enumerable of <see cref="StorageItem" /> representing Azure blobs.</returns>
-    public IAsyncEnumerable<StorageItem> ListAsync(
-        StorageUri prefix,
-        bool recursive = false,
-        CancellationToken cancellationToken = default)
+    /// <inheritdoc />
+    protected override async Task<StorageMetadata?> GetMetadataCoreAsync(StorageUri uri, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(prefix);
-        return ListAsyncCore(prefix, recursive, cancellationToken);
-    }
-
-    /// <summary>
-    ///     Retrieves metadata for the Azure blob at the specified URI.
-    /// </summary>
-    /// <param name="uri">The storage URI pointing to the Azure blob.</param>
-    /// <param name="cancellationToken">Token to observe while waiting for the task to complete.</param>
-    /// <returns>A task producing <see cref="StorageMetadata" /> if the blob exists; otherwise null.</returns>
-    public async Task<StorageMetadata?> GetMetadataAsync(StorageUri uri, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(uri);
-
         var (container, blob) = GetContainerAndBlob(uri, true);
         var blobServiceClient = await _clientFactory.GetClientAsync(uri, cancellationToken).ConfigureAwait(false);
         var blobClient = blobServiceClient.GetBlobContainerClient(container).GetBlobClient(blob);
@@ -175,13 +123,12 @@ public sealed class AzureBlobStorageProvider : IStorageProvider, IStorageProvide
 
             var customMetadata = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-            // Add Azure-specific metadata
             foreach (var metadataKey in properties.Value.Metadata.Keys)
             {
                 customMetadata[metadataKey] = properties.Value.Metadata[metadataKey];
             }
 
-            var metadata = new StorageMetadata
+            return new StorageMetadata
             {
                 Size = properties.Value.ContentLength,
                 LastModified = properties.Value.LastModified,
@@ -190,8 +137,6 @@ public sealed class AzureBlobStorageProvider : IStorageProvider, IStorageProvide
                 CustomMetadata = customMetadata,
                 IsDirectory = false,
             };
-
-            return metadata;
         }
         catch (RequestFailedException ex) when (ex.Status == 404)
         {
@@ -199,34 +144,9 @@ public sealed class AzureBlobStorageProvider : IStorageProvider, IStorageProvide
         }
         catch (RequestFailedException ex)
         {
-            throw TranslateAzureException(ex, container, blob);
+            throw AzureErrors.Translate(ex, container, blob);
         }
     }
-
-    /// <summary>
-    ///     Gets metadata describing this storage provider's capabilities.
-    /// </summary>
-    /// <returns>A <see cref="StorageProviderMetadata" /> object containing information about the provider's supported features.</returns>
-    public StorageProviderMetadata GetMetadata() =>
-        new()
-        {
-            Name = "Azure Blob Storage",
-            SupportedSchemes = ["azure"],
-            SupportsRead = true,
-            SupportsWrite = true,
-            SupportsListing = true,
-            SupportsMetadata = true,
-            SupportsHierarchy = false, // Azure Blob Storage is flat
-            Capabilities = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
-            {
-                ["blockBlobUploadThresholdBytes"] = _options.BlockBlobUploadThresholdBytes,
-                ["supportsServiceUrl"] = true,
-                ["supportsConnectionString"] = true,
-                ["supportsSasToken"] = true,
-                ["supportsAccountKey"] = true,
-                ["supportsDefaultCredentialChain"] = true,
-            },
-        };
 
     private static (string container, string blob) GetContainerAndBlob(StorageUri uri, bool requireBlob = false)
     {
@@ -239,21 +159,19 @@ public sealed class AzureBlobStorageProvider : IStorageProvider, IStorageProvide
         return (container, blob);
     }
 
-    private async IAsyncEnumerable<StorageItem> ListAsyncCore(
-        StorageUri prefix,
+    /// <inheritdoc />
+    protected override async IAsyncEnumerable<StorageItem> ListCoreAsync(
+        StorageUri directory,
         bool recursive,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var (container, blobPrefix) = GetContainerAndBlob(prefix);
-        var blobServiceClient = await _clientFactory.GetClientAsync(prefix, cancellationToken).ConfigureAwait(false);
+        var (container, blobPrefix) = GetContainerAndBlob(directory);
+        var blobServiceClient = await _clientFactory.GetClientAsync(directory, cancellationToken).ConfigureAwait(false);
         var containerClient = blobServiceClient.GetBlobContainerClient(container);
 
         // Check if container exists before enumerating to avoid 404 exceptions during enumeration
         if (!await containerClient.ExistsAsync(cancellationToken).ConfigureAwait(false))
-        {
-            // Container doesn't exist, return empty
             yield break;
-        }
 
         if (recursive)
         {
@@ -265,14 +183,15 @@ public sealed class AzureBlobStorageProvider : IStorageProvider, IStorageProvide
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                var blobName = blobItem.Name;
-                var itemUri = prefix.WithPath("/" + blobName);
+                // Zero-byte "folder marker" blobs (names ending in '/') are not files.
+                if (blobItem.Name.EndsWith('/'))
+                    continue;
 
                 yield return new StorageItem
                 {
-                    Uri = itemUri,
-                    Size = blobItem.Properties.ContentLength ?? 0,
-                    LastModified = blobItem.Properties.LastModified ?? DateTimeOffset.UtcNow,
+                    Uri = directory.WithPath("/" + blobItem.Name),
+                    Size = blobItem.Properties.ContentLength,
+                    LastModified = blobItem.Properties.LastModified,
                     IsDirectory = false,
                 };
             }
@@ -290,29 +209,23 @@ public sealed class AzureBlobStorageProvider : IStorageProvider, IStorageProvide
 
                 if (blobItem.IsPrefix)
                 {
-                    // Yield virtual directories as directory items
-                    var prefixPath = blobItem.Prefix.TrimEnd('/');
-                    var directoryUri = prefix.WithPath("/" + prefixPath);
-
                     yield return new StorageItem
                     {
-                        Uri = directoryUri,
-                        Size = 0,
-                        LastModified = DateTimeOffset.UtcNow,
+                        Uri = directory.WithPath("/" + blobItem.Prefix),
                         IsDirectory = true,
                     };
 
                     continue;
                 }
 
-                var blobName = blobItem.Blob.Name;
-                var blobUri = prefix.WithPath("/" + blobName);
+                if (blobItem.Blob.Name.EndsWith('/'))
+                    continue;
 
                 yield return new StorageItem
                 {
-                    Uri = blobUri,
-                    Size = blobItem.Blob.Properties.ContentLength ?? 0,
-                    LastModified = blobItem.Blob.Properties.LastModified ?? DateTimeOffset.UtcNow,
+                    Uri = directory.WithPath("/" + blobItem.Blob.Name),
+                    Size = blobItem.Blob.Properties.ContentLength,
+                    LastModified = blobItem.Blob.Properties.LastModified,
                     IsDirectory = false,
                 };
             }
@@ -344,38 +257,5 @@ public sealed class AzureBlobStorageProvider : IStorageProvider, IStorageProvide
 
         if (blob.Length > 1024 || blob.Contains('\\') || blob.Contains('?'))
             throw new ArgumentException($"Invalid Azure blob name '{blob}'.", paramName);
-    }
-
-    private static Exception TranslateAzureException(RequestFailedException ex, string container, string blob)
-    {
-        var errorCode = ex.ErrorCode ?? string.Empty;
-        var status = ex.Status;
-        var message = ex.Message ?? string.Empty;
-        Debug.WriteLine($"TranslateAzureException: ErrorCode='{errorCode}', Message='{message}', Status={status}");
-
-        return errorCode switch
-        {
-            "AuthenticationFailed" or "AuthorizationFailed" or "AuthorizationFailure" or "TokenAuthenticationFailed"
-                => new UnauthorizedAccessException(
-                    $"Access denied to Azure container '{container}' and blob '{blob}'. Status={status}, Code={errorCode}. {message}", ex),
-            "InvalidQueryParameterValue" or "InvalidResourceName"
-                => new ArgumentException(
-                    $"Invalid Azure container '{container}' or blob '{blob}'. Status={status}, Code={errorCode}. {message}", ex),
-            "ContainerNotFound" or "BlobNotFound"
-                => new FileNotFoundException(
-                    $"Azure container '{container}' or blob '{blob}' not found. Status={status}, Code={errorCode}.", ex),
-            _ when status is 401 or 403
-                => new UnauthorizedAccessException(
-                    $"Access denied to Azure container '{container}' and blob '{blob}'. Status={status}, Code={errorCode}. {message}", ex),
-            _ when status == 400
-                => new ArgumentException(
-                    $"Invalid Azure container '{container}' or blob '{blob}'. Status={status}, Code={errorCode}. {message}", ex),
-            _ when status == 404
-                => new FileNotFoundException(
-                    $"Azure container '{container}' or blob '{blob}' not found. Status={status}, Code={errorCode}.", ex),
-            _
-                => new IOException(
-                    $"Failed to access Azure container '{container}' and blob '{blob}'. Status={status}, Code={errorCode}. {message}", ex),
-        };
     }
 }

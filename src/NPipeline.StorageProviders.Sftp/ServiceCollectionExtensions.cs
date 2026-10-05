@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using NPipeline.StorageProviders.Abstractions;
 
 namespace NPipeline.StorageProviders.Sftp;
@@ -18,22 +19,12 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         Action<SftpStorageProviderOptions>? configure = null)
     {
-        // Configure options
+        ArgumentNullException.ThrowIfNull(services);
+
         var options = new SftpStorageProviderOptions();
         configure?.Invoke(options);
 
-        // Register options as singleton
-        _ = services.AddSingleton(options);
-
-        // Register SftpClientFactory as singleton
-        _ = services.AddSingleton<SftpClientFactory>();
-
-        // Register SftpStorageProvider as singleton
-        _ = services.AddSingleton<SftpStorageProvider>();
-        _ = services.AddSingleton<IStorageProvider>(sp => sp.GetRequiredService<SftpStorageProvider>());
-        _ = services.AddSingleton<IStorageProviderMetadataProvider>(sp => sp.GetRequiredService<SftpStorageProvider>());
-
-        return services;
+        return Register(services, options);
     }
 
     /// <summary>
@@ -46,18 +37,17 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         SftpStorageProviderOptions options)
     {
+        ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(options);
 
-        // Register options as singleton
-        _ = services.AddSingleton(options);
+        return Register(services, options);
+    }
 
-        // Register SftpClientFactory as singleton
-        _ = services.AddSingleton<SftpClientFactory>();
-
-        // Register SftpStorageProvider as singleton
-        _ = services.AddSingleton<SftpStorageProvider>();
-        _ = services.AddSingleton<IStorageProvider>(sp => sp.GetRequiredService<SftpStorageProvider>());
-        _ = services.AddSingleton<IStorageProviderMetadataProvider>(sp => sp.GetRequiredService<SftpStorageProvider>());
+    private static IServiceCollection Register(IServiceCollection services, SftpStorageProviderOptions options)
+    {
+        services.TryAddSingleton(options);
+        services.TryAddSingleton<SftpClientFactory>();
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IStorageProvider, SftpStorageProvider>());
 
         return services;
     }

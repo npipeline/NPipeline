@@ -454,7 +454,7 @@ public class GcsWriteStreamTests
     }
 
     [Fact]
-    public async Task DisposeAsync_WithGenericError_ThrowsGcsStorageException()
+    public async Task DisposeAsync_WithGenericError_ThrowsIOException()
     {
         // Arrange
         var gcsException = new GoogleApiException("storage", "Internal error")
@@ -474,7 +474,7 @@ public class GcsWriteStreamTests
         await stream.WriteAsync(data, 0, data.Length);
 
         // Act & Assert
-        await Assert.ThrowsAsync<GcsStorageException>(async () => await stream.DisposeAsync());
+        await Assert.ThrowsAsync<IOException>(async () => await stream.DisposeAsync());
     }
 
     [Fact]

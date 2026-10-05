@@ -3,6 +3,7 @@ using Amazon.S3;
 using Amazon.S3.Model;
 using AwesomeAssertions;
 using FakeItEasy;
+using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Models;
 using Xunit;
 
@@ -50,69 +51,22 @@ public class AwsS3StorageProviderTests
     }
 
     [Fact]
-    public void Scheme_ReturnsS3()
+    public void Schemes_ContainsOnlyS3()
     {
-        // Act & Assert
-        _provider.Scheme.Should().Be(StorageScheme.S3);
+        _provider.Schemes.Should().ContainSingle().Which.Should().Be(StorageScheme.S3);
     }
 
     [Fact]
-    public void CanHandle_WithS3Scheme_ReturnsTrue()
+    public void Name_IsAwsS3()
     {
-        // Arrange
-        var uri = StorageUri.Parse("s3://bucket/key");
-
-        // Act
-        var result = _provider.CanHandle(uri);
-
-        // Assert
-        result.Should().BeTrue();
+        _provider.Name.Should().Be("AWS S3");
     }
 
     [Fact]
-    public void CanHandle_WithFileScheme_ReturnsFalse()
+    public void Capabilities_DeclaresObjectStoreSet()
     {
-        // Arrange
-        var uri = StorageUri.Parse("file:///path/to/file");
-
-        // Act
-        var result = _provider.CanHandle(uri);
-
-        // Assert
-        result.Should().BeFalse();
-    }
-
-    [Fact]
-    public void CanHandle_WithNullUri_ThrowsArgumentNullException()
-    {
-        // Act & Assert
-        Assert.Throws<ArgumentNullException>(() => _provider.CanHandle(null!));
-    }
-
-    [Fact]
-    public void CanHandle_WithAzureScheme_ReturnsFalse()
-    {
-        // Arrange
-        var uri = StorageUri.Parse("azure://container/blob");
-
-        // Act
-        var result = _provider.CanHandle(uri);
-
-        // Assert
-        result.Should().BeFalse();
-    }
-
-    [Fact]
-    public void CanHandle_WithValidS3Uri_ReturnsTrue()
-    {
-        // Arrange
-        var uri = StorageUri.Parse("s3://bucket/key");
-
-        // Act
-        var result = _provider.CanHandle(uri);
-
-        // Assert
-        result.Should().BeTrue();
+        _provider.Capabilities.Should().Be(
+            StorageCapabilities.Read | StorageCapabilities.Write | StorageCapabilities.List | StorageCapabilities.Delete | StorageCapabilities.Move);
     }
 
     [Fact]
@@ -305,7 +259,7 @@ public class AwsS3StorageProviderTests
 
         // Assert
         stream.Should().NotBeNull();
-        stream.Should().BeOfType<S3WriteStream>();
+        stream.Should().BeOfType<PassThroughWriteStream>();
     }
 
     [Fact]
@@ -329,7 +283,7 @@ public class AwsS3StorageProviderTests
 
         // Assert
         stream.Should().NotBeNull();
-        stream.Should().BeOfType<S3WriteStream>();
+        stream.Should().BeOfType<PassThroughWriteStream>();
     }
 
     [Fact]
@@ -665,44 +619,6 @@ public class AwsS3StorageProviderTests
 
         // Act & Assert
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() => _provider.GetMetadataAsync(uri));
-    }
-
-    [Fact]
-    public void GetMetadata_ReturnsCorrectProviderMetadata()
-    {
-        // Act
-        var metadata = _provider.GetMetadata();
-
-        // Assert
-        metadata.Should().NotBeNull();
-        metadata.Name.Should().Be("AWS S3");
-        metadata.SupportedSchemes.Should().Contain("s3");
-        metadata.SupportsRead.Should().BeTrue();
-        metadata.SupportsWrite.Should().BeTrue();
-        metadata.SupportsListing.Should().BeTrue();
-        metadata.SupportsMetadata.Should().BeTrue();
-        metadata.SupportsHierarchy.Should().BeFalse();
-        metadata.Capabilities["multipartUploadThresholdBytes"].Should().Be(64 * 1024 * 1024);
-        metadata.Capabilities["supportsPathStyle"].Should().Be(true);
-        metadata.Capabilities["supportsServiceUrl"].Should().Be(true);
-    }
-
-    [Fact]
-    public void GetMetadata_WithCustomOptions_ReturnsCorrectCapabilities()
-    {
-        // Arrange
-        var customOptions = new AwsS3StorageProviderOptions
-        {
-            MultipartUploadThresholdBytes = 128 * 1024 * 1024,
-        };
-
-        var customProvider = new AwsS3StorageProvider(_fakeClientFactory, customOptions);
-
-        // Act
-        var metadata = customProvider.GetMetadata();
-
-        // Assert
-        metadata.Capabilities["multipartUploadThresholdBytes"].Should().Be(128 * 1024 * 1024);
     }
 
     [Fact]

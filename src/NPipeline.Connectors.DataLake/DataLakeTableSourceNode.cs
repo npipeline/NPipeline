@@ -18,9 +18,6 @@ namespace NPipeline.Connectors.DataLake;
 /// <typeparam name="T">The record type being read.</typeparam>
 public sealed class DataLakeTableSourceNode<T> : SourceNode<T>
 {
-    private static readonly Lazy<IStorageResolver> DefaultResolver =
-        new(() => StorageProviderFactory.CreateResolver());
-
     private readonly DateTimeOffset? _asOf;
     private readonly IStorageProvider? _provider;
     private readonly IStorageResolver? _resolver;
@@ -123,9 +120,7 @@ public sealed class DataLakeTableSourceNode<T> : SourceNode<T>
     /// <inheritdoc />
     public override IDataStream<T> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
-        var provider = _provider ?? StorageProviderFactory.GetProviderOrThrow(
-            _resolver ?? DefaultResolver.Value,
-            _tableBasePath);
+        var provider = _provider ?? (_resolver ?? StorageResolver.Default).Resolve(_tableBasePath);
 
         var stream = ReadAllAsync(provider, cancellationToken);
         return new DataStream<T>(stream, $"DataLakeTableSourceNode<{typeof(T).Name}>");

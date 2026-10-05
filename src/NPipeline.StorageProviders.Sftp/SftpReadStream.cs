@@ -1,7 +1,7 @@
 namespace NPipeline.StorageProviders.Sftp;
 
 /// <summary>
-///     A read stream backed by SSH.NET's native <c>SftpClient.OpenRead()</c>.
+///     A read stream backed by an SSH.NET <c>SftpFileStream</c> opened with <c>SftpClient.OpenAsync</c>.
 ///     Holds a connection lease from <see cref="SftpClientPool" /> for its lifetime;
 ///     the lease is returned to the pool when the stream is disposed.
 /// </summary>
@@ -15,15 +15,26 @@ public sealed class SftpReadStream : Stream
     ///     Initializes a new instance of the <see cref="SftpReadStream" /> class.
     /// </summary>
     /// <param name="lease">The pooled connection lease.</param>
-    /// <param name="remotePath">The remote file path.</param>
-    internal SftpReadStream(IPooledConnection lease, string remotePath)
+    /// <param name="sftpStream">The opened remote file stream.</param>
+    private SftpReadStream(IPooledConnection lease, Stream sftpStream)
     {
         _lease = lease ?? throw new ArgumentNullException(nameof(lease));
+        _sftpStream = sftpStream ?? throw new ArgumentNullException(nameof(sftpStream));
+    }
+
+    /// <summary>
+    ///     Opens the remote file for reading. The returned stream owns <paramref name="lease" />; if opening fails, the caller keeps it.
+    /// </summary>
+    internal static async Task<SftpReadStream> OpenAsync(IPooledConnection lease, string remotePath, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(lease);
 
         if (string.IsNullOrWhiteSpace(remotePath))
             throw new ArgumentException("Remote path cannot be null or whitespace.", nameof(remotePath));
 
-        _sftpStream = lease.Client.OpenRead(remotePath);
+        var stream = await lease.Client.OpenAsync(remotePath, FileMode.Open, FileAccess.Read, cancellationToken).ConfigureAwait(false);
+
+        return new SftpReadStream(lease, stream);
     }
 
     /// <inheritdoc />

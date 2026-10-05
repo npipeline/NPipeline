@@ -3,6 +3,8 @@ using AwesomeAssertions;
 using FakeItEasy;
 using Google;
 using Google.Cloud.Storage.V1;
+using NPipeline.StorageProviders.Abstractions;
+using NPipeline.StorageProviders.Exceptions;
 using NPipeline.StorageProviders.Gcp.Reliability;
 using NPipeline.StorageProviders.Models;
 using NResilience;
@@ -55,82 +57,25 @@ public class GcsStorageProviderTests
     }
 
     [Fact]
-    public void Scheme_ReturnsGcs()
+    public void Schemes_ContainsOnlyGcs()
     {
-        // Act & Assert
-        _provider.Scheme.Should().Be(StorageScheme.Gcs);
+        _provider.Schemes.Should().Equal(StorageScheme.Gcs);
     }
 
     [Fact]
-    public void CanHandle_WithGcsScheme_ReturnsTrue()
+    public void Capabilities_DeclaresObjectStoreFeaturesOnly()
     {
-        // Arrange
+        _provider.Capabilities.Should().Be(
+            StorageCapabilities.Read | StorageCapabilities.Write | StorageCapabilities.List | StorageCapabilities.Delete | StorageCapabilities.Move);
+    }
+
+    [Fact]
+    public async Task OpenWriteAsync_WithConditionalOptions_ThrowsUnsupportedCapability()
+    {
         var uri = StorageUri.Parse("gs://bucket/object");
 
-        // Act
-        var result = _provider.CanHandle(uri);
-
-        // Assert
-        result.Should().BeTrue();
-    }
-
-    [Fact]
-    public void CanHandle_WithFileScheme_ReturnsFalse()
-    {
-        // Arrange
-        var uri = StorageUri.Parse("file:///path/to/file");
-
-        // Act
-        var result = _provider.CanHandle(uri);
-
-        // Assert
-        result.Should().BeFalse();
-    }
-
-    [Fact]
-    public void CanHandle_WithAzureScheme_ReturnsFalse()
-    {
-        // Arrange
-        var uri = StorageUri.Parse("azure://container/blob");
-
-        // Act
-        var result = _provider.CanHandle(uri);
-
-        // Assert
-        result.Should().BeFalse();
-    }
-
-    [Fact]
-    public void CanHandle_WithS3Scheme_ReturnsFalse()
-    {
-        // Arrange
-        var uri = StorageUri.Parse("s3://bucket/key");
-
-        // Act
-        var result = _provider.CanHandle(uri);
-
-        // Assert
-        result.Should().BeFalse();
-    }
-
-    [Fact]
-    public void CanHandle_WithNullUri_ThrowsArgumentNullException()
-    {
-        // Act & Assert
-        Assert.Throws<ArgumentNullException>(() => _provider.CanHandle(null!));
-    }
-
-    [Fact]
-    public void CanHandle_WithUpperCaseGcsScheme_ReturnsTrue()
-    {
-        // Arrange
-        var uri = StorageUri.Parse("GS://bucket/object");
-
-        // Act
-        var result = _provider.CanHandle(uri);
-
-        // Assert
-        result.Should().BeTrue();
+        await Assert.ThrowsAsync<UnsupportedStorageCapabilityException>(
+            () => _provider.OpenWriteAsync(uri, new StorageWriteOptions { Overwrite = false }));
     }
 
     [Fact]
@@ -303,7 +248,7 @@ public class GcsStorageProviderTests
     }
 
     [Fact]
-    public async Task OpenReadAsync_WithGenericError_ThrowsGcsStorageException()
+    public async Task OpenReadAsync_WithGenericError_ThrowsIOException()
     {
         // Arrange
         var uri = StorageUri.Parse("gs://test-bucket/test-object.txt");
@@ -325,7 +270,7 @@ public class GcsStorageProviderTests
             .ThrowsAsync(gcsException);
 
         // Act & Assert
-        await Assert.ThrowsAsync<GcsStorageException>(() => _provider.OpenReadAsync(uri));
+        await Assert.ThrowsAsync<IOException>(() => _provider.OpenReadAsync(uri));
     }
 
     [Fact]
@@ -342,7 +287,7 @@ public class GcsStorageProviderTests
 
         // Assert
         stream.Should().NotBeNull();
-        stream.Should().BeOfType<GcsWriteStream>();
+        stream.Should().BeOfType<PassThroughWriteStream>();
     }
 
     [Fact]
@@ -366,7 +311,7 @@ public class GcsStorageProviderTests
 
         // Assert
         stream.Should().NotBeNull();
-        stream.Should().BeOfType<GcsWriteStream>();
+        stream.Should().BeOfType<PassThroughWriteStream>();
     }
 
     [Fact]
@@ -711,48 +656,6 @@ public class GcsStorageProviderTests
 
         // Act & Assert
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() => _provider.GetMetadataAsync(uri));
-    }
-
-    [Fact]
-    public void GetMetadata_ReturnsCorrectProviderMetadata()
-    {
-        // Act
-        var metadata = _provider.GetMetadata();
-
-        // Assert
-        metadata.Should().NotBeNull();
-        metadata.Name.Should().Be("Google Cloud Storage");
-        metadata.SupportedSchemes.Should().Contain("gs");
-        metadata.SupportsRead.Should().BeTrue();
-        metadata.SupportsWrite.Should().BeTrue();
-        metadata.SupportsListing.Should().BeTrue();
-        metadata.SupportsMetadata.Should().BeTrue();
-        metadata.SupportsHierarchy.Should().BeFalse();
-        metadata.Capabilities["uploadChunkSizeBytes"].Should().Be(16 * 1024 * 1024);
-        metadata.Capabilities["uploadBufferThresholdBytes"].Should().Be(64 * 1024 * 1024);
-        metadata.Capabilities["supportsServiceUrl"].Should().Be(true);
-        metadata.Capabilities["supportsAccessToken"].Should().Be(true);
-        metadata.Capabilities["supportsCredentialsPath"].Should().Be(true);
-    }
-
-    [Fact]
-    public void GetMetadata_WithCustomOptions_ReturnsCorrectCapabilities()
-    {
-        // Arrange
-        var customOptions = new GcsStorageProviderOptions
-        {
-            UploadChunkSizeBytes = 32 * 1024 * 1024,
-            UploadBufferThresholdBytes = 128 * 1024 * 1024,
-        };
-
-        var customProvider = new GcsStorageProvider(_fakeClientFactory, customOptions);
-
-        // Act
-        var metadata = customProvider.GetMetadata();
-
-        // Assert
-        metadata.Capabilities["uploadChunkSizeBytes"].Should().Be(32 * 1024 * 1024);
-        metadata.Capabilities["uploadBufferThresholdBytes"].Should().Be(128 * 1024 * 1024);
     }
 
     [Fact]

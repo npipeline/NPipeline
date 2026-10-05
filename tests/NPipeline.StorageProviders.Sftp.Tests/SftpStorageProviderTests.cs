@@ -1,3 +1,5 @@
+using NPipeline.StorageProviders.Abstractions;
+using NPipeline.StorageProviders.Exceptions;
 using NPipeline.StorageProviders.Models;
 
 namespace NPipeline.StorageProviders.Sftp.Tests;
@@ -7,93 +9,48 @@ namespace NPipeline.StorageProviders.Sftp.Tests;
 /// </summary>
 public class SftpStorageProviderTests
 {
-    [Fact]
-    public void Scheme_ShouldReturnSftp()
+    private static SftpStorageProvider CreateProvider()
     {
-        // Arrange
         var options = new SftpStorageProviderOptions();
-        var factory = new SftpClientFactory(options);
-        var provider = new SftpStorageProvider(factory, options);
-
-        // Act & Assert
-        provider.Scheme.Should().Be(StorageScheme.Sftp);
+        return new SftpStorageProvider(new SftpClientFactory(options), options);
     }
 
     [Fact]
-    public void CanHandle_WithSftpScheme_ShouldReturnTrue()
+    public void Schemes_ShouldContainOnlySftp()
     {
-        // Arrange
-        var options = new SftpStorageProviderOptions();
-        var factory = new SftpClientFactory(options);
-        var provider = new SftpStorageProvider(factory, options);
-        var uri = StorageUri.Parse("sftp://example.com/path/file.txt");
-
-        // Act
-        var result = provider.CanHandle(uri);
-
-        // Assert
-        result.Should().BeTrue();
+        CreateProvider().Schemes.Should().Equal(StorageScheme.Sftp);
     }
 
     [Fact]
-    public void CanHandle_WithDifferentScheme_ShouldReturnFalse()
+    public void Capabilities_DeclareHierarchyAndAtomicMoveButNotConditionalWrite()
     {
-        // Arrange
-        var options = new SftpStorageProviderOptions();
-        var factory = new SftpClientFactory(options);
-        var provider = new SftpStorageProvider(factory, options);
-        var uri = StorageUri.Parse("file:///path/file.txt");
-
-        // Act
-        var result = provider.CanHandle(uri);
-
-        // Assert
-        result.Should().BeFalse();
+        CreateProvider().Capabilities.Should().Be(
+            StorageCapabilities.Read | StorageCapabilities.Write | StorageCapabilities.List | StorageCapabilities.Delete
+            | StorageCapabilities.Move | StorageCapabilities.AtomicMove | StorageCapabilities.Hierarchy);
     }
 
     [Fact]
-    public void CanHandle_WithNullUri_ShouldThrowArgumentNullException()
+    public async Task DeleteAsync_WithNullUri_ShouldThrowArgumentNullException()
     {
-        // Arrange
-        var options = new SftpStorageProviderOptions();
-        var factory = new SftpClientFactory(options);
-        var provider = new SftpStorageProvider(factory, options);
+        var act = async () => await CreateProvider().DeleteAsync(null!);
 
-        // Act
-        var act = () => provider.CanHandle(null!);
-
-        // Assert
-        act.Should().Throw<ArgumentNullException>();
+        await act.Should().ThrowAsync<ArgumentNullException>();
     }
 
     [Fact]
-    public void GetMetadata_ShouldReturnCorrectMetadata()
+    public async Task MoveAsync_WithNullDestination_ShouldThrowArgumentNullException()
     {
-        // Arrange
-        var options = new SftpStorageProviderOptions
-        {
-            MaxPoolSize = 20,
-            ConnectionIdleTimeout = TimeSpan.FromMinutes(10),
-            KeepAliveInterval = TimeSpan.FromSeconds(15),
-            ConnectionTimeout = TimeSpan.FromSeconds(60),
-        };
+        var act = async () => await CreateProvider().MoveAsync(StorageUri.Parse("sftp://h/a"), null!);
 
-        var factory = new SftpClientFactory(options);
-        var provider = new SftpStorageProvider(factory, options);
+        await act.Should().ThrowAsync<ArgumentNullException>();
+    }
 
-        // Act
-        var metadata = provider.GetMetadata();
+    [Fact]
+    public async Task OpenWriteAsync_WithConditionalOptions_ShouldThrowUnsupportedCapability()
+    {
+        var act = async () => await CreateProvider().OpenWriteAsync(StorageUri.Parse("sftp://h/a"), new StorageWriteOptions { Overwrite = false });
 
-        // Assert
-        metadata.Name.Should().Be("SFTP");
-        metadata.SupportedSchemes.Should().Contain("sftp");
-        metadata.SupportsRead.Should().BeTrue();
-        metadata.SupportsWrite.Should().BeTrue();
-        metadata.SupportsListing.Should().BeTrue();
-        metadata.SupportsMetadata.Should().BeTrue();
-        metadata.SupportsHierarchy.Should().BeTrue();
-        metadata.Capabilities.Should().ContainKey("maxPoolSize");
-        metadata.Capabilities["maxPoolSize"].Should().Be(20);
+        await act.Should().ThrowAsync<UnsupportedStorageCapabilityException>();
     }
 
     [Fact]

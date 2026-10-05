@@ -18,8 +18,19 @@ namespace NPipeline.Connectors.Snowflake;
 ///     Stream-based operations (OpenReadAsync, OpenWriteAsync, ExistsAsync) are not supported
 ///     as database providers are intended for connection management only.
 /// </remarks>
-public sealed class SnowflakeDatabaseStorageProvider : IDatabaseStorageProvider, IStorageProviderMetadataProvider
+public sealed class SnowflakeDatabaseStorageProvider : StorageProvider, IDatabaseStorageProvider
 {
+    private static readonly IReadOnlyList<StorageScheme> SupportedSchemeList = [new StorageScheme("snowflake")];
+
+    /// <inheritdoc />
+    public override string Name => "Snowflake";
+
+    /// <inheritdoc />
+    public override IReadOnlyList<StorageScheme> Schemes => SupportedSchemeList;
+
+    /// <inheritdoc />
+    public override StorageCapabilities Capabilities => StorageCapabilities.None;
+
     private static readonly FrozenSet<string> HandledParameters = new[]
     {
         "account", "host",
@@ -27,32 +38,6 @@ public sealed class SnowflakeDatabaseStorageProvider : IDatabaseStorageProvider,
         "user", "username",
         "password", "pwd",
     }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
-
-    private static readonly StorageProviderMetadata Metadata = new()
-    {
-        Name = "Snowflake",
-        SupportedSchemes = ["snowflake"],
-        SupportsRead = false,
-        SupportsWrite = false,
-        SupportsListing = false,
-        SupportsMetadata = false,
-        SupportsHierarchy = false,
-    };
-
-    /// <summary>
-    ///     Gets the primary URI scheme this provider targets.
-    /// </summary>
-    public StorageScheme Scheme => new("snowflake");
-
-    /// <summary>
-    ///     Indicates whether this provider can handle the specified <see cref="StorageUri" />.
-    /// </summary>
-    public bool CanHandle(StorageUri uri)
-    {
-        ArgumentNullException.ThrowIfNull(uri);
-
-        return uri.Scheme == new StorageScheme("snowflake");
-    }
 
     /// <summary>
     ///     Generates a Snowflake connection string from the specified <see cref="StorageUri" />.
@@ -116,27 +101,4 @@ public sealed class SnowflakeDatabaseStorageProvider : IDatabaseStorageProvider,
         return new SnowflakeDatabaseConnection(connection);
     }
 
-    /// <inheritdoc />
-    public Task<Stream> OpenReadAsync(StorageUri uri, CancellationToken cancellationToken = default) =>
-        throw new NotSupportedException(
-            $"OpenReadAsync is not supported by {nameof(SnowflakeDatabaseStorageProvider)}. " +
-            $"Database providers are intended for connection management only. " +
-            $"Use {nameof(IDatabaseConnection)} and {nameof(IDatabaseCommand)} for database operations.");
-
-    /// <inheritdoc />
-    public Task<Stream> OpenWriteAsync(StorageUri uri, CancellationToken cancellationToken = default) =>
-        throw new NotSupportedException(
-            $"OpenWriteAsync is not supported by {nameof(SnowflakeDatabaseStorageProvider)}. " +
-            $"Database providers are intended for connection management only. " +
-            $"Use {nameof(IDatabaseConnection)} and {nameof(IDatabaseCommand)} for database operations.");
-
-    /// <inheritdoc />
-    public Task<bool> ExistsAsync(StorageUri uri, CancellationToken cancellationToken = default) =>
-        throw new NotSupportedException(
-            $"ExistsAsync is not supported by {nameof(SnowflakeDatabaseStorageProvider)}. " +
-            $"Database providers are intended for connection management only. " +
-            $"Use {nameof(IDatabaseConnection)} and {nameof(IDatabaseCommand)} for database operations.");
-
-    /// <inheritdoc />
-    public StorageProviderMetadata GetMetadata() => Metadata;
 }

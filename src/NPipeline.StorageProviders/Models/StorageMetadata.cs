@@ -1,3 +1,5 @@
+using System.Collections.Frozen;
+
 namespace NPipeline.StorageProviders.Models;
 
 /// <summary>
@@ -22,15 +24,18 @@ namespace NPipeline.StorageProviders.Models;
 /// </remarks>
 public sealed record StorageMetadata
 {
+    private static readonly IReadOnlyDictionary<string, string> Empty =
+        new Dictionary<string, string>(0, StringComparer.OrdinalIgnoreCase).ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>
     ///     The size of the resource in bytes. For directories or when size cannot be determined, may be zero.
     /// </summary>
     public required long Size { get; init; }
 
     /// <summary>
-    ///     The last modification time of the resource in UTC.
+    ///     The last modification time of the resource in UTC, or <see langword="null" /> when the store does not report one.
     /// </summary>
-    public required DateTimeOffset LastModified { get; init; }
+    public DateTimeOffset? LastModified { get; init; }
 
     /// <summary>
     ///     The MIME type of the resource (e.g., "text/csv", "application/json") if available.
@@ -42,8 +47,7 @@ public sealed record StorageMetadata
     ///     Custom or provider-specific metadata as key-value pairs (e.g., S3 object tags, Azure blob properties).
     ///     Keys are case-insensitive. May be empty if no custom metadata is available.
     /// </summary>
-    public IReadOnlyDictionary<string, string> CustomMetadata { get; init; } =
-        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+    public IReadOnlyDictionary<string, string> CustomMetadata { get; init; } = Empty;
 
     /// <summary>
     ///     Indicates whether the resource represents a directory/container rather than a file/blob.

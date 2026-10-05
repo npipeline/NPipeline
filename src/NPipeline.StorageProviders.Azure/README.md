@@ -715,6 +715,8 @@ if (metadata != null)
 ## Error Handling
 
 The Azure Blob Storage Provider translates Azure SDK exceptions to standard .NET exceptions for consistent error handling.
+One internal translator decides on the HTTP status first and uses the error code only when the status is missing or generic.
+The `RequestFailedException` is always the inner exception.
 
 ### Exception Types Thrown
 
@@ -1038,10 +1040,10 @@ public async Task OpenReadAsync_HandlesValidUris(string uriString)
     var provider = new AzureBlobStorageProvider(fakeFactory, new AzureBlobStorageProviderOptions());
 
     // Act
-    var canHandle = provider.CanHandle(uri);
+    var schemeMatches = provider.Schemes.Contains(uri.Scheme);
 
     // Assert
-    Assert.True(canHandle);
+    Assert.True(schemeMatches);
 }
 ```
 
@@ -1379,23 +1381,28 @@ Main storage provider implementation for Azure Blob Storage.
 
 **Location:** [`AzureBlobStorageProvider.cs`](AzureBlobStorageProvider.cs)
 
+Derives from `StorageProvider`. Declares `StorageCapabilities.Read | Write | List` (the namespace is flat, so no `Hierarchy`).
+Delete and move are not supported and throw `UnsupportedStorageCapabilityException`.
+
 **Properties:**
 
-| Property | Type            | Description                   |
-|----------|-----------------|-------------------------------|
-| `Scheme` | `StorageScheme` | Returns `StorageScheme.Azure` |
+| Property       | Type                          | Description                                          |
+|----------------|-------------------------------|------------------------------------------------------|
+| `Name`         | `string`                      | `"Azure Blob Storage"`                               |
+| `Schemes`      | `IReadOnlyList<StorageScheme>` | `[StorageScheme.Azure]`                              |
+| `Capabilities` | `StorageCapabilities`         | `Read \| Write \| List`                               |
 
 **Methods:**
 
-| Method                                                               | Return Type                     | Description                                                                    |
-|----------------------------------------------------------------------|---------------------------------|--------------------------------------------------------------------------------|
-| `CanHandle(StorageUri uri)`                                          | `bool`                          | Determines if provider can handle the URI (returns true for `azure://` scheme) |
-| `OpenReadAsync(StorageUri uri, CancellationToken ct)`                | `Task<Stream>`                  | Opens a readable stream for the specified blob                                 |
-| `OpenWriteAsync(StorageUri uri, CancellationToken ct)`               | `Task<Stream>`                  | Opens a writable stream for the specified blob                                 |
-| `ExistsAsync(StorageUri uri, CancellationToken ct)`                  | `Task<bool>`                    | Checks if the blob exists                                                      |
-| `ListAsync(StorageUri prefix, bool recursive, CancellationToken ct)` | `IAsyncEnumerable<StorageItem>` | Lists blobs at the specified prefix                                            |
-| `GetMetadataAsync(StorageUri uri, CancellationToken ct)`             | `Task<StorageMetadata?>`        | Retrieves metadata for the blob                                                |
-| `GetMetadata()`                                                      | `StorageProviderMetadata`       | Returns provider capability metadata                                           |
+| Method                                                                         | Return Type                     | Description                                                      |
+|--------------------------------------------------------------------------------|---------------------------------|------------------------------------------------------------------|
+| `OpenReadAsync(StorageUri uri, CancellationToken ct)`                          | `Task<Stream>`                  | Opens a readable stream for the specified blob                   |
+| `OpenWriteAsync(StorageUri uri, StorageWriteOptions? options, CancellationToken ct)` | `Task<StorageWriteStream>` | Opens a writable stream; `options.ContentType` overrides the `contentType` URI parameter |
+| `ExistsAsync(StorageUri uri, CancellationToken ct)`                            | `Task<bool>`                    | Checks if the blob exists                                        |
+| `ListAsync(StorageUri directory, bool recursive, CancellationToken ct)`        | `IAsyncEnumerable<StorageItem>` | Lists blobs below a directory (the URI is treated as ending in `/`) |
+| `GetMetadataAsync(StorageUri uri, CancellationToken ct)`                       | `Task<StorageMetadata?>`        | Retrieves metadata for the blob, or `null` when it is missing    |
+
+Listing: a non-recursive listing yields blobs and prefix entries (`IsDirectory = true`, `Size` and `LastModified` null). A recursive listing yields blobs only. Listed URIs keep the caller's parameters.
 
 ### AzureBlobStorageProviderOptions
 
@@ -1415,27 +1422,6 @@ Configuration options for the Azure Blob Storage Provider.
 | `UploadMaximumConcurrency`       | `int?`             | `null`             | Maximum concurrent upload requests for large blobs          |
 | `UploadMaximumTransferSizeBytes` | `int?`             | `null`             | Maximum transfer size in bytes for each upload chunk        |
 
-### AzureStorageException
-
-Exception thrown when an Azure storage operation fails.
-
-**Location:** [`AzureStorageException.cs`](AzureStorageException.cs)
-
-**Properties:**
-
-| Property              | Type                      | Description                   |
-|-----------------------|---------------------------|-------------------------------|
-| `Container`           | `string`                  | The Azure container name      |
-| `Blob`                | `string`                  | The Azure blob name           |
-| `InnerAzureException` | `RequestFailedException?` | The inner Azure SDK exception |
-
-**Constructors:**
-
-```csharp
-public AzureStorageException(string message, string container, string blob)
-public AzureStorageException(string message, string container, string blob, Exception innerException)
-```
-
 ### ServiceCollectionExtensions
 
 Extension methods for configuring the Azure Blob Storage Provider in dependency injection.
@@ -1446,7 +1432,7 @@ Extension methods for configuring the Azure Blob Storage Provider in dependency 
 
 #### AddAzureBlobStorageProvider(IServiceCollection, Action<AzureBlobStorageProviderOptions>?)
 
-Registers the provider with optional configuration.
+Registers the provider with optional configuration. The provider is added to the `IStorageProvider` collection that `AddStorageResolver()` reads, and calling the method twice registers one provider.
 
 ```csharp
 public static IServiceCollection AddAzureBlobStorageProvider(

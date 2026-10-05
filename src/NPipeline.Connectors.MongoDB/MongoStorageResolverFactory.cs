@@ -26,8 +26,6 @@ public static class MongoStorageResolverFactory
     /// </remarks>
     public static StorageResolver CreateResolver()
     {
-        var resolver = new StorageResolver();
-        resolver.RegisterProvider(new MongoDatabaseStorageProvider());
-        return resolver;
+        return new StorageResolver([new MongoDatabaseStorageProvider()]);
     }
 }

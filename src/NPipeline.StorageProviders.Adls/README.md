@@ -9,11 +9,10 @@ ADLS Gen2 accounts using the `adls://` URI scheme.
 
 ## Key Features
 
-- **Full `IStorageProvider` compliance** - Read, write, exists, list, and metadata operations
-- **`IDeletableStorageProvider`** - Native path delete with idempotent behavior
-- **`IMoveableStorageProvider`** - Native atomic rename/move via `DataLakePathClient.RenameAsync`
-- **`IStorageProviderMetadataProvider`** - Provider capability advertisement
-- **True hierarchical namespace** - `SupportsHierarchy = true` (unlike Azure Blob Storage)
+- **One `IStorageProvider`** - Derives from `StorageProvider`; read, write, exists, list, and metadata operations
+- **Delete** - Native path delete with idempotent behavior (`StorageCapabilities.Delete`)
+- **Move** - Rename via `DataLakePathClient.RenameAsync` (`StorageCapabilities.Move`). `AtomicMove` is not declared yet, because a rejected rename still falls back to copy-and-delete
+- **True hierarchical namespace** - Declares `StorageCapabilities.Hierarchy` (unlike Azure Blob Storage)
 - **Production-hardened** - Client caching, retries, cancellation, structured exception translation
 - **Testable** - Unit tests with fakes, integration tests against Azurite
 
@@ -153,25 +152,19 @@ public async Task<StorageMetadata?> GetFileMetadataAsync(string filesystem, stri
 ```csharp
 public async Task DeleteFileAsync(string filesystem, string path)
 {
-    if (_storageProvider is IDeletableStorageProvider deletableProvider)
-    {
-        var uri = StorageUri.Parse($"adls://{filesystem}/{path}");
-        await deletableProvider.DeleteAsync(uri);
-    }
+    var uri = StorageUri.Parse($"adls://{filesystem}/{path}");
+    await _storageProvider.DeleteAsync(uri);
 }
 ```
 
-### Moving a File (Atomic Rename)
+### Moving a File (Rename)
 
 ```csharp
 public async Task MoveFileAsync(string filesystem, string sourcePath, string destPath)
 {
-    if (_storageProvider is IMoveableStorageProvider moveableProvider)
-    {
-        var sourceUri = StorageUri.Parse($"adls://{filesystem}/{sourcePath}");
-        var destUri = StorageUri.Parse($"adls://{filesystem}/{destPath}");
-        await moveableProvider.MoveAsync(sourceUri, destUri);
-    }
+    var sourceUri = StorageUri.Parse($"adls://{filesystem}/{sourcePath}");
+    var destUri = StorageUri.Parse($"adls://{filesystem}/{destPath}");
+    await _storageProvider.MoveAsync(sourceUri, destUri);
 }
 ```
 
@@ -225,11 +218,11 @@ services.AddAdlsGen2StorageProvider(options =>
 | Write semantics      | Block upload                 | Append + flush (or block upload)      |
 | ACLs                 | RBAC/container-level only    | Per-file and per-directory POSIX ACLs |
 | URI scheme           | `azure://`                   | `adls://`                             |
-| `SupportsHierarchy`  | `false`                      | `true`                                |
+| `Hierarchy` capability | not declared               | declared                              |
 
 ## Exception Handling
 
-The provider translates Azure `RequestFailedException` errors to standard .NET exceptions:
+The provider translates Azure `RequestFailedException` errors to standard .NET exceptions. The HTTP status decides first and the error code only refines it when the status is missing or generic. The SDK exception is the inner exception.
 
 | HTTP status / error code                                | Thrown exception              |
 |---------------------------------------------------------|-------------------------------|
@@ -238,6 +231,8 @@ The provider translates Azure `RequestFailedException` errors to standard .NET e
 | `InvalidResourceName`, 400                              | `ArgumentException`           |
 | `PathAlreadyExists`, 409                                | `IOException`                 |
 | 429 / 5xx                                               | `IOException` (retryable)     |
+
+Listing: the directory URI ends with `/`; a non-recursive listing yields files and directory entries (`IsDirectory = true`, `Size` and `LastModified` null), and a recursive listing yields files only.
 
 ## Development & Testing
 

@@ -36,7 +36,7 @@ public sealed class DuckDBSourceNode<T> : SqlSourceNode<T>
     protected override string ConnectorName => DuckDBDialect.Instance.Name;
 
     /// <inheritdoc />
-    protected override IStorageResolver DefaultResolver => StorageProviderFactory.CreateResolver();
+    protected override IStorageResolver DefaultResolver => StorageResolver.Default;
 
     /// <inheritdoc />
     protected override DbConnection CreateConnection(string connectionString) => new DuckDBConnection(connectionString);

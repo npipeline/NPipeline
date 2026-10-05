@@ -1,6 +1,8 @@
 using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NPipeline.StorageProviders.Abstractions;
+using NPipeline.StorageProviders.DependencyInjection;
+using NPipeline.StorageProviders.Models;
 using Xunit;
 
 namespace NPipeline.StorageProviders.Adls.Tests;
@@ -38,48 +40,28 @@ public class ServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddAdlsGen2StorageProvider_RegistersIDeletableStorageProvider()
+    public void AddAdlsGen2StorageProvider_Twice_RegistersOneProvider()
     {
-        // Arrange
         var services = new ServiceCollection();
-
-        // Act
         services.AddAdlsGen2StorageProvider();
+        services.AddAdlsGen2StorageProvider(new AdlsGen2StorageProviderOptions());
 
-        // Assert
         var provider = services.BuildServiceProvider();
-        var deletableProvider = provider.GetRequiredService<IDeletableStorageProvider>();
-        deletableProvider.Should().BeOfType<AdlsGen2StorageProvider>();
+
+        provider.GetServices<IStorageProvider>().OfType<AdlsGen2StorageProvider>().Should().ContainSingle();
     }
 
     [Fact]
-    public void AddAdlsGen2StorageProvider_RegistersIMoveableStorageProvider()
+    public void AddAdlsGen2StorageProvider_ProviderIsResolvableThroughIStorageResolver()
     {
-        // Arrange
         var services = new ServiceCollection();
-
-        // Act
+        services.AddStorageResolver(false);
         services.AddAdlsGen2StorageProvider();
 
-        // Assert
         var provider = services.BuildServiceProvider();
-        var moveableProvider = provider.GetRequiredService<IMoveableStorageProvider>();
-        moveableProvider.Should().BeOfType<AdlsGen2StorageProvider>();
-    }
 
-    [Fact]
-    public void AddAdlsGen2StorageProvider_RegistersIStorageProviderMetadataProvider()
-    {
-        // Arrange
-        var services = new ServiceCollection();
-
-        // Act
-        services.AddAdlsGen2StorageProvider();
-
-        // Assert
-        var provider = services.BuildServiceProvider();
-        var metadataProvider = provider.GetRequiredService<IStorageProviderMetadataProvider>();
-        metadataProvider.Should().BeOfType<AdlsGen2StorageProvider>();
+        provider.GetRequiredService<IStorageResolver>().Resolve(StorageUri.Parse("adls://filesystem/path"))
+            .Should().BeOfType<AdlsGen2StorageProvider>();
     }
 
     [Fact]
@@ -106,7 +88,7 @@ public class ServiceCollectionExtensionsTests
         var customThreshold = 256 * 1024 * 1024; // 256 MB
 
         // Act
-        services.AddAdlsGen2StorageProvider(options => options.UploadThresholdBytes = customThreshold);
+        services.AddAdlsGen2StorageProvider(new AdlsGen2StorageProviderOptions { UploadThresholdBytes = customThreshold });
 
         // Assert
         var provider = services.BuildServiceProvider();

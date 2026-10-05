@@ -253,13 +253,19 @@ internal sealed class SftpClientPool : IDisposable, IAsyncDisposable
         if (connection is null)
             return;
 
-        ObjectDisposedException.ThrowIf(_disposed, this);
+        // A stream can outlive its provider. Returning to a disposed pool just closes the connection; the pool's
+        // semaphore is gone, so there is no slot to release.
+        if (_disposed)
+        {
+            DisposeConnection(connection);
+            return;
+        }
 
         // Check if connection is still healthy
         if (!IsConnectionHealthy(connection))
         {
             DisposeConnection(connection);
-            _semaphore.Release();
+            ReleaseSlot();
             return;
         }
 
@@ -268,7 +274,19 @@ internal sealed class SftpClientPool : IDisposable, IAsyncDisposable
         // Return to the queue that matches this connection's pool key.
         var queue = _available.GetOrAdd(connection.PoolKey, static _ => new ConcurrentQueue<PooledConnection>());
         queue.Enqueue(connection);
-        _semaphore.Release();
+        ReleaseSlot();
+    }
+
+    private void ReleaseSlot()
+    {
+        try
+        {
+            _ = _semaphore.Release();
+        }
+        catch (ObjectDisposedException)
+        {
+            // The pool was disposed between the check in Return and here.
+        }
     }
 
     private void InternalReturn(PooledConnection connection)
@@ -367,7 +385,7 @@ internal sealed class SftpClientPool : IDisposable, IAsyncDisposable
         }
     }
 
-    private static string BuildPoolKey(StorageUri uri)
+    internal static string BuildPoolKey(StorageUri uri)
     {
         var host = uri.Host ?? "";
         var port = uri.Port ?? 22;
@@ -385,6 +403,8 @@ internal sealed class SftpClientPool : IDisposable, IAsyncDisposable
             authHash = ComputeHash($"password:{password}");
         else if (uri.Parameters.TryGetValue("keyPath", out var keyPath) && !string.IsNullOrEmpty(keyPath))
             authHash = ComputeHash($"key:{keyPath}");
+        else if (!string.IsNullOrEmpty(uri.Password))
+            authHash = ComputeHash($"userinfo-password:{uri.Password}");
         else
             authHash = "default";
 

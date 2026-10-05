@@ -5,477 +5,212 @@ using NPipeline.StorageProviders.Models;
 namespace NPipeline.StorageProviders;
 
 /// <summary>
-///     Built-in storage provider for local file system access.
-///     Handles "file" scheme URIs and local paths converted via <see cref="StorageUri" />.
+///     Built-in storage provider for the local file system. Serves <c>file://</c> URIs and the local paths that
+///     <see cref="StorageUri.Parse" /> converts into them.
 /// </summary>
-/// <remarks>
-///     - Dependency-free implementation
-///     - Stream-based operations for scalability
-///     - Proper directory creation for write operations
-///     - Conservative file sharing (read: FileShare.Read; write: FileShare.Read)
-/// </remarks>
-public sealed class FileSystemStorageProvider : IStorageProvider, IStorageProviderMetadataProvider, IDeletableStorageProvider, IMoveableStorageProvider
+public sealed class FileSystemStorageProvider : StorageProvider
 {
-    /// <summary>
-    ///     Deletes a file at the specified URI.
-    /// </summary>
-    /// <param name="uri">The URI of the file to delete.</param>
-    /// <param name="cancellationToken">The cancellation token.</param>
-    /// <returns>A task representing the asynchronous operation.</returns>
-    public Task DeleteAsync(StorageUri uri, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(uri);
+    private static readonly IReadOnlyList<StorageScheme> SupportedSchemes = [StorageScheme.File];
 
+    /// <inheritdoc />
+    public override string Name => "File System";
+
+    /// <inheritdoc />
+    public override IReadOnlyList<StorageScheme> Schemes => SupportedSchemes;
+
+    /// <inheritdoc />
+    public override StorageCapabilities Capabilities =>
+        StorageCapabilities.Read | StorageCapabilities.Write | StorageCapabilities.List | StorageCapabilities.Delete
+        | StorageCapabilities.Move | StorageCapabilities.AtomicMove | StorageCapabilities.Hierarchy;
+
+    /// <inheritdoc />
+    protected override Task<Stream> OpenReadCoreAsync(StorageUri uri, CancellationToken cancellationToken)
+    {
         var path = ToLocalPath(uri);
 
-        if (File.Exists(path))
-            File.Delete(path);
+        try
+        {
+            // An explicit FileStream sets useAsync; File.OpenRead does not.
+            Stream stream = new FileStream(
+                path,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.Read,
+                4096,
+                FileOptions.Asynchronous | FileOptions.SequentialScan);
 
-        return Task.CompletedTask;
+            return Task.FromResult(stream);
+        }
+        catch (DirectoryNotFoundException ex)
+        {
+            throw new FileNotFoundException($"Could not find file '{uri}'.", path, ex);
+        }
     }
 
-    /// <summary>
-    ///     Moves a file from one location to another.
-    /// </summary>
-    /// <param name="sourceUri">The source URI.</param>
-    /// <param name="destinationUri">The destination URI.</param>
-    /// <param name="cancellationToken">The cancellation token.</param>
-    /// <returns>A task representing the asynchronous operation.</returns>
-    public Task MoveAsync(StorageUri sourceUri, StorageUri destinationUri, CancellationToken cancellationToken = default)
+    /// <inheritdoc />
+    protected override Task<StorageWriteStream> OpenWriteCoreAsync(StorageUri uri, StorageWriteOptions? options, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(sourceUri);
-        ArgumentNullException.ThrowIfNull(destinationUri);
-
-        var sourcePath = ToLocalPath(sourceUri);
-        var destPath = ToLocalPath(destinationUri);
-
-        // Ensure destination directory exists
-        var directory = Path.GetDirectoryName(destPath);
-
-        if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
-            Directory.CreateDirectory(directory);
-
-        File.Move(sourcePath, destPath, true);
-
-        return Task.CompletedTask;
-    }
-
-    /// <summary>
-    ///     Gets the storage scheme supported by this provider.
-    /// </summary>
-    /// <value>
-    ///     The <see cref="StorageScheme.File" /> scheme indicating this provider handles file system URIs.
-    /// </value>
-    public StorageScheme Scheme => StorageScheme.File;
-
-    /// <summary>
-    ///     Determines whether this provider can handle the specified storage URI.
-    /// </summary>
-    /// <param name="uri">The storage URI to check.</param>
-    /// <returns>
-    ///     <c>true</c> if the URI scheme matches the provider's supported scheme; otherwise, <c>false</c>.
-    /// </returns>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="uri" /> is null.</exception>
-    public bool CanHandle(StorageUri uri)
-    {
-        ArgumentNullException.ThrowIfNull(uri);
-        return Scheme.Equals(uri.Scheme);
-    }
-
-    /// <summary>
-    ///     Opens a file for reading asynchronously.
-    /// </summary>
-    /// <param name="uri">The storage URI pointing to the file to read.</param>
-    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
-    /// <returns>
-    ///     A task that represents the asynchronous operation, containing a readable stream for the file.
-    /// </returns>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="uri" /> is null.</exception>
-    /// <exception cref="FileNotFoundException">Thrown when the specified file does not exist.</exception>
-    /// <exception cref="UnauthorizedAccessException">Thrown when access to the file is denied.</exception>
-    public Task<Stream> OpenReadAsync(StorageUri uri, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(uri);
-
         var path = ToLocalPath(uri);
-
-        // File.OpenRead uses FileShare.Read by default; use explicit FileStream to set useAsync true
-        var stream = new FileStream(
-            path,
-            FileMode.Open,
-            FileAccess.Read,
-            FileShare.Read,
-            4096,
-            FileOptions.Asynchronous | FileOptions.SequentialScan);
-
-        return Task.FromResult<Stream>(stream);
-    }
-
-    /// <summary>
-    ///     Opens a file for writing asynchronously, creating any necessary directories.
-    /// </summary>
-    /// <param name="uri">The storage URI pointing to the file to write.</param>
-    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
-    /// <returns>
-    ///     A task that represents the asynchronous operation, containing a writable stream for the file.
-    /// </returns>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="uri" /> is null.</exception>
-    /// <exception cref="UnauthorizedAccessException">Thrown when access to the file path is denied.</exception>
-    /// <exception cref="DirectoryNotFoundException">Thrown when part of the directory path cannot be found.</exception>
-    public Task<Stream> OpenWriteAsync(StorageUri uri, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(uri);
-
-        var path = ToLocalPath(uri);
-
         var directory = Path.GetDirectoryName(path);
 
-        if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
-            Directory.CreateDirectory(directory);
+        if (!string.IsNullOrEmpty(directory))
+            _ = Directory.CreateDirectory(directory);
 
         var stream = new FileStream(
             path,
-            FileMode.Create, // overwrite by default; future enhancements may make this configurable
+            FileMode.Create,
             FileAccess.Write,
             FileShare.Read, // Allow other processes to read while writing
             4096,
             FileOptions.Asynchronous | FileOptions.SequentialScan);
 
-        return Task.FromResult<Stream>(stream);
+        return Task.FromResult<StorageWriteStream>(new PassThroughWriteStream(stream));
     }
 
-    /// <summary>
-    ///     Checks whether a file or directory exists at the specified URI.
-    /// </summary>
-    /// <param name="uri">The storage URI to check.</param>
-    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
-    /// <returns>
-    ///     A task that represents the asynchronous operation, containing <c>true</c> if the file or directory exists; otherwise, <c>false</c>.
-    /// </returns>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="uri" /> is null.</exception>
-    public Task<bool> ExistsAsync(StorageUri uri, CancellationToken cancellationToken = default)
+    /// <inheritdoc />
+    protected override Task<StorageMetadata?> GetMetadataCoreAsync(StorageUri uri, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(uri);
-
-        var path = ToLocalPath(uri);
-        var exists = File.Exists(path) || Directory.Exists(path);
-        return Task.FromResult(exists);
-    }
-
-    /// <summary>
-    ///     Lists files and directories under the specified prefix URI.
-    /// </summary>
-    /// <param name="prefix">The storage URI representing the directory to list.</param>
-    /// <param name="recursive">If <c>true</c>, lists all items recursively; otherwise, lists only direct children.</param>
-    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
-    /// <returns>
-    ///     An asynchronous enumerable of <see cref="StorageItem" /> objects representing the files and directories.
-    /// </returns>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="prefix" /> is null.</exception>
-    public IAsyncEnumerable<StorageItem> ListAsync(
-        StorageUri prefix,
-        bool recursive = false,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(prefix);
-        return ListAsyncCore(prefix, recursive, cancellationToken);
-    }
-
-    /// <summary>
-    ///     Retrieves metadata for a file or directory at the specified URI.
-    /// </summary>
-    /// <param name="uri">The storage URI pointing to the file or directory.</param>
-    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
-    /// <returns>
-    ///     A task that represents the asynchronous operation, containing the metadata for the file or directory,
-    ///     or <c>null</c> if the file or directory does not exist.
-    /// </returns>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="uri" /> is null.</exception>
-    public Task<StorageMetadata?> GetMetadataAsync(StorageUri uri, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(uri);
-
         var path = ToLocalPath(uri);
 
         if (File.Exists(path))
         {
             var fileInfo = new FileInfo(path);
-            var contentType = GetContentType(path);
 
-            var metadata = new StorageMetadata
+            return Task.FromResult<StorageMetadata?>(new StorageMetadata
             {
                 Size = fileInfo.Length,
                 LastModified = fileInfo.LastWriteTimeUtc,
-                ContentType = contentType,
-                CustomMetadata = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
-                IsDirectory = false,
+                ContentType = GetContentType(path),
                 ETag = fileInfo.LastWriteTimeUtc.Ticks.ToString("x16"),
-            };
-
-            return Task.FromResult<StorageMetadata?>(metadata);
+            });
         }
 
         if (Directory.Exists(path))
         {
             var dirInfo = new DirectoryInfo(path);
 
-            var metadata = new StorageMetadata
+            return Task.FromResult<StorageMetadata?>(new StorageMetadata
             {
                 Size = 0,
                 LastModified = dirInfo.LastWriteTimeUtc,
-                ContentType = null,
-                CustomMetadata = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
                 IsDirectory = true,
                 ETag = dirInfo.LastWriteTimeUtc.Ticks.ToString("x16"),
-            };
-
-            return Task.FromResult<StorageMetadata?>(metadata);
+            });
         }
 
         return Task.FromResult<StorageMetadata?>(null);
     }
 
-    /// <summary>
-    ///     Gets the metadata describing this storage provider's capabilities.
-    /// </summary>
-    /// <returns>
-    ///     A <see cref="StorageProviderMetadata" /> object containing information about the provider's supported features.
-    /// </returns>
-    public StorageProviderMetadata GetMetadata() =>
-        new()
-        {
-            Name = "File System",
-            SupportedSchemes = [StorageScheme.File.ToString()],
-            SupportsRead = true,
-            SupportsWrite = true,
-            SupportsListing = true,
-            SupportsMetadata = true,
-            SupportsHierarchy = true,
-            Capabilities = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase),
-        };
-
-    private static IAsyncEnumerable<StorageItem> ListAsyncCore(
-        StorageUri prefix,
-        bool recursive,
-        CancellationToken cancellationToken)
+    /// <inheritdoc />
+    protected override Task<bool> ExistsCoreAsync(StorageUri uri, CancellationToken cancellationToken)
     {
-        var path = ToLocalPath(prefix);
-
-        if (!Directory.Exists(path))
-            return EmptyAsyncEnumerable();
-
-        return ListAsyncCoreIterator(path, recursive, cancellationToken);
+        var path = ToLocalPath(uri);
+        return Task.FromResult(File.Exists(path) || Directory.Exists(path));
     }
 
-    private static async IAsyncEnumerable<StorageItem> EmptyAsyncEnumerable()
+    /// <inheritdoc />
+    protected override IAsyncEnumerable<StorageItem> ListCoreAsync(StorageUri directory, bool recursive, CancellationToken cancellationToken) =>
+        ListIteratorAsync(directory, ToLocalPath(directory), recursive, cancellationToken);
+
+    /// <inheritdoc />
+    protected override Task DeleteCoreAsync(StorageUri uri, CancellationToken cancellationToken)
     {
-        await Task.CompletedTask.ConfigureAwait(false);
-        yield break;
+        // File.Delete is idempotent: it does not throw when the file is missing.
+        File.Delete(ToLocalPath(uri));
+        return Task.CompletedTask;
     }
 
-    private static async IAsyncEnumerable<StorageItem> ListAsyncCoreIterator(
-        string path,
+    /// <inheritdoc />
+    protected override Task MoveCoreAsync(StorageUri source, StorageUri destination, CancellationToken cancellationToken)
+    {
+        var sourcePath = ToLocalPath(source);
+        var destinationPath = ToLocalPath(destination);
+
+        if (!File.Exists(sourcePath))
+            throw new FileNotFoundException($"Could not find file '{source}'.", sourcePath);
+
+        var directory = Path.GetDirectoryName(destinationPath);
+
+        if (!string.IsNullOrEmpty(directory))
+            _ = Directory.CreateDirectory(directory);
+
+        File.Move(sourcePath, destinationPath, true);
+        return Task.CompletedTask;
+    }
+
+    private static async IAsyncEnumerable<StorageItem> ListIteratorAsync(
+        StorageUri directory,
+        string root,
         bool recursive,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        // Await once before loop to satisfy async iterator requirement without per-item overhead
+        // Await once so this is a valid async iterator without a per-item cost.
         await Task.CompletedTask.ConfigureAwait(false);
 
-        // For recursive listing, use manual stack-based traversal instead of AllDirectories.
-        // This allows us to catch UnauthorizedAccessException at directory enumeration boundaries
-        // and skip inaccessible subtrees gracefully instead of aborting entire enumeration.
-        // Reparse points (symlinks, junctions) are not followed, so the walk cannot loop.
-        if (recursive)
+        // A manual walk, rather than SearchOption.AllDirectories, lets an inaccessible or vanished subtree be skipped
+        // instead of aborting the listing. Reparse points (symlinks, junctions) are not followed, so the walk cannot loop.
+        // There is deliberately no visited set keyed by path: on a case-sensitive file system a case-insensitive set
+        // merged sibling directories such as "A" and "a".
+        var pending = new Stack<string>();
+        pending.Push(root);
+
+        while (pending.Count > 0)
         {
-            var directoriesToProcess = new Stack<string>();
-            directoriesToProcess.Push(path);
+            cancellationToken.ThrowIfCancellationRequested();
 
-            while (directoriesToProcess.Count > 0)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                var currentDir = directoriesToProcess.Pop();
-
-                // Enumerate only direct children (TopDirectoryOnly) to catch exceptions at boundaries
-                IEnumerable<string>? entries = null;
-
-                try
-                {
-                    entries = Directory.EnumerateFileSystemEntries(currentDir, "*", SearchOption.TopDirectoryOnly);
-                }
-                catch (UnauthorizedAccessException)
-                {
-                    // Cannot access this directory, skip it and continue with remainder
-                    continue;
-                }
-                catch (DirectoryNotFoundException)
-                {
-                    // Directory was deleted, skip it and continue with remainder
-                    continue;
-                }
-
-                foreach (var entry in entries)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-
-                    var itemUri = StorageUri.FromFilePath(entry);
-
-                    // Between enumeration and attribute lookup, files can be deleted or moved.
-                    FileAttributes attributes;
-
-                    try
-                    {
-                        attributes = File.GetAttributes(entry);
-                    }
-                    catch (FileNotFoundException)
-                    {
-                        continue; // File was deleted after enumeration, skip
-                    }
-                    catch (DirectoryNotFoundException)
-                    {
-                        continue; // Directory was deleted after enumeration, skip
-                    }
-                    catch (UnauthorizedAccessException)
-                    {
-                        continue; // No permission to access this entry, skip
-                    }
-
-                    var isDir = (attributes & FileAttributes.Directory) != 0;
-
-                    long size = 0;
-                    var lastModified = DateTimeOffset.UtcNow;
-
-                    try
-                    {
-                        if (isDir)
-                        {
-                            var dirInfo = new DirectoryInfo(entry);
-                            lastModified = dirInfo.LastWriteTimeUtc;
-                        }
-                        else
-                        {
-                            var fileInfo = new FileInfo(entry);
-                            size = fileInfo.Length;
-                            lastModified = fileInfo.LastWriteTimeUtc;
-                        }
-                    }
-                    catch (FileNotFoundException)
-                    {
-                        continue; // File/directory deleted, skip
-                    }
-                    catch (DirectoryNotFoundException)
-                    {
-                        continue; // Parent directory deleted, skip
-                    }
-                    catch (UnauthorizedAccessException)
-                    {
-                        continue; // Cannot read properties, skip
-                    }
-
-                    yield return new StorageItem
-                    {
-                        Uri = itemUri,
-                        Size = size,
-                        LastModified = lastModified,
-                        IsDirectory = isDir,
-                    };
-
-                    // Queue directories for traversal, but skip reparse points (symlinks, junctions) to prevent
-                    // infinite loops from circular references (e.g., a junction pointing to an ancestor).
-                    // There is deliberately no visited set keyed by path: on a case-sensitive file system a
-                    // case-insensitive set merged sibling directories such as "A" and "a".
-                    var isReparsePoint = (attributes & FileAttributes.ReparsePoint) != 0;
-
-                    if (isDir && !isReparsePoint)
-                        directoriesToProcess.Push(entry);
-                }
-            }
-        }
-        else
-        {
-            // Non-recursive: just enumerate direct children
-            IEnumerable<string>? entries = null;
+            IEnumerator<FileSystemInfo> entries;
 
             try
             {
-                entries = Directory.EnumerateFileSystemEntries(path, "*", SearchOption.TopDirectoryOnly);
+                // FileSystemInfo carries the attributes, length and timestamps from the directory read, with no further system calls per entry.
+                entries = new DirectoryInfo(pending.Pop()).EnumerateFileSystemInfos("*", SearchOption.TopDirectoryOnly).GetEnumerator();
             }
-            catch (UnauthorizedAccessException)
+            catch (Exception ex) when (ex is UnauthorizedAccessException or DirectoryNotFoundException)
             {
-                // Cannot list at all (no permission on root)
-                yield break;
-            }
-            catch (DirectoryNotFoundException)
-            {
-                // Root directory doesn't exist
-                yield break;
+                continue;
             }
 
-            foreach (var entry in entries)
+            using (entries)
             {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                var itemUri = StorageUri.FromFilePath(entry);
-
-                // Between enumeration and attribute lookup, files can be deleted or moved.
-                FileAttributes attributes;
-
-                try
+                while (true)
                 {
-                    attributes = File.GetAttributes(entry);
-                }
-                catch (FileNotFoundException)
-                {
-                    continue; // File was deleted after enumeration, skip
-                }
-                catch (DirectoryNotFoundException)
-                {
-                    continue; // Directory was deleted after enumeration, skip
-                }
-                catch (UnauthorizedAccessException)
-                {
-                    continue; // No permission to access this entry, skip
-                }
+                    FileSystemInfo entry;
 
-                var isDir = (attributes & FileAttributes.Directory) != 0;
-
-                long size = 0;
-                var lastModified = DateTimeOffset.UtcNow;
-
-                try
-                {
-                    if (isDir)
+                    try
                     {
-                        var dirInfo = new DirectoryInfo(entry);
-                        lastModified = dirInfo.LastWriteTimeUtc;
-                    }
-                    else
-                    {
-                        var fileInfo = new FileInfo(entry);
-                        size = fileInfo.Length;
-                        lastModified = fileInfo.LastWriteTimeUtc;
-                    }
-                }
-                catch (FileNotFoundException)
-                {
-                    continue; // File/directory deleted, skip
-                }
-                catch (DirectoryNotFoundException)
-                {
-                    continue; // Parent directory deleted, skip
-                }
-                catch (UnauthorizedAccessException)
-                {
-                    continue; // Cannot read properties, skip
-                }
+                        if (!entries.MoveNext())
+                            break;
 
-                yield return new StorageItem
-                {
-                    Uri = itemUri,
-                    Size = size,
-                    LastModified = lastModified,
-                    IsDirectory = isDir,
-                };
+                        entry = entries.Current;
+                    }
+                    catch (Exception ex) when (ex is UnauthorizedAccessException or DirectoryNotFoundException or FileNotFoundException)
+                    {
+                        break; // The directory changed or became unreadable mid-enumeration.
+                    }
+
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    var isDirectory = (entry.Attributes & FileAttributes.Directory) != 0;
+
+                    if (isDirectory && recursive)
+                    {
+                        if ((entry.Attributes & FileAttributes.ReparsePoint) == 0)
+                            pending.Push(entry.FullName);
+
+                        continue;
+                    }
+
+                    // WithPath keeps the caller's host and parameters on every listed URI.
+                    var path = StorageUri.FromFilePath(entry.FullName).Path;
+
+                    yield return new StorageItem
+                    {
+                        Uri = directory.WithPath(isDirectory ? path + "/" : path),
+                        Size = isDirectory ? null : ((FileInfo)entry).Length,
+                        LastModified = entry.LastWriteTimeUtc,
+                        IsDirectory = isDirectory,
+                    };
+                }
             }
         }
     }

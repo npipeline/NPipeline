@@ -15,16 +15,44 @@ A [storage provider](../reference/glossary.md#storage-provider) implements `ISto
 ```csharp
 public interface IStorageProvider
 {
-    StorageScheme Scheme { get; }
-    bool CanHandle(StorageUri uri);
+    string Name { get; }
+    IReadOnlyList<StorageScheme> Schemes { get; }
+    StorageCapabilities Capabilities { get; }
+
     Task<Stream> OpenReadAsync(StorageUri uri, CancellationToken ct = default);
-    Task<Stream> OpenWriteAsync(StorageUri uri, CancellationToken ct = default);
+    Task<StorageWriteStream> OpenWriteAsync(StorageUri uri, StorageWriteOptions? options = null, CancellationToken ct = default);
+    Task<StorageMetadata?> GetMetadataAsync(StorageUri uri, CancellationToken ct = default);   // null: not found
     Task<bool> ExistsAsync(StorageUri uri, CancellationToken ct = default);
-    IAsyncEnumerable<StorageItem> ListAsync(StorageUri prefix, bool recursive = false, CancellationToken ct = default);
+    IAsyncEnumerable<StorageItem> ListAsync(StorageUri directory, bool recursive = false, CancellationToken ct = default);
+    Task DeleteAsync(StorageUri uri, CancellationToken ct = default);
+    Task MoveAsync(StorageUri source, StorageUri destination, CancellationToken ct = default);
 }
 ```
 
-Extended interfaces add optional capabilities: `IDeletableStorageProvider` (delete files), `IMoveableStorageProvider` (move/rename), `IConfigurableStorageProvider` (runtime configuration).
+`Capabilities` is a `[Flags]` enum that says what a provider supports: `Read`, `Write`, `List`, `Delete`, `Move`, `AtomicMove` (the move is a single rename), `Hierarchy` (real directories rather than key prefixes) and `ConditionalWrite`. Calling an operation the provider doesn't declare throws `UnsupportedStorageCapabilityException`.
+
+| Provider | Capabilities |
+|----------|--------------|
+| File system | Read, Write, List, Delete, Move, AtomicMove, Hierarchy |
+| S3, Azure Blob, GCS | Read, Write, List, Delete, Move (copy, then delete) |
+| ADLS Gen2, SFTP | Read, Write, List, Delete, Move, Hierarchy (plus AtomicMove where the rename is atomic) |
+
+### Contract
+
+Every provider behaves the same way:
+
+| Situation | Result |
+|-----------|--------|
+| Object not found (read, move source) | `FileNotFoundException`. `GetMetadataAsync` returns `null` and `ExistsAsync` returns `false`. |
+| Authentication or permission failure | `UnauthorizedAccessException` |
+| Invalid bucket, container, key or path | `ArgumentException` |
+| Any other service or I/O failure | `IOException`, with the SDK exception as `InnerException` |
+| `ListAsync` | `directory` is always treated as a directory, so `logs` never matches `logs-archive/`. `recursive: false` yields direct children, including directory entries. `recursive: true` yields every file below and no directory entries. Listed URIs keep the host, port and parameters of the URI you passed in. A missing directory yields nothing. |
+| `DeleteAsync` on a missing object | Succeeds |
+| `MoveAsync` | Overwrites the destination |
+| `ExistsAsync` on a directory | `true` on providers that declare `Hierarchy`; `false` for a bare prefix on an object store |
+
+`StorageItem.Size` and the `LastModified` values are `null` when the store doesn't report them, for example for a prefix.
 
 ## Choosing a Provider
 
@@ -66,17 +94,21 @@ var uri = StorageUri.Parse("s3://prod-bucket/data/orders.csv");
 
 ## DI Registration
 
-Each provider package includes `IServiceCollection` extensions:
+Each provider package includes `IServiceCollection` extensions that register the provider as an `IStorageProvider` singleton. Calling one twice has no effect:
 
 ```csharp
-services.AddNPipelineS3Storage(options => { /* configure */ });
-services.AddNPipelineAzureBlobStorage(options => { /* configure */ });
-services.AddNPipelineGcsStorage(options => { /* configure */ });
+services.AddAwsS3StorageProvider(options => { /* configure */ });
+services.AddAzureBlobStorageProvider(options => { /* configure */ });
+services.AddGcsStorageProvider(options => { /* configure */ });
+
+services.AddStorageResolver();   // also registers the file system provider
 ```
+
+`AddStorageResolver()` registers an `IStorageResolver` built from every `IStorageProvider` in the container, including providers registered after it. `AddFileSystemStorageProvider()` registers the file system provider on its own.
 
 ## Storage Resolver
 
-`StorageResolver` automatically selects the right provider based on URI scheme:
+`StorageResolver` selects the provider that serves a URI's scheme. It's immutable: build it from the providers you want. Two providers that serve the same scheme throw `ArgumentException` at construction, so a wrong configuration fails at startup.
 
 ```csharp
 var resolver = new StorageResolver(new IStorageProvider[]
@@ -86,9 +118,11 @@ var resolver = new StorageResolver(new IStorageProvider[]
     new AzureBlobStorageProvider(blobOptions)
 });
 
-// Resolver picks the right provider based on URI scheme
-var stream = await resolver.OpenReadAsync(new StorageUri("s3://bucket/file.csv"));
+var provider = resolver.Resolve(StorageUri.Parse("s3://bucket/file.csv"));   // throws StorageProviderNotFoundException if none
+await using var stream = await provider.OpenReadAsync(uri);
 ```
+
+`TryResolve` returns `false` instead of throwing, and `StorageResolver.Default` serves the file system only. To read from AWS and write to MinIO through one resolver, give the S3-compatible provider its own scheme (see [S3-Compatible](s3-compatible.md)), or pass the provider to the node with `Provider = ...`.
 
 ## Custom Provider
 
@@ -156,7 +190,13 @@ All providers expose the same operations:
 using var readStream = await provider.OpenReadAsync(uri);
 
 // Write
-using var writeStream = await provider.OpenWriteAsync(uri);
+await using var writeStream = await provider.OpenWriteAsync(uri);
+await writeStream.WriteAsync(bytes);
+await writeStream.CommitAsync();
+
+// Delete and move
+await provider.DeleteAsync(uri);
+await provider.MoveAsync(source, destination);
 
 // Exists
 bool exists = await provider.ExistsAsync(uri);
@@ -164,10 +204,10 @@ bool exists = await provider.ExistsAsync(uri);
 // List (recursive or non-recursive)
 await foreach (var item in provider.ListAsync(prefix, recursive: true))
 {
-    Console.WriteLine($"{item.Uri} - {item.Size} bytes - {item.LastModified}");
+    Console.WriteLine($"{item.Uri} - {item.Size?.ToString() ?? "?"} bytes - {item.LastModified}");
 }
 
-// Metadata (via IStorageProviderMetadataProvider)
+// Metadata (null when the object doesn't exist)
 var metadata = await provider.GetMetadataAsync(uri);
 ```
 

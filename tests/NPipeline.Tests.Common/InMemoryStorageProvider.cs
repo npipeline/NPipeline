@@ -10,11 +10,18 @@ namespace NPipeline.Tests.Common;
 ///     keyed by host and path, and a written object becomes visible when its stream is disposed, like an object-store
 ///     PUT. Streams can be made non-seekable to reproduce S3, Azure Blob and HTTP response streams.
 /// </summary>
-public sealed class InMemoryStorageProvider : IStorageProvider, IDeletableStorageProvider
+public sealed class InMemoryStorageProvider : StorageProvider
 {
+    private static readonly IReadOnlyList<StorageScheme> SupportedSchemes = [new StorageScheme("mem")];
+
     private readonly ConcurrentDictionary<string, byte[]> _objects = new(StringComparer.Ordinal);
 
-    public StorageScheme Scheme { get; } = new("mem");
+    public override string Name => "In-memory";
+
+    public override IReadOnlyList<StorageScheme> Schemes => SupportedSchemes;
+
+    public override StorageCapabilities Capabilities =>
+        StorageCapabilities.Read | StorageCapabilities.Write | StorageCapabilities.List | StorageCapabilities.Delete;
 
     /// <summary>Read streams report <c>CanSeek = false</c>, like an object-store download stream.</summary>
     public bool NonSeekableReads { get; init; }
@@ -25,9 +32,7 @@ public sealed class InMemoryStorageProvider : IStorageProvider, IDeletableStorag
     /// <summary>Creates a <c>mem://</c> URI for <paramref name="path" />.</summary>
     public static StorageUri Uri(string path) => StorageUri.Parse($"mem://test/{path.TrimStart('/')}");
 
-    public bool CanHandle(StorageUri uri) => uri.Scheme == Scheme;
-
-    public Task<Stream> OpenReadAsync(StorageUri uri, CancellationToken cancellationToken = default)
+    protected override Task<Stream> OpenReadCoreAsync(StorageUri uri, CancellationToken cancellationToken)
     {
         if (!_objects.TryGetValue(Key(uri), out var bytes))
             throw new FileNotFoundException($"No in-memory object at '{uri}'.");
@@ -40,7 +45,7 @@ public sealed class InMemoryStorageProvider : IStorageProvider, IDeletableStorag
         return Task.FromResult(stream);
     }
 
-    public Task<Stream> OpenWriteAsync(StorageUri uri, CancellationToken cancellationToken = default)
+    protected override Task<StorageWriteStream> OpenWriteCoreAsync(StorageUri uri, StorageWriteOptions? options, CancellationToken cancellationToken)
     {
         WriteRequests.Enqueue(uri);
         Stream stream = new CommittingStream(bytes => _objects[Key(uri)] = bytes);
@@ -48,24 +53,27 @@ public sealed class InMemoryStorageProvider : IStorageProvider, IDeletableStorag
         if (NonSeekableWrites)
             stream = new ForwardOnlyStream(stream, true);
 
-        return Task.FromResult(stream);
+        return Task.FromResult<StorageWriteStream>(new PassThroughWriteStream(stream));
     }
 
-    public Task<bool> ExistsAsync(StorageUri uri, CancellationToken cancellationToken = default) =>
-        Task.FromResult(_objects.ContainsKey(Key(uri)));
+    protected override Task<StorageMetadata?> GetMetadataCoreAsync(StorageUri uri, CancellationToken cancellationToken) =>
+        Task.FromResult<StorageMetadata?>(
+            _objects.TryGetValue(Key(uri), out var bytes)
+                ? new StorageMetadata { Size = bytes.LongLength }
+                : null);
 
-    public Task DeleteAsync(StorageUri uri, CancellationToken cancellationToken = default)
+    protected override Task DeleteCoreAsync(StorageUri uri, CancellationToken cancellationToken)
     {
         _ = _objects.TryRemove(Key(uri), out _);
         return Task.CompletedTask;
     }
 
-    public async IAsyncEnumerable<StorageItem> ListAsync(
-        StorageUri prefix,
-        bool recursive = false,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    protected override async IAsyncEnumerable<StorageItem> ListCoreAsync(
+        StorageUri directory,
+        bool recursive,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var prefixKey = Key(prefix).TrimEnd('/') + "/";
+        var prefixKey = Key(directory).TrimEnd('/') + "/";
 
         foreach (var (key, bytes) in _objects.OrderBy(o => o.Key, StringComparer.Ordinal))
         {
@@ -79,7 +87,7 @@ public sealed class InMemoryStorageProvider : IStorageProvider, IDeletableStorag
 
             yield return new StorageItem
             {
-                Uri = prefix.WithPath(key[key.IndexOf('/')..]),
+                Uri = directory.WithPath(key[key.IndexOf('/')..]),
                 Size = bytes.LongLength,
                 LastModified = DateTimeOffset.UnixEpoch,
             };
@@ -88,7 +96,7 @@ public sealed class InMemoryStorageProvider : IStorageProvider, IDeletableStorag
         await Task.CompletedTask.ConfigureAwait(false);
     }
 
-    /// <summary>Every URI passed to <see cref="OpenWriteAsync" />, in order, including parameters the key ignores.</summary>
+    /// <summary>Every URI passed to <see cref="StorageProvider.OpenWriteAsync" />, in order, including parameters the key ignores.</summary>
     public ConcurrentQueue<StorageUri> WriteRequests { get; } = new();
 
     /// <summary>Stores <paramref name="bytes" /> at <paramref name="uri" />, as if written by another tool.</summary>

@@ -21,14 +21,14 @@ public sealed record StorageItem
     public required StorageUri Uri { get; init; }
 
     /// <summary>
-    ///     The size of the item in bytes. For directories or items where size cannot be determined, may be zero.
+    ///     The size of the item in bytes, or <see langword="null" /> for a directory or when the store does not report one.
     /// </summary>
-    public required long Size { get; init; }
+    public long? Size { get; init; }
 
     /// <summary>
-    ///     The last modification time of the item in UTC. Implementations should provide the most accurate timestamp available.
+    ///     The last modification time of the item in UTC, or <see langword="null" /> when the store does not report one (for example for a prefix).
     /// </summary>
-    public required DateTimeOffset LastModified { get; init; }
+    public DateTimeOffset? LastModified { get; init; }
 
     /// <summary>
     ///     Indicates whether the item represents a directory/container rather than a file/blob.

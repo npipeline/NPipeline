@@ -1,3 +1,5 @@
+using NPipeline.StorageProviders.Exceptions;
+using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Models;
 
 namespace NPipeline.Connectors.Postgres.Tests;
@@ -14,7 +16,7 @@ public sealed class PostgresStorageResolverFactoryTests
         var resolver = PostgresStorageResolverFactory.CreateResolver();
 
         // Assert
-        var providers = resolver.GetAvailableProviders();
+        var providers = resolver.Providers;
         Assert.Single(providers);
         Assert.IsType<PostgresDatabaseStorageProvider>(providers.First());
     }
@@ -27,7 +29,7 @@ public sealed class PostgresStorageResolverFactoryTests
         var uri = StorageUri.Parse("postgres://localhost/mydb");
 
         // Act
-        var provider = resolver.ResolveProvider(uri);
+        var provider = resolver.Resolve(uri);
 
         // Assert
         Assert.NotNull(provider);
@@ -43,8 +45,8 @@ public sealed class PostgresStorageResolverFactoryTests
         var postgresqlUri = StorageUri.Parse("postgresql://localhost/mydb");
 
         // Act
-        var postgresProvider = resolver.ResolveProvider(postgresUri);
-        var postgresqlProvider = resolver.ResolveProvider(postgresqlUri);
+        var postgresProvider = resolver.Resolve(postgresUri);
+        var postgresqlProvider = resolver.Resolve(postgresqlUri);
 
         // Assert
         Assert.NotNull(postgresProvider);
