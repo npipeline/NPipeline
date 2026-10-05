@@ -8,7 +8,7 @@ order: 6
 
 > **Prerequisites:** [Storage Providers Overview](index.md)
 
-The `NPipeline.StorageProviders.Sftp` package implements `IStorageProvider` for SFTP servers. Supports connection pooling, password and private key authentication (including encrypted keys), keep-alive, server fingerprint validation, and health checks on pool acquire.
+The `NPipeline.StorageProviders.Sftp` package implements `IStorageProvider` for SFTP servers. Supports connection pooling, password and private key authentication (including encrypted keys), keep-alive, host key verification, and health checks on pool acquire.
 
 ## Installation
 
@@ -25,7 +25,8 @@ var options = new SftpStorageProviderOptions
 {
     DefaultHost = "sftp.example.com",
     DefaultUsername = "etl-user",
-    DefaultKeyPath = "/path/to/private_key"
+    DefaultKeyPath = "/path/to/private_key",
+    HostKeyFingerprints = ["SHA256:ohD8VZEXGWo6Ez8GSEJQ9WpafgLFsOfLOtGGQCQo6Og"]
 };
 var factory = new SftpClientFactory(options);
 var provider = new SftpStorageProvider(factory, options);
@@ -113,8 +114,16 @@ var options = new SftpStorageProviderOptions
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
-| `ValidateServerFingerprint` | `bool` | `true` | Verify the server host key |
-| `ExpectedFingerprint` | `string?` | `null` | Expected fingerprint (auto-accepts on first connect if `null`) |
+| `HostKeyFingerprints` | `IReadOnlyCollection<string>` | empty | SHA-256 fingerprints of the host keys the server may present, such as `SHA256:ohD8VZEXGWo6Ez8GSEJQ9WpafgLFsOfLOtGGQCQo6Og` (the `SHA256:` prefix is optional). A server presenting any other key is rejected. |
+| `AcceptAnyHostKey` | `bool` | `false` | Trust any host key. Disables protection against man-in-the-middle attacks; use only for local development and tests. |
+
+Connecting fails with `InvalidOperationException` unless you set `HostKeyFingerprints` or `AcceptAnyHostKey`. To get a server's fingerprints, run:
+
+```bash
+ssh-keyscan sftp.example.com | ssh-keygen -lf -
+```
+
+List every fingerprint the command prints: the server may present any of its key types.
 
 ## Dependency Injection
 
@@ -126,6 +135,7 @@ services.AddSftpStorageProvider(options =>
     options.DefaultHost = "sftp.example.com";
     options.DefaultUsername = "etl-user";
     options.DefaultKeyPath = "/path/to/id_rsa";
+    options.HostKeyFingerprints = ["SHA256:ohD8VZEXGWo6Ez8GSEJQ9WpafgLFsOfLOtGGQCQo6Og"];
     options.MaxPoolSize = 20;
 });
 ```
@@ -137,8 +147,8 @@ Registers: `IStorageProvider`, `IStorageProviderMetadataProvider`
 - **Connection pooling** - reuse SSH connections across operations (default pool size: 10)
 - **Keep-alive** - prevents server-side idle timeouts (30s default)
 - **Health checks** - validates connections on acquire; dead connections are replaced automatically
-- **Fingerprint validation** - prevents MITM attacks; auto-accepts on first connect when `ExpectedFingerprint` is `null`
-- **Idempotent delete** - treats 404 as success
+- **Host key verification** - rejects servers whose key is not in `HostKeyFingerprints`, which prevents man-in-the-middle attacks
+- **Overwrite truncates** - writing to an existing file replaces its contents
 
 ## Examples
 
@@ -206,7 +216,7 @@ The provider translates common SFTP exceptions into `SftpStorageException`:
 ## Best Practices
 
 1. **Use key-based auth** in production - avoid passwords
-2. **Set `ExpectedFingerprint`** in production to prevent MITM
+2. **Set `HostKeyFingerprints`** for every server; never use `AcceptAnyHostKey` in production
 3. **Enable `ValidateOnAcquire`** (default) - catches dead connections before use
 4. **Tune `MaxPoolSize`** to match concurrency needs - too many connections may overwhelm the SFTP server
 5. **Use `KeepAliveInterval`** to prevent server idle disconnects

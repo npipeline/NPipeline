@@ -1,5 +1,7 @@
 using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using Google.Apis.Auth.OAuth2;
 using Google.Cloud.Storage.V1;
@@ -17,6 +19,7 @@ public class GcsClientFactory
     private readonly object _cacheLock = new();
     private readonly LinkedList<string> _cacheOrder = new();
     private readonly ConcurrentDictionary<string, Lazy<StorageClient>> _clientCache = new();
+    private readonly ConcurrentDictionary<string, GoogleCredential> _credentialCache = new(StringComparer.Ordinal);
     private readonly GcsStorageProviderOptions _options;
 
     /// <summary>
@@ -170,26 +173,29 @@ public class GcsClientFactory
     /// <returns>The Google credentials, or null if using default credentials.</returns>
     private GoogleCredential? GetCredentials(StorageUri uri)
     {
-        // Check for access token in URI parameters
+        // URI credentials are cached: the client cache keys on the credential instance, so a new instance per call
+        // would build (and cache) a new StorageClient, and re-read the key file, on every operation.
         if (uri.Parameters.TryGetValue("accessToken", out var accessToken) &&
             !string.IsNullOrWhiteSpace(accessToken))
-            return GoogleCredential.FromAccessToken(accessToken);
+            return GetOrAddCredential($"token:{ComputeStableHash(accessToken)}", () => GoogleCredential.FromAccessToken(accessToken));
 
-        // Check for credentials file path in URI parameters
         if (uri.Parameters.TryGetValue("credentialsPath", out var credentialsPath) &&
             !string.IsNullOrWhiteSpace(credentialsPath))
         {
-            var expandedPath = Environment.ExpandEnvironmentVariables(credentialsPath);
+            var expandedPath = Path.GetFullPath(Environment.ExpandEnvironmentVariables(credentialsPath));
 
-            if (!File.Exists(expandedPath))
+            return GetOrAddCredential($"file:{expandedPath}", () =>
             {
-                throw new FileNotFoundException(
-                    $"Google Cloud credentials file not found at path: {expandedPath}");
-            }
+                if (!File.Exists(expandedPath))
+                {
+                    throw new FileNotFoundException(
+                        $"Google Cloud credentials file not found at path: {expandedPath}");
+                }
 
-            var json = File.ReadAllText(expandedPath);
-            var credentialType = ExtractCredentialType(json);
-            return CredentialFactory.FromJson(json, credentialType);
+                var json = File.ReadAllText(expandedPath);
+                var credentialType = ExtractCredentialType(json);
+                return CredentialFactory.FromJson(json, credentialType);
+            });
         }
 
         // Return default credentials from options if available
@@ -199,6 +205,22 @@ public class GcsClientFactory
         // Return null to indicate ADC should be used (if enabled)
         return null;
     }
+
+    private GoogleCredential GetOrAddCredential(string key, Func<GoogleCredential> create)
+    {
+        if (_credentialCache.TryGetValue(key, out var cached))
+            return cached;
+
+        var credential = create();
+
+        // Bounded like the client cache; rotating tokens would otherwise grow it without limit.
+        if (_credentialCache.Count >= _options.ClientCacheSizeLimit)
+            _credentialCache.Clear();
+
+        return _credentialCache.GetOrAdd(key, credential);
+    }
+
+    private static string ComputeStableHash(string value) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value)));
 
     /// <summary>
     ///     Extracts the service URL from the storage URI or returns the default service URL.
@@ -210,7 +232,8 @@ public class GcsClientFactory
         if (uri.Parameters.TryGetValue("serviceUrl", out var serviceUrlString) &&
             !string.IsNullOrEmpty(serviceUrlString))
         {
-            var decoded = Uri.UnescapeDataString(serviceUrlString);
+            // StorageUri has already decoded the parameter; decoding again would corrupt values containing '%'.
+            var decoded = serviceUrlString;
 
             if (Uri.TryCreate(decoded, UriKind.Absolute, out var serviceUrl))
                 return serviceUrl;

@@ -366,4 +366,25 @@ public class AdlsGen2WriteStreamTests
         stream.Dispose();
         await stream.DisposeAsync();
     }
+
+    [Fact]
+    public async Task DisposeAsync_WithoutCallerToken_UploadHasNoTimeout()
+    {
+        // The upload used to run under a hard-coded 5-minute CancelAfter, which cut off large uploads.
+        CancellationToken uploadToken = default;
+
+        A.CallTo(() => _containerClient.CreateIfNotExistsAsync(A<PublicAccessType>._, A<IDictionary<string, string>?>._, A<CancellationToken>._))
+            .Returns(Task.FromResult(A.Fake<Response<BlobContainerInfo>>()));
+
+        A.CallTo(() => _blobClient.UploadAsync(A<Stream>._, A<BlobUploadOptions?>._, A<CancellationToken>._))
+            .Invokes((Stream _, BlobUploadOptions? _, CancellationToken token) => uploadToken = token)
+            .Returns(Task.FromResult(A.Fake<Response<BlobContentInfo>>()));
+
+        var stream = new AdlsGen2WriteStream(_serviceClient, "filesystem", "path/file.txt");
+        await stream.WriteAsync("x"u8.ToArray());
+
+        await stream.DisposeAsync();
+
+        uploadToken.CanBeCanceled.Should().BeFalse();
+    }
 }

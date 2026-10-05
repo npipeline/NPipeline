@@ -27,6 +27,7 @@ using NPipeline.StorageProviders.Models;
 services.AddSftpStorageProvider(options =>
 {
     options.DefaultHost = "sftp.example.com";
+    options.HostKeyFingerprints = ["SHA256:ohD8VZEXGWo6Ez8GSEJQ9WpafgLFsOfLOtGGQCQo6Og"]; // ssh-keyscan host | ssh-keygen -lf -
     options.DefaultUsername = "user";
     options.DefaultPassword = "password";
 });
@@ -52,6 +53,7 @@ await writer.WriteAsync("Hello, SFTP!");
 services.AddSftpStorageProvider(options =>
 {
     options.DefaultHost = "sftp.example.com";
+    options.HostKeyFingerprints = ["SHA256:ohD8VZEXGWo6Ez8GSEJQ9WpafgLFsOfLOtGGQCQo6Og"]; // ssh-keyscan host | ssh-keygen -lf -
     options.DefaultUsername = "user";
     options.DefaultKeyPath = "/home/user/.ssh/id_rsa";
     options.DefaultKeyPassphrase = "passphrase"; // Optional
@@ -81,6 +83,7 @@ For high-throughput scenarios, tune the connection pool settings:
 services.AddSftpStorageProvider(options =>
 {
     options.DefaultHost = "sftp.example.com";
+    options.HostKeyFingerprints = ["SHA256:ohD8VZEXGWo6Ez8GSEJQ9WpafgLFsOfLOtGGQCQo6Og"]; // ssh-keyscan host | ssh-keygen -lf -
     options.DefaultUsername = "user";
     options.DefaultKeyPath = "/home/user/.ssh/id_rsa";
     options.MaxPoolSize = 20;
@@ -127,8 +130,8 @@ sftp://hostname:2222/path/to/file.csv?username=user&password=secret
 | `ConnectionIdleTimeout`     | `5 minutes`  | Time before idle connections are cleaned up  |
 | `KeepAliveInterval`         | `30 seconds` | Interval for keep-alive packets              |
 | `ConnectionTimeout`         | `30 seconds` | Timeout for establishing connections (cancellable) |
-| `ValidateServerFingerprint` | `true`       | Whether to validate server fingerprint       |
-| `ExpectedFingerprint`       | `null`       | Expected server fingerprint                  |
+| `HostKeyFingerprints`       | empty        | SHA-256 host key fingerprints to trust (`SHA256:...`); required unless `AcceptAnyHostKey` |
+| `AcceptAnyHostKey`          | `false`      | Trust any host key (local development and tests only) |
 | `ValidateOnAcquire`         | `true`       | Validate connection health before use        |
 
 ## API Reference

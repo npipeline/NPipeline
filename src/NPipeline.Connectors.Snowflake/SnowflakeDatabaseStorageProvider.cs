@@ -1,3 +1,5 @@
+using System.Collections.Frozen;
+using System.Data.Common;
 using NPipeline.Connectors.Snowflake.Connection;
 using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Exceptions;
@@ -18,6 +20,14 @@ namespace NPipeline.Connectors.Snowflake;
 /// </remarks>
 public sealed class SnowflakeDatabaseStorageProvider : IDatabaseStorageProvider, IStorageProviderMetadataProvider
 {
+    private static readonly FrozenSet<string> HandledParameters = new[]
+    {
+        "account", "host",
+        "database", "db",
+        "user", "username",
+        "password", "pwd",
+    }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
+
     private static readonly StorageProviderMetadata Metadata = new()
     {
         Name = "Snowflake",
@@ -53,30 +63,32 @@ public sealed class SnowflakeDatabaseStorageProvider : IDatabaseStorageProvider,
 
         var info = DatabaseUriParser.Parse(uri);
 
-        var parts = new List<string>();
+        // DbConnectionStringBuilder quotes any value containing ';', '=' or quotes, which the Snowflake driver parses back
+        // verbatim. Concatenating raw values let a password such as "p;host=evil" add or override connection keys.
+        var builder = new DbConnectionStringBuilder();
 
         if (!string.IsNullOrWhiteSpace(info.Host))
-            parts.Add($"account={info.Host}");
+            builder["account"] = info.Host;
 
         if (!string.IsNullOrWhiteSpace(info.Username))
-            parts.Add($"user={info.Username}");
+            builder["user"] = info.Username;
 
         if (!string.IsNullOrWhiteSpace(info.Password))
-            parts.Add($"password={info.Password}");
+            builder["password"] = info.Password;
 
         if (!string.IsNullOrWhiteSpace(info.Database))
-            parts.Add($"db={info.Database}");
+            builder["db"] = info.Database;
 
         // Add additional parameters from the URI
         foreach (var kvp in info.Parameters)
         {
-            if (IsHandledParameter(kvp.Key))
+            if (HandledParameters.Contains(kvp.Key))
                 continue;
 
-            parts.Add($"{kvp.Key}={kvp.Value}");
+            builder[kvp.Key] = kvp.Value;
         }
 
-        return string.Join(";", parts);
+        return builder.ConnectionString;
     }
 
     /// <summary>
@@ -127,17 +139,4 @@ public sealed class SnowflakeDatabaseStorageProvider : IDatabaseStorageProvider,
 
     /// <inheritdoc />
     public StorageProviderMetadata GetMetadata() => Metadata;
-
-    private static bool IsHandledParameter(string key)
-    {
-        var handledKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            "account", "host",
-            "database", "db",
-            "user", "username",
-            "password", "pwd",
-        };
-
-        return handledKeys.Contains(key);
-    }
 }

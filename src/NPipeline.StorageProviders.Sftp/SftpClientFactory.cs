@@ -69,22 +69,18 @@ public class SftpClientFactory : IDisposable, IAsyncDisposable
             KeepAliveInterval = _options.KeepAliveInterval,
         };
 
-        // Configure server fingerprint validation on the client
-        if (_options.ValidateServerFingerprint)
+        if (!_options.AcceptAnyHostKey)
         {
-            client.HostKeyReceived += (sender, e) =>
+            if (_options.HostKeyFingerprints.Count == 0)
             {
-                // If no expected fingerprint is configured, accept on first connection (TOFU)
-                if (string.IsNullOrWhiteSpace(_options.ExpectedFingerprint))
-                    return;
+                client.Dispose();
 
-                // Compare with expected fingerprint using SHA256 (case-insensitive)
-                if (string.Equals(e.FingerPrintSHA256, _options.ExpectedFingerprint, StringComparison.OrdinalIgnoreCase))
-                    return;
+                throw new InvalidOperationException(
+                    "SFTP host key verification is not configured. Set HostKeyFingerprints to the server's SHA-256 key fingerprints " +
+                    "(for example from 'ssh-keyscan host | ssh-keygen -lf -'), or set AcceptAnyHostKey for local development only.");
+            }
 
-                // Fingerprint mismatch - reject the connection
-                e.CanTrust = false;
-            };
+            client.HostKeyReceived += (_, e) => e.CanTrust = HostKeyVerifier.IsTrusted(e.FingerPrintSHA256, _options.HostKeyFingerprints);
         }
 
         try

@@ -78,8 +78,11 @@ public class AdlsGen2ClientFactory
 
         var client = _blobClientCache.GetOrAdd(cacheKey, _ =>
         {
-            if (serviceUrl is null && !string.IsNullOrEmpty(connectionString))
+            if (!string.IsNullOrEmpty(connectionString))
+            {
+                ThrowIfServiceUrlWithConnectionString(serviceUrl);
                 return new BlobServiceClient(connectionString, blobClientOptions);
+            }
 
             var effectiveServiceUrl = serviceUrl is not null
                 ? new Uri(serviceUrl.ToString().Replace(".dfs.core.windows.net", ".blob.core.windows.net"))
@@ -102,6 +105,7 @@ public class AdlsGen2ClientFactory
             if (credentialInfo?.TokenCredential is not null)
                 return new BlobServiceClient(effectiveServiceUrl, credentialInfo.TokenCredential, blobClientOptions);
 
+            ThrowIfAnonymousNotAllowed();
             return new BlobServiceClient(effectiveServiceUrl, blobClientOptions);
         });
 
@@ -132,11 +136,11 @@ public class AdlsGen2ClientFactory
         {
             _clientKeyQueue.Enqueue(cacheKey);
 
-            // If a serviceUrl override is provided, prefer building the client with that endpoint and credentials,
-            // even when a connection string exists. This mirrors S3 behavior where URI parameters can override defaults
-            // and avoids parsing potentially placeholder connection strings in tests.
-            if (serviceUrl is null && !string.IsNullOrEmpty(connectionString))
+            if (!string.IsNullOrEmpty(connectionString))
+            {
+                ThrowIfServiceUrlWithConnectionString(serviceUrl);
                 return new DataLakeServiceClient(connectionString, clientOptions);
+            }
 
             // Build service URL if not provided
             var effectiveServiceUrl = serviceUrl ?? BuildDefaultServiceUrl(accountName ?? credentialInfo?.AccountName);
@@ -161,7 +165,7 @@ public class AdlsGen2ClientFactory
             if (credentialInfo?.TokenCredential is not null)
                 return new DataLakeServiceClient(effectiveServiceUrl, credentialInfo.TokenCredential, clientOptions);
 
-            // No credentials provided - use anonymous access
+            ThrowIfAnonymousNotAllowed();
             return new DataLakeServiceClient(effectiveServiceUrl, clientOptions);
         });
 
@@ -179,7 +183,7 @@ public class AdlsGen2ClientFactory
     {
         if (uri.Parameters.TryGetValue("connectionString", out var connectionString) &&
             !string.IsNullOrWhiteSpace(connectionString))
-            return Uri.UnescapeDataString(connectionString);
+            return connectionString;
 
         return _options.DefaultConnectionString;
     }
@@ -202,7 +206,7 @@ public class AdlsGen2ClientFactory
         {
             return new CredentialInfo
             {
-                SasToken = Uri.UnescapeDataString(sasToken),
+                SasToken = sasToken,
                 AccountName = accountName,
             };
         }
@@ -215,7 +219,7 @@ public class AdlsGen2ClientFactory
 
             return new CredentialInfo
             {
-                AccountKey = Uri.UnescapeDataString(accountKey),
+                AccountKey = accountKey,
                 AccountName = accountName,
             };
         }
@@ -251,7 +255,7 @@ public class AdlsGen2ClientFactory
     private string? GetAccountName(StorageUri uri)
     {
         if (uri.Parameters.TryGetValue("accountName", out var accountName) && !string.IsNullOrWhiteSpace(accountName))
-            return Uri.UnescapeDataString(accountName);
+            return accountName;
 
         return null;
     }
@@ -266,7 +270,8 @@ public class AdlsGen2ClientFactory
         if (uri.Parameters.TryGetValue("serviceUrl", out var serviceUrlString) &&
             !string.IsNullOrEmpty(serviceUrlString))
         {
-            var decoded = Uri.UnescapeDataString(serviceUrlString);
+            // StorageUri has already decoded the parameter; decoding again would corrupt values containing '%'.
+            var decoded = serviceUrlString;
 
             if (Uri.TryCreate(decoded, UriKind.Absolute, out var serviceUrl))
                 return serviceUrl;
@@ -368,6 +373,27 @@ public class AdlsGen2ClientFactory
             components.Add($"account:{credentialInfo.AccountName}");
 
         return string.Join(";", components);
+    }
+
+    // A connection string carries its own endpoint and credentials, so it cannot be combined with a service URL:
+    // ignoring either one would connect somewhere, or as someone, the caller did not ask for.
+    private static void ThrowIfServiceUrlWithConnectionString(Uri? serviceUrl)
+    {
+        if (serviceUrl is not null)
+        {
+            throw new ArgumentException(
+                "A service URL cannot be combined with a connection string. Remove 'serviceUrl' (or ServiceUrl) or the connection string.");
+        }
+    }
+
+    private void ThrowIfAnonymousNotAllowed()
+    {
+        if (!_options.AllowAnonymousAccess)
+        {
+            throw new InvalidOperationException(
+                "No Azure credentials are available. Provide a connection string, SAS token, account key or token credential, " +
+                "enable UseDefaultCredentialChain, or set AllowAnonymousAccess to read public filesystems.");
+        }
     }
 
     private static string ComputeStableHash(string value)

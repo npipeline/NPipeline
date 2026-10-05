@@ -92,6 +92,19 @@ public class ServiceCollectionExtensionsTests
     }
 
     [Fact]
+    public void AddStorageResolver_ResolverContainsFileSystemProvider()
+    {
+        var services = new ServiceCollection();
+        services.AddStorageResolver();
+
+        using var sp = services.BuildServiceProvider();
+
+        sp.GetRequiredService<IStorageResolver>()
+            .ResolveProvider(StorageUri.FromFilePath(Path.GetTempPath()))
+            .Should().BeOfType<FileSystemStorageProvider>();
+    }
+
+    [Fact]
     public void AddStorageResolver_WhenIncludeFileSystemFalse_OnlyAddsResolver()
     {
         var services = new ServiceCollection();

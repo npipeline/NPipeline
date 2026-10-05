@@ -1,4 +1,6 @@
 using System.Collections.Concurrent;
+using System.Security.Cryptography;
+using System.Text;
 using Azure;
 using Azure.Core;
 using Azure.Storage;
@@ -66,11 +68,16 @@ public class AzureBlobClientFactory
         {
             _clientKeyQueue.Enqueue(cacheKey);
 
-            // If a serviceUrl override is provided, prefer building the client with that endpoint and credentials,
-            // even when a connection string exists. This mirrors S3 behavior where URI parameters can override defaults
-            // and avoids parsing potentially placeholder connection strings in tests.
-            if (serviceUrl is null && !string.IsNullOrEmpty(connectionString))
+            // A connection string carries its own endpoint and credentials, so it cannot be combined with a service URL:
+            // ignoring either one would connect somewhere, or as someone, the caller did not ask for.
+            if (!string.IsNullOrEmpty(connectionString))
             {
+                if (serviceUrl is not null)
+                {
+                    throw new ArgumentException(
+                        "A service URL cannot be combined with a connection string. Remove 'serviceUrl' (or ServiceUrl) or the connection string.");
+                }
+
                 return clientOptions is null
                     ? new BlobServiceClient(connectionString)
                     : new BlobServiceClient(connectionString, clientOptions);
@@ -107,7 +114,13 @@ public class AzureBlobClientFactory
                     : new BlobServiceClient(effectiveServiceUrl, credentialInfo.TokenCredential, clientOptions);
             }
 
-            // No credentials provided - use anonymous access
+            if (!_options.AllowAnonymousAccess)
+            {
+                throw new InvalidOperationException(
+                    "No Azure credentials are available. Provide a connection string, SAS token, account key or token credential, " +
+                    "enable UseDefaultCredentialChain, or set AllowAnonymousAccess to read public containers.");
+            }
+
             return clientOptions is null
                 ? new BlobServiceClient(effectiveServiceUrl)
                 : new BlobServiceClient(effectiveServiceUrl, clientOptions);
@@ -127,7 +140,7 @@ public class AzureBlobClientFactory
     {
         if (uri.Parameters.TryGetValue("connectionString", out var connectionString) &&
             !string.IsNullOrWhiteSpace(connectionString))
-            return Uri.UnescapeDataString(connectionString);
+            return connectionString;
 
         return _options.DefaultConnectionString;
     }
@@ -150,7 +163,7 @@ public class AzureBlobClientFactory
         {
             return new CredentialInfo
             {
-                SasToken = Uri.UnescapeDataString(sasToken),
+                SasToken = sasToken,
                 AccountName = accountName,
             };
         }
@@ -163,7 +176,7 @@ public class AzureBlobClientFactory
 
             return new CredentialInfo
             {
-                AccountKey = Uri.UnescapeDataString(accountKey),
+                AccountKey = accountKey,
                 AccountName = accountName,
             };
         }
@@ -199,7 +212,7 @@ public class AzureBlobClientFactory
     private string? GetAccountName(StorageUri uri)
     {
         if (uri.Parameters.TryGetValue("accountName", out var accountName) && !string.IsNullOrWhiteSpace(accountName))
-            return Uri.UnescapeDataString(accountName);
+            return accountName;
 
         return null;
     }
@@ -214,7 +227,8 @@ public class AzureBlobClientFactory
         if (uri.Parameters.TryGetValue("serviceUrl", out var serviceUrlString) &&
             !string.IsNullOrEmpty(serviceUrlString))
         {
-            var decoded = Uri.UnescapeDataString(serviceUrlString);
+            // StorageUri has already decoded the parameter; decoding again would corrupt values containing '%'.
+            var decoded = serviceUrlString;
 
             if (Uri.TryCreate(decoded, UriKind.Absolute, out var serviceUrl))
                 return serviceUrl;
@@ -249,7 +263,7 @@ public class AzureBlobClientFactory
     {
         // When a connection string is provided we ignore serviceUrl for caching purposes
         if (!string.IsNullOrEmpty(connectionString))
-            return $"connection-string|{connectionString}";
+            return $"connection-string|{ComputeStableHash(connectionString)}";
 
         var endpointKey = serviceUrl?.ToString() ?? "default";
 
@@ -291,10 +305,10 @@ public class AzureBlobClientFactory
             components.Add($"token:{credentialInfo.TokenCredential.GetType().FullName}");
 
         if (credentialInfo.SasToken is not null)
-            components.Add($"sas:{credentialInfo.SasToken[..Math.Min(10, credentialInfo.SasToken.Length)]}...");
+            components.Add($"sas:{ComputeStableHash(credentialInfo.SasToken)}");
 
         if (credentialInfo.AccountKey is not null)
-            components.Add($"key:{credentialInfo.AccountKey[..Math.Min(10, credentialInfo.AccountKey.Length)]}...");
+            components.Add($"key:{ComputeStableHash(credentialInfo.AccountKey)}");
 
         if (credentialInfo.AccountName is not null)
             components.Add($"account:{credentialInfo.AccountName}");
@@ -305,6 +319,9 @@ public class AzureBlobClientFactory
     /// <summary>
     ///     Internal class to hold credential information.
     /// </summary>
+    // The full secret is hashed: SAS tokens share long prefixes ("sv=2022-11-02&..."), so any prefix would collide.
+    private static string ComputeStableHash(string value) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value)));
+
     private sealed class CredentialInfo
     {
         public TokenCredential? TokenCredential { get; init; }

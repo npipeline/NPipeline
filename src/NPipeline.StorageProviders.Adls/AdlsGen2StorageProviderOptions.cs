@@ -33,6 +33,12 @@ public class AdlsGen2StorageProviderOptions
     public bool UseDefaultCredentialChain { get; set; } = true;
 
     /// <summary>
+    ///     Gets or sets a value indicating whether to connect without credentials when none are configured, for reading
+    ///     public filesystems. Defaults to <see langword="false" />: a missing credential is a configuration error.
+    /// </summary>
+    public bool AllowAnonymousAccess { get; set; }
+
+    /// <summary>
     ///     Gets a cached instance of the default Azure credential chain. Uses DefaultAzureCredential.
     /// </summary>
     public TokenCredential DefaultCredentialChain => _defaultCredentialChain.Value;

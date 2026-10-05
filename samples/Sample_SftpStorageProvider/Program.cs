@@ -34,6 +34,10 @@ services.AddSftpStorageProvider(options =>
     options.DefaultPort = 2222; // Change to your SFTP port (default: 22)
     options.DefaultUsername = "user";
     options.DefaultPassword = "password";
+
+    // A local development server only. In production, list the server's key fingerprints instead:
+    // options.HostKeyFingerprints = ["SHA256:..."]; (from: ssh-keyscan host | ssh-keygen -lf -)
+    options.AcceptAnyHostKey = true;
     options.MaxPoolSize = 10;
     options.ConnectionTimeout = TimeSpan.FromSeconds(30);
     options.KeepAliveInterval = TimeSpan.FromSeconds(30);

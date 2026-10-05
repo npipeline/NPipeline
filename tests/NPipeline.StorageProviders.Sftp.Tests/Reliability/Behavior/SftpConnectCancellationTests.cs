@@ -43,6 +43,7 @@ public sealed class SftpConnectCancellationTests : IDisposable
     {
         using var factory = new SftpClientFactory(new SftpStorageProviderOptions
         {
+            AcceptAnyHostKey = true,
             ConnectionTimeout = TimeSpan.FromSeconds(30),
         });
 
@@ -61,6 +62,7 @@ public sealed class SftpConnectCancellationTests : IDisposable
     {
         using var factory = new SftpClientFactory(new SftpStorageProviderOptions
         {
+            AcceptAnyHostKey = true,
             ConnectionTimeout = TimeSpan.FromMilliseconds(500),
         });
 
@@ -75,7 +77,7 @@ public sealed class SftpConnectCancellationTests : IDisposable
     [Fact]
     public async Task CreateClientAsync_AlreadyCancelled_DoesNotConnect()
     {
-        using var factory = new SftpClientFactory(new SftpStorageProviderOptions());
+        using var factory = new SftpClientFactory(new SftpStorageProviderOptions { AcceptAnyHostKey = true });
         using var cts = new CancellationTokenSource();
         await cts.CancelAsync();
 

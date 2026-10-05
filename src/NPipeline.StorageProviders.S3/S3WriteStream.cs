@@ -233,7 +233,7 @@ public sealed class S3WriteStream : Stream
         }
         catch (AmazonS3Exception ex)
         {
-            throw TranslateS3Exception(ex, _bucket, _key);
+            throw S3Errors.Translate(ex, _bucket, _key);
         }
     }
 
@@ -401,24 +401,5 @@ public sealed class S3WriteStream : Stream
         {
             _ = semaphore.Release();
         }
-    }
-
-    private static Exception TranslateS3Exception(AmazonS3Exception ex, string bucket, string key)
-    {
-        return ex.ErrorCode switch
-        {
-            "AccessDenied" or "InvalidAccessKeyId" or "SignatureDoesNotMatch"
-                => new UnauthorizedAccessException(
-                    $"Access denied to S3 bucket '{bucket}' and key '{key}'. {ex.Message}", ex),
-            "InvalidBucketName" or "InvalidKey"
-                => new ArgumentException(
-                    $"Invalid S3 bucket '{bucket}' or key '{key}'. {ex.Message}", ex),
-            "NoSuchBucket" or "NotFound"
-                => new FileNotFoundException(
-                    $"S3 bucket '{bucket}' or key '{key}' not found.", ex),
-            _
-                => new IOException(
-                    $"Failed to upload to S3 bucket '{bucket}' and key '{key}'. {ex.Message}", ex),
-        };
     }
 }

@@ -183,4 +183,72 @@ public sealed class FileSystemStorageProviderTests : IAsyncLifetime
         metadata.Should().NotBeNull();
         metadata!.ContentType.Should().Be("application/json");
     }
+
+    [Fact]
+    public async Task ExistsAsync_LocalhostAuthority_IsLocal()
+    {
+        if (OperatingSystem.IsWindows())
+            return;
+
+        var path = Path.Combine(Path.GetTempPath(), $"np-localhost-{Guid.NewGuid():N}.txt");
+        await File.WriteAllTextAsync(path, "hi");
+
+        try
+        {
+            var provider = new FileSystemStorageProvider();
+            (await provider.ExistsAsync(StorageUri.Parse($"file://localhost{path}"))).Should().BeTrue();
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public async Task ExistsAsync_UncAuthorityOnUnix_ThrowsNotSupported()
+    {
+        if (OperatingSystem.IsWindows())
+            return;
+
+        var provider = new FileSystemStorageProvider();
+
+        var act = () => provider.ExistsAsync(StorageUri.Parse("file://fileserver/share/file.txt"));
+
+        await act.Should().ThrowAsync<NotSupportedException>();
+    }
+
+    [Fact]
+    public async Task ListAsync_Recursive_CaseDistinctDirectories_ListsBoth()
+    {
+        var root = Directory.CreateTempSubdirectory("np-case-");
+
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(root.FullName, "a"));
+
+            // On a case-insensitive file system "A" and "a" are the same directory, so there is nothing to test.
+            if (Directory.Exists(Path.Combine(root.FullName, "A")))
+                return;
+
+            Directory.CreateDirectory(Path.Combine(root.FullName, "A"));
+            await File.WriteAllTextAsync(Path.Combine(root.FullName, "a", "lower.txt"), "x");
+            await File.WriteAllTextAsync(Path.Combine(root.FullName, "A", "upper.txt"), "x");
+
+            var provider = new FileSystemStorageProvider();
+            var names = new List<string>();
+
+            await foreach (var item in provider.ListAsync(StorageUri.FromFilePath(root.FullName), true))
+            {
+                if (!item.IsDirectory)
+                    names.Add(Path.GetFileName(item.Uri.Path));
+            }
+
+            names.Should().BeEquivalentTo("lower.txt", "upper.txt");
+        }
+        finally
+        {
+            root.Delete(true);
+        }
+    }
 }
+

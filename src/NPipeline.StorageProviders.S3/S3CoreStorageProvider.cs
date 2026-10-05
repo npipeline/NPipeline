@@ -257,24 +257,7 @@ public class S3CoreStorageProvider : IStorageProvider, IStorageProviderMetadataP
     /// <param name="bucket">The bucket name.</param>
     /// <param name="key">The object key.</param>
     /// <returns>A translated exception.</returns>
-    protected static Exception TranslateS3Exception(AmazonS3Exception ex, string bucket, string key)
-    {
-        return ex.ErrorCode switch
-        {
-            "AccessDenied" or "InvalidAccessKeyId" or "SignatureDoesNotMatch"
-                => new UnauthorizedAccessException(
-                    $"Access denied to S3 bucket '{bucket}' and key '{key}'. {ex.Message}", ex),
-            "InvalidBucketName" or "InvalidKey"
-                => new ArgumentException(
-                    $"Invalid S3 bucket '{bucket}' or key '{key}'. {ex.Message}", ex),
-            "NoSuchBucket" or "NotFound"
-                => new FileNotFoundException(
-                    $"S3 bucket '{bucket}' or key '{key}' not found.", ex),
-            _
-                => new IOException(
-                    $"Failed to access S3 bucket '{bucket}' and key '{key}'. {ex.Message}", ex),
-        };
-    }
+    protected static Exception TranslateS3Exception(AmazonS3Exception ex, string bucket, string key) => S3Errors.Translate(ex, bucket, key);
 
     /// <summary>
     ///     Normalizes a nullable DateTime to a DateTimeOffset.

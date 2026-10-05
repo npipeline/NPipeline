@@ -320,13 +320,12 @@ public class AzureBlobClientFactoryTests
     }
 
     [Fact]
-    public async Task GetClientAsync_WithUriParametersOverridesOptions()
+    public async Task GetClientAsync_ServiceUrlWithDefaultConnectionString_Throws()
     {
-        // Arrange
+        // Arrange: previously this combination silently produced an anonymous client.
         var options = new AzureBlobStorageProviderOptions
         {
-            ServiceUrl = new Uri("https://default.example.com"),
-            DefaultConnectionString = "DefaultEndpointsProtocol=https;AccountName=default;AccountKey=default",
+            DefaultConnectionString = "DefaultEndpointsProtocol=https;AccountName=default;AccountKey=ZGVmYXVsdA==",
         };
 
         var factory = new AzureBlobClientFactory(options);
@@ -334,11 +333,40 @@ public class AzureBlobClientFactoryTests
         var uri = StorageUri.Parse("azure://container/blob?serviceUrl=https://override.example.com");
 
         // Act
-        var client = await factory.GetClientAsync(uri);
+        var act = async () => await factory.GetClientAsync(uri);
 
         // Assert
-        client.Should().NotBeNull();
-        client.Should().BeAssignableTo<BlobServiceClient>();
+        await act.Should().ThrowAsync<ArgumentException>().WithMessage("*service URL cannot be combined with a connection string*");
+    }
+
+    [Fact]
+    public async Task GetClientAsync_NoCredentialsAndAnonymousNotAllowed_Throws()
+    {
+        var factory = new AzureBlobClientFactory(new AzureBlobStorageProviderOptions
+        {
+            ServiceUrl = new Uri("https://publicaccount.blob.core.windows.net"),
+            UseDefaultCredentialChain = false,
+        });
+
+        var act = async () => await factory.GetClientAsync(StorageUri.Parse("azure://container/blob"));
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*AllowAnonymousAccess*");
+    }
+
+    [Fact]
+    public async Task GetClientAsync_DistinctSasTokens_ReturnDistinctClients()
+    {
+        // Every SAS token of one service version starts with the same characters ("sv=2022-11"),
+        // so the cache key must depend on the whole token.
+        var factory = new AzureBlobClientFactory(new AzureBlobStorageProviderOptions { UseDefaultCredentialChain = false });
+
+        var first = await factory.GetClientAsync(StorageUri.Parse(
+            "azure://container/blob?accountName=acct&sasToken=" + Uri.EscapeDataString("sv=2022-11-02&sp=r&sig=AAAA")));
+
+        var second = await factory.GetClientAsync(StorageUri.Parse(
+            "azure://container/blob?accountName=acct&sasToken=" + Uri.EscapeDataString("sv=2022-11-02&sp=rw&sig=BBBB")));
+
+        second.Should().NotBeSameAs(first);
     }
 
     [Fact]
@@ -386,6 +414,8 @@ public class AzureBlobClientFactoryTests
         var options = new AzureBlobStorageProviderOptions
         {
             ServiceUrl = new Uri("https://publicaccount.blob.core.windows.net"),
+            UseDefaultCredentialChain = false,
+            AllowAnonymousAccess = true,
         };
 
         var factory = new AzureBlobClientFactory(options);
@@ -522,5 +552,24 @@ public class AzureBlobClientFactoryTests
         // Assert
         client.Should().NotBeNull();
         client.Should().BeAssignableTo<BlobServiceClient>();
+    }
+
+    [Fact]
+    public async Task GetClientAsync_SasTokenWithEscapedSignature_IsSentVerbatim()
+    {
+        // The user escapes the SAS token once to embed it in the URI, and StorageUri decodes it once. A second decode
+        // would turn %2B into a literal '+', which Azure Storage reads as a space, so the signature would not match.
+        using var server = new RecordingHttpServer();
+        const string sas = "sv=2022-11-02&sr=b&sp=r&sig=ab%2Bcd%2Fef%3D";
+
+        var factory = new AzureBlobClientFactory(new AzureBlobStorageProviderOptions { UseDefaultCredentialChain = false });
+        var provider = new AzureBlobStorageProvider(factory, new AzureBlobStorageProviderOptions());
+
+        var uri = StorageUri.Parse(
+            $"azure://container/blob?accountName=acct&serviceUrl={Uri.EscapeDataString(server.BaseUrl + "acct")}&sasToken={Uri.EscapeDataString(sas)}");
+
+        _ = await provider.ExistsAsync(uri);
+
+        server.RawUrls.Should().ContainSingle().Which.Should().Contain("sig=ab%2Bcd%2Fef%3D");
     }
 }

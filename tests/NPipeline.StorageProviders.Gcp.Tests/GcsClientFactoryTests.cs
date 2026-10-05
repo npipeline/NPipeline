@@ -479,4 +479,51 @@ public class GcsClientFactoryTests
         // Assert
         client1.Should().BeSameAs(client2);
     }
+
+    [Fact]
+    public async Task GetClientAsync_SameAccessToken_ReusesClient()
+    {
+        var factory = new GcsClientFactory(new GcsStorageProviderOptions { UseDefaultCredentials = false });
+        var uri = StorageUri.Parse("gs://bucket/object?accessToken=token-1");
+
+        var first = await factory.GetClientAsync(uri);
+        var second = await factory.GetClientAsync(uri);
+
+        second.Should().BeSameAs(first);
+    }
+
+    [Fact]
+    public async Task GetClientAsync_DifferentAccessTokens_GetDifferentClients()
+    {
+        var factory = new GcsClientFactory(new GcsStorageProviderOptions { UseDefaultCredentials = false });
+
+        var first = await factory.GetClientAsync(StorageUri.Parse("gs://bucket/object?accessToken=token-1"));
+        var second = await factory.GetClientAsync(StorageUri.Parse("gs://bucket/object?accessToken=token-2"));
+
+        second.Should().NotBeSameAs(first);
+    }
+
+    [Fact]
+    public async Task GetClientAsync_SameCredentialsPath_ReusesClient()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"gcs-creds-{Guid.NewGuid():N}.json");
+        await File.WriteAllTextAsync(path,
+            """{"type":"authorized_user","client_id":"id","client_secret":"secret","refresh_token":"refresh"}""");
+
+        try
+        {
+            var factory = new GcsClientFactory(new GcsStorageProviderOptions { UseDefaultCredentials = false });
+            var uri = StorageUri.Parse($"gs://bucket/object?credentialsPath={Uri.EscapeDataString(path)}");
+
+            var first = await factory.GetClientAsync(uri);
+            File.Delete(path); // a second read of the key file would now fail
+            var second = await factory.GetClientAsync(uri);
+
+            second.Should().BeSameAs(first);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
 }

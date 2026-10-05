@@ -13,7 +13,6 @@ namespace NPipeline.StorageProviders.Gcp;
 /// </summary>
 public sealed class GcsWriteStream : Stream
 {
-    private static readonly TimeSpan UploadDisposeTimeout = TimeSpan.FromMinutes(5);
     private readonly string _bucket;
     private readonly int _chunkSizeBytes;
     private readonly string? _contentType;
@@ -185,9 +184,8 @@ public sealed class GcsWriteStream : Stream
                     // Flush the temp file stream to ensure all data is written
                     _tempFileStream.Flush();
 
-                    // Upload to GCS synchronously
-                    using var cts = CreateLinkedUploadCts();
-                    UploadAsync(cts.Token).GetAwaiter().GetResult();
+                    // Upload with no timeout: it takes as long as the object needs, and only the caller's token cancels it.
+                    UploadAsync(_disposeCancellationToken).GetAwaiter().GetResult();
                 }
             }
             catch (OperationCanceledException)
@@ -232,9 +230,8 @@ public sealed class GcsWriteStream : Stream
                 // Flush the temp file stream to ensure all data is written
                 await _tempFileStream.FlushAsync(CancellationToken.None).ConfigureAwait(false);
 
-                // Upload to GCS
-                using var cts = CreateLinkedUploadCts();
-                await UploadAsync(cts.Token).ConfigureAwait(false);
+                // Upload with no timeout: it takes as long as the object needs, and only the caller's token cancels it.
+                await UploadAsync(_disposeCancellationToken).ConfigureAwait(false);
             }
         }
         catch (Exception ex)
@@ -307,10 +304,4 @@ public sealed class GcsWriteStream : Stream
         }
     }
 
-    private CancellationTokenSource CreateLinkedUploadCts()
-    {
-        var linkedSource = CancellationTokenSource.CreateLinkedTokenSource(_disposeCancellationToken);
-        linkedSource.CancelAfter(UploadDisposeTimeout);
-        return linkedSource;
-    }
 }

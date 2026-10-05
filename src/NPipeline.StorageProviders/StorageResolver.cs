@@ -37,17 +37,11 @@ public sealed class StorageResolver : IStorageResolver
             snapshot = _providers.ToArray();
         }
 
-        // 1) Prefer explicit CanHandle
+        // A provider's CanHandle is authoritative: a provider that refuses a URI (for example because it serves a
+        // different account) must not receive it. Exceptions from CanHandle are configuration errors and propagate.
         foreach (var provider in snapshot)
         {
-            if (SafeCanHandle(provider, uri))
-                return provider;
-        }
-
-        // 2) Fallback to scheme equality
-        foreach (var provider in snapshot)
-        {
-            if (provider.Scheme.Equals(uri.Scheme))
+            if (provider.CanHandle(uri))
                 return provider;
         }
 
@@ -82,17 +76,5 @@ public sealed class StorageResolver : IStorageResolver
     public void EnsureDiscovered(CancellationToken cancellationToken = default)
     {
         // Auto-discovery removed: method retained for interface compatibility only.
-    }
-
-    private static bool SafeCanHandle(IStorageProvider provider, StorageUri uri)
-    {
-        try
-        {
-            return provider.CanHandle(uri);
-        }
-        catch
-        {
-            return false;
-        }
     }
 }

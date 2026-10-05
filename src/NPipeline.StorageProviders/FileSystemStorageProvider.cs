@@ -284,14 +284,11 @@ public sealed class FileSystemStorageProvider : IStorageProvider, IStorageProvid
         // For recursive listing, use manual stack-based traversal instead of AllDirectories.
         // This allows us to catch UnauthorizedAccessException at directory enumeration boundaries
         // and skip inaccessible subtrees gracefully instead of aborting entire enumeration.
-        // Also prevents infinite loops with symlinks by tracking processed paths.
+        // Reparse points (symlinks, junctions) are not followed, so the walk cannot loop.
         if (recursive)
         {
             var directoriesToProcess = new Stack<string>();
-            var processedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
             directoriesToProcess.Push(path);
-            processedPaths.Add(path);
 
             while (directoriesToProcess.Count > 0)
             {
@@ -383,16 +380,14 @@ public sealed class FileSystemStorageProvider : IStorageProvider, IStorageProvid
                         IsDirectory = isDir,
                     };
 
-                    // If this is a directory and we haven't processed it yet, queue it for traversal.
-                    // However, skip reparse points (symlinks, junctions) to prevent infinite loops
-                    // from circular references (e.g., junction pointing to ancestor).
+                    // Queue directories for traversal, but skip reparse points (symlinks, junctions) to prevent
+                    // infinite loops from circular references (e.g., a junction pointing to an ancestor).
+                    // There is deliberately no visited set keyed by path: on a case-sensitive file system a
+                    // case-insensitive set merged sibling directories such as "A" and "a".
                     var isReparsePoint = (attributes & FileAttributes.ReparsePoint) != 0;
 
-                    if (isDir && !isReparsePoint && !processedPaths.Contains(entry))
-                    {
-                        processedPaths.Add(entry);
+                    if (isDir && !isReparsePoint)
                         directoriesToProcess.Push(entry);
-                    }
                 }
             }
         }
@@ -506,12 +501,14 @@ public sealed class FileSystemStorageProvider : IStorageProvider, IStorageProvid
 
     private static string ToLocalPath(StorageUri uri)
     {
-        // Handle UNC paths: file://server/share/path or file://server//share/path are normalized as Host + Path
-        if (!string.IsNullOrWhiteSpace(uri.Host))
+        // "file://localhost/path" is the RFC 8089 spelling of a local path. Any other host names a UNC share
+        // (\\host\share\path), which exists only on Windows.
+        if (!string.IsNullOrWhiteSpace(uri.Host) && !string.Equals(uri.Host, "localhost", StringComparison.OrdinalIgnoreCase))
         {
-            // UNC: \\host\path...
-            var unc = $"\\\\{uri.Host}{uri.Path.Replace('/', '\\')}";
-            return unc;
+            if (!OperatingSystem.IsWindows())
+                throw new NotSupportedException($"UNC paths (file://{uri.Host}/...) are only supported on Windows.");
+
+            return $"\\\\{uri.Host}{uri.Path.Replace('/', '\\')}";
         }
 
         // Local drive: "/C:/folder/file" -> "C:\folder\file" (Windows only)

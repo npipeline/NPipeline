@@ -62,16 +62,18 @@ public class SftpStorageProviderOptions
     public TimeSpan ConnectionTimeout { get; set; } = TimeSpan.FromSeconds(30);
 
     /// <summary>
-    ///     Gets or sets whether to validate the server fingerprint.
-    ///     Default is true.
+    ///     Gets or sets the SHA-256 fingerprints of the host keys the server may present, in the form <c>ssh-keygen -lf</c>
+    ///     and <c>ssh-keyscan</c> print (<c>SHA256:ohD8VZEXGWo6Ez8GSEJQ9WpafgLFsOfLOtGGQCQo6Og</c>; the <c>SHA256:</c> prefix is
+    ///     optional). A connection to a server whose key is not listed fails. Required unless <see cref="AcceptAnyHostKey" />
+    ///     is set.
     /// </summary>
-    public bool ValidateServerFingerprint { get; set; } = true;
+    public IReadOnlyCollection<string> HostKeyFingerprints { get; set; } = [];
 
     /// <summary>
-    ///     Gets or sets the expected server fingerprint for validation.
-    ///     If null and ValidateServerFingerprint is true, the fingerprint is accepted on first connection.
+    ///     Gets or sets a value indicating whether to trust any host key. This disables protection against
+    ///     man-in-the-middle attacks; use it only for local development and tests. Defaults to <see langword="false" />.
     /// </summary>
-    public string? ExpectedFingerprint { get; set; }
+    public bool AcceptAnyHostKey { get; set; }
 
     /// <summary>
     ///     Gets or sets whether to validate connection health (via <see cref="Renci.SshNet.SftpClient.IsConnected" />) before

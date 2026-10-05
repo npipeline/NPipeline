@@ -823,4 +823,28 @@ public class AzureBlobWriteStreamTests
         A.CallTo(() => fakeBlobClient.UploadAsync(A<Stream>._, A<BlobUploadOptions>._, A<CancellationToken>._))
             .MustHaveHappenedOnceExactly();
     }
+
+    [Fact]
+    public async Task DisposeAsync_WithoutCallerToken_UploadHasNoTimeout()
+    {
+        // The upload used to run under a hard-coded 5-minute CancelAfter, which cut off large uploads. With no caller
+        // token, the upload's token must not be cancellable at all.
+        var fakeContainerClient = A.Fake<BlobContainerClient>();
+        var fakeBlobClient = A.Fake<BlobClient>();
+        CancellationToken uploadToken = default;
+
+        A.CallTo(() => _fakeBlobServiceClient.GetBlobContainerClient(TestContainer)).Returns(fakeContainerClient);
+        A.CallTo(() => fakeContainerClient.GetBlobClient(TestBlob)).Returns(fakeBlobClient);
+
+        A.CallTo(() => fakeBlobClient.UploadAsync(A<Stream>._, A<BlobUploadOptions>._, A<CancellationToken>._))
+            .Invokes((Stream _, BlobUploadOptions _, CancellationToken token) => uploadToken = token)
+            .ReturnsLazily(() => Task.FromResult(A.Fake<Response<BlobContentInfo>>()));
+
+        var stream = new AzureBlobWriteStream(_fakeBlobServiceClient, TestContainer, TestBlob);
+        await stream.WriteAsync(new byte[] { 1 });
+
+        await stream.DisposeAsync();
+
+        uploadToken.CanBeCanceled.Should().BeFalse();
+    }
 }

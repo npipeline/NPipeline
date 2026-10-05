@@ -175,4 +175,61 @@ public class AdlsGen2ClientFactoryTests
         // Assert
         client.Should().NotBeNull();
     }
+
+    [Fact]
+    public async Task GetClientAsync_ServiceUrlWithDefaultConnectionString_Throws()
+    {
+        var factory = new AdlsGen2ClientFactory(new AdlsGen2StorageProviderOptions
+        {
+            DefaultConnectionString = "DefaultEndpointsProtocol=https;AccountName=default;AccountKey=ZGVmYXVsdA==",
+        });
+
+        var uri = StorageUri.Parse("adls://filesystem/path?serviceUrl=https://override.example.com");
+
+        var dfs = async () => await factory.GetClientAsync(uri);
+        var blob = async () => await factory.GetBlobServiceClientAsync(uri);
+
+        await dfs.Should().ThrowAsync<ArgumentException>();
+        await blob.Should().ThrowAsync<ArgumentException>();
+    }
+
+    [Fact]
+    public async Task GetClientAsync_NoCredentialsAndAnonymousNotAllowed_Throws()
+    {
+        var factory = new AdlsGen2ClientFactory(new AdlsGen2StorageProviderOptions
+        {
+            ServiceUrl = new Uri("https://account.dfs.core.windows.net"),
+            UseDefaultCredentialChain = false,
+        });
+
+        var act = async () => await factory.GetClientAsync(StorageUri.Parse("adls://filesystem/path"));
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*AllowAnonymousAccess*");
+    }
+
+    [Fact]
+    public async Task GetClientAsync_SasTokenWithEscapedSignature_IsSentVerbatim()
+    {
+        // See the Azure Blob test of the same name: a second decode would send '+' instead of %2B.
+        using var server = new RecordingHttpServer();
+        const string sas = "sv=2022-11-02&sr=b&sp=r&sig=ab%2Bcd%2Fef%3D";
+
+        var factory = new AdlsGen2ClientFactory(new AdlsGen2StorageProviderOptions { UseDefaultCredentialChain = false });
+
+        var uri = StorageUri.Parse(
+            $"adls://filesystem/file?accountName=acct&serviceUrl={Uri.EscapeDataString(server.BaseUrl + "acct")}&sasToken={Uri.EscapeDataString(sas)}");
+
+        var client = await factory.GetBlobServiceClientAsync(uri);
+
+        try
+        {
+            _ = await client.GetBlobContainerClient("filesystem").GetBlobClient("file").ExistsAsync();
+        }
+        catch (Azure.RequestFailedException)
+        {
+            // The recording server answers 404 without an error code; only the request URL matters here.
+        }
+
+        server.RawUrls.Should().ContainSingle().Which.Should().Contain("sig=ab%2Bcd%2Fef%3D");
+    }
 }

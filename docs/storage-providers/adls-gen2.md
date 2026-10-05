@@ -59,7 +59,7 @@ adls://filesystem-name/path/to/file
 
 Same precedence as the Azure Blob provider:
 
-1. **Connection string** - `DefaultConnectionString` (takes precedence)
+1. **Connection string** - a `connectionString` URI parameter or `DefaultConnectionString`. It takes precedence over the options below. A connection string names its own endpoint, so combining it with `ServiceUrl` or a `serviceUrl` parameter throws `ArgumentException`.
 2. **Explicit credential** - `DefaultCredential` (any `TokenCredential`)
 3. **Default credential chain** - `DefaultAzureCredential`
 
@@ -84,6 +84,7 @@ var options = new AdlsGen2StorageProviderOptions
 | `DefaultConnectionString` | `string?` | `null` | ADLS connection string |
 | `DefaultCredential` | `TokenCredential?` | `null` | Azure `TokenCredential` |
 | `UseDefaultCredentialChain` | `bool` | `true` | Use `DefaultAzureCredential` |
+| `AllowAnonymousAccess` | `bool` | `false` | Connect without credentials when none are configured, for public filesystems. When `false`, a missing credential throws `InvalidOperationException`. |
 | `ServiceUrl` | `Uri?` | `null` | Custom service URL (Azurite) |
 | `ServiceVersion` | `DataLakeClientOptions.ServiceVersion?` | `null` | API version override |
 | `UploadThresholdBytes` | `long` | `64 MB` | Staged upload threshold |

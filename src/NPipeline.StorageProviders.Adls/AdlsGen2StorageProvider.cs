@@ -104,16 +104,15 @@ public sealed class AdlsGen2StorageProvider
 
         var sourcePathClient = sourceServiceClient.GetFileSystemClient(sourceFilesystem).GetFileClient(sourcePath);
 
-        // ADLS Gen2 atomic rename - destination path must be relative to filesystem root.
-        // If moving to a different filesystem, we need the full destination path.
-        var destinationPath = sourceFilesystem == destFilesystem
-            ? destPath
-            : $"{destFilesystem}/{destPath}";
-
+        // ADLS Gen2 atomic rename. The destination path is relative to its filesystem, which is passed separately:
+        // a null destinationFileSystem renames within the source filesystem.
         try
         {
             _ = await sourcePathClient.RenameAsync(
-                destinationPath,
+                destPath,
+                sourceFilesystem == destFilesystem
+                    ? null
+                    : destFilesystem,
                 cancellationToken: cancellationToken).ConfigureAwait(false);
         }
         catch (RequestFailedException ex) when (ex.Status == 400)
@@ -182,7 +181,7 @@ public sealed class AdlsGen2StorageProvider
         var blobServiceClient = await _clientFactory.GetBlobServiceClientAsync(uri, cancellationToken).ConfigureAwait(false);
 
         var contentType = uri.Parameters.TryGetValue("contentType", out var ct) && !string.IsNullOrEmpty(ct)
-            ? Uri.UnescapeDataString(ct)
+            ? ct
             : null;
 
         return new AdlsGen2WriteStream(

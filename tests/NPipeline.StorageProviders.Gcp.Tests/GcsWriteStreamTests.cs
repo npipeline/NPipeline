@@ -788,4 +788,22 @@ public class GcsWriteStreamTests
                 A<CancellationToken>._))
             .MustHaveHappenedOnceExactly();
     }
+
+    [Fact]
+    public async Task DisposeAsync_WithoutCallerToken_UploadHasNoTimeout()
+    {
+        // The upload used to run under a hard-coded 5-minute CancelAfter, which cut off large uploads.
+        CancellationToken uploadToken = default;
+
+        A.CallTo(() => _fakeStorageClient.UploadObjectAsync(A<Object>._, A<Stream>._, A<UploadObjectOptions>._, A<CancellationToken>._))
+            .Invokes(call => uploadToken = call.GetArgument<CancellationToken>(3))
+            .Returns(Task.FromResult(new Object()));
+
+        var stream = new GcsWriteStream(_fakeStorageClient, TestBucket, TestObjectName);
+        await stream.WriteAsync(new byte[] { 1 });
+
+        await stream.DisposeAsync();
+
+        uploadToken.CanBeCanceled.Should().BeFalse();
+    }
 }

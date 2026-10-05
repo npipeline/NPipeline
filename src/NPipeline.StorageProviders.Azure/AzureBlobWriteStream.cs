@@ -11,7 +11,6 @@ namespace NPipeline.StorageProviders.Azure;
 /// </summary>
 public sealed class AzureBlobWriteStream : Stream
 {
-    private static readonly TimeSpan UploadDisposeTimeout = TimeSpan.FromMinutes(5);
     private readonly string _blob;
     private readonly BlobServiceClient _blobServiceClient;
     private readonly long _blockBlobUploadThreshold;
@@ -173,9 +172,8 @@ public sealed class AzureBlobWriteStream : Stream
                     // Reset position to beginning for upload
                     _tempFileStream.Position = 0;
 
-                    // Upload to Azure Blob Storage
-                    using var cts = CreateLinkedUploadCts();
-                    UploadAsync(cts.Token).GetAwaiter().GetResult();
+                    // Upload with no timeout: it takes as long as the object needs, and only the caller's token cancels it.
+                    UploadAsync(_disposeCancellationToken).GetAwaiter().GetResult();
                 }
             }
             catch (Exception ex)
@@ -220,9 +218,8 @@ public sealed class AzureBlobWriteStream : Stream
                 // Reset position to beginning for upload
                 _tempFileStream.Position = 0;
 
-                // Upload to Azure Blob Storage
-                using var cts = CreateLinkedUploadCts();
-                await UploadAsync(cts.Token).ConfigureAwait(false);
+                // Upload with no timeout: it takes as long as the object needs, and only the caller's token cancels it.
+                await UploadAsync(_disposeCancellationToken).ConfigureAwait(false);
             }
         }
         catch (OperationCanceledException)
@@ -286,13 +283,6 @@ public sealed class AzureBlobWriteStream : Stream
         {
             throw TranslateAzureException(ex, _container, _blob);
         }
-    }
-
-    private CancellationTokenSource CreateLinkedUploadCts()
-    {
-        var linkedSource = CancellationTokenSource.CreateLinkedTokenSource(_disposeCancellationToken);
-        linkedSource.CancelAfter(UploadDisposeTimeout);
-        return linkedSource;
     }
 
     private void TryDeleteTempFileOnSuccess()

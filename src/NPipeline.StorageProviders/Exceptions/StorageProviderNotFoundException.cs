@@ -6,7 +6,7 @@ namespace NPipeline.StorageProviders.Exceptions;
 ///     Thrown when no storage provider can handle a given <see cref="StorageUri" />.
 ///     Typically indicates that a connector package providing the required scheme is not referenced or registered.
 /// </summary>
-internal sealed class StorageProviderNotFoundException : ConnectorException
+public sealed class StorageProviderNotFoundException : ConnectorException
 {
     /// <summary>
     ///     Initializes a new instance of the <see cref="StorageProviderNotFoundException" /> class.
@@ -33,8 +33,11 @@ internal sealed class StorageProviderNotFoundException : ConnectorException
         Path = uri.Path;
     }
 
+    /// <summary>The scheme no provider was registered for.</summary>
     public string Scheme { get; }
+    /// <summary>The host of the URI that could not be resolved, if any.</summary>
     public string? Host { get; }
+    /// <summary>The path of the URI that could not be resolved.</summary>
     public string Path { get; }
 
     private static string BuildMessage(StorageUri uri)

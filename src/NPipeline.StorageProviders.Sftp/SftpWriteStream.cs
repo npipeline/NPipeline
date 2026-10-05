@@ -4,7 +4,7 @@ using Renci.SshNet.Common;
 namespace NPipeline.StorageProviders.Sftp;
 
 /// <summary>
-///     A write stream backed by SSH.NET's native <c>SftpClient.OpenWrite()</c>.
+///     A write stream backed by an SSH.NET <c>SftpFileStream</c>, opened with <see cref="FileMode.Create" /> so an existing file is truncated.
 ///     Holds a connection lease from <see cref="SftpClientPool" /> for its lifetime;
 ///     the lease is returned to the pool when the stream is disposed.
 /// </summary>
@@ -38,7 +38,8 @@ public sealed class SftpWriteStream : Stream
         if (createDirectory)
             EnsureParentDirectoryExists(lease.Client, remotePath);
 
-        _sftpStream = lease.Client.OpenWrite(remotePath);
+        // FileMode.Create truncates; SftpClient.OpenWrite opens with OpenOrCreate, which leaves the old file's tail after shorter content.
+        _sftpStream = lease.Client.Open(remotePath, FileMode.Create, FileAccess.Write);
     }
 
     /// <inheritdoc />
@@ -229,7 +230,7 @@ public sealed class SftpWriteStream : Stream
             catch (SshException ex)
             {
                 // Track failures but continue - directory might exist from race condition
-                // or we might not have permission. The subsequent OpenWrite will fail with
+                // or we might not have permission. The subsequent Open will fail with
                 // a clear error if the directory truly doesn't exist.
                 failedPaths ??= [];
                 failedPaths.Add(currentPath);

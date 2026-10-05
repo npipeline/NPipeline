@@ -471,4 +471,41 @@ public class AwsS3ClientFactoryTests
         client.Should().NotBeNull();
         client.Should().BeSameAs(_fakeS3Client);
     }
+
+    [Fact]
+    public void CreateClient_RegionParameter_SetsRegionEndpoint()
+    {
+        var factory = new ProbeFactory(new AwsS3StorageProviderOptions());
+
+        var client = factory.Create(StorageUri.Parse("s3://bucket/key?region=ap-southeast-2&accessKey=AKIA&secretKey=secret"));
+
+        client.Config.RegionEndpoint.Should().Be(Amazon.RegionEndpoint.APSoutheast2);
+    }
+
+    [Fact]
+    public void CreateClient_DefaultRegionOption_IsUsed()
+    {
+        var factory = new ProbeFactory(new AwsS3StorageProviderOptions { DefaultRegion = Amazon.RegionEndpoint.EUWest1 });
+
+        var client = factory.Create(StorageUri.Parse("s3://bucket/key?accessKey=AKIA&secretKey=secret"));
+
+        client.Config.RegionEndpoint.Should().Be(Amazon.RegionEndpoint.EUWest1);
+    }
+
+    [Fact]
+    public void CreateClient_ServiceUrlAndRegion_SetsAuthenticationRegion()
+    {
+        var factory = new ProbeFactory(new AwsS3StorageProviderOptions());
+
+        var client = factory.Create(StorageUri.Parse(
+            "s3://bucket/key?region=eu-central-1&serviceUrl=http%3A%2F%2Flocalhost%3A9000&accessKey=AKIA&secretKey=secret"));
+
+        client.Config.ServiceURL.Should().StartWith("http://localhost:9000");
+        client.Config.AuthenticationRegion.Should().Be("eu-central-1");
+    }
+
+    private sealed class ProbeFactory(AwsS3StorageProviderOptions options) : AwsS3ClientFactory(options)
+    {
+        public IAmazonS3 Create(StorageUri uri) => CreateClient(uri);
+    }
 }

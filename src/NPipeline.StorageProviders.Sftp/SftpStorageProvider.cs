@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Models;
+using Renci.SshNet;
 using Renci.SshNet.Common;
 using Renci.SshNet.Sftp;
 
@@ -243,67 +244,72 @@ public sealed class SftpStorageProvider : IStorageProvider, IStorageProviderMeta
         bool recursive,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var (host, port, path) = ParseUri(prefix);
-        IPooledConnection? lease = null;
+        var (_, _, rootPath) = ParseUri(prefix);
+
+        // One connection for the whole walk. Acquiring another per subdirectory while holding the parent's would
+        // deadlock once the tree is as deep as the pool is large.
+        var lease = await _clientFactory.AcquirePooledAsync(prefix, cancellationToken).ConfigureAwait(false);
 
         try
         {
-            lease = await _clientFactory.AcquirePooledAsync(prefix, cancellationToken).ConfigureAwait(false);
+            var pending = new Stack<string>();
+            var visited = new HashSet<string>(StringComparer.Ordinal) { rootPath };
+            pending.Push(rootPath);
 
-            // Use Task.Run to move blocking ListDirectory to thread pool
-            IEnumerable<ISftpFile> entries;
-
-            try
+            while (pending.TryPop(out var path))
             {
-                entries = await Task.Run(
-                    () => lease.Client.ListDirectory(path),
-                    cancellationToken).ConfigureAwait(false);
-            }
-            catch (SftpPathNotFoundException)
-            {
-                // Directory doesn't exist, return empty
-                yield break;
-            }
+                var entries = await ListDirectoryAsync(lease.Client, path, cancellationToken).ConfigureAwait(false);
 
-            foreach (var entry in entries)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                // Skip . and ..
-                if (entry.Name == "." || entry.Name == "..")
-                    continue;
-
-                var itemPath = path.EndsWith('/')
-                    ? $"{path}{entry.Name}"
-                    : $"{path}/{entry.Name}";
-
-                var itemUri = BuildItemUri(prefix, itemPath);
-
-                yield return new StorageItem
+                foreach (var entry in entries)
                 {
-                    Uri = itemUri,
-                    Size = entry.Attributes.Size,
-                    LastModified = NormalizeDateTime(entry.Attributes.LastWriteTimeUtc),
-                    IsDirectory = entry.Attributes.IsDirectory,
-                };
+                    cancellationToken.ThrowIfCancellationRequested();
 
-                // Recursively list subdirectories if requested
-                if (recursive && entry.Attributes.IsDirectory)
-                {
-                    var subPrefix = BuildItemUri(prefix, itemPath);
+                    if (entry.Name is "." or "..")
+                        continue;
 
-                    await foreach (var subItem in ListAsyncCore(subPrefix, recursive, cancellationToken).ConfigureAwait(false))
+                    var itemPath = path.EndsWith('/')
+                        ? $"{path}{entry.Name}"
+                        : $"{path}/{entry.Name}";
+
+                    yield return new StorageItem
                     {
-                        yield return subItem;
-                    }
+                        Uri = BuildItemUri(prefix, itemPath),
+                        Size = entry.Attributes.Size,
+                        LastModified = NormalizeDateTime(entry.Attributes.LastWriteTimeUtc),
+                        IsDirectory = entry.Attributes.IsDirectory,
+                    };
+
+                    // Directory entries carry lstat attributes, so symbolic links are never followed; the visited set
+                    // guards against servers that report them as directories anyway.
+                    if (recursive && entry.Attributes.IsDirectory && visited.Add(itemPath))
+                        pending.Push(itemPath);
                 }
             }
         }
         finally
         {
-            if (lease is not null)
-                await lease.DisposeAsync().ConfigureAwait(false);
+            await lease.DisposeAsync().ConfigureAwait(false);
         }
+    }
+
+    /// <summary>Lists one directory; a directory that does not exist (or was removed during the walk) is empty.</summary>
+    private static async Task<List<ISftpFile>> ListDirectoryAsync(SftpClient client, string path, CancellationToken cancellationToken)
+    {
+        var entries = new List<ISftpFile>();
+
+        try
+        {
+            await foreach (var entry in client.ListDirectoryAsync(path, cancellationToken).ConfigureAwait(false))
+            {
+                entries.Add(entry);
+            }
+        }
+        catch (SftpPathNotFoundException)
+        {
+            entries.Clear();
+        }
+
+        return entries;
     }
 
     private static StorageUri BuildItemUri(StorageUri baseUri, string path)

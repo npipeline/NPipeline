@@ -112,4 +112,22 @@ public sealed class SnowflakeDatabaseStorageProviderTests
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentNullException>(() => provider.GetConnectionAsync(null!));
     }
+
+    [Fact]
+    public void GetConnectionString_PasswordWithSemicolon_IsEscaped()
+    {
+        // A raw "password=p;host=evil" would let the password set the host.
+        var provider = new SnowflakeDatabaseStorageProvider();
+        var password = "p;host=evil\"x";
+        var uri = StorageUri.Parse($"snowflake://alice:{Uri.EscapeDataString(password)}@myaccount/mydb");
+
+        var connectionString = provider.GetConnectionString(uri);
+
+        var parsed = new System.Data.Common.DbConnectionStringBuilder { ConnectionString = connectionString };
+        parsed["password"].Should().Be(password);
+        parsed.ContainsKey("host").Should().BeFalse();
+        parsed["account"].Should().Be("myaccount");
+        parsed["db"].Should().Be("mydb");
+    }
 }
+

@@ -34,12 +34,19 @@ public class AwsS3ClientFactory : S3ClientFactoryBase
         var serviceUrl = GetServiceUrl(uri);
         var forcePathStyle = GetForcePathStyle(uri);
 
-        var config = new AmazonS3Config
+        var config = new AmazonS3Config { ForcePathStyle = forcePathStyle };
+
+        // Setting ServiceURL (even to null) clears RegionEndpoint, so set only one of them. A custom endpoint signs
+        // with the requested region. With neither, the SDK resolves the region itself (environment, profile, IMDS).
+        if (serviceUrl is not null)
         {
-            RegionEndpoint = region,
-            ServiceURL = serviceUrl?.ToString(),
-            ForcePathStyle = forcePathStyle,
-        };
+            config.ServiceURL = serviceUrl.ToString();
+
+            if (region is not null)
+                config.AuthenticationRegion = region.SystemName;
+        }
+        else if (region is not null)
+            config.RegionEndpoint = region;
 
         return credentials is null
             ? new AmazonS3Client(config)
@@ -97,8 +104,8 @@ public class AwsS3ClientFactory : S3ClientFactoryBase
     ///     Extracts the AWS region from the storage URI or returns the default region.
     /// </summary>
     /// <param name="uri">The storage URI.</param>
-    /// <returns>The AWS region endpoint.</returns>
-    private RegionEndpoint GetRegion(StorageUri uri)
+    /// <returns>The AWS region endpoint, or <see langword="null" /> to let the SDK resolve it.</returns>
+    private RegionEndpoint? GetRegion(StorageUri uri)
     {
         if (uri.Parameters.TryGetValue("region", out var regionString) &&
             !string.IsNullOrEmpty(regionString))
@@ -114,7 +121,7 @@ public class AwsS3ClientFactory : S3ClientFactoryBase
             return match;
         }
 
-        return _options.DefaultRegion ?? RegionEndpoint.USEast1;
+        return _options.DefaultRegion;
     }
 
     /// <summary>
@@ -127,7 +134,8 @@ public class AwsS3ClientFactory : S3ClientFactoryBase
         if (uri.Parameters.TryGetValue("serviceUrl", out var serviceUrlString) &&
             !string.IsNullOrEmpty(serviceUrlString))
         {
-            var decoded = Uri.UnescapeDataString(serviceUrlString);
+            // StorageUri has already decoded the parameter; decoding again would corrupt values containing '%'.
+            var decoded = serviceUrlString;
 
             if (Uri.TryCreate(decoded, UriKind.Absolute, out var serviceUrl))
                 return serviceUrl;
@@ -159,13 +167,13 @@ public class AwsS3ClientFactory : S3ClientFactoryBase
 
     private static string BuildCacheKey(
         AWSCredentials? credentials,
-        RegionEndpoint region,
+        RegionEndpoint? region,
         Uri? serviceUrl,
         bool forcePathStyle)
     {
         var parts = new List<string>
         {
-            region.SystemName,
+            region?.SystemName ?? "sdk-default",
             forcePathStyle.ToString(),
             serviceUrl?.ToString() ?? "default",
         };

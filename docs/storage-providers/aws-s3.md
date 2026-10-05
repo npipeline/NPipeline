@@ -71,7 +71,7 @@ var options = new AwsS3StorageProviderOptions
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
-| `DefaultRegion` | `RegionEndpoint?` | `null` | AWS region for S3 API calls |
+| `DefaultRegion` | `RegionEndpoint?` | `null` | AWS region for S3 API calls. A `region` URI parameter overrides it. When neither is set, the AWS SDK resolves the region (`AWS_REGION`, the shared profile, or instance metadata). With `ServiceUrl`, the region is used to sign requests. |
 | `DefaultCredentials` | `AWSCredentials?` | `null` | Explicit AWS credentials |
 | `UseDefaultCredentialChain` | `bool` | `true` | Fall back to the default credential chain |
 | `ServiceUrl` | `Uri?` | `null` | Custom S3 endpoint (Floci, MinIO) |

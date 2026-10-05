@@ -532,6 +532,54 @@ public class AdlsGen2StorageProviderTests
     }
 
     [Fact]
+    public async Task MoveAsync_AcrossFilesystems_PassesDestinationFilesystem()
+    {
+        // Arrange
+        var serviceClient = A.Fake<DataLakeServiceClient>();
+        var fileSystemClient = A.Fake<DataLakeFileSystemClient>();
+        var sourceFileClient = A.Fake<DataLakeFileClient>();
+        var response = A.Fake<Response<DataLakeFileClient>>();
+
+        A.CallTo(() => _clientFactory.GetClientAsync(A<StorageUri>._, A<CancellationToken>._))
+            .Returns(Task.FromResult(serviceClient));
+
+        A.CallTo(() => serviceClient.GetFileSystemClient("source-fs")).Returns(fileSystemClient);
+        A.CallTo(() => fileSystemClient.GetFileClient("path/file.txt")).Returns(sourceFileClient);
+
+        A.CallTo(() => sourceFileClient.RenameAsync(A<string>._, A<string?>._, A<DataLakeRequestConditions?>._, A<DataLakeRequestConditions?>._,
+                A<CancellationToken>._))
+            .Returns(Task.FromResult(response));
+
+        // Act
+        await _provider.MoveAsync(StorageUri.Parse("adls://source-fs/path/file.txt"), StorageUri.Parse("adls://dest-fs/moved/file.txt"));
+
+        // Assert: the path is relative to the destination filesystem, which is named separately.
+        A.CallTo(() => sourceFileClient.RenameAsync("moved/file.txt", "dest-fs", A<DataLakeRequestConditions?>._, A<DataLakeRequestConditions?>._,
+                A<CancellationToken>._))
+            .MustHaveHappenedOnceExactly();
+    }
+
+    [Fact]
+    public async Task MoveAsync_WithinFilesystem_PassesNoDestinationFilesystem()
+    {
+        var serviceClient = A.Fake<DataLakeServiceClient>();
+        var fileSystemClient = A.Fake<DataLakeFileSystemClient>();
+        var sourceFileClient = A.Fake<DataLakeFileClient>();
+
+        A.CallTo(() => _clientFactory.GetClientAsync(A<StorageUri>._, A<CancellationToken>._))
+            .Returns(Task.FromResult(serviceClient));
+
+        A.CallTo(() => serviceClient.GetFileSystemClient("filesystem")).Returns(fileSystemClient);
+        A.CallTo(() => fileSystemClient.GetFileClient("a.txt")).Returns(sourceFileClient);
+
+        await _provider.MoveAsync(StorageUri.Parse("adls://filesystem/a.txt"), StorageUri.Parse("adls://filesystem/b.txt"));
+
+        A.CallTo(() => sourceFileClient.RenameAsync("b.txt", null, A<DataLakeRequestConditions?>._, A<DataLakeRequestConditions?>._,
+                A<CancellationToken>._))
+            .MustHaveHappenedOnceExactly();
+    }
+
+    [Fact]
     public async Task MoveAsync_WithCrossAccount_ThrowsNotSupportedException()
     {
         // Arrange

@@ -256,6 +256,31 @@ public class S3CoreStorageProviderTests
             .Where(e => e.GetType() == expectedType || expectedType.IsAssignableFrom(e.GetType()));
     }
 
+    [Theory]
+    [InlineData("NoSuchKey", System.Net.HttpStatusCode.NotFound, typeof(FileNotFoundException))]
+    [InlineData("NoSuchBucket", System.Net.HttpStatusCode.NotFound, typeof(FileNotFoundException))]
+    [InlineData("NotFound", System.Net.HttpStatusCode.NotFound, typeof(FileNotFoundException))]
+    [InlineData("AccessDenied", System.Net.HttpStatusCode.Forbidden, typeof(UnauthorizedAccessException))]
+    [InlineData(null, System.Net.HttpStatusCode.Forbidden, typeof(UnauthorizedAccessException))]
+    [InlineData("NoSuchKey", (System.Net.HttpStatusCode)0, typeof(FileNotFoundException))]
+    public void Translate_MapsStatusCodeFirst(string? errorCode, System.Net.HttpStatusCode status, Type expectedType)
+    {
+        var ex = new AmazonS3Exception("error") { ErrorCode = errorCode, StatusCode = status };
+
+        TranslatingProvider.Translate(ex).Should().BeOfType(expectedType);
+    }
+
+    [Fact]
+    public async Task OpenReadAsync_MissingKey_ThrowsFileNotFound()
+    {
+        A.CallTo(() => _fakeS3.GetObjectAsync(A<GetObjectRequest>._, A<CancellationToken>._))
+            .Throws(new AmazonS3Exception("The specified key does not exist.") { ErrorCode = "NoSuchKey", StatusCode = System.Net.HttpStatusCode.NotFound });
+
+        var act = async () => await _provider.OpenReadAsync(Uri());
+
+        await act.Should().ThrowAsync<FileNotFoundException>();
+    }
+
     // ── Test doubles ──────────────────────────────────────────────────────
 
     private sealed class TestClientFactory : S3ClientFactoryBase
@@ -276,5 +301,14 @@ public class S3CoreStorageProviderTests
             : base(factory, options)
         {
         }
+    }
+
+    private sealed class TranslatingProvider : S3CoreStorageProvider
+    {
+        private TranslatingProvider() : base(null!, null!)
+        {
+        }
+
+        public static Exception Translate(AmazonS3Exception ex) => TranslateS3Exception(ex, "bucket", "key");
     }
 }

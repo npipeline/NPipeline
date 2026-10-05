@@ -80,7 +80,8 @@ public static class ServiceCollectionExtensions
     }
 
     /// <summary>
-    ///     Registers the default <see cref="StorageResolver" /> to resolve providers based on URI schemes.
+    ///     Registers the default <see cref="StorageResolver" /> to resolve providers based on URI schemes. The resolver
+    ///     contains every <see cref="IStorageProvider" /> registered in the container, in registration order.
     /// </summary>
     /// <param name="services">The service collection to add the resolver to.</param>
     /// <param name="includeFileSystem">If true, automatically includes the FileSystemStorageProvider.</param>
@@ -89,7 +90,18 @@ public static class ServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        services.AddSingleton<IStorageResolver, StorageResolver>();
+        // The resolver is built from every IStorageProvider in the container, including ones registered after this call.
+        services.AddSingleton<IStorageResolver>(sp =>
+        {
+            var resolver = new StorageResolver();
+
+            foreach (var provider in sp.GetServices<IStorageProvider>())
+            {
+                resolver.RegisterProvider(provider);
+            }
+
+            return resolver;
+        });
 
         if (includeFileSystem)
             services.AddDefaultFileStorageProvider();

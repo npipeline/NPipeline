@@ -47,7 +47,7 @@ azure://container-name/blob/path
 
 Credentials are resolved in this order:
 
-1. **Connection string** - `DefaultConnectionString` (takes precedence when set)
+1. **Connection string** - a `connectionString` URI parameter or `DefaultConnectionString`. It takes precedence over the options below. A connection string names its own endpoint, so combining it with `ServiceUrl` or a `serviceUrl` parameter throws `ArgumentException`.
 2. **Explicit credential** - `DefaultCredential` (any `TokenCredential`)
 3. **Default credential chain** - `DefaultAzureCredential` (environment → managed identity → Azure CLI)
 
@@ -78,6 +78,7 @@ var options = new AzureBlobStorageProviderOptions
 | `DefaultConnectionString` | `string?` | `null` | Azure Storage connection string |
 | `DefaultCredential` | `TokenCredential?` | `null` | Azure `TokenCredential` |
 | `UseDefaultCredentialChain` | `bool` | `true` | Use `DefaultAzureCredential` |
+| `AllowAnonymousAccess` | `bool` | `false` | Connect without credentials when none are configured, for public containers. When `false`, a missing credential throws `InvalidOperationException`. |
 | `ServiceUrl` | `Uri?` | `null` | Custom Blob service URL (Azurite) |
 | `ServiceVersion` | `BlobClientOptions.ServiceVersion?` | `null` | API version override |
 | `BlockBlobUploadThresholdBytes` | `long` | `64 MB` | Switch to staged upload above this size |

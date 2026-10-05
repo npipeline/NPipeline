@@ -11,7 +11,6 @@ namespace NPipeline.StorageProviders.Adls;
 /// </summary>
 public sealed class AdlsGen2WriteStream : Stream
 {
-    private static readonly TimeSpan UploadDisposeTimeout = TimeSpan.FromMinutes(5);
     private readonly BlobServiceClient _blobServiceClient;
     private readonly string? _contentType;
     private readonly CancellationToken _disposeCancellationToken;
@@ -168,8 +167,8 @@ public sealed class AdlsGen2WriteStream : Stream
                     _tempFileStream.Flush();
                     _tempFileStream.Position = 0;
 
-                    using var cts = CreateLinkedUploadCts();
-                    UploadAsync(cts.Token).GetAwaiter().GetResult();
+                    // Upload with no timeout: it takes as long as the object needs, and only the caller's token cancels it.
+                    UploadAsync(_disposeCancellationToken).GetAwaiter().GetResult();
                 }
             }
             catch (Exception ex)
@@ -210,8 +209,8 @@ public sealed class AdlsGen2WriteStream : Stream
                 await _tempFileStream.FlushAsync(CancellationToken.None).ConfigureAwait(false);
                 _tempFileStream.Position = 0;
 
-                using var cts = CreateLinkedUploadCts();
-                await UploadAsync(cts.Token).ConfigureAwait(false);
+                // Upload with no timeout: it takes as long as the object needs, and only the caller's token cancels it.
+                await UploadAsync(_disposeCancellationToken).ConfigureAwait(false);
             }
         }
         catch (OperationCanceledException)
@@ -264,13 +263,6 @@ public sealed class AdlsGen2WriteStream : Stream
         {
             throw TranslateAdlsException(ex, _filesystem, _path);
         }
-    }
-
-    private CancellationTokenSource CreateLinkedUploadCts()
-    {
-        var linkedSource = CancellationTokenSource.CreateLinkedTokenSource(_disposeCancellationToken);
-        linkedSource.CancelAfter(UploadDisposeTimeout);
-        return linkedSource;
     }
 
     private void TryDeleteTempFileOnSuccess()
