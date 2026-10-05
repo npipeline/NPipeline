@@ -181,19 +181,9 @@ public class SftpClientFactory : IDisposable, IAsyncDisposable
     /// </summary>
     private string GetUsername(StorageUri uri)
     {
-        // First try UserInfo (e.g., user:pass@host)
-        if (!string.IsNullOrWhiteSpace(uri.UserInfo))
-        {
-            var userInfo = uri.UserInfo;
-            var colonIndex = userInfo.IndexOf(':');
-
-            var username = colonIndex >= 0
-                ? userInfo[..colonIndex]
-                : userInfo;
-
-            if (!string.IsNullOrWhiteSpace(username))
-                return username;
-        }
+        // First try the user information (e.g., user:pass@host)
+        if (!string.IsNullOrWhiteSpace(uri.UserName))
+            return uri.UserName;
 
         // Then try username parameter
         if (uri.Parameters.TryGetValue("username", out var usernameParam) &&
@@ -234,21 +224,11 @@ public class SftpClientFactory : IDisposable, IAsyncDisposable
                 methods.Add(keyMethod);
         }
 
-        // Check for password in UserInfo
-        else if (!string.IsNullOrWhiteSpace(uri.UserInfo))
+        // Check for password in the user information
+        else if (!string.IsNullOrWhiteSpace(uri.Password))
         {
-            var colonIndex = uri.UserInfo.IndexOf(':');
-
-            if (colonIndex >= 0 && colonIndex < uri.UserInfo.Length - 1)
-            {
-                var password = uri.UserInfo[(colonIndex + 1)..];
-
-                if (!string.IsNullOrWhiteSpace(password))
-                {
-                    var username = GetUsername(uri);
-                    methods.Add(new PasswordAuthenticationMethod(username, password));
-                }
-            }
+            var username = GetUsername(uri);
+            methods.Add(new PasswordAuthenticationMethod(username, uri.Password));
         }
 
         // Fall back to defaults

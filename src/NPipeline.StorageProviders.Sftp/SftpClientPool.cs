@@ -372,8 +372,8 @@ internal sealed class SftpClientPool : IDisposable, IAsyncDisposable
         var host = uri.Host ?? "";
         var port = uri.Port ?? 22;
 
-        // Extract username from UserInfo or parameters
-        var username = uri.UserInfo?.Split(':')[0];
+        // Extract username from the URI or parameters
+        var username = uri.UserName;
 
         if (string.IsNullOrEmpty(username) && uri.Parameters.TryGetValue("username", out var userParam))
             username = userParam;

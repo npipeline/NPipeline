@@ -79,7 +79,7 @@ public sealed class InMemoryStorageProvider : IStorageProvider, IDeletableStorag
 
             yield return new StorageItem
             {
-                Uri = prefix with { Path = key[key.IndexOf('/')..] },
+                Uri = prefix.WithPath(key[key.IndexOf('/')..]),
                 Size = bytes.LongLength,
                 LastModified = DateTimeOffset.UnixEpoch,
             };

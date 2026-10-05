@@ -1,71 +1,124 @@
+using System.Collections.Frozen;
 using System.Diagnostics.CodeAnalysis;
+using System.Text;
 
 namespace NPipeline.StorageProviders.Models;
 
 /// <summary>
-///     Represents a normalized storage location URI used by storage providers and data format connectors.
-///     Supports both absolute URIs (e.g., "s3://bucket/key?region=ap-southeast-2") and local file paths
-///     (e.g., "C:\path\to\file.csv" or "./relative/file.csv") via <see cref="FromFilePath(string)" /> or
-///     <see cref="Parse(string)" /> fallback.
+///     An immutable storage location: <c>scheme://[user[:password]@]host[:port]/path[?query]</c>, or a local file path.
 /// </summary>
-public sealed record StorageUri
+/// <remarks>
+///     <para>
+///         Percent-escapes in the path, user information and query are decoded exactly once, when the text is parsed.
+///         <see cref="Path" /> is the literal object key or file path: <c>#</c>, <c>..</c> and <c>//</c> are ordinary
+///         characters and are never rewritten. Text that does not start with <c>scheme://</c> (for example
+///         <c>C:\data\x.csv</c>, <c>./x.csv</c> or <c>/tmp/x.csv</c>) is a local file path.
+///     </para>
+///     <para>
+///         Instances have value semantics. <see cref="ToString" /> is canonical and redacts the password and secret
+///         parameters (see <see cref="SecretParameterNames" />), so it is safe to log. <see cref="ToUnredactedString" />
+///         keeps them, and <c>Parse(uri.ToUnredactedString())</c> returns an equal URI.
+///     </para>
+/// </remarks>
+public sealed class StorageUri : IEquatable<StorageUri>
 {
-    private static readonly StringComparer KeyComparer = StringComparer.OrdinalIgnoreCase;
+    private const string Redacted = "***";
 
-    [SetsRequiredMembers]
-    private StorageUri(StorageScheme scheme, string? host, string path, int? port, string? userInfo, IReadOnlyDictionary<string, string>? parameters = null)
+    private static readonly FrozenDictionary<string, string> NoParameters =
+        FrozenDictionary<string, string>.Empty.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Parameter names whose values are replaced by <c>***</c> in <see cref="ToString" />. Matching ignores case.</summary>
+    public static IReadOnlySet<string> SecretParameterNames { get; } = new[]
+    {
+        "password", "pwd", "secretKey", "sessionToken", "sasToken", "accountKey", "connectionString", "accessToken", "keyPassphrase",
+        "accessKey", "key", "token", "apiKey", "credentialsPath",
+    }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
+
+    private StorageUri(
+        StorageScheme scheme,
+        string? host,
+        int? port,
+        string? userName,
+        string? password,
+        string path,
+        FrozenDictionary<string, string> parameters)
     {
         Scheme = scheme;
-
-        Host = string.IsNullOrWhiteSpace(host)
-            ? null
-            : host;
-
-        Path = NormalizePath(path);
-
+        Host = string.IsNullOrWhiteSpace(host) ? null : host.ToLowerInvariant();
         Port = port;
-        UserInfo = userInfo;
-
-        Parameters = parameters is null
-            ? new Dictionary<string, string>(KeyComparer)
-            : new Dictionary<string, string>(parameters, KeyComparer);
+        UserName = string.IsNullOrEmpty(userName) ? null : userName;
+        Password = string.IsNullOrEmpty(password) ? null : password;
+        Path = NormalizePath(path);
+        Parameters = parameters;
     }
 
-    /// <summary>The scheme identifying the storage system (e.g., "file", "s3", "azure").</summary>
-    public required StorageScheme Scheme { get; init; }
+    /// <summary>The scheme identifying the storage system (for example <c>file</c>, <c>s3</c>, <c>azure</c>).</summary>
+    public StorageScheme Scheme { get; }
 
-    /// <summary>Optional authority/host component (e.g., bucket or container name).</summary>
-    public string? Host { get; init; }
+    /// <summary>The host or authority (for example a bucket or container name), lower-cased. <see langword="null" /> for local files.</summary>
+    public string? Host { get; }
 
-    /// <summary>Normalized, absolute-style path beginning with '/'.</summary>
-    public required string Path { get; init; }
+    /// <summary>The explicit port, or <see langword="null" /> when none was given.</summary>
+    public int? Port { get; }
 
-    /// <summary>Optional port number (e.g., 5432 for PostgreSQL, 1433 for SQL Server).</summary>
-    public int? Port { get; init; }
+    /// <summary>The decoded user name, or <see langword="null" />.</summary>
+    public string? UserName { get; }
 
-    /// <summary>Optional user information (e.g., "username:password").</summary>
-    public string? UserInfo { get; init; }
+    /// <summary>The decoded password, or <see langword="null" />. <see cref="ToString" /> never prints it.</summary>
+    public string? Password { get; }
 
-    /// <summary>Query parameters providing additional configuration.</summary>
-    public IReadOnlyDictionary<string, string> Parameters { get; init; } =
-        new Dictionary<string, string>(KeyComparer);
+    /// <summary>The decoded path. It always starts with <c>/</c> and is never rewritten.</summary>
+    public string Path { get; }
 
-    /// <summary>
-    ///     Parses a text representation into a <see cref="StorageUri" /> instance. Supports absolute URIs and local file paths.
-    /// </summary>
-    /// <exception cref="FormatException">Thrown when the text cannot be parsed into a valid StorageUri.</exception>
+    /// <summary>The decoded query parameters. The dictionary is immutable and its keys ignore case.</summary>
+    public IReadOnlyDictionary<string, string> Parameters { get; }
+
+    /// <summary><see langword="true" /> when <see cref="Path" /> ends with <c>/</c>.</summary>
+    public bool IsDirectory => Path[^1] == '/';
+
+    /// <summary>The last path segment, without a trailing <c>/</c>. Empty for the root.</summary>
+    public string Name
+    {
+        get
+        {
+            var trimmed = Path.AsSpan().TrimEnd('/');
+            return trimmed.Slice(trimmed.LastIndexOf('/') + 1).ToString();
+        }
+    }
+
+    /// <summary>The containing directory (its path ends with <c>/</c>), or <see langword="null" /> for the root.</summary>
+    public StorageUri? Parent
+    {
+        get
+        {
+            var trimmed = Path.AsSpan().TrimEnd('/');
+
+            if (trimmed.IsEmpty)
+                return null;
+
+            return WithPath(trimmed[..(trimmed.LastIndexOf('/') + 1)].ToString());
+        }
+    }
+
+    private FrozenDictionary<string, string> ParameterMap => (FrozenDictionary<string, string>)Parameters;
+
+    /// <summary>Parses absolute URIs and local file paths.</summary>
+    /// <exception cref="FormatException">The text cannot be parsed.</exception>
     public static StorageUri Parse(string text)
     {
         if (!TryParse(text, out var result, out var error))
             throw new FormatException($"Invalid storage URI. {error}");
 
-        return result!;
+        return result;
     }
 
-    /// <summary>Attempts to parse a <see cref="StorageUri" /> from the provided text.</summary>
-    public static bool TryParse(string? text, out StorageUri? result, out string? error)
+    /// <summary>Attempts to parse <paramref name="text" />.</summary>
+    public static bool TryParse(string? text, [NotNullWhen(true)] out StorageUri? uri) => TryParse(text, out uri, out _);
+
+    /// <summary>Attempts to parse <paramref name="text" />, reporting why it failed.</summary>
+    public static bool TryParse(string? text, [NotNullWhen(true)] out StorageUri? uri, [NotNullWhen(false)] out string? error)
     {
-        result = null;
+        uri = null;
         error = null;
 
         if (string.IsNullOrWhiteSpace(text))
@@ -74,207 +127,319 @@ public sealed record StorageUri
             return false;
         }
 
-        // First, try standard absolute URI parsing
-        if (Uri.TryCreate(text, UriKind.Absolute, out var uri) && !string.IsNullOrEmpty(uri.Scheme))
+        text = text.Trim();
+        var separator = text.IndexOf("://", StringComparison.Ordinal);
+
+        // A one-letter "scheme" is a Windows drive ("C://x"), not a storage scheme.
+        if (separator < 2 || !StorageScheme.TryParse(text[..separator], out var scheme))
+            return TryFromFilePath(text, out uri, out error);
+
+        var rest = text.AsSpan(separator + 3);
+        var queryStart = rest.IndexOf('?');
+        var query = queryStart < 0 ? default : rest[(queryStart + 1)..];
+        var beforeQuery = queryStart < 0 ? rest : rest[..queryStart];
+
+        var pathStart = beforeQuery.IndexOf('/');
+        var authority = pathStart < 0 ? beforeQuery : beforeQuery[..pathStart];
+        var path = pathStart < 0 ? "/" : Unescape(beforeQuery[pathStart..]);
+
+        string? userName = null, password = null;
+        var at = authority.LastIndexOf('@');
+
+        if (at >= 0)
         {
-            var scheme = new StorageScheme(uri.Scheme);
-
-            var host = string.IsNullOrWhiteSpace(uri.Host)
-                ? null
-                : uri.Host;
-
-            var path = NormalizePath(uri.AbsolutePath);
-            var parameters = ParseQuery(uri.Query);
-
-            // Extract port from URI (Uri.Port returns -1 if not specified)
-            int? port = uri.Port > 0
-                ? uri.Port
-                : null;
-
-            // Extract user info from URI
-            var userInfo = string.IsNullOrWhiteSpace(uri.UserInfo)
-                ? null
-                : Uri.UnescapeDataString(uri.UserInfo);
-
-            result = new StorageUri(scheme, host, path, port, userInfo, parameters);
-            return true;
+            var userInfo = authority[..at];
+            authority = authority[(at + 1)..];
+            var colon = userInfo.IndexOf(':');
+            userName = Unescape(colon < 0 ? userInfo : userInfo[..colon]);
+            password = colon < 0 ? null : Unescape(userInfo[(colon + 1)..]);
         }
 
-        // Fallback: treat as file path (absolute or relative)
-        try
-        {
-            result = FromFilePath(text);
-            return true;
-        }
-        catch (Exception ex)
-        {
-            error = $"Failed to parse as absolute URI or file path. {ex.Message}";
+        if (!TrySplitHostAndPort(authority, out var host, out var port, out error))
             return false;
-        }
+
+        uri = new StorageUri(scheme, host, port, userName, password, path, ParseQuery(query));
+        return true;
     }
 
-    /// <summary>
-    ///     Constructs a <see cref="StorageUri" /> for the local file system from a file path (absolute or relative).
-    /// </summary>
+    /// <summary>Creates a <see cref="StorageScheme.File" /> URI from a file path, absolute or relative to the working directory.</summary>
     public static StorageUri FromFilePath(string filePath)
     {
         if (string.IsNullOrWhiteSpace(filePath))
             throw new ArgumentException("File path cannot be null or whitespace.", nameof(filePath));
 
         var full = System.IO.Path.GetFullPath(filePath);
+        string? host = null;
 
-        // Normalize Windows drive letters and separators into a leading-slash path
-        var normalized = NormalizePath(full);
+        if (System.IO.Path.DirectorySeparatorChar == '\\')
+        {
+            full = full.Replace('\\', '/');
 
-        // For UNC paths (\\server\share\path), GetFullPath preserves backslashes.
-        // NormalizePath will convert to "/server/share/path". No host distinction is required for file scheme.
-        return new StorageUri(StorageScheme.File, null, normalized, null, null);
+            if (full.StartsWith("//", StringComparison.Ordinal))
+            {
+                // \\server\share\x is the UNC path of host "server".
+                var hostEnd = full.IndexOf('/', 2);
+                host = hostEnd < 0 ? full[2..] : full[2..hostEnd];
+                full = hostEnd < 0 ? "/" : full[hostEnd..];
+            }
+        }
+
+        return new StorageUri(StorageScheme.File, host, null, null, null, full, NoParameters);
     }
 
-    /// <summary>
-    ///     Returns a new <see cref="StorageUri" /> with an additional or updated query parameter.
-    /// </summary>
-    /// <param name="key">The parameter key.</param>
-    /// <param name="value">The parameter value.</param>
+    /// <summary>Returns a copy with a different path. A missing leading <c>/</c> is added; nothing else is rewritten.</summary>
+    public StorageUri WithPath(string path)
+    {
+        ArgumentNullException.ThrowIfNull(path);
+        return new StorageUri(Scheme, Host, Port, UserName, Password, path, ParameterMap);
+    }
+
+    /// <summary>Returns a copy with <paramref name="key" /> set to <paramref name="value" />.</summary>
     public StorageUri WithParameter(string key, string value)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
 
-        var updated = new Dictionary<string, string>(Parameters, KeyComparer)
+        var updated = new Dictionary<string, string>(ParameterMap, StringComparer.OrdinalIgnoreCase)
         {
             [key] = value ?? string.Empty,
         };
 
-        return new StorageUri(Scheme, Host, Path, Port, UserInfo, updated);
+        return new StorageUri(Scheme, Host, Port, UserName, Password, Path, Freeze(updated));
     }
 
-    /// <summary>
-    ///     Combines the current path with the provided relative path segment.
-    /// </summary>
-    /// <param name="relativePath">The relative path segment to append.</param>
+    /// <summary>Returns a copy without the parameter <paramref name="key" />.</summary>
+    public StorageUri WithoutParameter(string key)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+
+        if (!ParameterMap.ContainsKey(key))
+            return this;
+
+        var updated = new Dictionary<string, string>(ParameterMap, StringComparer.OrdinalIgnoreCase);
+        updated.Remove(key);
+        return new StorageUri(Scheme, Host, Port, UserName, Password, Path, Freeze(updated));
+    }
+
+    /// <summary>Appends <paramref name="relativePath" /> to <see cref="Path" />, with exactly one <c>/</c> between them.</summary>
     public StorageUri Combine(string relativePath)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(relativePath);
-
-        var basePath = Path.TrimEnd('/');
-        var segment = relativePath.Trim('/');
-
-        var combined = string.IsNullOrEmpty(basePath)
-            ? "/" + segment
-            : $"{basePath}/{segment}";
-
-        return new StorageUri(Scheme, Host, combined, Port, UserInfo, Parameters);
+        return WithPath($"{Path.TrimEnd('/')}/{relativePath.TrimStart('/')}");
     }
 
-    /// <summary>Returns a URI-like string representation including query parameters.</summary>
-    public override string ToString()
-    {
-        var authority = BuildAuthority();
-        var query = SerializeQuery(Parameters);
-        return $"{Scheme}:{authority}{Path}{query}";
-    }
+    /// <summary>The canonical, percent-encoded text with the password and every secret parameter replaced by <c>***</c>.</summary>
+    public override string ToString() => Format(true);
 
-    private string BuildAuthority()
-    {
-        var parts = new List<string>();
+    /// <summary>The canonical, percent-encoded text including the password and secret parameters. Do not log it.</summary>
+    public string ToUnredactedString() => Format(false);
 
-        // Add user info if present
-        if (!string.IsNullOrWhiteSpace(UserInfo))
+    /// <inheritdoc />
+    public bool Equals(StorageUri? other)
+    {
+        if (other is null)
+            return false;
+
+        if (ReferenceEquals(this, other))
+            return true;
+
+        if (Scheme != other.Scheme
+            || !string.Equals(Host, other.Host, StringComparison.OrdinalIgnoreCase)
+            || Port != other.Port
+            || !string.Equals(UserName, other.UserName, StringComparison.Ordinal)
+            || !string.Equals(Password, other.Password, StringComparison.Ordinal)
+            || !string.Equals(Path, other.Path, StringComparison.Ordinal)
+            || ParameterMap.Count != other.ParameterMap.Count)
         {
-            parts.Add(Uri.EscapeDataString(UserInfo));
-            parts.Add("@");
+            return false;
         }
 
-        // Add host
-        if (Host is { Length: > 0 })
-            parts.Add(Host);
-        else
-            parts.Add(string.Empty);
+        foreach (var (key, value) in ParameterMap)
+        {
+            if (!other.ParameterMap.TryGetValue(key, out var otherValue) || !string.Equals(value, otherValue, StringComparison.Ordinal))
+                return false;
+        }
 
-        // Add port if present
-        if (Port.HasValue)
-            parts.Add($":{Port.Value}");
-
-        return "//" + string.Join(string.Empty, parts);
+        return true;
     }
+
+    /// <inheritdoc />
+    public override bool Equals(object? obj) => Equals(obj as StorageUri);
+
+    /// <inheritdoc />
+    public override int GetHashCode()
+    {
+        // Parameter order is irrelevant, so fold the pairs with a commutative operation.
+        var parameters = 0;
+
+        foreach (var (key, value) in ParameterMap)
+        {
+            parameters ^= HashCode.Combine(StringComparer.OrdinalIgnoreCase.GetHashCode(key), value);
+        }
+
+        var hash = new HashCode();
+        hash.Add(Scheme);
+        hash.Add(Host, StringComparer.OrdinalIgnoreCase);
+        hash.Add(Port);
+        hash.Add(UserName, StringComparer.Ordinal);
+        hash.Add(Password, StringComparer.Ordinal);
+        hash.Add(Path, StringComparer.Ordinal);
+        hash.Add(parameters);
+        return hash.ToHashCode();
+    }
+
+    /// <summary>Equality operator.</summary>
+    public static bool operator ==(StorageUri? left, StorageUri? right) => left?.Equals(right) ?? right is null;
+
+    /// <summary>Inequality operator.</summary>
+    public static bool operator !=(StorageUri? left, StorageUri? right) => !(left == right);
+
+    private static bool TryFromFilePath(string text, out StorageUri? uri, out string? error)
+    {
+        uri = null;
+        error = null;
+
+        try
+        {
+            uri = FromFilePath(text);
+            return true;
+        }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            error = $"Failed to parse as an absolute URI or a file path. {ex.Message}";
+            return false;
+        }
+    }
+
+    private static bool TrySplitHostAndPort(ReadOnlySpan<char> authority, out string? host, out int? port, [NotNullWhen(false)] out string? error)
+    {
+        host = null;
+        port = null;
+        error = null;
+
+        // "[::1]:8080": the port follows the closing bracket. Otherwise it follows the last colon.
+        var portSeparator = authority.Length > 0 && authority[0] == '['
+            ? authority.IndexOf("]:".AsSpan()) is var close and >= 0 ? close + 1 : -1
+            : authority.LastIndexOf(':');
+
+        var hostPart = portSeparator < 0 ? authority : authority[..portSeparator];
+        host = hostPart.IsEmpty ? null : hostPart.ToString();
+
+        if (portSeparator < 0 || portSeparator == authority.Length - 1)
+            return true;
+
+        if (!ushort.TryParse(authority[(portSeparator + 1)..], out var parsed))
+        {
+            error = $"'{authority[(portSeparator + 1)..]}' is not a valid port.";
+            return false;
+        }
+
+        port = parsed;
+        return true;
+    }
+
+    private static FrozenDictionary<string, string> ParseQuery(ReadOnlySpan<char> query)
+    {
+        if (query.IsEmpty)
+            return NoParameters;
+
+        var parameters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        while (!query.IsEmpty)
+        {
+            var end = query.IndexOf('&');
+            var pair = end < 0 ? query : query[..end];
+            query = end < 0 ? default : query[(end + 1)..];
+
+            if (pair.IsEmpty)
+                continue;
+
+            var equals = pair.IndexOf('=');
+
+            if (equals < 0)
+                parameters[Unescape(pair)] = string.Empty;
+            else
+                parameters[Unescape(pair[..equals])] = Unescape(pair[(equals + 1)..]);
+        }
+
+        return Freeze(parameters);
+    }
+
+    private static FrozenDictionary<string, string> Freeze(Dictionary<string, string> parameters) =>
+        parameters.Count == 0 ? NoParameters : parameters.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
+
+    private static string Unescape(ReadOnlySpan<char> value) =>
+        value.Contains('%') ? Uri.UnescapeDataString(value.ToString()) : value.ToString();
 
     private static string NormalizePath(string path)
     {
-        if (string.IsNullOrWhiteSpace(path))
+        if (path.Length == 0)
             return "/";
 
-        // Convert backslashes to forward slashes for consistency
-        var p = path.Replace('\\', '/');
-
-        // If Windows drive-rooted like "C:/folder/file", ensure leading slash
-        if (p.Length >= 2 && char.IsLetter(p[0]) && p[1] == ':')
-            p = "/" + p;
-
-        // Ensure single leading slash
-        if (!p.StartsWith("/", StringComparison.Ordinal))
-            p = "/" + p;
-
-        // Collapse multiple slashes (path context only)
-        while (p.Contains("//", StringComparison.Ordinal))
-        {
-            p = p.Replace("//", "/", StringComparison.Ordinal);
-        }
-
-        return p;
+        return path[0] == '/' ? path : "/" + path;
     }
 
-    private static IReadOnlyDictionary<string, string> ParseQuery(string query)
+    private string Format(bool redact)
     {
-        var dict = new Dictionary<string, string>(KeyComparer);
+        var builder = new StringBuilder(Scheme.Value).Append("://");
 
-        if (string.IsNullOrEmpty(query))
-            return dict;
-
-        var q = query[0] == '?'
-            ? query[1..]
-            : query;
-
-        if (q.Length == 0)
-            return dict;
-
-        var pairs = q.Split('&', StringSplitOptions.RemoveEmptyEntries);
-
-        foreach (var pair in pairs)
+        if (UserName is not null || Password is not null)
         {
-            var idx = pair.IndexOf('=', StringComparison.Ordinal);
+            Escape(builder, UserName ?? string.Empty, UserInfoUnreserved);
 
-            if (idx < 0)
+            if (Password is not null)
             {
-                var k = Uri.UnescapeDataString(pair);
-                dict[k] = string.Empty;
+                builder.Append(':');
+
+                if (redact)
+                    builder.Append(Redacted);
+                else
+                    Escape(builder, Password, UserInfoUnreserved);
             }
+
+            builder.Append('@');
+        }
+
+        builder.Append(Host);
+
+        if (Port is { } port)
+            builder.Append(':').Append(port);
+
+        Escape(builder, Path, PathUnreserved);
+
+        var separator = '?';
+
+        foreach (var (key, value) in ParameterMap)
+        {
+            builder.Append(separator);
+            separator = '&';
+            Escape(builder, key, QueryUnreserved);
+            builder.Append('=');
+
+            if (redact && SecretParameterNames.Contains(key))
+                builder.Append(Redacted);
             else
-            {
-                var key = Uri.UnescapeDataString(pair[..idx]);
-                var val = Uri.UnescapeDataString(pair[(idx + 1)..]);
-                dict[key] = val;
-            }
+                Escape(builder, value, QueryUnreserved);
         }
 
-        return dict;
+        return builder.ToString();
     }
 
-    private static string SerializeQuery(IReadOnlyDictionary<string, string> parameters)
+    private const string UserInfoUnreserved = "-._~!$&'()*+,;=";
+    private const string PathUnreserved = "-._~!$&'()*+,;=:@/";
+    private const string QueryUnreserved = "-._~!$'()*,;:@/";
+
+    // Escapes ASCII outside [A-Za-z0-9] + allowed, and control characters. Non-ASCII text stays readable and round-trips.
+    private static void Escape(StringBuilder builder, string value, string allowed)
     {
-        if (parameters.Count == 0)
-            return string.Empty;
-
-        var parts = new List<string>(parameters.Count);
-
-        foreach (var kvp in parameters)
+        foreach (var ch in value)
         {
-            var k = Uri.EscapeDataString(kvp.Key);
-            var v = Uri.EscapeDataString(kvp.Value);
-            parts.Add($"{k}={v}");
-        }
+            if (ch >= 0x80 || char.IsAsciiLetterOrDigit(ch) || allowed.Contains(ch))
+            {
+                builder.Append(ch);
+                continue;
+            }
 
-        return parts.Count > 0
-            ? "?" + string.Join("&", parts)
-            : string.Empty;
+            builder.Append('%').Append(((int)ch).ToString("X2", System.Globalization.CultureInfo.InvariantCulture));
+        }
     }
 }

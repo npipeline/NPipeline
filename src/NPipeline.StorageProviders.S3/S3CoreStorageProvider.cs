@@ -321,7 +321,7 @@ public class S3CoreStorageProvider : IStorageProvider, IStorageProviderMetadataP
                 cancellationToken.ThrowIfCancellationRequested();
 
                 var objectKey = s3Object.Key;
-                var itemUri = StorageUri.Parse($"s3://{bucket}/{objectKey}");
+                var itemUri = prefix.WithPath("/" + objectKey);
                 var size = s3Object.Size ?? 0;
 
 #if DEBUG
@@ -349,7 +349,7 @@ public class S3CoreStorageProvider : IStorageProvider, IStorageProviderMetadataP
                     cancellationToken.ThrowIfCancellationRequested();
 
                     var prefixKey = commonPrefix.TrimEnd('/');
-                    var itemUri = StorageUri.Parse($"s3://{bucket}/{prefixKey}");
+                    var itemUri = prefix.WithPath("/" + prefixKey);
 
                     yield return new StorageItem
                     {

@@ -266,7 +266,7 @@ public sealed class AzureBlobStorageProvider : IStorageProvider, IStorageProvide
                 cancellationToken.ThrowIfCancellationRequested();
 
                 var blobName = blobItem.Name;
-                var itemUri = StorageUri.Parse($"azure://{container}/{blobName}");
+                var itemUri = prefix.WithPath("/" + blobName);
 
                 yield return new StorageItem
                 {
@@ -292,7 +292,7 @@ public sealed class AzureBlobStorageProvider : IStorageProvider, IStorageProvide
                 {
                     // Yield virtual directories as directory items
                     var prefixPath = blobItem.Prefix.TrimEnd('/');
-                    var directoryUri = StorageUri.Parse($"azure://{container}/{prefixPath}");
+                    var directoryUri = prefix.WithPath("/" + prefixPath);
 
                     yield return new StorageItem
                     {
@@ -306,7 +306,7 @@ public sealed class AzureBlobStorageProvider : IStorageProvider, IStorageProvide
                 }
 
                 var blobName = blobItem.Blob.Name;
-                var blobUri = StorageUri.Parse($"azure://{container}/{blobName}");
+                var blobUri = prefix.WithPath("/" + blobName);
 
                 yield return new StorageItem
                 {

@@ -49,9 +49,11 @@ public sealed class CosmosDatabaseStorageProvider : IDatabaseStorageProvider, IS
 
         if (uri.Scheme.Value == "cosmos-mongo")
         {
-            var auth = string.IsNullOrWhiteSpace(uri.UserInfo)
+            var auth = string.IsNullOrWhiteSpace(uri.UserName)
                 ? string.Empty
-                : $"{uri.UserInfo}@";
+                : uri.Password is null
+                    ? $"{Uri.EscapeDataString(uri.UserName)}@"
+                    : $"{Uri.EscapeDataString(uri.UserName)}:{Uri.EscapeDataString(uri.Password)}@";
 
             var port = uri.Port.HasValue
                 ? $":{uri.Port}"
@@ -278,15 +280,10 @@ public sealed class CosmosDatabaseStorageProvider : IDatabaseStorageProvider, IS
         }
 
         // Extract from userinfo if present (user:password format)
-        if (!string.IsNullOrWhiteSpace(uri.UserInfo))
+        if (!string.IsNullOrWhiteSpace(uri.UserName) && uri.Password is not null)
         {
-            var parts = uri.UserInfo.Split(':', 2);
-
-            if (parts.Length == 2)
-            {
-                info.Username = parts[0];
-                info.Password = parts[1];
-            }
+            info.Username = uri.UserName;
+            info.Password = uri.Password;
         }
 
         return info;

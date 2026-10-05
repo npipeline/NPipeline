@@ -109,7 +109,7 @@ public sealed class FileSourceNodeTests
 
         var failure = (await FluentActions.Awaiting(() => NodeRunner(source)).Should().ThrowAsync<RecordMappingException>()).Which;
 
-        failure.RecordSource.Should().Be("mem://test/data.txt", "the query string can carry credentials");
+        failure.RecordSource.Should().Be("mem://test/data.txt?token=***", "secret parameters are redacted");
         failure.RecordNumber.Should().Be(2);
         failure.RawExcerpt.Should().Be("bad");
         failure.InnerException.Should().BeOfType<FormatException>();

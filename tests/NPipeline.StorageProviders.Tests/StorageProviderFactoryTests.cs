@@ -146,7 +146,7 @@ public class StorageProviderFactoryTests
 
     private sealed class TestProvider : IStorageProvider
     {
-        public StorageScheme Scheme => "test";
+        public StorageScheme Scheme => new("test");
 
         public bool CanHandle(StorageUri uri) => false;
 

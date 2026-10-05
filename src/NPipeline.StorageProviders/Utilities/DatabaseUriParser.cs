@@ -27,7 +27,7 @@ public record DatabaseConnectionInfo(
 ///     Parsing logic:
 ///     - Database name is extracted from <see cref="StorageUri.Path" /> by trimming the leading '/'.
 ///     - Username and password are preferred from query parameters ("username"/"user" and "password"/"pwd"),
-///     falling back to <see cref="StorageUri.UserInfo" />.
+///     falling back to <see cref="StorageUri.UserName" /> and <see cref="StorageUri.Password" />.
 ///     - Port is preferred from <see cref="StorageUri.Port" />, falling back to the "port" query parameter.
 ///     - Host is required and must be specified in <see cref="StorageUri.Host" />.
 /// </remarks>
@@ -124,19 +124,17 @@ public static class DatabaseUriParser
 
     private static (string? Username, string? Password) ExtractCredentials(StorageUri uri)
     {
-        // Prefer query parameters over UserInfo
+        // Prefer query parameters over the user information
         var username = GetParameter(uri, "username") ?? GetParameter(uri, "user");
         var password = GetParameter(uri, "password") ?? GetParameter(uri, "pwd");
 
-        // Fall back to UserInfo if not found in parameters
-        if (string.IsNullOrWhiteSpace(username) && !string.IsNullOrWhiteSpace(uri.UserInfo))
+        // Fall back to the user information if not found in parameters
+        if (string.IsNullOrWhiteSpace(username) && !string.IsNullOrWhiteSpace(uri.UserName))
         {
-            // UserInfo is in the format "username:password"
-            var parts = uri.UserInfo.Split(':', 2);
-            username = parts[0];
+            username = uri.UserName;
 
-            if (parts.Length > 1)
-                password = parts[1];
+            if (uri.Password is not null)
+                password = uri.Password;
         }
 
         return (username, password);
