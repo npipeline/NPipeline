@@ -244,23 +244,19 @@ public class AzureBlobStorageProviderTests
     }
 
     [Fact]
-    public void Capabilities_DeclaresReadWriteList()
+    public void Capabilities_DeclaresObjectStoreFeatures()
     {
-        _provider.Capabilities.Should().Be(StorageCapabilities.Read | StorageCapabilities.Write | StorageCapabilities.List);
+        _provider.Capabilities.Should().Be(
+            StorageCapabilities.Read | StorageCapabilities.Write | StorageCapabilities.List | StorageCapabilities.Delete | StorageCapabilities.Move);
     }
 
     [Fact]
-    public async Task DeleteAsync_NotSupported_ThrowsUnsupportedStorageCapabilityException()
+    public async Task MoveAsync_BetweenAccounts_ThrowsArgumentException()
     {
-        await Assert.ThrowsAsync<UnsupportedStorageCapabilityException>(
-            () => _provider.DeleteAsync(StorageUri.Parse("azure://test-container/test-blob")));
-    }
+        var source = StorageUri.Parse("azure://c/a?accountName=one");
+        var destination = StorageUri.Parse("azure://c/b?accountName=two");
 
-    [Fact]
-    public async Task MoveAsync_NotSupported_ThrowsUnsupportedStorageCapabilityException()
-    {
-        await Assert.ThrowsAsync<UnsupportedStorageCapabilityException>(
-            () => _provider.MoveAsync(StorageUri.Parse("azure://test-container/a"), StorageUri.Parse("azure://test-container/b")));
+        await Assert.ThrowsAsync<ArgumentException>(() => _provider.MoveAsync(source, destination));
     }
 
     [Fact]
