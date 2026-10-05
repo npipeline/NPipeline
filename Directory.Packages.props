@@ -36,7 +36,7 @@
     <PackageVersion Include="FluentAssertions" Version="8.11.0" />
     <PackageVersion Include="Google.Apis.Auth" Version="1.77.0" />
     <PackageVersion Include="Google.Cloud.Storage.V1" Version="5.0.0" />
-    <PackageVersion Include="Microsoft.Azure.Cosmos" Version="3.63.1" />
+    <PackageVersion Include="Microsoft.Azure.Cosmos" Version="3.63.2" />
     <PackageVersion Include="Microsoft.CodeAnalysis.Analyzers" Version="5.9.0" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="5.9.0" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="5.9.0" />
