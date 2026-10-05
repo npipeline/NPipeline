@@ -13,6 +13,8 @@
 
     <ItemGroup>
         <InternalsVisibleTo Include="NPipeline.StorageProviders.Azure.Tests"/>
+        <InternalsVisibleTo Include="NPipeline.StorageProviders.Adls"/>
+        <InternalsVisibleTo Include="NPipeline.StorageProviders.Adls.Tests"/>
     </ItemGroup>
 
     <ItemGroup>

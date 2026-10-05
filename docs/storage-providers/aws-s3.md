@@ -76,7 +76,9 @@ var options = new AwsS3StorageProviderOptions
 | `UseDefaultCredentialChain` | `bool` | `true` | Fall back to the default credential chain |
 | `ServiceUrl` | `Uri?` | `null` | Custom S3 endpoint (Floci, MinIO) |
 | `ForcePathStyle` | `bool` | `false` | Use path-style URLs instead of virtual-hosted |
-| `MultipartUploadThresholdBytes` | `long` | `64 MB` | Switch to multipart upload above this size |
+| `PartSizeBytes` | `int` | `8 MiB` | Size of each upload part. Must be at least 5 MiB. An object that fits in one part uses a single `PutObject`. |
+| `MaxConcurrency` | `int` | `4` | Parts of one object that upload at the same time |
+| `ClientCacheSizeLimit` | `int` | `100` | Endpoint clients kept in the cache |
 
 ## Dependency Injection
 
@@ -101,8 +103,8 @@ Registers: `IStorageProvider`
 
 ## Features
 
-- **Multipart uploads** - files above `MultipartUploadThresholdBytes` are uploaded using the S3 multipart API
-- **Client caching** - S3 clients are cached and reused per region/endpoint
+- **Streaming uploads** - parts upload while you write, with bounded memory and no local temporary file
+- **Client caching** - one S3 client per endpoint (region, service URL and addressing style). Credentials never take part in the cache key, so looking up a client doesn't resolve them.
 - **Virtual-hosted addressing** - default; set `ForcePathStyle = true` for Floci or older S3-compatible services
 - **Metadata** - `GetMetadataAsync` returns `Size`, `LastModified`, `ContentType`, `ETag`
 
@@ -111,8 +113,6 @@ Registers: `IStorageProvider`
 | Parameter | Description | Example |
 |-----------|-------------|---------|
 | `region` | AWS region name | `region=ap-southeast-2` |
-| `accessKey` | AWS access key (dev only) | `accessKey=AKIAIOSFODNN7EXAMPLE` |
-| `secretKey` | AWS secret key (dev only) | `secretKey=wJalrXUtnFEMI/...` |
 | `serviceUrl` | Custom S3 endpoint | `serviceUrl=http://localhost:9000` |
 | `pathStyle` | Force path-style (`true`/`false`) | `pathStyle=true` |
 | `contentType` | Content type on write | `contentType=application/json` |
@@ -125,7 +125,7 @@ var uri = StorageUri.Parse("s3://my-bucket/data/input.csv?region=us-west-2");
 var uri = StorageUri.Parse("s3://local-bucket/data/file.csv?serviceUrl=http://localhost:4566&pathStyle=true");
 ```
 
-> **Security:** Avoid credentials in URIs for production - URIs may be logged. Use the credential chain or DI.
+> **Security:** The `accessKey`, `secretKey` and `sessionToken` URI parameters aren't supported, because URIs are logged and compared. A URI that carries one throws an `ArgumentException`. Set `DefaultCredentials` in the options, or use the credential chain.
 
 ## Configuration Examples
 
@@ -182,7 +182,7 @@ await using (var writer = new StreamWriter(stream, leaveOpen: true))
 await stream.CommitAsync(ct);
 ```
 
-Call `CommitAsync` once, after the last write. The provider buffers the data to a local temporary file and uploads it when you commit (as a multipart upload above `MultipartUploadThresholdBytes`). Disposing the stream without committing uploads nothing and leaves an existing object as it was. Upload errors surface from `CommitAsync`.
+Call `CommitAsync` once, after the last write. The provider uploads while you write: an object that fits in one part (`PartSizeBytes`, 8 MiB by default) is sent with one `PutObject` when you commit, and a larger one is sent as a multipart upload whose parts leave as they fill, so the data never goes to a local temporary file. Memory use is about `PartSizeBytes × (MaxConcurrency + 1)`. `CommitAsync` completes the upload. Disposing the stream without committing aborts the multipart upload and leaves an existing object as it was. Upload errors surface from `CommitAsync`. Set `StorageWriteOptions.LengthHint` when you know the size: the provider then picks a part size that keeps the upload within the S3 limit of 10,000 parts. Without a hint, the part size grows after part 1,000.
 
 `AwsS3StorageProvider` declares `ConditionalWrite`. Pass `new StorageWriteOptions { Overwrite = false }` to fail the commit if the object exists, or `new StorageWriteOptions { IfMatch = etag }` (an ETag from `GetMetadataAsync`) to commit only if the object is unchanged. A refused condition throws `StoragePreconditionFailedException` from `CommitAsync`. Set `StorageWriteOptions.ContentType` to set the content type.
 
@@ -245,7 +245,7 @@ if (metadata is not null)
 ## Limitations
 
 - **Flat storage** - S3 has no directories; prefixes simulate hierarchy
-- **Multipart uploads** - files above threshold use multipart API; ensure sufficient memory and bandwidth
+- **Upload memory** - writing an object holds up to `PartSizeBytes × (MaxConcurrency + 1)` in memory; lower either option on constrained hosts
 - **Eventually consistent** - S3 standard now provides strong read-after-write consistency for PUT, but LIST operations may lag
 
 ## Next Steps

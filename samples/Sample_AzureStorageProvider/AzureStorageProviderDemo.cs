@@ -262,12 +262,12 @@ public class AzureStorageProviderDemo
     }
 
     /// <summary>
-    ///     Demo 3: Large File Handling - Demonstrates uploading large files using block blob upload.
+    ///     Demo 3: Large File Handling - Demonstrates uploading large files as streamed blocks.
     /// </summary>
     private async Task DemoLargeFileHandlingAsync(CancellationToken cancellationToken)
     {
         Console.WriteLine("┌──────────────────────────────────────────────────────────────────┐");
-        Console.WriteLine("│  Demo 3: Large File Handling (>64MB)                              │");
+        Console.WriteLine("│  Demo 3: Large File Handling (streamed in blocks)                 │");
         Console.WriteLine("└──────────────────────────────────────────────────────────────────┘");
 
         var largeFilePath = "demo/large-file.bin";
@@ -604,19 +604,19 @@ public class AzureStorageProviderDemo
         Console.WriteLine("│  Demo 7: Authentication Methods                                   │");
         Console.WriteLine("└──────────────────────────────────────────────────────────────────┘");
 
-        Console.WriteLine("  The Azure Blob Storage Provider supports multiple authentication methods:");
+        Console.WriteLine("  The Azure Blob Storage Provider supports multiple authentication methods.");
+        Console.WriteLine("  You set credentials in AzureBlobStorageProviderOptions. A URI never carries a credential.");
         Console.WriteLine();
-        Console.WriteLine("  1. Connection String (Recommended for development):");
-        Console.WriteLine("     - UseDevelopmentStorage=true (for Azurite emulator)");
-        Console.WriteLine("     - DefaultEndpointsProtocol=https;AccountName=...;AccountKey=...;EndpointSuffix=core.windows.net");
+        Console.WriteLine("  1. Connection String:");
+        Console.WriteLine("     - options.DefaultConnectionString = \"DefaultEndpointsProtocol=https;AccountName=...;AccountKey=...;EndpointSuffix=core.windows.net\"");
+        Console.WriteLine("     - A connection string names its own endpoint, so do not also set ServiceUrl");
         Console.WriteLine();
         Console.WriteLine("  2. Account Key:");
-        Console.WriteLine("     - Set AZURE_STORAGE_ACCOUNT_NAME and AZURE_STORAGE_ACCOUNT_KEY environment variables");
-        Console.WriteLine("     - Or configure via AzureBlobStorageProviderOptions.DefaultConnectionString");
+        Console.WriteLine("     - options.AccountName and options.DefaultAccountKey");
         Console.WriteLine();
         Console.WriteLine("  3. SAS Token (Shared Access Signature):");
-        Console.WriteLine("     - Include SAS token in the connection string or blob URI");
-        Console.WriteLine("     - Example: azure://container/blob?sas_token=...");
+        Console.WriteLine("     - options.AccountName and options.DefaultSasToken");
+        Console.WriteLine("     - Set the token as Azure gives it to you; the provider sends it unchanged");
         Console.WriteLine();
         Console.WriteLine("  4. Default Azure Credential Chain (Production):");
         Console.WriteLine("     - Uses DefaultAzureCredential from Azure.Identity");
@@ -627,25 +627,30 @@ public class AzureStorageProviderDemo
         Console.WriteLine("     - Provide a custom TokenCredential via AzureBlobStorageProviderOptions.DefaultCredential");
         Console.WriteLine();
         Console.WriteLine("  Configuration Priority:");
-        Console.WriteLine("    1. Connection string in URI parameters");
-        Console.WriteLine("    2. AzureBlobStorageProviderOptions.DefaultConnectionString");
-        Console.WriteLine("    3. AzureBlobStorageProviderOptions.DefaultCredential");
-        Console.WriteLine("    4. Default credential chain (if UseDefaultCredentialChain is true)");
+        Console.WriteLine("    1. AzureBlobStorageProviderOptions.DefaultConnectionString");
+        Console.WriteLine("    2. AzureBlobStorageProviderOptions.DefaultSasToken");
+        Console.WriteLine("    3. AzureBlobStorageProviderOptions.DefaultAccountKey");
+        Console.WriteLine("    4. AzureBlobStorageProviderOptions.DefaultCredential");
+        Console.WriteLine("    5. Default credential chain (if UseDefaultCredentialChain is true)");
+        Console.WriteLine();
+        Console.WriteLine("  The connectionString, sasToken and accountKey URI parameters are no longer supported.");
+        Console.WriteLine("  A URI that carries one throws ArgumentException that names the option to set.");
         Console.WriteLine();
         Console.WriteLine("  For this demo, we're using the Azurite emulator with:");
-        Console.WriteLine("    ConnectionString: UseDevelopmentStorage=true");
+        Console.WriteLine("    AccountName: devstoreaccount1 (and Azurite's published account key)");
         Console.WriteLine("    ServiceUrl: http://127.0.0.1:10000/devstoreaccount1");
         Console.WriteLine();
 
         Console.WriteLine("  To configure authentication in your application:");
         Console.WriteLine();
         Console.WriteLine("  Option A - Environment Variables:");
-        Console.WriteLine("    export AZURE_STORAGE_CONNECTION_STRING=\"UseDevelopmentStorage=true\"");
+        Console.WriteLine("    export AZURE_STORAGE_CONNECTION_STRING=\"DefaultEndpointsProtocol=https;AccountName=...;AccountKey=...\"");
         Console.WriteLine();
         Console.WriteLine("  Option B - appsettings.json:");
         Console.WriteLine("    {");
         Console.WriteLine("      \"AzureStorage\": {");
-        Console.WriteLine("        \"DefaultConnectionString\": \"UseDevelopmentStorage=true\",");
+        Console.WriteLine("        \"AccountName\": \"devstoreaccount1\",");
+        Console.WriteLine("        \"AccountKey\": \"<azurite-key>\",");
         Console.WriteLine("        \"ServiceUrl\": \"http://127.0.0.1:10000/devstoreaccount1\"");
         Console.WriteLine("      }");
         Console.WriteLine("    }");
@@ -653,8 +658,10 @@ public class AzureStorageProviderDemo
         Console.WriteLine("  Option C - Code Configuration:");
         Console.WriteLine("    services.AddAzureBlobStorageProvider(options =>");
         Console.WriteLine("    {");
-        Console.WriteLine("        options.DefaultConnectionString = \"UseDevelopmentStorage=true\";");
+        Console.WriteLine("        options.AccountName = \"devstoreaccount1\";");
+        Console.WriteLine("        options.DefaultAccountKey = \"<azurite-key>\";");
         Console.WriteLine("        options.ServiceUrl = new Uri(\"http://127.0.0.1:10000/devstoreaccount1\");");
+        Console.WriteLine("        options.CreateContainerIfMissing = true;");
         Console.WriteLine("    });");
         Console.WriteLine();
     }

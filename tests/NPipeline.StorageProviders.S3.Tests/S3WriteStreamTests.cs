@@ -220,20 +220,6 @@ public class S3WriteStreamTests
     }
 
     [Fact]
-    public void Length_WhenDisposed_ThrowsObjectDisposedException()
-    {
-        // Arrange
-        var stream = new S3WriteStream(_fakeS3Client, TestBucket, TestKey);
-        stream.Dispose();
-
-        // Act & Assert
-        Assert.Throws<ObjectDisposedException>(() =>
-        {
-            var _ = stream.Length;
-        });
-    }
-
-    [Fact]
     public async Task CommitAsync_UploadsToS3()
     {
         // Arrange
@@ -535,9 +521,11 @@ public class S3WriteStreamTests
     }
 
     [Fact]
-    public async Task CommitAsync_WithThresholdReached_UsesMultipartUpload()
+    public async Task CommitAsync_WithMoreThanOnePart_UsesMultipartUpload()
     {
         // Arrange
+        const int partSize = 5 * 1024 * 1024;
+
         A.CallTo(() => _fakeS3Client.InitiateMultipartUploadAsync(A<InitiateMultipartUploadRequest>._, A<CancellationToken>._))
             .Returns(Task.FromResult(new InitiateMultipartUploadResponse
             {
@@ -545,24 +533,14 @@ public class S3WriteStreamTests
             }));
 
         A.CallTo(() => _fakeS3Client.UploadPartAsync(A<UploadPartRequest>._, A<CancellationToken>._))
-            .Returns(Task.FromResult(new UploadPartResponse
-            {
-                ETag = "etag-1",
-            }));
+            .ReturnsLazily((UploadPartRequest r, CancellationToken _) => Task.FromResult(new UploadPartResponse { ETag = $"etag-{r.PartNumber}" }));
 
         A.CallTo(() => _fakeS3Client.CompleteMultipartUploadAsync(A<CompleteMultipartUploadRequest>._, A<CancellationToken>._))
-            .Returns(Task.FromResult(new CompleteMultipartUploadResponse()));
+            .Returns(Task.FromResult(new CompleteMultipartUploadResponse { ETag = "\"done\"" }));
 
-        var stream = new S3WriteStream(
-            _fakeS3Client,
-            TestBucket,
-            TestKey,
-            "application/octet-stream",
-            1,
-            5 * 1024 * 1024);
+        var stream = new S3WriteStream(_fakeS3Client, TestBucket, TestKey, "application/octet-stream", partSize);
 
-        var data = new byte[] { 1, 2, 3 };
-        await stream.WriteAsync(data, 0, data.Length);
+        await stream.WriteAsync(new byte[partSize + 3]);
 
         // Act
         await stream.CommitAsync();
@@ -578,27 +556,86 @@ public class S3WriteStreamTests
             .MustHaveHappenedOnceExactly();
 
         A.CallTo(() => _fakeS3Client.UploadPartAsync(
-                A<UploadPartRequest>.That.Matches(r =>
-                    r.BucketName == TestBucket &&
-                    r.Key == TestKey &&
-                    r.UploadId == "upload-1" &&
-                    r.PartNumber == 1 &&
-                    r.PartSize == data.Length),
+                A<UploadPartRequest>.That.Matches(r => r.UploadId == "upload-1" && r.PartNumber == 1 && r.PartSize == partSize),
+                A<CancellationToken>._))
+            .MustHaveHappenedOnceExactly();
+
+        A.CallTo(() => _fakeS3Client.UploadPartAsync(
+                A<UploadPartRequest>.That.Matches(r => r.UploadId == "upload-1" && r.PartNumber == 2 && r.PartSize == 3),
                 A<CancellationToken>._))
             .MustHaveHappenedOnceExactly();
 
         A.CallTo(() => _fakeS3Client.CompleteMultipartUploadAsync(
                 A<CompleteMultipartUploadRequest>.That.Matches(r =>
-                    r.BucketName == TestBucket &&
-                    r.Key == TestKey &&
                     r.UploadId == "upload-1" &&
-                    r.PartETags.Count == 1 &&
-                    r.PartETags[0].PartNumber == 1),
+                    r.PartETags.Count == 2 &&
+                    r.PartETags[0].PartNumber == 1 &&
+                    r.PartETags[0].ETag == "etag-1" &&
+                    r.PartETags[1].PartNumber == 2),
                 A<CancellationToken>._))
             .MustHaveHappenedOnceExactly();
 
         A.CallTo(() => _fakeS3Client.PutObjectAsync(A<PutObjectRequest>._, A<CancellationToken>._))
             .MustNotHaveHappened();
+
+        stream.ETag.Should().Be("\"done\"");
+    }
+
+    [Fact]
+    public async Task DisposeAsync_AfterPartsStartedWithoutCommit_AbortsTheMultipartUpload()
+    {
+        // Arrange
+        const int partSize = 5 * 1024 * 1024;
+
+        A.CallTo(() => _fakeS3Client.InitiateMultipartUploadAsync(A<InitiateMultipartUploadRequest>._, A<CancellationToken>._))
+            .Returns(Task.FromResult(new InitiateMultipartUploadResponse { UploadId = "upload-9" }));
+
+        A.CallTo(() => _fakeS3Client.UploadPartAsync(A<UploadPartRequest>._, A<CancellationToken>._))
+            .Returns(Task.FromResult(new UploadPartResponse { ETag = "e" }));
+
+        var stream = new S3WriteStream(_fakeS3Client, TestBucket, TestKey, partSizeBytes: partSize);
+        await stream.WriteAsync(new byte[partSize + 1]);
+
+        // Act
+        await stream.DisposeAsync();
+
+        // Assert
+        A.CallTo(() => _fakeS3Client.AbortMultipartUploadAsync(
+                A<AbortMultipartUploadRequest>.That.Matches(r => r.UploadId == "upload-9" && r.Key == TestKey),
+                A<CancellationToken>._))
+            .MustHaveHappenedOnceExactly();
+
+        A.CallTo(() => _fakeS3Client.CompleteMultipartUploadAsync(A<CompleteMultipartUploadRequest>._, A<CancellationToken>._))
+            .MustNotHaveHappened();
+    }
+
+    [Fact]
+    public async Task CommitAsync_LengthHintBeyondTenThousandDefaultParts_RaisesThePartSize()
+    {
+        // 100 GB at the 8 MiB default would need more than 10,000 parts.
+        A.CallTo(() => _fakeS3Client.InitiateMultipartUploadAsync(A<InitiateMultipartUploadRequest>._, A<CancellationToken>._))
+            .Returns(Task.FromResult(new InitiateMultipartUploadResponse { UploadId = "u" }));
+
+        var parts = new List<int>();
+
+        A.CallTo(() => _fakeS3Client.UploadPartAsync(A<UploadPartRequest>._, A<CancellationToken>._))
+            .ReturnsLazily((UploadPartRequest r, CancellationToken _) =>
+            {
+                lock (parts)
+                {
+                    parts.Add((int)r.PartSize);
+                }
+
+                return Task.FromResult(new UploadPartResponse { ETag = "e" });
+            });
+
+        var stream = new S3WriteStream(_fakeS3Client, TestBucket, TestKey, lengthHint: 100L * 1024 * 1024 * 1024);
+        var firstPart = new byte[11 * 1024 * 1024];
+        await stream.WriteAsync(firstPart);
+        await stream.WriteAsync(new byte[1]);
+        await stream.DisposeAsync();
+
+        parts.Should().ContainSingle().Which.Should().BeGreaterThan(8 * 1024 * 1024);
     }
 
     [Fact]
@@ -608,7 +645,7 @@ public class S3WriteStreamTests
         A.CallTo(() => _fakeS3Client.PutObjectAsync(A<PutObjectRequest>._, A<CancellationToken>._))
             .Returns(Task.FromResult(new PutObjectResponse()));
 
-        var stream = new S3WriteStream(_fakeS3Client, TestBucket, TestKey, multipartUploadThreshold: 0);
+        var stream = new S3WriteStream(_fakeS3Client, TestBucket, TestKey);
 
         // Act
         await stream.CommitAsync();
@@ -727,8 +764,8 @@ public class S3WriteStreamTests
             .Invokes((CompleteMultipartUploadRequest r, CancellationToken _) => captured = r)
             .Returns(Task.FromResult(new CompleteMultipartUploadResponse { ETag = "\"done\"" }));
 
-        var stream = new S3WriteStream(_fakeS3Client, TestBucket, TestKey, multipartUploadThreshold: 1024, ifMatch: "\"abc\"");
-        await stream.WriteAsync(new byte[2048]);
+        var stream = new S3WriteStream(_fakeS3Client, TestBucket, TestKey, partSizeBytes: 5 * 1024 * 1024, ifMatch: "\"abc\"");
+        await stream.WriteAsync(new byte[(5 * 1024 * 1024) + 1]);
 
         await stream.CommitAsync();
 
@@ -765,7 +802,7 @@ public class S3WriteStreamTests
     [Fact]
     public async Task DisposeAsync_WithoutCommit_StartsNoMultipartUpload()
     {
-        var stream = new S3WriteStream(_fakeS3Client, TestBucket, TestKey, multipartUploadThreshold: 1024);
+        var stream = new S3WriteStream(_fakeS3Client, TestBucket, TestKey);
         await stream.WriteAsync(new byte[4096]);
 
         await stream.DisposeAsync();

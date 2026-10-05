@@ -477,7 +477,7 @@ public sealed class Program
             options.DefaultRegion = RegionEndpoint.GetBySystemName(Region);
             options.DefaultCredentials = new BasicAWSCredentials(AccessKeyId, SecretAccessKey);
             options.UseDefaultCredentialChain = false;
-            options.MultipartUploadThresholdBytes = 64 * 1024 * 1024; // 64 MB
+            options.PartSizeBytes = 16 * 1024 * 1024; // 16 MiB parts
         });
 
         // Build the service provider

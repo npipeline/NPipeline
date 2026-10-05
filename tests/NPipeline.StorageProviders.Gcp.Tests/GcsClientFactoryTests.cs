@@ -137,41 +137,6 @@ public class GcsClientFactoryTests
     }
 
     [Fact]
-    public async Task GetClientAsync_WithAccessTokenInUri_ExtractsTokenCorrectly()
-    {
-        // Arrange
-        A.CallTo(() => _fakeClientFactory.GetClientAsync(A<StorageUri>._, A<CancellationToken>._))
-            .Returns(Task.FromResult(_fakeStorageClient));
-
-        var uri = StorageUri.Parse("gs://test-bucket/test-object?accessToken=ya29.test-token");
-
-        // Act
-        var client = await _fakeClientFactory.GetClientAsync(uri);
-
-        // Assert
-        client.Should().NotBeNull();
-        client.Should().BeSameAs(_fakeStorageClient);
-    }
-
-    [Fact]
-    public async Task GetClientAsync_WithCredentialsPathInUri_ExtractsPathCorrectly()
-    {
-        // Arrange
-        // Note: Testing with a fake factory that won't actually try to read credentials
-        A.CallTo(() => _fakeClientFactory.GetClientAsync(A<StorageUri>._, A<CancellationToken>._))
-            .Returns(Task.FromResult(_fakeStorageClient));
-
-        var uri = StorageUri.Parse("gs://test-bucket/test-object?credentialsPath=/path/to/credentials.json");
-
-        // Act
-        var client = await _fakeClientFactory.GetClientAsync(uri);
-
-        // Assert
-        client.Should().NotBeNull();
-        client.Should().BeSameAs(_fakeStorageClient);
-    }
-
-    [Fact]
     public async Task GetClientAsync_WithSameConfiguration_ReturnsCachedClient()
     {
         // Arrange
@@ -402,29 +367,10 @@ public class GcsClientFactoryTests
     }
 
     [Fact]
-    public async Task GetClientAsync_WithCredentialsParameter_UsesProvidedCredentials()
-    {
-        // Arrange
-        A.CallTo(() => _fakeClientFactory.GetClientAsync(
-                A<GoogleCredential>._,
-                A<Uri>._,
-                A<string?>._,
-                A<CancellationToken>._))
-            .Returns(Task.FromResult(_fakeStorageClient));
-
-        // Act
-        var client = await _fakeClientFactory.GetClientAsync(null, null, null);
-
-        // Assert
-        client.Should().NotBeNull();
-    }
-
-    [Fact]
     public async Task GetClientAsync_WithServiceUrlParameter_UsesProvidedServiceUrl()
     {
         // Arrange
         A.CallTo(() => _fakeClientFactory.GetClientAsync(
-                A<GoogleCredential>._,
                 A<Uri>._,
                 A<string?>._,
                 A<CancellationToken>._))
@@ -433,7 +379,7 @@ public class GcsClientFactoryTests
         var serviceUrl = new Uri("http://localhost:4443");
 
         // Act
-        var client = await _fakeClientFactory.GetClientAsync(null, serviceUrl, "my-project");
+        var client = await _fakeClientFactory.GetClientAsync(serviceUrl, "my-project");
 
         // Assert
         client.Should().NotBeNull();
@@ -444,14 +390,13 @@ public class GcsClientFactoryTests
     {
         // Arrange
         A.CallTo(() => _fakeClientFactory.GetClientAsync(
-                A<GoogleCredential>._,
                 A<Uri>._,
                 A<string?>._,
                 A<CancellationToken>._))
             .Returns(Task.FromResult(_fakeStorageClient));
 
         // Act
-        var client = await _fakeClientFactory.GetClientAsync(null, null, "my-project");
+        var client = await _fakeClientFactory.GetClientAsync((Uri?)null, "my-project");
 
         // Assert
         client.Should().NotBeNull();
@@ -464,7 +409,6 @@ public class GcsClientFactoryTests
         var cachedClient = A.Fake<StorageClient>();
 
         A.CallTo(() => _fakeClientFactory.GetClientAsync(
-                A<GoogleCredential>._,
                 A<Uri>._,
                 A<string?>._,
                 A<CancellationToken>._))
@@ -473,57 +417,93 @@ public class GcsClientFactoryTests
         var serviceUrl = new Uri("http://localhost:4443");
 
         // Act
-        var client1 = await _fakeClientFactory.GetClientAsync(null, serviceUrl, "project1");
-        var client2 = await _fakeClientFactory.GetClientAsync(null, serviceUrl, "project1");
+        var client1 = await _fakeClientFactory.GetClientAsync(serviceUrl, "project1");
+        var client2 = await _fakeClientFactory.GetClientAsync(serviceUrl, "project1");
 
         // Assert
         client1.Should().BeSameAs(client2);
     }
 
-    [Fact]
-    public async Task GetClientAsync_SameAccessToken_ReusesClient()
-    {
-        var factory = new GcsClientFactory(new GcsStorageProviderOptions { UseDefaultCredentials = false });
-        var uri = StorageUri.Parse("gs://bucket/object?accessToken=token-1");
+    private static GcsClientFactory RealFactory(Uri? serviceUrl = null, int cacheLimit = 100) =>
+        new(new GcsStorageProviderOptions
+        {
+            DefaultCredentials = GoogleCredential.FromAccessToken("test-token"),
+            ServiceUrl = serviceUrl,
+            ClientCacheSizeLimit = cacheLimit,
+        });
 
-        var first = await factory.GetClientAsync(uri);
-        var second = await factory.GetClientAsync(uri);
+    [Fact]
+    public async Task GetClientAsync_SameEndpoint_ReusesClient()
+    {
+        using var factory = RealFactory();
+
+        var first = await factory.GetClientAsync(StorageUri.Parse("gs://bucket/object?serviceUrl=http://localhost:4443/storage/v1/"));
+        var second = await factory.GetClientAsync(StorageUri.Parse("gs://other-bucket/another?serviceUrl=http://localhost:4443/storage/v1/"));
 
         second.Should().BeSameAs(first);
     }
 
     [Fact]
-    public async Task GetClientAsync_DifferentAccessTokens_GetDifferentClients()
+    public async Task GetClientAsync_DifferentServiceUrl_GetsDifferentClient()
     {
-        var factory = new GcsClientFactory(new GcsStorageProviderOptions { UseDefaultCredentials = false });
+        using var factory = RealFactory();
 
-        var first = await factory.GetClientAsync(StorageUri.Parse("gs://bucket/object?accessToken=token-1"));
-        var second = await factory.GetClientAsync(StorageUri.Parse("gs://bucket/object?accessToken=token-2"));
+        var first = await factory.GetClientAsync(StorageUri.Parse("gs://bucket/object?serviceUrl=http://localhost:4443/storage/v1/"));
+        var second = await factory.GetClientAsync(StorageUri.Parse("gs://bucket/object?serviceUrl=http://localhost:4444/storage/v1/"));
 
         second.Should().NotBeSameAs(first);
     }
 
     [Fact]
-    public async Task GetClientAsync_SameCredentialsPath_ReusesClient()
+    public async Task GetClientAsync_DifferentProjectId_GetsDifferentClient()
     {
-        var path = Path.Combine(Path.GetTempPath(), $"gcs-creds-{Guid.NewGuid():N}.json");
-        await File.WriteAllTextAsync(path,
-            """{"type":"authorized_user","client_id":"id","client_secret":"secret","refresh_token":"refresh"}""");
+        using var factory = RealFactory();
 
-        try
-        {
-            var factory = new GcsClientFactory(new GcsStorageProviderOptions { UseDefaultCredentials = false });
-            var uri = StorageUri.Parse($"gs://bucket/object?credentialsPath={Uri.EscapeDataString(path)}");
+        var first = await factory.GetClientAsync(StorageUri.Parse("gs://bucket/object?projectId=a"));
+        var second = await factory.GetClientAsync(StorageUri.Parse("gs://bucket/object?projectId=b"));
 
-            var first = await factory.GetClientAsync(uri);
-            File.Delete(path); // a second read of the key file would now fail
-            var second = await factory.GetClientAsync(uri);
+        second.Should().NotBeSameAs(first);
+    }
 
-            second.Should().BeSameAs(first);
-        }
-        finally
-        {
-            File.Delete(path);
-        }
+    [Theory]
+    [InlineData("accessToken=ya29.secret")]
+    [InlineData("credentialsPath=/etc/key.json")]
+    public async Task GetClientAsync_WithCredentialsInUri_ThrowsAndPointsToOptions(string parameter)
+    {
+        using var factory = RealFactory();
+
+        var exception = await Assert.ThrowsAsync<ArgumentException>(
+            () => factory.GetClientAsync(StorageUri.Parse($"gs://bucket/object?{parameter}")));
+
+        exception.Message.Should().Contain("GcsStorageProviderOptions.DefaultCredentials");
+        exception.Message.Should().NotContain("ya29.secret");
+    }
+
+    [Fact]
+    public async Task GetClientAsync_BeyondTheCacheLimit_EvictsTheLeastRecentlyUsedClient()
+    {
+        using var factory = RealFactory(cacheLimit: 2);
+        var uriA = StorageUri.Parse("gs://b/o?projectId=a");
+        var uriB = StorageUri.Parse("gs://b/o?projectId=b");
+        var uriC = StorageUri.Parse("gs://b/o?projectId=c");
+
+        var a = await factory.GetClientAsync(uriA);
+        var b = await factory.GetClientAsync(uriB);
+        _ = await factory.GetClientAsync(uriA); // a is now more recent than b
+        _ = await factory.GetClientAsync(uriC); // evicts b
+
+        (await factory.GetClientAsync(uriA)).Should().BeSameAs(a);
+        (await factory.GetClientAsync(uriB)).Should().NotBeSameAs(b);
+    }
+
+    [Fact]
+    public async Task GetClientAsync_AfterDispose_Throws()
+    {
+        var factory = RealFactory();
+        _ = await factory.GetClientAsync(StorageUri.Parse("gs://b/o"));
+
+        await factory.DisposeAsync();
+
+        await Assert.ThrowsAsync<ObjectDisposedException>(() => factory.GetClientAsync(StorageUri.Parse("gs://b/o")));
     }
 }

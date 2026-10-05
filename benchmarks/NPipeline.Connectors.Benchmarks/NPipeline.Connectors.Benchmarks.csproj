@@ -38,6 +38,7 @@
         <ProjectReference Include="..\..\src\NPipeline.Connectors.Kafka\NPipeline.Connectors.Kafka.csproj"/>
         <ProjectReference Include="..\..\src\NPipeline.Connectors.RabbitMQ\NPipeline.Connectors.RabbitMQ.csproj"/>
         <ProjectReference Include="..\..\src\NPipeline.Connectors.Aws.Sqs\NPipeline.Connectors.Aws.Sqs.csproj"/>
+        <ProjectReference Include="..\..\src\NPipeline.StorageProviders.S3.Compatible\NPipeline.StorageProviders.S3.Compatible.csproj"/>
         <ProjectReference Include="..\..\src\NPipeline.Connectors.Azure.ServiceBus\NPipeline.Connectors.Azure.ServiceBus.csproj"/>
     </ItemGroup>
 

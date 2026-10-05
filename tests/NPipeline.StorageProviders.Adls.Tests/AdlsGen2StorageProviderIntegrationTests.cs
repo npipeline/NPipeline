@@ -94,7 +94,7 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
         await CreateTestFileAsync(filesystemName, path, expectedContent);
 
         var uri = StorageUri.Parse(
-            $"adls://{filesystemName}/{path}?accountName={AzuriteAdlsFixture.AccountName}&accountKey={AzuriteAdlsFixture.AccountKey}");
+            $"adls://{filesystemName}/{path}?accountName={AzuriteAdlsFixture.AccountName}");
 
         // Act
         using var stream = await Provider.OpenReadAsync(uri);
@@ -113,7 +113,7 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
         var path = "non-existent-file.txt";
 
         var uri = StorageUri.Parse(
-            $"adls://{filesystemName}/{path}?accountName={AzuriteAdlsFixture.AccountName}&accountKey={AzuriteAdlsFixture.AccountKey}");
+            $"adls://{filesystemName}/{path}?accountName={AzuriteAdlsFixture.AccountName}");
 
         // Act
         var act = async () => await Provider.OpenReadAsync(uri);
@@ -139,7 +139,7 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
         await blobClient.UploadAsync(uploadStream, true);
 
         var uri = StorageUri.Parse(
-            $"adls://{filesystemName}/{path}?accountName={AzuriteAdlsFixture.AccountName}&accountKey={AzuriteAdlsFixture.AccountKey}");
+            $"adls://{filesystemName}/{path}?accountName={AzuriteAdlsFixture.AccountName}");
 
         // Act
         using var stream = await Provider.OpenReadAsync(uri);
@@ -168,7 +168,7 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
         await CreateTestFileAsync(filesystemName, path, expectedContent, "application/json");
 
         var uri = StorageUri.Parse(
-            $"adls://{filesystemName}/{path}?accountName={AzuriteAdlsFixture.AccountName}&accountKey={AzuriteAdlsFixture.AccountKey}");
+            $"adls://{filesystemName}/{path}?accountName={AzuriteAdlsFixture.AccountName}");
 
         // Act
         using var stream = await Provider.OpenReadAsync(uri);
@@ -192,7 +192,7 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
         var content = "New file content";
 
         var uri = StorageUri.Parse(
-            $"adls://{filesystemName}/{path}?accountName={AzuriteAdlsFixture.AccountName}&accountKey={AzuriteAdlsFixture.AccountKey}");
+            $"adls://{filesystemName}/{path}?accountName={AzuriteAdlsFixture.AccountName}");
 
         // Act
         using (var writeStream = await _provider!.OpenWriteAsync(uri))
@@ -219,7 +219,7 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
         var newContent = "New content";
         await CreateTestFileAsync(filesystemName, path, originalContent);
 
-        var uri = StorageUri.Parse($"adls://{filesystemName}/{path}?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
+        var uri = StorageUri.Parse($"adls://{filesystemName}/{path}?accountName={AzuriteAccountName}");
 
         // Act
         using (var writeStream = await _provider!.OpenWriteAsync(uri))
@@ -245,7 +245,7 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
         var content = JsonSerializer.Serialize(new { test = "data" });
 
         var uri = StorageUri.Parse(
-            $"adls://{filesystemName}/{path}?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}&contentType=application/json");
+            $"adls://{filesystemName}/{path}?accountName={AzuriteAccountName}&contentType=application/json");
 
         // Act
         using (var writeStream = await _provider!.OpenWriteAsync(uri))
@@ -268,7 +268,7 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
         var filesystemName = GetUniqueFilesystemName();
         var path = "small-file.txt";
         var content = "Small content";
-        var uri = StorageUri.Parse($"adls://{filesystemName}/{path}?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
+        var uri = StorageUri.Parse($"adls://{filesystemName}/{path}?accountName={AzuriteAccountName}");
 
         // Act
         using (var writeStream = await _provider!.OpenWriteAsync(uri))
@@ -291,7 +291,7 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
         var path = "large-file.bin";
         var largeContent = new byte[LargeFileSizeBytes];
         new Random().NextBytes(largeContent);
-        var uri = StorageUri.Parse($"adls://{filesystemName}/{path}?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
+        var uri = StorageUri.Parse($"adls://{filesystemName}/{path}?accountName={AzuriteAccountName}");
 
         // Act
         using (var writeStream = await _provider!.OpenWriteAsync(uri))
@@ -317,7 +317,7 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
     }
 
     [Fact]
-    public async Task OpenWriteAsync_WithCustomConcurrencyAndTransferSize_UploadsSuccessfully()
+    public async Task OpenWriteAsync_WithCustomConcurrencyAndPartSize_UploadsSuccessfully()
     {
         // Arrange
         var filesystemName = GetUniqueFilesystemName();
@@ -331,16 +331,16 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
         {
             DefaultConnectionString = _fixture.GetConnectionString(),
             ServiceVersion = _options!.ServiceVersion,
-            UploadThresholdBytes = LargeFileSizeBytes / 2,
-            UploadMaximumConcurrency = 4,
-            UploadMaximumTransferSizeBytes = 256 * 1024,
+            PartSizeBytes = 256 * 1024,
+            MaxConcurrency = 4,
+            CreateContainerIfMissing = true,
             UseDefaultCredentialChain = false,
         };
 
         var clientFactory = new AdlsGen2ClientFactory(customOptions);
         var customProvider = new AdlsGen2StorageProvider(clientFactory, customOptions);
 
-        var uri = StorageUri.Parse($"adls://{filesystemName}/{path}?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
+        var uri = StorageUri.Parse($"adls://{filesystemName}/{path}?accountName={AzuriteAccountName}");
 
         // Act
         using (var writeStream = await customProvider.OpenWriteAsync(uri))
@@ -377,7 +377,7 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
         var path = "existing-file.txt";
         await CreateTestFileAsync(filesystemName, path, "Test content");
 
-        var uri = StorageUri.Parse($"adls://{filesystemName}/{path}?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
+        var uri = StorageUri.Parse($"adls://{filesystemName}/{path}?accountName={AzuriteAccountName}");
 
         // Act
         var exists = await _provider!.ExistsAsync(uri);
@@ -392,7 +392,7 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
         // Arrange
         var filesystemName = GetUniqueFilesystemName();
         var path = "non-existent-file.txt";
-        var uri = StorageUri.Parse($"adls://{filesystemName}/{path}?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
+        var uri = StorageUri.Parse($"adls://{filesystemName}/{path}?accountName={AzuriteAccountName}");
 
         // Act
         var exists = await _provider!.ExistsAsync(uri);
@@ -409,7 +409,7 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
         var path = "existing-directory";
         await CreateDirectoryAsync(filesystemName, path);
 
-        var uri = StorageUri.Parse($"adls://{filesystemName}/{path}?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
+        var uri = StorageUri.Parse($"adls://{filesystemName}/{path}?accountName={AzuriteAccountName}");
 
         // Act
         var exists = await _provider!.ExistsAsync(uri);
@@ -431,7 +431,7 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
         await CreateTestFileAsync(filesystemName, "folder/file2.txt", "Content 2");
         await CreateTestFileAsync(filesystemName, "folder/subfolder/file3.txt", "Content 3");
 
-        var prefixUri = StorageUri.Parse($"adls://{filesystemName}/?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
+        var prefixUri = StorageUri.Parse($"adls://{filesystemName}/?accountName={AzuriteAccountName}");
 
         // Act
         var items = await CollectAsync(_provider!.ListAsync(prefixUri, true));
@@ -449,7 +449,7 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
         await CreateTestFileAsync(filesystemName, "file1.txt", "Content 1");
         await CreateTestFileAsync(filesystemName, "folder/file2.txt", "Content 2");
 
-        var prefixUri = StorageUri.Parse($"adls://{filesystemName}/?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
+        var prefixUri = StorageUri.Parse($"adls://{filesystemName}/?accountName={AzuriteAccountName}");
 
         // Act
         var items = await CollectAsync(_provider!.ListAsync(prefixUri));
@@ -469,7 +469,7 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
         await CreateTestFileAsync(filesystemName, "data/file2.txt", "Content 2");
         await CreateTestFileAsync(filesystemName, "logs/file3.txt", "Content 3");
 
-        var prefixUri = StorageUri.Parse($"adls://{filesystemName}/data/?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
+        var prefixUri = StorageUri.Parse($"adls://{filesystemName}/data/?accountName={AzuriteAccountName}");
 
         // Act
         var items = await CollectAsync(_provider!.ListAsync(prefixUri, true));
@@ -491,7 +491,7 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
         var containerClient = _fixture.BlobServiceClient.GetBlobContainerClient(filesystemName);
         await containerClient.CreateIfNotExistsAsync();
 
-        var prefixUri = StorageUri.Parse($"adls://{filesystemName}/?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
+        var prefixUri = StorageUri.Parse($"adls://{filesystemName}/?accountName={AzuriteAccountName}");
 
         // Act
         var items = await CollectAsync(_provider!.ListAsync(prefixUri, true));
@@ -510,7 +510,7 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
         await CreateTestFileAsync(filesystemName, "level1/level2/medium.txt", "Medium content");
         await CreateTestFileAsync(filesystemName, "level1/shallow.txt", "Shallow content");
 
-        var prefixUri = StorageUri.Parse($"adls://{filesystemName}/?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
+        var prefixUri = StorageUri.Parse($"adls://{filesystemName}/?accountName={AzuriteAccountName}");
 
         // Act
         var items = await CollectAsync(_provider!.ListAsync(prefixUri, true));
@@ -536,7 +536,7 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
         var content = "Test content for metadata";
         await CreateTestFileAsync(filesystemName, path, content, "text/plain");
 
-        var uri = StorageUri.Parse($"adls://{filesystemName}/{path}?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
+        var uri = StorageUri.Parse($"adls://{filesystemName}/{path}?accountName={AzuriteAccountName}");
 
         // Act
         var metadata = await _provider!.GetMetadataAsync(uri);
@@ -555,7 +555,7 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
         // Arrange
         var filesystemName = GetUniqueFilesystemName();
         var path = "non-existent-file.txt";
-        var uri = StorageUri.Parse($"adls://{filesystemName}/{path}?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
+        var uri = StorageUri.Parse($"adls://{filesystemName}/{path}?accountName={AzuriteAccountName}");
 
         // Act
         var metadata = await _provider!.GetMetadataAsync(uri);
@@ -583,7 +583,7 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
             ["custom_key_2"] = "custom-value-2",
         });
 
-        var uri = StorageUri.Parse($"adls://{filesystemName}/{path}?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
+        var uri = StorageUri.Parse($"adls://{filesystemName}/{path}?accountName={AzuriteAccountName}");
 
         // Act
         var metadata = await _provider!.GetMetadataAsync(uri);
@@ -606,7 +606,7 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
         var content = "Full metadata test content";
         await CreateTestFileAsync(filesystemName, path, content, "application/json");
 
-        var uri = StorageUri.Parse($"adls://{filesystemName}/{path}?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
+        var uri = StorageUri.Parse($"adls://{filesystemName}/{path}?accountName={AzuriteAccountName}");
 
         // Act
         var metadata = await _provider!.GetMetadataAsync(uri);
@@ -632,7 +632,7 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
         var path = "delete-file.txt";
         await CreateTestFileAsync(filesystemName, path, "Content to delete");
 
-        var uri = StorageUri.Parse($"adls://{filesystemName}/{path}?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
+        var uri = StorageUri.Parse($"adls://{filesystemName}/{path}?accountName={AzuriteAccountName}");
 
         // Act
         await _provider!.DeleteAsync(uri);
@@ -648,7 +648,7 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
         // Arrange
         var filesystemName = GetUniqueFilesystemName();
         var path = "non-existent-file.txt";
-        var uri = StorageUri.Parse($"adls://{filesystemName}/{path}?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
+        var uri = StorageUri.Parse($"adls://{filesystemName}/{path}?accountName={AzuriteAccountName}");
 
         // Act & Assert - should not throw
         await _provider!.DeleteAsync(uri);
@@ -668,8 +668,8 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
         var content = "Content to move";
         await CreateTestFileAsync(filesystemName, sourcePath, content);
 
-        var sourceUri = StorageUri.Parse($"adls://{filesystemName}/{sourcePath}?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
-        var destinationUri = StorageUri.Parse($"adls://{filesystemName}/{destinationPath}?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
+        var sourceUri = StorageUri.Parse($"adls://{filesystemName}/{sourcePath}?accountName={AzuriteAccountName}");
+        var destinationUri = StorageUri.Parse($"adls://{filesystemName}/{destinationPath}?accountName={AzuriteAccountName}");
 
         // Act
         await _provider!.MoveAsync(sourceUri, destinationUri);
@@ -698,8 +698,8 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
         await CreateTestFileAsync(filesystemName, sourcePath, content);
         await CreateDirectoryAsync(filesystemName, "dest-dir");
 
-        var sourceUri = StorageUri.Parse($"adls://{filesystemName}/{sourcePath}?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
-        var destinationUri = StorageUri.Parse($"adls://{filesystemName}/{destinationPath}?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
+        var sourceUri = StorageUri.Parse($"adls://{filesystemName}/{sourcePath}?accountName={AzuriteAccountName}");
+        var destinationUri = StorageUri.Parse($"adls://{filesystemName}/{destinationPath}?accountName={AzuriteAccountName}");
 
         // Act
         await _provider!.MoveAsync(sourceUri, destinationUri);
@@ -728,6 +728,7 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
             DefaultConnectionString = _fixture.GetConnectionString(),
             ServiceVersion = _options!.ServiceVersion,
             UseDefaultCredentialChain = false,
+            CreateContainerIfMissing = true,
         };
 
         var clientFactory = new AdlsGen2ClientFactory(options);
@@ -755,35 +756,23 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
     [Fact]
     public async Task WithAccountNameAndKey_AuthenticatesSuccessfully()
     {
-        // Arrange
-        // Build a connection-string from the known account key so the factory's DefaultConnectionString
-        // is derived from accountKey credentials rather than the shared fixture string. This exercises
-        // a distinct client-cache entry while keeping DFS calls compatible with Azurite (which requires
-        // a connection string; DataLakeServiceClient constructed from a plain ServiceUrl + key does not
-        // route DFS path operations correctly through Azurite's blob endpoint).
+        // Arrange: the account name and key are options; the URI carries no credentials.
         var filesystemName = GetUniqueFilesystemName();
         var path = "account-key-test.txt";
         var content = "Account key test";
 
-        var blobEndpoint = _fixture.GetBlobServiceUri();
-
-        var keyConnectionString =
-            $"DefaultEndpointsProtocol=http;AccountName={AzuriteAccountName};AccountKey={AzuriteAccountKey}" +
-            $";BlobEndpoint={blobEndpoint}";
-
         var options = new AdlsGen2StorageProviderOptions
         {
-            DefaultConnectionString = keyConnectionString,
+            ServiceUrl = _fixture.GetBlobServiceUri(),
+            AccountName = AzuriteAccountName,
+            DefaultAccountKey = AzuriteAccountKey,
             ServiceVersion = _options!.ServiceVersion,
-            UploadThresholdBytes = _options.UploadThresholdBytes,
             UseDefaultCredentialChain = false,
+            CreateContainerIfMissing = true,
         };
 
         var provider = new AdlsGen2StorageProvider(new AdlsGen2ClientFactory(options), options);
-
-        // URI still carries accountName + accountKey; DefaultConnectionString (built from the same key)
-        // takes auth precedence, verifying that the provider handles this URI shape end-to-end.
-        var uri = StorageUri.Parse($"adls://{filesystemName}/{path}?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
+        var uri = StorageUri.Parse($"adls://{filesystemName}/{path}");
 
         // Act
         using (var writeStream = await provider.OpenWriteAsync(uri))
@@ -808,9 +797,7 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
     [Fact]
     public async Task InvalidCredentials_ThrowsUnauthorizedAccessException()
     {
-        // Arrange - create a provider with NO DefaultConnectionString so the per-URI accountKey is
-        // actually sent to Azurite.  A provider that has DefaultConnectionString will use valid auth
-        // regardless of what key the URI carries.
+        // Arrange - create a provider whose options carry a wrong account key, so Azurite rejects the request.
         var filesystemName = GetUniqueFilesystemName();
         var path = "unauthorized-file.txt";
 
@@ -821,20 +808,20 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
         var invalidKey =
             "dGVzdGtleWZvcmF6dXJpdGVzdGluZ3VudGhvcml6ZWRhY2Nlc3NleGNlcHRpb250ZXN0aW5nd2l0aHZhbGlkYmFzZTY0ZW5jb2Rpbmd0aGF0cGFzc2VzdmFsaWRhdGlvbididXRmYWlsc2F1dGhlbnRpY2F0aW9u";
 
-        // Build a provider that uses only the Azurite service URL (no DefaultConnectionString), so
-        // that the per-URI accountKey credential is actually forwarded to Azurite.
         var blobEndpoint = _fixture.GetBlobServiceUri();
 
         var noConnectionStringOptions = new AdlsGen2StorageProviderOptions
         {
             ServiceUrl = blobEndpoint,
+            AccountName = AzuriteAccountName,
+            DefaultAccountKey = invalidKey,
             ServiceVersion = _options!.ServiceVersion,
             UseDefaultCredentialChain = false,
         };
 
         var provider = new AdlsGen2StorageProvider(new AdlsGen2ClientFactory(noConnectionStringOptions), noConnectionStringOptions);
 
-        var uri = StorageUri.Parse($"adls://{filesystemName}/{path}?accountName={AzuriteAccountName}&accountKey={invalidKey}");
+        var uri = StorageUri.Parse($"adls://{filesystemName}/{path}?accountName={AzuriteAccountName}");
 
         // Act
         var act = async () => await provider.OpenReadAsync(uri);
@@ -849,7 +836,7 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
         // Arrange
         var invalidFilesystemName = "Invalid Filesystem Name!"; // Contains spaces and special chars
         var path = "test-file.txt";
-        var uri = StorageUri.Parse($"adls://{invalidFilesystemName}/{path}?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
+        var uri = StorageUri.Parse($"adls://{invalidFilesystemName}/{path}?accountName={AzuriteAccountName}");
 
         // Act
         var act = async () => await _provider!.OpenReadAsync(uri);
@@ -871,7 +858,7 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
         var content = "Concurrent read test content";
         await CreateTestFileAsync(filesystemName, path, content);
 
-        var uri = StorageUri.Parse($"adls://{filesystemName}/{path}?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
+        var uri = StorageUri.Parse($"adls://{filesystemName}/{path}?accountName={AzuriteAccountName}");
 
         // Act
         var tasks = Enumerable.Range(0, 10).Select(async _ =>
@@ -895,7 +882,7 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
         var filesystemName = GetUniqueFilesystemName();
 
         var uris = Enumerable.Range(0, 10)
-            .Select(i => StorageUri.Parse($"adls://{filesystemName}/file-{i}.txt?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}"))
+            .Select(i => StorageUri.Parse($"adls://{filesystemName}/file-{i}.txt?accountName={AzuriteAccountName}"))
             .ToArray();
 
         // Act
@@ -941,7 +928,7 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
         var path = "cancellation-test.txt";
         await CreateTestFileAsync(filesystemName, path, "Content");
 
-        var uri = StorageUri.Parse($"adls://{filesystemName}/{path}?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
+        var uri = StorageUri.Parse($"adls://{filesystemName}/{path}?accountName={AzuriteAccountName}");
 
         using var cts = new CancellationTokenSource();
         await cts.CancelAsync();
@@ -958,7 +945,7 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
         var path = "cancellation-exists-test.txt";
         await CreateTestFileAsync(filesystemName, path, "Content");
 
-        var uri = StorageUri.Parse($"adls://{filesystemName}/{path}?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
+        var uri = StorageUri.Parse($"adls://{filesystemName}/{path}?accountName={AzuriteAccountName}");
 
         using var cts = new CancellationTokenSource();
         await cts.CancelAsync();

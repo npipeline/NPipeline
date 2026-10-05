@@ -1,3 +1,4 @@
+using System.IO.Enumeration;
 using System.Runtime.CompilerServices;
 using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Models;
@@ -36,7 +37,7 @@ public sealed class FileSystemStorageProvider : StorageProvider
                 FileMode.Open,
                 FileAccess.Read,
                 FileShare.Read,
-                4096,
+                0, // The connectors buffer through FileNodeOptions.BufferSize; a second buffer here only adds a copy.
                 FileOptions.Asynchronous | FileOptions.SequentialScan);
 
             return Task.FromResult(stream);
@@ -69,7 +70,7 @@ public sealed class FileSystemStorageProvider : StorageProvider
                 Size = fileInfo.Length,
                 LastModified = fileInfo.LastWriteTimeUtc,
                 ContentType = GetContentType(path),
-                ETag = fileInfo.LastWriteTimeUtc.Ticks.ToString("x16"),
+                ETag = $"{fileInfo.LastWriteTimeUtc.Ticks:x}-{fileInfo.Length:x}",
             });
         }
 
@@ -135,72 +136,84 @@ public sealed class FileSystemStorageProvider : StorageProvider
         // Await once so this is a valid async iterator without a per-item cost.
         await Task.CompletedTask.ConfigureAwait(false);
 
-        // A manual walk, rather than SearchOption.AllDirectories, lets an inaccessible or vanished subtree be skipped
-        // instead of aborting the listing. Reparse points (symlinks, junctions) are not followed, so the walk cannot loop.
-        // There is deliberately no visited set keyed by path: on a case-sensitive file system a case-insensitive set
-        // merged sibling directories such as "A" and "a".
-        var pending = new Stack<string>();
-        pending.Push(root);
+        // One enumeration reads each entry's length, timestamp and attributes from the directory read itself, so listing
+        // costs no further system call per entry. Reparse points (symlinks, junctions) are not followed, so the walk cannot
+        // loop, and an inaccessible subtree is skipped instead of aborting the listing. A recursive listing yields files only.
+        var options = new EnumerationOptions
+        {
+            RecurseSubdirectories = recursive,
+            IgnoreInaccessible = true,
+            AttributesToSkip = 0,
+            ReturnSpecialDirectories = false,
+        };
 
-        while (pending.Count > 0)
+        IEnumerator<StorageItem> enumerator;
+
+        try
+        {
+            // Constructing the enumerable opens the directory.
+            var entries = new FileSystemEnumerable<StorageItem>(root, (ref FileSystemEntry entry) => ToItem(directory, ref entry), options)
+            {
+                ShouldRecursePredicate = static (ref FileSystemEntry entry) => (entry.Attributes & FileAttributes.ReparsePoint) == 0,
+                ShouldIncludePredicate = recursive
+                    ? static (ref FileSystemEntry entry) => !entry.IsDirectory
+                    : null,
+            };
+
+            enumerator = entries.GetEnumerator();
+        }
+        catch (Exception ex) when (ex is DirectoryNotFoundException or FileNotFoundException)
+        {
+            yield break;
+        }
+
+        using var _ = enumerator;
+
+        while (true)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            IEnumerator<FileSystemInfo> entries;
-
             try
             {
-                // FileSystemInfo carries the attributes, length and timestamps from the directory read, with no further system calls per entry.
-                entries = new DirectoryInfo(pending.Pop()).EnumerateFileSystemInfos("*", SearchOption.TopDirectoryOnly).GetEnumerator();
+                if (!enumerator.MoveNext())
+                    yield break;
             }
-            catch (Exception ex) when (ex is UnauthorizedAccessException or DirectoryNotFoundException)
+            catch (Exception ex) when (ex is DirectoryNotFoundException or FileNotFoundException)
             {
-                continue;
+                yield break; // The directory is missing, or was deleted during the listing.
             }
 
-            using (entries)
+            yield return enumerator.Current;
+        }
+    }
+
+    private static StorageItem ToItem(StorageUri directory, ref FileSystemEntry entry)
+    {
+        // The full path is already known; building the URI from it needs no further path resolution. WithPath keeps the
+        // caller's host and parameters on every listed URI.
+        var path = entry.ToFullPath();
+
+        if (Path.DirectorySeparatorChar == '\\')
+        {
+            path = path.Replace('\\', '/');
+
+            // \\server\share\x is the UNC path of host "server", which the URI holds in Host.
+            if (path.StartsWith("//", StringComparison.Ordinal))
             {
-                while (true)
-                {
-                    FileSystemInfo entry;
-
-                    try
-                    {
-                        if (!entries.MoveNext())
-                            break;
-
-                        entry = entries.Current;
-                    }
-                    catch (Exception ex) when (ex is UnauthorizedAccessException or DirectoryNotFoundException or FileNotFoundException)
-                    {
-                        break; // The directory changed or became unreadable mid-enumeration.
-                    }
-
-                    cancellationToken.ThrowIfCancellationRequested();
-
-                    var isDirectory = (entry.Attributes & FileAttributes.Directory) != 0;
-
-                    if (isDirectory && recursive)
-                    {
-                        if ((entry.Attributes & FileAttributes.ReparsePoint) == 0)
-                            pending.Push(entry.FullName);
-
-                        continue;
-                    }
-
-                    // WithPath keeps the caller's host and parameters on every listed URI.
-                    var path = StorageUri.FromFilePath(entry.FullName).Path;
-
-                    yield return new StorageItem
-                    {
-                        Uri = directory.WithPath(isDirectory ? path + "/" : path),
-                        Size = isDirectory ? null : ((FileInfo)entry).Length,
-                        LastModified = entry.LastWriteTimeUtc,
-                        IsDirectory = isDirectory,
-                    };
-                }
+                var hostEnd = path.IndexOf('/', 2);
+                path = hostEnd < 0 ? "/" : path[hostEnd..];
             }
         }
+
+        var isDirectory = entry.IsDirectory;
+
+        return new StorageItem
+        {
+            Uri = directory.WithPath(isDirectory ? path + "/" : path),
+            Size = isDirectory ? null : entry.Length,
+            LastModified = entry.LastWriteTimeUtc,
+            IsDirectory = isDirectory,
+        };
     }
 
     private static string GetContentType(string filePath)
@@ -217,7 +230,7 @@ public sealed class FileSystemStorageProvider : StorageProvider
             ".xls" => "application/vnd.ms-excel",
             ".zip" => "application/zip",
             ".pdf" => "application/pdf",
-            ".parquet" => "application/octet-stream",
+            ".parquet" => "application/vnd.apache.parquet",
             _ => "application/octet-stream",
         };
     }

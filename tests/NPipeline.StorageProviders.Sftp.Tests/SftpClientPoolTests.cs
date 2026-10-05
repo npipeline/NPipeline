@@ -64,9 +64,9 @@ public class SftpClientPoolTests
     }
 
     [Fact]
-    public void BuildPoolKey_PasswordParameter_DiffersFromNoPassword()
+    public void BuildPoolKey_UserInformationPassword_DiffersFromNoPassword()
     {
-        SftpClientPool.BuildPoolKey(Uri("sftp://user@host/a?password=x"))
+        SftpClientPool.BuildPoolKey(Uri("sftp://user:x@host/a"))
             .Should().NotBe(SftpClientPool.BuildPoolKey(Uri("sftp://user@host/a")));
     }
 }

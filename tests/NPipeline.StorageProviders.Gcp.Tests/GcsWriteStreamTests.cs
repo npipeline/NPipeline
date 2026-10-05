@@ -274,36 +274,50 @@ public class GcsWriteStreamTests
             .MustHaveHappenedOnceExactly();
     }
 
-    [Fact]
-    public void Dispose_WithoutCommit_UploadsNothing()
+    // A fake upload that reads until the pipe ends or the token is cancelled, like the SDK does.
+    private (Func<Task<bool>> Completed, Func<CancellationToken> Token) FakeUploadThatWaits()
     {
-        // Arrange
+        var reachedEof = false;
+        var token = CancellationToken.None;
+
         A.CallTo(() => _fakeStorageClient.UploadObjectAsync(
                 A<Object>._,
                 A<Stream>._,
                 A<UploadObjectOptions>._,
                 A<CancellationToken>._))
-            .Returns(Task.FromResult(new Object()));
+            .ReturnsLazily(async call =>
+            {
+                var source = call.GetArgument<Stream>(1)!;
+                token = call.GetArgument<CancellationToken>(3);
+                var buffer = new byte[4096];
 
+                while (await source.ReadAsync(buffer, token) > 0)
+                {
+                }
+
+                reachedEof = true;
+                return new Object();
+            });
+
+        return (() => Task.FromResult(reachedEof), () => token);
+    }
+
+    [Fact]
+    public async Task Dispose_WithoutCommit_UploadsNothing()
+    {
+        // Arrange
+        var (reachedEof, token) = FakeUploadThatWaits();
         var stream = new GcsWriteStream(_fakeStorageClient, TestBucket, TestObjectName, "application/json");
-        var data = new byte[] { 1, 2, 3, 4, 5 };
-        stream.Write(data, 0, data.Length);
+        await stream.WriteAsync(new byte[] { 1, 2, 3, 4, 5 });
 
         // Act
         stream.Dispose();
+        await Task.Delay(100);
 
-        // Assert
-        A.CallTo(() => _fakeStorageClient.UploadObjectAsync(
-                A<Object>.That.Matches(o =>
-                    o.Bucket == TestBucket &&
-                    o.Name == TestObjectName &&
-                    o.ContentType == "application/json"),
-                A<Stream>._,
-                A<UploadObjectOptions>._,
-                A<CancellationToken>._))
-            .MustNotHaveHappened();
+        // Assert: the upload was cancelled and never saw the end of the data, so it could not send a final chunk.
+        token().IsCancellationRequested.Should().BeTrue();
+        (await reachedEof()).Should().BeFalse();
     }
-
     [Fact]
     public async Task CommitAsync_WithoutContentType_UploadsToGcsWithoutContentType()
     {
@@ -509,25 +523,31 @@ public class GcsWriteStreamTests
     }
 
     [Fact]
-    public void Dispose_WithoutCommit_CalledMultipleTimes_UploadsNothing()
+    public async Task Dispose_WithoutCommit_CalledMultipleTimes_UploadsNothing()
     {
         // Arrange
-        A.CallTo(() => _fakeStorageClient.UploadObjectAsync(
-                A<Object>._,
-                A<Stream>._,
-                A<UploadObjectOptions>._,
-                A<CancellationToken>._))
-            .Returns(Task.FromResult(new Object()));
-
+        var (reachedEof, token) = FakeUploadThatWaits();
         var stream = new GcsWriteStream(_fakeStorageClient, TestBucket, TestObjectName);
-        var data = new byte[] { 1, 2, 3, 4, 5 };
-        stream.Write(data, 0, data.Length);
+        await stream.WriteAsync(new byte[] { 1, 2, 3, 4, 5 });
 
         // Act
         stream.Dispose();
         stream.Dispose();
+        await stream.DisposeAsync();
+        await Task.Delay(100);
 
         // Assert
+        token().IsCancellationRequested.Should().BeTrue();
+        (await reachedEof()).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Dispose_WithoutAnyWrite_NeverStartsAnUpload()
+    {
+        var stream = new GcsWriteStream(_fakeStorageClient, TestBucket, TestObjectName);
+
+        await stream.DisposeAsync();
+
         A.CallTo(() => _fakeStorageClient.UploadObjectAsync(
                 A<Object>._,
                 A<Stream>._,
@@ -535,7 +555,6 @@ public class GcsWriteStreamTests
                 A<CancellationToken>._))
             .MustNotHaveHappened();
     }
-
     [Fact]
     public async Task CommitAsync_WithLargeData_UploadsAllData()
     {
@@ -795,13 +814,13 @@ public class GcsWriteStreamTests
     }
 
     [Fact]
-    public async Task CommitAsync_WithoutCallerToken_UploadHasNoTimeout()
+    public async Task CommitAsync_UploadIsNotCancelledOrTimedOut()
     {
-        // The upload used to run under a hard-coded 5-minute CancelAfter, which cut off large uploads.
-        CancellationToken uploadToken = default;
+        // The upload once ran under a hard-coded 5-minute CancelAfter, which cut off large uploads.
+        var cancelledWhenSeen = true;
 
         A.CallTo(() => _fakeStorageClient.UploadObjectAsync(A<Object>._, A<Stream>._, A<UploadObjectOptions>._, A<CancellationToken>._))
-            .Invokes(call => uploadToken = call.GetArgument<CancellationToken>(3))
+            .Invokes(call => cancelledWhenSeen = call.GetArgument<CancellationToken>(3).IsCancellationRequested)
             .Returns(Task.FromResult(new Object()));
 
         var stream = new GcsWriteStream(_fakeStorageClient, TestBucket, TestObjectName);
@@ -810,6 +829,16 @@ public class GcsWriteStreamTests
         await stream.CommitAsync();
         await stream.DisposeAsync();
 
-        uploadToken.CanBeCanceled.Should().BeFalse();
+        cancelledWhenSeen.Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(262143)]
+    [InlineData(262145)]
+    public void Constructor_WithChunkSizeThatIsNotAMultipleOf256KiB_Throws(int chunkSize)
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => new GcsWriteStream(_fakeStorageClient, TestBucket, TestObjectName, null, chunkSize));
     }
 }

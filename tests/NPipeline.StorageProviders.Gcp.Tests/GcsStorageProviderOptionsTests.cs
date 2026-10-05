@@ -19,7 +19,6 @@ public class GcsStorageProviderOptionsTests
         options.UseDefaultCredentials.Should().BeTrue();
         options.ServiceUrl.Should().BeNull();
         options.UploadChunkSizeBytes.Should().Be(16 * 1024 * 1024); // 16 MB
-        options.UploadBufferThresholdBytes.Should().Be(64 * 1024 * 1024); // 64 MB
         options.ClientCacheSizeLimit.Should().Be(100);
         options.Resilience.Should().BeSameAs(GcsStorageResilience.Default);
     }
@@ -77,20 +76,6 @@ public class GcsStorageProviderOptionsTests
 
         // Assert
         options.UploadChunkSizeBytes.Should().Be(expectedChunkSize);
-    }
-
-    [Fact]
-    public void UploadBufferThresholdBytes_CanBeSet()
-    {
-        // Arrange
-        var options = new GcsStorageProviderOptions();
-        const long expectedThreshold = 128 * 1024 * 1024; // 128 MB
-
-        // Act
-        options.UploadBufferThresholdBytes = expectedThreshold;
-
-        // Assert
-        options.UploadBufferThresholdBytes.Should().Be(expectedThreshold);
     }
 
     [Fact]
@@ -288,7 +273,6 @@ public class GcsStorageProviderOptionsTests
         options.UseDefaultCredentials = false;
         options.ServiceUrl = new Uri("http://localhost:4443");
         options.UploadChunkSizeBytes = 32 * 1024 * 1024;
-        options.UploadBufferThresholdBytes = 128 * 1024 * 1024;
         options.ClientCacheSizeLimit = 50;
 
         // Assert
@@ -296,7 +280,6 @@ public class GcsStorageProviderOptionsTests
         options.UseDefaultCredentials.Should().BeFalse();
         options.ServiceUrl.Should().Be(new Uri("http://localhost:4443"));
         options.UploadChunkSizeBytes.Should().Be(32 * 1024 * 1024);
-        options.UploadBufferThresholdBytes.Should().Be(128 * 1024 * 1024);
         options.ClientCacheSizeLimit.Should().Be(50);
     }
 
@@ -393,16 +376,6 @@ public class GcsStorageProviderOptionsTests
 
         // Act & Assert
         options.UploadChunkSizeBytes.Should().Be(16 * 1024 * 1024);
-    }
-
-    [Fact]
-    public void DefaultUploadBufferThresholdBytes_Is64MB()
-    {
-        // Arrange
-        var options = new GcsStorageProviderOptions();
-
-        // Act & Assert
-        options.UploadBufferThresholdBytes.Should().Be(64 * 1024 * 1024);
     }
 
     [Fact]

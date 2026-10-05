@@ -34,7 +34,7 @@ public class S3ClientFactoryBaseTests
     }
 
     [Fact]
-    public async Task GetClientAsync_CalledWithDifferentHosts_ReturnsDifferentInstances()
+    public async Task GetClientAsync_CalledWithDifferentEndpoints_ReturnsDifferentInstances()
     {
         var factory = new TestClientFactory();
 
@@ -59,6 +59,33 @@ public class S3ClientFactoryBaseTests
         await factory.GetClientAsync(Uri());
 
         callCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task GetClientAsync_BeyondTheCacheLimit_StillReturnsWorkingClients()
+    {
+        var factory = new TestClientFactory(limit: 2);
+
+        var first = await factory.GetClientAsync(Uri("bucket-a"));
+        await factory.GetClientAsync(Uri("bucket-b"));
+        await factory.GetClientAsync(Uri("bucket-c"));
+
+        // The oldest endpoint was evicted, so it is created again; the evicted client is not disposed under its users.
+        var again = await factory.GetClientAsync(Uri("bucket-a"));
+
+        again.Should().NotBeSameAs(first);
+        A.CallTo(() => first.Dispose()).MustNotHaveHappened();
+    }
+
+    [Fact]
+    public async Task Dispose_DisposesCachedClients()
+    {
+        var factory = new TestClientFactory();
+        var client = await factory.GetClientAsync(Uri());
+
+        factory.Dispose();
+
+        A.CallTo(() => client.Dispose()).MustHaveHappenedOnceExactly();
     }
 
     [Fact]
@@ -114,13 +141,17 @@ public class S3ClientFactoryBaseTests
     /// </summary>
     private sealed class TestClientFactory : S3ClientFactoryBase
     {
-        private readonly Func<StorageUri, IAmazonS3> _clientFactory;
+        private readonly Func<S3EndpointKey, IAmazonS3> _clientFactory;
 
-        public TestClientFactory(Func<StorageUri, IAmazonS3>? clientFactory = null)
+        public TestClientFactory(Func<S3EndpointKey, IAmazonS3>? clientFactory = null, int limit = 100)
+            : base(limit)
         {
             _clientFactory = clientFactory ?? (_ => A.Fake<IAmazonS3>());
         }
 
-        protected override IAmazonS3 CreateClient(StorageUri uri) => _clientFactory(uri);
+        // The host stands in for the endpoint, so tests can tell endpoints apart.
+        protected override S3EndpointKey GetEndpoint(StorageUri uri) => new(uri.Host, null, false);
+
+        protected override IAmazonS3 CreateClient(S3EndpointKey endpoint) => _clientFactory(endpoint);
     }
 }

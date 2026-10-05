@@ -51,9 +51,9 @@ public sealed class AzuriteAdlsFixture : IAsyncLifetime
         {
             DefaultConnectionString = connectionString,
             ServiceVersion = DataLakeClientOptions.ServiceVersion.V2023_11_03,
-            UploadThresholdBytes = 512 * 1024,
-            UploadMaximumConcurrency = 4,
-            UploadMaximumTransferSizeBytes = 256 * 1024,
+            PartSizeBytes = 256 * 1024,
+            MaxConcurrency = 4,
+            CreateContainerIfMissing = true,
             UseDefaultCredentialChain = false,
         };
 
@@ -98,8 +98,8 @@ public sealed class AzuriteAdlsFixture : IAsyncLifetime
 
     /// <summary>
     ///     Returns the Azurite blob service URI parsed from the connection string.
-    ///     Use this when constructing a provider that authenticates via per-URI accountKey credentials
-    ///     rather than a connection string.
+    ///     Use this when constructing a provider that authenticates with an account key set in the options
+    ///     rather than with a connection string.
     /// </summary>
     public Uri GetBlobServiceUri()
     {

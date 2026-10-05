@@ -72,12 +72,12 @@ public class ServiceCollectionExtensionsTests
         var customThreshold = 128 * 1024 * 1024; // 128 MB
 
         // Act
-        services.AddAdlsGen2StorageProvider(options => { options.UploadThresholdBytes = customThreshold; });
+        services.AddAdlsGen2StorageProvider(options => { options.PartSizeBytes = customThreshold; });
 
         // Assert
         var provider = services.BuildServiceProvider();
         var options = provider.GetRequiredService<AdlsGen2StorageProviderOptions>();
-        options.UploadThresholdBytes.Should().Be(customThreshold);
+        options.PartSizeBytes.Should().Be(customThreshold);
     }
 
     [Fact]
@@ -88,12 +88,12 @@ public class ServiceCollectionExtensionsTests
         var customThreshold = 256 * 1024 * 1024; // 256 MB
 
         // Act
-        services.AddAdlsGen2StorageProvider(new AdlsGen2StorageProviderOptions { UploadThresholdBytes = customThreshold });
+        services.AddAdlsGen2StorageProvider(new AdlsGen2StorageProviderOptions { PartSizeBytes = customThreshold });
 
         // Assert
         var provider = services.BuildServiceProvider();
         var options = provider.GetRequiredService<AdlsGen2StorageProviderOptions>();
-        options.UploadThresholdBytes.Should().Be(customThreshold);
+        options.PartSizeBytes.Should().Be(customThreshold);
     }
 
     [Fact]

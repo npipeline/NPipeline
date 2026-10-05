@@ -247,7 +247,8 @@ S3-compatible services now have their own package and provider: `NPipeline.Stora
 | `DefaultRegion`                 | `RegionEndpoint?` | `null`  | Default AWS region endpoint          |
 | `DefaultCredentials`            | `AWSCredentials?` | `null`  | Default AWS credentials              |
 | `UseDefaultCredentialChain`     | `bool`            | `true`  | Use the default AWS credential chain |
-| `MultipartUploadThresholdBytes` | `long`            | `64 MB` | Threshold for multipart upload       |
+| `PartSizeBytes`                 | `int`             | `8 MiB` | Size of each upload part             |
+| `MaxConcurrency`                | `int`             | `4`     | Parts uploading at the same time     |
 
 ### URI Format
 
@@ -320,7 +321,7 @@ catch (IOException ex)
 2. **Set appropriate IAM permissions** - follow the principle of least privilege
 3. **Use cancellation tokens** for long-running operations
 4. **Handle exceptions gracefully** - network issues and permission errors are common
-5. **Use multipart uploads** for large files (configured via `MultipartUploadThresholdBytes`)
+5. **Tune upload parts** for large files (`PartSizeBytes` and `MaxConcurrency`); uploads stream, so memory is `PartSizeBytes × (MaxConcurrency + 1)`
 6. **Consider using S3-compatible services** for local development and testing
 
 ## Troubleshooting

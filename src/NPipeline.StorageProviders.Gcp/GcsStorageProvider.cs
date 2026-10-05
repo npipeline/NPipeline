@@ -1,7 +1,9 @@
-using System.Collections;
+using System.Globalization;
 using System.Net;
+using System.Net.Http.Headers;
 using System.Runtime.CompilerServices;
 using Google;
+using Google.Apis.Storage.v1;
 using Google.Apis.Storage.v1.Data;
 using Google.Cloud.Storage.V1;
 using NPipeline.StorageProviders.Abstractions;
@@ -26,7 +28,8 @@ namespace NPipeline.StorageProviders.Gcp;
 ///     </para>
 ///     <para>
 ///         URI format: gs://bucket-name/path/to/object
-///         Supported URI parameters: projectId, contentType, serviceUrl, accessToken, credentialsPath
+///         Supported URI parameters: projectId, contentType, serviceUrl. Credentials are never read from the URI; set
+///         <see cref="GcsStorageProviderOptions.DefaultCredentials" />.
 ///     </para>
 /// </remarks>
 public sealed class GcsStorageProvider : StorageProvider
@@ -66,47 +69,92 @@ public sealed class GcsStorageProvider : StorageProvider
         StorageCapabilities.Read | StorageCapabilities.Write | StorageCapabilities.List | StorageCapabilities.Delete | StorageCapabilities.Move;
 
     /// <inheritdoc />
+    /// <remarks>
+    ///     The object streams from the HTTP response; nothing is downloaded before this method returns. A transient failure
+    ///     mid-read reopens the object at the current offset, pinned to the first response's generation (see
+    ///     <see cref="GcsResumingReadStream" />), under <see cref="GcsStorageProviderOptions.Resilience" />.
+    /// </remarks>
     protected override async Task<Stream> OpenReadCoreAsync(StorageUri uri, CancellationToken cancellationToken)
     {
         var (bucket, objectName) = GetBucketAndObjectName(uri, true);
         var client = await _clientFactory.GetClientAsync(uri, cancellationToken).ConfigureAwait(false);
-        var tempFilePath = Path.Combine(Path.GetTempPath(), $"gcs-download-{Guid.NewGuid():N}.tmp");
-        FileStream? tempFileStream = null;
+
+        async Task<GcsResumingReadStream.Opened> OpenAsync(long position, long? generation, CancellationToken token)
+        {
+            try
+            {
+                return await RunAsync(t => OpenObjectAsync(client, bucket, objectName, position, generation, t), token).ConfigureAwait(false);
+            }
+            catch (GoogleApiException ex)
+            {
+                throw GcsErrors.Translate(ex, bucket, objectName, "read");
+            }
+        }
+
+        var first = await OpenAsync(0, null, cancellationToken).ConfigureAwait(false);
+
+        return new GcsResumingReadStream(first, OpenAsync, _resilience);
+    }
+
+    private static async Task<GcsResumingReadStream.Opened> OpenObjectAsync(
+        StorageClient client,
+        string bucket,
+        string objectName,
+        long position,
+        long? generation,
+        CancellationToken cancellationToken)
+    {
+        var request = client.Service.Objects.Get(bucket, objectName);
+        request.Alt = ObjectsResource.GetRequest.AltEnum.Media;
+
+        // A resume must read the same object version it started with, or the bytes would be spliced from two versions.
+        request.IfGenerationMatch = generation;
+
+        // Without gzip transfer encoding the response bytes are the object bytes, so a byte offset means the same thing
+        // on every request.
+        using var message = request.CreateRequest(false);
+
+        if (position > 0)
+            message.Headers.Range = new RangeHeaderValue(position, null);
+
+        var response = await client.Service.HttpClient
+            .SendAsync(message, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
+            .ConfigureAwait(false);
 
         try
         {
-            tempFileStream = new FileStream(
-                tempFilePath,
-                FileMode.Create,
-                FileAccess.ReadWrite,
-                FileShare.None,
-                81920,
-                FileOptions.Asynchronous | FileOptions.DeleteOnClose);
+            if (!response.IsSuccessStatusCode)
+            {
+                var error = await client.Service.DeserializeError(response).ConfigureAwait(false);
 
-            _ = await RunAsync(
-                token =>
+                throw new GoogleApiException(client.Service.Name, error?.Message ?? response.ReasonPhrase)
                 {
-                    // A failed attempt can leave part of the object in the buffer, so each attempt starts empty.
-                    tempFileStream.SetLength(0);
-                    return client.DownloadObjectAsync(bucket, objectName, tempFileStream, cancellationToken: token);
-                },
-                cancellationToken).ConfigureAwait(false);
+                    Error = error,
+                    HttpStatusCode = response.StatusCode,
+                };
+            }
 
-            tempFileStream.Position = 0;
-            return new GcsReadStream(tempFileStream);
-        }
-        catch (GoogleApiException ex)
-        {
-            if (tempFileStream is not null)
-                await tempFileStream.DisposeAsync().ConfigureAwait(false);
+            // A server that ignores Range answers 200 with the whole object; splicing that in would corrupt the stream.
+            if (position > 0 && response.StatusCode != HttpStatusCode.PartialContent)
+                throw new IOException($"The GCS server did not honour the range request at offset {position}.");
 
-            throw GcsErrors.Translate(ex, bucket, objectName, "read");
+            long? objectGeneration = null;
+
+            if (response.Headers.TryGetValues("x-goog-generation", out var values) &&
+                long.TryParse(values.FirstOrDefault(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed))
+                objectGeneration = parsed;
+
+            var length = response.Content.Headers.ContentEncoding.Count == 0
+                ? response.Content.Headers.ContentLength
+                : null;
+
+            var content = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+
+            return new GcsResumingReadStream.Opened(content, response, objectGeneration, length);
         }
         catch
         {
-            if (tempFileStream is not null)
-                await tempFileStream.DisposeAsync().ConfigureAwait(false);
-
+            response.Dispose();
             throw;
         }
     }
@@ -129,8 +177,7 @@ public sealed class GcsStorageProvider : StorageProvider
             bucket,
             objectName,
             contentType,
-            _options.UploadChunkSizeBytes,
-            _resilience);
+            _options.UploadChunkSizeBytes);
     }
 
     /// <inheritdoc />
@@ -302,6 +349,9 @@ public sealed class GcsStorageProvider : StorageProvider
         var request = client.Service.Objects.List(bucket);
         request.Prefix = prefixPath;
 
+        // Only the fields this method reads; it shrinks every page.
+        request.Fields = "items(name,size,updated),prefixes,nextPageToken";
+
         if (!recursive)
             request.Delimiter = "/";
 
@@ -375,90 +425,5 @@ public sealed class GcsStorageProvider : StorageProvider
             static (operation, token) => GcsRetryAfter.CaptureAsync(operation, token),
             operation,
             cancellationToken);
-    }
-
-    /// <summary>
-    ///     Wrapper stream for GCS downloads that ensures proper disposal.
-    /// </summary>
-    private sealed class GcsReadStream : Stream
-    {
-        private readonly Stream _inner;
-        private bool _disposed;
-
-        public GcsReadStream(Stream inner)
-        {
-            _inner = inner ?? throw new ArgumentNullException(nameof(inner));
-        }
-
-        public override bool CanRead => _inner.CanRead;
-        public override bool CanSeek => _inner.CanSeek;
-        public override bool CanWrite => false;
-        public override long Length => _inner.Length;
-
-        public override long Position
-        {
-            get => _inner.Position;
-            set => _inner.Position = value;
-        }
-
-        public override void Flush()
-        {
-            // No-op for read-only stream
-        }
-
-        public override Task FlushAsync(CancellationToken cancellationToken) => Task.CompletedTask;
-
-        public override int Read(byte[] buffer, int offset, int count) => _inner.Read(buffer, offset, count);
-
-        public override int Read(Span<byte> buffer) => _inner.Read(buffer);
-
-        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
-            _inner.ReadAsync(buffer, offset, count, cancellationToken);
-
-        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default) =>
-            _inner.ReadAsync(buffer, cancellationToken);
-
-        public override long Seek(long offset, SeekOrigin origin) => _inner.Seek(offset, origin);
-
-        public override void SetLength(long value)
-        {
-            throw new NotSupportedException();
-        }
-
-        public override void Write(byte[] buffer, int offset, int count)
-        {
-            throw new NotSupportedException();
-        }
-
-        public override void Write(ReadOnlySpan<byte> buffer)
-        {
-            throw new NotSupportedException();
-        }
-
-        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) => throw new NotSupportedException();
-
-        public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing && !_disposed)
-            {
-                _disposed = true;
-                _inner.Dispose();
-            }
-
-            base.Dispose(disposing);
-        }
-
-        public override async ValueTask DisposeAsync()
-        {
-            if (!_disposed)
-            {
-                _disposed = true;
-                await _inner.DisposeAsync().ConfigureAwait(false);
-            }
-
-            await base.DisposeAsync().ConfigureAwait(false);
-        }
     }
 }

@@ -58,7 +58,9 @@ A wrapper that closes the stream when it's disposed, such as `StreamWriter` or `
 | Provider | Commit | Abandon |
 |----------|--------|---------|
 | File system, SFTP | Renames a hidden sibling temporary file (`.<name>.<guid>.tmp`) into place | Deletes the temporary file |
-| S3, Azure Blob, ADLS Gen2, GCS | Uploads the data buffered in a local temporary file (S3 uses multipart above the threshold) | Uploads nothing |
+| S3 | Completes the multipart upload, or sends one `PutObject` for an object that fits in a part. Parts upload while you write | Aborts the multipart upload |
+| Azure Blob, ADLS Gen2 | Commits the block list, or uploads one block blob. Blocks upload while you write | Abandons the staged blocks, which the service discards |
+| GCS | Finishes the resumable upload, which runs while you write | Cancels the upload session |
 
 Providers that declare `ConditionalWrite` (AWS S3, Azure Blob and ADLS Gen2) can also make a commit depend on the state of the target:
 

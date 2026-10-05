@@ -77,6 +77,18 @@ public class SftpStorageProviderOptionsTests
     }
 
     [Theory]
+    [InlineData("password=x", "DefaultPassword")]
+    [InlineData("keyPassphrase=x&keyPath=/k", "DefaultKeyPassphrase")]
+    public async Task Connect_SecretInUriParameter_ThrowsAndNamesTheOption(string query, string option)
+    {
+        using var factory = new SftpClientFactory(new SftpStorageProviderOptions { AcceptAnyHostKey = true });
+
+        var act = () => factory.CreateClientAsync(StorageUri.Parse($"sftp://user@127.0.0.1:2/file?{query}"), CancellationToken.None);
+
+        await act.Should().ThrowAsync<ArgumentException>().WithMessage($"*{option}*");
+    }
+
+    [Theory]
     [InlineData("ohD8VZEXGWo6Ez8GSEJQ9WpafgLFsOfLOtGGQCQo6Og", true)]
     [InlineData("SHA256:ohD8VZEXGWo6Ez8GSEJQ9WpafgLFsOfLOtGGQCQo6Og", true)]
     [InlineData("sha256:ohD8VZEXGWo6Ez8GSEJQ9WpafgLFsOfLOtGGQCQo6Og=", true)]

@@ -45,9 +45,11 @@ public sealed class AzuriteFixture : IAsyncLifetime
         {
             ServiceUrl = new Uri($"http://127.0.0.1:{_blobHostPort}/{AccountName}/"),
             ServiceVersion = BlobClientOptions.ServiceVersion.V2021_12_02,
-            BlockBlobUploadThresholdBytes = 512 * 1024,
-            UploadMaximumConcurrency = 4,
-            UploadMaximumTransferSizeBytes = 256 * 1024,
+            AccountName = AccountName,
+            DefaultAccountKey = AccountKey,
+            PartSizeBytes = 256 * 1024,
+            MaxConcurrency = 4,
+            CreateContainerIfMissing = true,
             UseDefaultCredentialChain = false,
         };
 

@@ -6,7 +6,7 @@ namespace NPipeline.StorageProviders.S3.Compatible;
 
 /// <summary>
 ///     Factory for creating Amazon S3 clients configured for S3-compatible services.
-///     Uses static credentials and a fixed service URL from options.
+///     Uses static credentials and a fixed service URL from options, so there is one client for the provider.
 /// </summary>
 public class S3CompatibleClientFactory : S3ClientFactoryBase
 {
@@ -17,17 +17,26 @@ public class S3CompatibleClientFactory : S3ClientFactoryBase
     /// </summary>
     /// <param name="options">The S3-compatible storage provider options.</param>
     public S3CompatibleClientFactory(S3CompatibleStorageProviderOptions options)
+        : base(1)
     {
         _options = options ?? throw new ArgumentNullException(nameof(options));
     }
 
     /// <summary>
-    ///     Creates an Amazon S3 client configured for the S3-compatible endpoint.
-    ///     Credentials and endpoint come from options only - per-URI overrides are not supported.
+    ///     Returns the one endpoint of the provider. Credentials and endpoint come from options only - per-URI overrides are
+    ///     not supported, and the URI is used only for its bucket name.
     /// </summary>
-    /// <param name="uri">The storage URI (used only for bucket name extraction).</param>
+    /// <param name="uri">The storage URI.</param>
+    /// <returns>The endpoint key.</returns>
+    protected override S3EndpointKey GetEndpoint(StorageUri uri) =>
+        new(_options.SigningRegion, _options.ServiceUrl.AbsoluteUri, _options.ForcePathStyle);
+
+    /// <summary>
+    ///     Creates an Amazon S3 client configured for the S3-compatible endpoint.
+    /// </summary>
+    /// <param name="endpoint">The endpoint.</param>
     /// <returns>An <see cref="IAmazonS3" /> client.</returns>
-    protected override IAmazonS3 CreateClient(StorageUri uri)
+    protected override IAmazonS3 CreateClient(S3EndpointKey endpoint)
     {
         var credentials = new BasicAWSCredentials(_options.AccessKey, _options.SecretKey);
 
@@ -40,15 +49,4 @@ public class S3CompatibleClientFactory : S3ClientFactoryBase
 
         return new AmazonS3Client(credentials, config);
     }
-
-    /// <summary>
-    ///     Builds a cache key for the client. Since all clients use the same configuration,
-    ///     this returns a constant key.
-    /// </summary>
-    /// <param name="uri">The storage URI.</param>
-    /// <returns>A cache key string.</returns>
-    protected override string BuildCacheKey(StorageUri uri) =>
-
-        // All clients use the same configuration, so return a constant key
-        $"compatible|{_options.ServiceUrl}|{_options.ForcePathStyle}";
 }

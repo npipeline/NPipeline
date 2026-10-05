@@ -42,10 +42,10 @@ public class ServiceCollectionExtensionsTests
     {
         var services = new ServiceCollection();
 
-        services.AddAwsS3StorageProvider(o => o.MultipartUploadThresholdBytes = 123);
+        services.AddAwsS3StorageProvider(o => o.MaxConcurrency = 123);
 
         await using var sp = services.BuildServiceProvider();
-        sp.GetRequiredService<AwsS3StorageProviderOptions>().MultipartUploadThresholdBytes.Should().Be(123);
+        sp.GetRequiredService<AwsS3StorageProviderOptions>().MaxConcurrency.Should().Be(123);
     }
 
     [Fact]

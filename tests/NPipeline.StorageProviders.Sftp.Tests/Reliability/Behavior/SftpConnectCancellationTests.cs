@@ -88,7 +88,7 @@ public sealed class SftpConnectCancellationTests : IDisposable
         Volatile.Read(ref _acceptCount).Should().Be(0);
     }
 
-    private StorageUri SilentServerUri() => StorageUri.Parse($"sftp://user@127.0.0.1:{Port}/file.txt?password=secret");
+    private StorageUri SilentServerUri() => StorageUri.Parse($"sftp://user:secret@127.0.0.1:{Port}/file.txt");
 
     private async Task AcceptLoopAsync()
     {

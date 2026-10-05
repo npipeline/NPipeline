@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Amazon.S3;
 using Amazon.S3.Model;
 using NPipeline.StorageProviders.Abstractions;
@@ -5,24 +6,27 @@ using NPipeline.StorageProviders.Abstractions;
 namespace NPipeline.StorageProviders.S3;
 
 /// <summary>
-///     A write stream that buffers to a local file and uploads the object in <see cref="StorageWriteStream.CommitAsync" />:
-///     a single <c>PutObject</c>, or a multipart upload above the configured threshold. Disposing without committing uploads nothing.
+///     A write stream that uploads to S3 while it is being written: a single <c>PutObject</c> for an object that fits in one
+///     part, otherwise a multipart upload whose parts are sent as they fill. Nothing becomes visible until
+///     <see cref="StorageWriteStream.CommitAsync" /> completes the upload, and disposing without committing aborts it.
 /// </summary>
-public sealed class S3WriteStream : SpooledWriteStream
+public sealed class S3WriteStream : ChunkedUploadStream
 {
-    private const int DefaultPartSize = 8 * 1024 * 1024; // 8 MB parts
-    private const int MaxConcurrentUploads = 4;
+    /// <summary>S3 allows at most 10,000 parts per upload.</summary>
+    private const int MaxParts = 10_000;
+
+    private const int MaxGrownPartSize = 128 * 1024 * 1024;
+    private const int PartsPerGrowthStep = 1_000;
 
     private readonly string _bucket;
     private readonly string? _contentType;
     private readonly string? _ifMatch;
     private readonly string _key;
-    private readonly long _multipartUploadThreshold;
-    private readonly int _partSize;
+    private readonly long? _lengthHint;
     private readonly bool _overwrite;
-    private readonly object _readLock = new();
+    private readonly ConcurrentDictionary<int, string> _partETags = new();
     private readonly IAmazonS3 _s3Client;
-    private Stream? _content;
+    private string? _uploadId;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="S3WriteStream" /> class.
@@ -31,8 +35,9 @@ public sealed class S3WriteStream : SpooledWriteStream
     /// <param name="bucket">The S3 bucket name.</param>
     /// <param name="key">The S3 object key.</param>
     /// <param name="contentType">Optional content type for the upload.</param>
-    /// <param name="multipartUploadThreshold">Threshold in bytes for using multipart upload. Default is 64 MB.</param>
-    /// <param name="partSize">Size of each part for multipart upload. Default is 8 MB.</param>
+    /// <param name="partSizeBytes">Size of each part. At least 5 MiB. Default is 8 MiB.</param>
+    /// <param name="maxConcurrency">The most parts uploading at the same time. Default is 4.</param>
+    /// <param name="lengthHint">The expected object length, used to choose a part size that stays within 10,000 parts.</param>
     /// <param name="ifMatch">Commit only if the object's current ETag matches.</param>
     /// <param name="overwrite">When <see langword="false" />, commit fails if the object exists.</param>
     public S3WriteStream(
@@ -40,11 +45,12 @@ public sealed class S3WriteStream : SpooledWriteStream
         string bucket,
         string key,
         string? contentType = null,
-        long multipartUploadThreshold = 64 * 1024 * 1024,
-        int partSize = DefaultPartSize,
+        int partSizeBytes = 8 * 1024 * 1024,
+        int maxConcurrency = 4,
+        long? lengthHint = null,
         string? ifMatch = null,
         bool overwrite = true)
-        : base("s3-upload")
+        : base(ChoosePartSize(partSizeBytes, lengthHint), maxConcurrency)
     {
         _s3Client = s3Client ?? throw new ArgumentNullException(nameof(s3Client));
         _bucket = bucket ?? throw new ArgumentNullException(nameof(bucket));
@@ -52,21 +58,30 @@ public sealed class S3WriteStream : SpooledWriteStream
         _contentType = contentType;
         _ifMatch = ifMatch;
         _overwrite = overwrite;
-        _multipartUploadThreshold = multipartUploadThreshold;
-        _partSize = Math.Max(partSize, 5 * 1024 * 1024); // Minimum 5 MB per S3 requirements
+        _lengthHint = lengthHint;
     }
 
     /// <inheritdoc />
-    protected override async Task<string?> UploadAsync(Stream content, CancellationToken cancellationToken)
+    protected override int PartSizeFor(int partNumber)
     {
-        _content = content;
-        var contentLength = content.Length;
+        // Without a length hint the part size grows every 1,000 parts, so objects beyond 10,000 fixed-size parts still fit.
+        if (_lengthHint is not null || partNumber <= PartsPerGrowthStep)
+            return PartSizeBytes;
 
+        var step = Math.Min((partNumber - 1) / PartsPerGrowthStep, 5);
+        return (int)Math.Min((long)PartSizeBytes << step, MaxGrownPartSize);
+    }
+
+    /// <inheritdoc />
+    protected override async Task BeginAsync(CancellationToken cancellationToken)
+    {
         try
         {
-            return contentLength > 0 && contentLength >= _multipartUploadThreshold
-                ? await UploadMultipartAsync(contentLength, cancellationToken).ConfigureAwait(false)
-                : await UploadSingleAsync(cancellationToken).ConfigureAwait(false);
+            var response = await _s3Client.InitiateMultipartUploadAsync(
+                new InitiateMultipartUploadRequest { BucketName = _bucket, Key = _key, ContentType = _contentType },
+                cancellationToken).ConfigureAwait(false);
+
+            _uploadId = response.UploadId;
         }
         catch (AmazonS3Exception ex)
         {
@@ -74,18 +89,79 @@ public sealed class S3WriteStream : SpooledWriteStream
         }
     }
 
-    /// <summary>
-    ///     Uploads the content using a single PutObject request.
-    /// </summary>
-    private async Task<string?> UploadSingleAsync(CancellationToken cancellationToken)
+    /// <inheritdoc />
+    protected override async Task UploadPartAsync(int partNumber, long offset, ReadOnlyMemory<byte> data, CancellationToken cancellationToken)
     {
-        var request = new PutObjectRequest
+        if (partNumber > MaxParts)
+            throw new IOException($"The object needs more than {MaxParts} parts. Set StorageWriteOptions.LengthHint or raise PartSizeBytes.");
+
+        try
+        {
+            using var body = AsStream(data);
+
+            var response = await _s3Client.UploadPartAsync(
+                new UploadPartRequest
+                {
+                    BucketName = _bucket,
+                    Key = _key,
+                    UploadId = _uploadId,
+                    PartNumber = partNumber,
+                    PartSize = data.Length,
+                    InputStream = body,
+                },
+                cancellationToken).ConfigureAwait(false);
+
+            _partETags[partNumber] = response.ETag;
+        }
+        catch (AmazonS3Exception ex)
+        {
+            throw S3Errors.Translate(ex, _bucket, _key);
+        }
+    }
+
+    /// <inheritdoc />
+    protected override async Task<string?> UploadSingleAsync(ReadOnlyMemory<byte> data, CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var body = AsStream(data);
+
+            var request = new PutObjectRequest
+            {
+                BucketName = _bucket,
+                Key = _key,
+                InputStream = body,
+                AutoCloseStream = false,
+                UseChunkEncoding = false,
+            };
+
+            if (_ifMatch is not null)
+                request.IfMatch = _ifMatch;
+            else if (!_overwrite)
+                request.IfNoneMatch = "*";
+
+            if (!string.IsNullOrEmpty(_contentType))
+                request.ContentType = _contentType;
+
+            var response = await _s3Client.PutObjectAsync(request, cancellationToken).ConfigureAwait(false);
+
+            return response?.ETag;
+        }
+        catch (AmazonS3Exception ex)
+        {
+            throw S3Errors.Translate(ex, _bucket, _key);
+        }
+    }
+
+    /// <inheritdoc />
+    protected override async Task<string?> CompleteAsync(int partCount, long totalLength, CancellationToken cancellationToken)
+    {
+        var request = new CompleteMultipartUploadRequest
         {
             BucketName = _bucket,
             Key = _key,
-            InputStream = _content,
-            AutoCloseStream = false,
-            UseChunkEncoding = false,
+            UploadId = _uploadId,
+            PartETags = _partETags.OrderBy(p => p.Key).Select(p => new PartETag(p.Key, p.Value)).ToList(),
         };
 
         if (_ifMatch is not null)
@@ -93,161 +169,40 @@ public sealed class S3WriteStream : SpooledWriteStream
         else if (!_overwrite)
             request.IfNoneMatch = "*";
 
-        if (!string.IsNullOrEmpty(_contentType))
-            request.ContentType = _contentType;
-
-        var response = await _s3Client.PutObjectAsync(request, cancellationToken).ConfigureAwait(false);
-
-        return response?.ETag;
-    }
-
-    /// <summary>
-    ///     Uploads the content using S3 multipart upload.
-    /// </summary>
-    /// <param name="contentLength">The total length of the content to upload.</param>
-    /// <param name="cancellationToken">Token to observe while waiting for the task to complete.</param>
-    private async Task<string?> UploadMultipartAsync(long contentLength, CancellationToken cancellationToken)
-    {
-        // Initiate multipart upload
-        var initiateRequest = new InitiateMultipartUploadRequest
-        {
-            BucketName = _bucket,
-            Key = _key,
-            ContentType = _contentType,
-        };
-
-        var initiateResponse = await _s3Client.InitiateMultipartUploadAsync(initiateRequest, cancellationToken).ConfigureAwait(false);
-        var uploadId = initiateResponse.UploadId;
-        var parts = new List<PartETag>();
-
         try
         {
-            // Calculate part boundaries
-            var partCount = (int)Math.Ceiling((double)contentLength / _partSize);
-
-            // Upload parts, optionally in parallel
-            using var semaphore = new SemaphoreSlim(MaxConcurrentUploads);
-            var uploadTasks = new List<Task<PartETag>>();
-
-            for (var partNumber = 1; partNumber <= partCount; partNumber++)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                var currentPartNumber = partNumber;
-                var task = UploadPartAsync(currentPartNumber, contentLength, uploadId, semaphore, cancellationToken);
-                uploadTasks.Add(task);
-
-                // If we've reached max concurrent uploads, wait for at least one to complete
-                if (uploadTasks.Count >= MaxConcurrentUploads)
-                {
-                    var completedTask = await Task.WhenAny(uploadTasks).ConfigureAwait(false);
-                    _ = uploadTasks.Remove(completedTask);
-                    parts.Add(await completedTask.ConfigureAwait(false));
-                }
-            }
-
-            // Wait for remaining uploads to complete
-            foreach (var task in uploadTasks)
-            {
-                parts.Add(await task.ConfigureAwait(false));
-            }
-
-            // Sort parts by part number to ensure correct order
-            var orderedParts = parts.OrderBy(p => p.PartNumber).ToList();
-
-            // Complete multipart upload
-            var completeRequest = new CompleteMultipartUploadRequest
-            {
-                BucketName = _bucket,
-                Key = _key,
-                UploadId = uploadId,
-                PartETags = orderedParts,
-            };
-
-            if (_ifMatch is not null)
-                completeRequest.IfMatch = _ifMatch;
-            else if (!_overwrite)
-                completeRequest.IfNoneMatch = "*";
-
-            var completed = await _s3Client.CompleteMultipartUploadAsync(completeRequest, cancellationToken).ConfigureAwait(false);
+            var completed = await _s3Client.CompleteMultipartUploadAsync(request, cancellationToken).ConfigureAwait(false);
 
             return completed?.ETag;
         }
-        catch
+        catch (AmazonS3Exception ex)
         {
-            // Abort multipart upload on failure
-            try
-            {
-                var abortRequest = new AbortMultipartUploadRequest
-                {
-                    BucketName = _bucket,
-                    Key = _key,
-                    UploadId = uploadId,
-                };
-
-                _ = await _s3Client.AbortMultipartUploadAsync(abortRequest, CancellationToken.None).ConfigureAwait(false);
-            }
-            catch
-            {
-                // Ignore abort failures - the upload will eventually expire
-            }
-
-            throw;
+            throw S3Errors.Translate(ex, _bucket, _key);
         }
     }
 
-    /// <summary>
-    ///     Uploads a single part of a multipart upload.
-    /// </summary>
-    private async Task<PartETag> UploadPartAsync(
-        int partNumber,
-        long contentLength,
-        string uploadId,
-        SemaphoreSlim semaphore,
-        CancellationToken cancellationToken)
+    /// <inheritdoc />
+    protected override async Task AbortAsync()
     {
-        await semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+        if (_uploadId is null)
+            return;
 
-        try
-        {
-            // Calculate offset and size for this part
-            var offset = (long)(partNumber - 1) * _partSize;
-            var partSize = (int)Math.Min(_partSize, contentLength - offset);
+        _ = await _s3Client.AbortMultipartUploadAsync(
+            new AbortMultipartUploadRequest { BucketName = _bucket, Key = _key, UploadId = _uploadId },
+            CancellationToken.None).ConfigureAwait(false);
+    }
 
-            // Allocate buffer per part to avoid race condition with parallel uploads
-            var buffer = new byte[partSize];
+    private static int ChoosePartSize(int partSizeBytes, long? lengthHint)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(partSizeBytes, S3CoreOptions.MinPartSizeBytes);
 
-            int bytesRead;
+        if (lengthHint is not > 0)
+            return partSizeBytes;
 
-            lock (_readLock)
-            {
-                _content!.Position = offset;
-                bytesRead = _content.Read(buffer, 0, partSize);
-            }
+        // The smallest size that keeps the object within 10,000 parts, rounded up to a whole MiB.
+        var needed = (lengthHint.Value + MaxParts - 1) / MaxParts;
+        var rounded = (needed + (1024 * 1024) - 1) / (1024 * 1024) * (1024 * 1024);
 
-            if (bytesRead != partSize)
-                throw new IOException($"Expected to read {partSize} bytes for part {partNumber}, but only read {bytesRead} bytes.");
-
-            // Upload the part
-            using var partStream = new MemoryStream(buffer, 0, bytesRead, false);
-
-            var uploadRequest = new UploadPartRequest
-            {
-                BucketName = _bucket,
-                Key = _key,
-                UploadId = uploadId,
-                PartNumber = partNumber,
-                PartSize = bytesRead,
-                InputStream = partStream,
-            };
-
-            var response = await _s3Client.UploadPartAsync(uploadRequest, cancellationToken).ConfigureAwait(false);
-
-            return new PartETag(partNumber, response.ETag);
-        }
-        finally
-        {
-            _ = semaphore.Release();
-        }
+        return (int)Math.Min(Math.Max(partSizeBytes, rounded), MaxGrownPartSize);
     }
 }

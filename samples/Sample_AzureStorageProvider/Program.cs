@@ -12,6 +12,14 @@ namespace Sample_AzureStorageProvider;
 /// </summary>
 public sealed class Program
 {
+    // The Azurite emulator publishes these development values, so they are not secrets.
+    private const string AzuriteAccountName = "devstoreaccount1";
+
+    private const string AzuriteAccountKey =
+        "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==";
+
+    private const string AzuriteServiceUrl = "http://127.0.0.1:10000/devstoreaccount1";
+
     /// <summary>
     ///     Entry point for the Azure Blob Storage Provider sample application.
     ///     Demonstrates comprehensive usage of the Azure Blob Storage Provider with various scenarios.
@@ -91,23 +99,29 @@ public sealed class Program
         // Add Azure Blob Storage Provider with configuration
         _ = services.AddAzureBlobStorageProvider(options =>
         {
-            // Try to get connection string from configuration
+            // Credentials always come from the options, never from the URI.
             var connectionString = configuration["AzureStorage:DefaultConnectionString"]
-                                   ?? configuration["AZURE_STORAGE_CONNECTION_STRING"]
-                                   ?? "UseDevelopmentStorage=true";
+                                   ?? configuration["AZURE_STORAGE_CONNECTION_STRING"];
 
-            options.DefaultConnectionString = connectionString;
+            if (!string.IsNullOrEmpty(connectionString))
+            {
+                // A connection string names its own endpoint, so do not also set ServiceUrl.
+                options.DefaultConnectionString = connectionString;
+            }
+            else
+            {
+                // Default to the Azurite emulator's published development account.
+                options.AccountName = configuration["AzureStorage:AccountName"] ?? AzuriteAccountName;
+                options.DefaultAccountKey = configuration["AzureStorage:AccountKey"] ?? AzuriteAccountKey;
+                options.ServiceUrl = new Uri(configuration["AzureStorage:ServiceUrl"] ?? AzuriteServiceUrl);
+            }
 
-            // Try to get service URL from configuration (for Azurite)
-            var serviceUrl = configuration["AzureStorage:ServiceUrl"];
+            // Configure upload options: blocks upload while the demo writes, with no local temporary file.
+            options.PartSizeBytes = 8 * 1024 * 1024; // 8 MiB blocks
+            options.MaxConcurrency = 4;
 
-            if (!string.IsNullOrEmpty(serviceUrl))
-                options.ServiceUrl = new Uri(serviceUrl);
-
-            // Configure upload options
-            options.BlockBlobUploadThresholdBytes = 64 * 1024 * 1024; // 64MB
-            options.UploadMaximumConcurrency = 4;
-            options.UploadMaximumTransferSizeBytes = 4 * 1024 * 1024; // 4MB
+            // The demo writes to containers that may not exist yet, so let the provider create them.
+            options.CreateContainerIfMissing = true;
 
             // Enable default credential chain for production scenarios
             options.UseDefaultCredentialChain = true;
@@ -131,28 +145,37 @@ public sealed class Program
         Console.WriteLine();
 
         var connectionString = configuration["AzureStorage:DefaultConnectionString"]
-                               ?? configuration["AZURE_STORAGE_CONNECTION_STRING"]
-                               ?? "UseDevelopmentStorage=true";
+                               ?? configuration["AZURE_STORAGE_CONNECTION_STRING"];
 
-        var serviceUrl = configuration["AzureStorage:ServiceUrl"];
+        var serviceUrl = configuration["AzureStorage:ServiceUrl"] ?? (string.IsNullOrEmpty(connectionString) ? AzuriteServiceUrl : null);
 
         Console.WriteLine("  Azure Storage Configuration:");
-        Console.WriteLine($"    Connection String: {MaskConnectionString(connectionString)}");
 
-        if (!string.IsNullOrEmpty(serviceUrl))
+        if (!string.IsNullOrEmpty(connectionString))
+        {
+            Console.WriteLine($"    Connection String: {MaskConnectionString(connectionString)}");
+        }
+        else
+        {
+            Console.WriteLine($"    Account Name: {configuration["AzureStorage:AccountName"] ?? AzuriteAccountName}");
+            Console.WriteLine("    Account Key: ***");
+        }
+
+        if (!string.IsNullOrEmpty(serviceUrl) && string.IsNullOrEmpty(connectionString))
             Console.WriteLine($"    Service URL: {serviceUrl}");
         else
             Console.WriteLine("    Service URL: Default (Azure Blob Storage endpoint)");
 
         Console.WriteLine();
         Console.WriteLine("  Upload Configuration:");
-        Console.WriteLine("    Block Blob Threshold: 64 MB");
+        Console.WriteLine("    Block Size (PartSizeBytes): 8 MiB");
         Console.WriteLine("    Max Concurrency: 4");
-        Console.WriteLine("    Max Transfer Size: 4 MB");
+        Console.WriteLine("    Create Container If Missing: true");
         Console.WriteLine();
 
         // Check if Azurite is being used
-        if (connectionString.Contains("UseDevelopmentStorage", StringComparison.OrdinalIgnoreCase) ||
+        if (string.IsNullOrEmpty(connectionString) ||
+            connectionString.Contains("UseDevelopmentStorage", StringComparison.OrdinalIgnoreCase) ||
             connectionString.Contains("127.0.0.1", StringComparison.OrdinalIgnoreCase) ||
             connectionString.Contains("localhost", StringComparison.OrdinalIgnoreCase))
         {

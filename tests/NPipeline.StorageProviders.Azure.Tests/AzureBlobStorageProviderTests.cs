@@ -606,9 +606,6 @@ public class AzureBlobStorageProviderTests
         A.CallTo(() => _fakeBlobServiceClient.GetBlobContainerClient("test-container"))
             .Returns(_fakeContainerClient);
 
-        A.CallTo(() => _fakeContainerClient.ExistsAsync(A<CancellationToken>._))
-            .Returns(Task.FromResult(Response.FromValue(true, A.Fake<Response>())));
-
         // Create a custom AsyncPageable that properly yields items
         var asyncPageable = new TestBlobItemAsyncPageable(blobItems);
 
@@ -639,9 +636,6 @@ public class AzureBlobStorageProviderTests
 
         A.CallTo(() => _fakeBlobServiceClient.GetBlobContainerClient("test-container"))
             .Returns(_fakeContainerClient);
-
-        A.CallTo(() => _fakeContainerClient.ExistsAsync(A<CancellationToken>._))
-            .Returns(Task.FromResult(Response.FromValue(true, A.Fake<Response>())));
 
         // Create a BlobHierarchyItem with a blob (not a prefix)
         var blobHierarchyItem = BlobsModelFactory.BlobHierarchyItem(
@@ -679,9 +673,6 @@ public class AzureBlobStorageProviderTests
 
         A.CallTo(() => _fakeBlobServiceClient.GetBlobContainerClient("test-container"))
             .Returns(_fakeContainerClient);
-
-        A.CallTo(() => _fakeContainerClient.ExistsAsync(A<CancellationToken>._))
-            .Returns(Task.FromResult(Response.FromValue(true, A.Fake<Response>())));
 
         // Create a BlobHierarchyItem with a prefix (virtual directory)
         var prefixHierarchyItem = BlobsModelFactory.BlobHierarchyItem(
@@ -735,9 +726,6 @@ public class AzureBlobStorageProviderTests
         A.CallTo(() => _fakeClientFactory.GetClientAsync(A<StorageUri>._, A<CancellationToken>._))
             .Returns(Task.FromResult(_fakeBlobServiceClient));
         A.CallTo(() => _fakeBlobServiceClient.GetBlobContainerClient("test-container")).Returns(_fakeContainerClient);
-        A.CallTo(() => _fakeContainerClient.ExistsAsync(A<CancellationToken>._))
-            .Returns(Task.FromResult(Response.FromValue(true, A.Fake<Response>())));
-
         string? capturedPrefix = null;
 
         A.CallTo(() => _fakeContainerClient.GetBlobsAsync(A<BlobTraits>._, A<BlobStates>._, A<string>._, A<CancellationToken>._))
@@ -761,28 +749,6 @@ public class AzureBlobStorageProviderTests
     }
 
     [Fact]
-    public async Task ListAsync_WithNonExistentContainer_ReturnsEmpty()
-    {
-        // Arrange
-        var uri = StorageUri.Parse("azure://test-container/prefix/");
-
-        A.CallTo(() => _fakeClientFactory.GetClientAsync(uri, A<CancellationToken>._))
-            .Returns(Task.FromResult(_fakeBlobServiceClient));
-
-        A.CallTo(() => _fakeBlobServiceClient.GetBlobContainerClient("test-container"))
-            .Returns(_fakeContainerClient);
-
-        A.CallTo(() => _fakeContainerClient.ExistsAsync(A<CancellationToken>._))
-            .Returns(Task.FromResult(Response.FromValue(false, A.Fake<Response>())));
-
-        // Act
-        var items = await _provider.ListAsync(uri, true).ToListAsync();
-
-        // Assert
-        items.Should().BeEmpty();
-    }
-
-    [Fact]
     public async Task ListAsync_WithAuthenticationFailed_ThrowsRequestFailedException()
     {
         // Arrange
@@ -794,9 +760,6 @@ public class AzureBlobStorageProviderTests
 
         A.CallTo(() => _fakeBlobServiceClient.GetBlobContainerClient("test-container"))
             .Returns(_fakeContainerClient);
-
-        A.CallTo(() => _fakeContainerClient.ExistsAsync(A<CancellationToken>._))
-            .Returns(Task.FromResult(Response.FromValue(true, A.Fake<Response>())));
 
         A.CallTo(() => _fakeContainerClient.GetBlobsAsync(
                 A<BlobTraits>._,

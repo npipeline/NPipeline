@@ -51,6 +51,8 @@ sftp://[user[:password]@]host[:port]/path/to/file
 | `port` | Optional - override `DefaultPort` (default: 22) |
 | `path/to/file` | File path on the server |
 
+The `password` and `keyPassphrase` query parameters aren't supported, because URIs are logged and compared; a URI that carries one throws an `ArgumentException`. Put the password in the user information, or set `DefaultPassword` and `DefaultKeyPassphrase` in the options.
+
 ## Authentication
 
 ### Password

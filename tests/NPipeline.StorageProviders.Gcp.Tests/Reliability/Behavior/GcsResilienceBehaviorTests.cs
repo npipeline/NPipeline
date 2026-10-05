@@ -9,6 +9,7 @@ using Google.Apis.Download;
 using Google.Apis.Upload;
 using Google.Cloud.Storage.V1;
 using NPipeline.StorageProviders.Gcp.Reliability;
+using NPipeline.StorageProviders.Gcp.Tests.Support;
 using NPipeline.StorageProviders.Models;
 using NResilience;
 using Object = Google.Apis.Storage.v1.Data.Object;
@@ -166,72 +167,112 @@ public sealed class GcsResilienceBehaviorTests
     }
 
     [Fact]
-    public async Task OpenReadAsync_RetryStartsWithAnEmptyBuffer()
+    public async Task Read_FailsMidStream_ResumesFromOffset()
     {
-        var (provider, client) = CreateProvider(FastRetry);
-        var attempts = 0;
+        using var server = new FakeGcsHttpServer(async (context, n) =>
+        {
+            var response = context.Response;
+            response.Headers["x-goog-generation"] = "42";
 
-        A.CallTo(() => client.DownloadObjectAsync(
-                A<string>._, A<string>._, A<Stream>._, A<DownloadObjectOptions>._, A<CancellationToken>._, A<IProgress<IDownloadProgress>>._))
-            .ReturnsLazily(call =>
+            if (n == 1)
             {
-                attempts++;
-                var destination = call.GetArgument<Stream>(2)!;
+                // Promise ten bytes, send four, then drop the connection.
+                response.ContentLength64 = 10;
+                await response.OutputStream.WriteAsync("0123"u8.ToArray());
+                await response.OutputStream.FlushAsync();
+                response.Abort();
+                return;
+            }
 
-                if (attempts == 1)
-                {
-                    // The connection drops part-way through the object.
-                    destination.Write("partial-"u8);
-                    return Task.FromException<Object>(new IOException("connection reset"));
-                }
+            response.StatusCode = 206;
+            response.ContentLength64 = 6;
+            await response.OutputStream.WriteAsync("456789"u8.ToArray());
+            response.Close();
+        });
 
-                destination.Write("complete"u8);
-                return Task.FromResult(new Object());
-            });
+        var provider = server.CreateProvider(FastRetry);
 
         await using var stream = await provider.OpenReadAsync(Uri);
         using var reader = new StreamReader(stream, Encoding.UTF8);
 
-        (await reader.ReadToEndAsync()).Should().Be("complete");
-        attempts.Should().Be(2);
+        (await reader.ReadToEndAsync()).Should().Be("0123456789");
+
+        var requests = server.Requests;
+        requests.Should().HaveCount(2);
+        requests[0].Range.Should().BeNull();
+
+        // The second request continues at the offset and is pinned to the first response's generation.
+        requests[1].Range.Should().Be("bytes=4-");
+        requests[1].PathAndQuery.Should().Contain("ifGenerationMatch=42");
     }
 
     [Fact]
-    public async Task OpenWriteAsync_RetryReSendsTheWholeObject()
+    public async Task Read_FailsMidStream_WithResilienceNone_Fails()
     {
-        var (provider, client) = CreateProvider(FastRetry);
-        var uploads = new List<byte[]>();
-
-        A.CallTo(() => client.UploadObjectAsync(A<Object>._, A<Stream>._, A<UploadObjectOptions>._, A<CancellationToken>._, A<IProgress<IUploadProgress>>._))
-            .ReturnsLazily(call =>
-            {
-                var source = call.GetArgument<Stream>(1)!;
-
-                if (uploads.Count == 0)
-                {
-                    // The first attempt sends part of the object before the server fails it.
-                    var partial = new byte[3];
-                    source.ReadExactly(partial);
-                    uploads.Add(partial);
-                    return Task.FromException<Object>(ApiError(HttpStatusCode.ServiceUnavailable));
-                }
-
-                using var copy = new MemoryStream();
-                source.CopyTo(copy);
-                uploads.Add(copy.ToArray());
-                return Task.FromResult(new Object());
-            });
-
-        var payload = Encoding.UTF8.GetBytes("the whole object");
-
-        await using (var stream = await provider.OpenWriteAsync(Uri))
+        using var server = new FakeGcsHttpServer(async (context, _) =>
         {
-            await stream.WriteAsync(payload);
-            await stream.CommitAsync();
-        }
+            context.Response.ContentLength64 = 10;
+            await context.Response.OutputStream.WriteAsync("0123"u8.ToArray());
+            await context.Response.OutputStream.FlushAsync();
+            context.Response.Abort();
+        });
 
-        uploads.Should().HaveCount(2);
-        uploads[1].Should().Equal(payload);
+        var provider = server.CreateProvider(Resilience.None);
+
+        await using var stream = await provider.OpenReadAsync(Uri);
+        using var reader = new StreamReader(stream, Encoding.UTF8);
+
+        await Assert.ThrowsAnyAsync<IOException>(() => reader.ReadToEndAsync());
+        server.Requests.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public async Task Read_ResumeAfterTheObjectChanged_FailsInsteadOfSplicingVersions()
+    {
+        using var server = new FakeGcsHttpServer(async (context, n) =>
+        {
+            if (n == 1)
+            {
+                context.Response.Headers["x-goog-generation"] = "42";
+                context.Response.ContentLength64 = 10;
+                await context.Response.OutputStream.WriteAsync("0123"u8.ToArray());
+                await context.Response.OutputStream.FlushAsync();
+                context.Response.Abort();
+                return;
+            }
+
+            // Someone overwrote the object: the generation precondition fails.
+            await FakeGcsHttpServer.WriteErrorAsync(context.Response, HttpStatusCode.PreconditionFailed);
+        });
+
+        var provider = server.CreateProvider(FastRetry);
+
+        await using var stream = await provider.OpenReadAsync(Uri);
+        using var reader = new StreamReader(stream, Encoding.UTF8);
+
+        await Assert.ThrowsAsync<IOException>(() => reader.ReadToEndAsync());
+    }
+
+    [Fact]
+    public async Task Read_ResumeAgainstAServerThatIgnoresRange_FailsInsteadOfRepeatingBytes()
+    {
+        using var server = new FakeGcsHttpServer(async (context, n) =>
+        {
+            context.Response.Headers["x-goog-generation"] = "42";
+            context.Response.ContentLength64 = 10;
+            await context.Response.OutputStream.WriteAsync("0123"u8.ToArray());
+            await context.Response.OutputStream.FlushAsync();
+
+            // Every response is a fresh 200 that fails again.
+            context.Response.Abort();
+        });
+
+        var provider = server.CreateProvider(FastRetry);
+
+        await using var stream = await provider.OpenReadAsync(Uri);
+        using var reader = new StreamReader(stream, Encoding.UTF8);
+
+        await Assert.ThrowsAnyAsync<IOException>(() => reader.ReadToEndAsync());
     }
 
     [Fact]
@@ -353,35 +394,19 @@ public sealed class GcsResilienceBehaviorTests
     }
 
     [Fact]
-    public async Task FactoryClient_DoesNotResumeAFailedUploadInsideTheSdk()
+    public async Task FactoryClient_ResumesAFailedUploadChunkInsideTheSdkSession()
     {
-        // Every upload session accepts the start request and then fails the data with 503.
-        using var server = new FakeGcsServer((request, _) => request.HttpMethod == "PUT"
-            ? (HttpStatusCode.ServiceUnavailable, null)
-            : (HttpStatusCode.OK, null));
+        // A stream cannot be replayed, so a write retries inside the resumable-upload session: the SDK asks the server
+        // how much it holds and re-sends from there. Resilience is None, so no other layer is involved.
+        var failed = 0;
 
-        var provider = CreateRealProvider(server, Resilience.None);
+        var session = new FakeGcsHttpServer.UploadSession
+        {
+            BeforeChunk = (_, _) => Task.FromResult<HttpStatusCode?>(Interlocked.Increment(ref failed) == 1 ? HttpStatusCode.ServiceUnavailable : null),
+        };
 
-        var stream = await provider.OpenWriteAsync(Uri);
-        await stream.WriteAsync(new byte[] { 1, 2, 3 });
-
-        _ = await Assert.ThrowsAsync<IOException>(async () => await stream.CommitAsync());
-
-        // The SDK's in-session resume would send the data up to three times; with it off, one attempt is one PUT.
-        server.UploadPuts.Should().Be(1);
-    }
-
-    [Fact]
-    public async Task FactoryClient_RetriesAFailedUploadInANewSession()
-    {
-        var puts = 0;
-
-        using var server = new FakeGcsServer((request, _) =>
-            request.HttpMethod == "PUT" && Interlocked.Increment(ref puts) == 1
-                ? (HttpStatusCode.ServiceUnavailable, null)
-                : (HttpStatusCode.OK, null));
-
-        var provider = CreateRealProvider(server, FastRetry);
+        using var server = new FakeGcsHttpServer(session.HandleAsync);
+        var provider = server.CreateProvider(Resilience.None);
 
         await using (var stream = await provider.OpenWriteAsync(Uri))
         {
@@ -389,8 +414,27 @@ public sealed class GcsResilienceBehaviorTests
             await stream.CommitAsync();
         }
 
-        server.UploadPuts.Should().Be(2);
-        server.Requests.Should().Be(4); // two session starts, two data requests
+        session.Finalized.Should().BeTrue();
+        session.Received.Should().Be(3);
+        server.Requests.Count(r => r.Method == "POST").Should().Be(1, "the same session continues; there is no second upload");
+    }
+
+    [Fact]
+    public async Task FactoryClient_WithAPermanentUploadError_FailsTheCommitOnce()
+    {
+        var session = new FakeGcsHttpServer.UploadSession
+        {
+            BeforeChunk = (_, _) => Task.FromResult<HttpStatusCode?>(HttpStatusCode.Forbidden),
+        };
+
+        using var server = new FakeGcsHttpServer(session.HandleAsync);
+        var provider = server.CreateProvider(FastRetry);
+
+        await using var stream = await provider.OpenWriteAsync(Uri);
+        await stream.WriteAsync(new byte[] { 1, 2, 3 });
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => stream.CommitAsync());
+        session.Finalized.Should().BeFalse();
     }
 
     private static GcsStorageProvider CreateRealProvider(FakeGcsServer server, Resilience resilience)

@@ -236,7 +236,8 @@ new S3CompatibleStorageProviderOptions
 | `SecretKey`                     | `string` | ✓        | -           | Static secret key (equivalent to AWS secret access key)            |
 | `SigningRegion`                 | `string` | ✗        | `us-east-1` | Region used for request signing. Use `"auto"` for Cloudflare R2    |
 | `ForcePathStyle`                | `bool`   | ✗        | `true`      | Force path-style addressing (required by most compatible services) |
-| `MultipartUploadThresholdBytes` | `long`   | ✗        | `67108864`  | File size threshold above which multipart upload is used (64 MB)   |
+| `PartSizeBytes`                 | `int`    | ✗        | `8388608`   | Size of each upload part (at least 5 MiB)                          |
+| `MaxConcurrency`                | `int`    | ✗        | `4`         | Parts of one object that upload at the same time                   |
 
 ### URI Format
 

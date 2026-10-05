@@ -56,7 +56,8 @@ All three required properties use `required init` - they must be set at construc
 | `SigningRegion` | `string` | `"us-east-1"` | AWS signing region (use `"auto"` for Cloudflare R2) |
 | `Schemes` | `IReadOnlyList<string>` | `["s3"]` | URI schemes this provider serves, for example `["minio"]` |
 | `ForcePathStyle` | `bool` | `true` | Path-style URLs (required by most S3-compatible services) |
-| `MultipartUploadThresholdBytes` | `long` | `64 MB` | Switch to multipart upload above this size |
+| `PartSizeBytes` | `int` | `8 MiB` | Size of each upload part. Must be at least 5 MiB. An object that fits in one part uses a single `PutObject`. |
+| `MaxConcurrency` | `int` | `4` | Parts of one object that upload at the same time |
 
 ## Service-Specific Configuration
 
@@ -176,7 +177,7 @@ await using (var writer = new StreamWriter(stream, leaveOpen: true))
 await stream.CommitAsync(ct);
 ```
 
-Call `CommitAsync` once, after the last write. The provider buffers the data to a local temporary file and uploads it when you commit (as a multipart upload above `MultipartUploadThresholdBytes`). Disposing the stream without committing uploads nothing and leaves an existing object as it was. Upload errors surface from `CommitAsync`. This provider doesn't declare `ConditionalWrite`.
+Call `CommitAsync` once, after the last write. The provider uploads while you write: an object that fits in one part (`PartSizeBytes`, 8 MiB by default) is sent with one `PutObject` when you commit, and a larger one is sent as a multipart upload whose parts leave as they fill, so the data never goes to a local temporary file. Memory use is about `PartSizeBytes × (MaxConcurrency + 1)`. `CommitAsync` completes the upload. Disposing the stream without committing aborts the multipart upload and leaves an existing object as it was. Upload errors surface from `CommitAsync`. Set `StorageWriteOptions.LengthHint` when you know the size: the provider then picks a part size that keeps the upload within the S3 limit of 10,000 parts. Without a hint, the part size grows after part 1,000. This provider doesn't declare `ConditionalWrite`.
 
 ### Listing
 

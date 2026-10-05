@@ -7,9 +7,9 @@ Shared S3 protocol abstractions and base implementation for NPipeline S3 storage
 `NPipeline.StorageProviders.S3` provides the provider-agnostic core that both S3 implementations build on:
 
 - **`S3CoreStorageProvider`** - Abstract base class deriving from `StorageProvider` with read, write, list, delete, move, exists, and metadata support. Subclasses supply `Name` and `Schemes`
-- **`S3ClientFactoryBase`** - Abstract factory that creates and caches `IAmazonS3` clients by configuration key
-- **`S3CoreOptions`** - Base configuration with `MultipartUploadThresholdBytes` (default 64 MB)
-- **`S3WriteStream`** - Streaming write implementation that switches to S3 multipart upload for large objects
+- **`S3ClientFactoryBase`** - Abstract factory that creates and caches `IAmazonS3` clients, one per endpoint (`S3EndpointKey`)
+- **`S3CoreOptions`** - Base configuration with `PartSizeBytes` (default 8 MiB), `MaxConcurrency` (default 4) and `ClientCacheSizeLimit`
+- **`S3WriteStream`** - Streaming write implementation built on `ChunkedUploadStream`: one `PutObject` for an object that fits in a part, otherwise a multipart upload whose parts are sent as they fill
 - **Error translation** - One internal translator maps the HTTP status first (404 to `FileNotFoundException`, 401/403 to `UnauthorizedAccessException`, 400 to `ArgumentException`) and refines by error code; other failures become `IOException` with the `AmazonS3Exception` as inner exception
 
 ## URI Scheme
@@ -37,9 +37,9 @@ s3://bucket-name/key/path
 
 **Read streams** - The read stream reports `Length` from `ContentLength`.
 
-**Multipart uploads** - `S3WriteStream` automatically switches to the S3 multipart upload API when the written content exceeds `MultipartUploadThresholdBytes`. The threshold is configurable per provider instance.
+**Streaming uploads** - `S3WriteStream` uploads while the caller writes. Part buffers come from `ArrayPool<byte>`, at most `MaxConcurrency` parts are in flight, and memory is about `PartSizeBytes × (MaxConcurrency + 1)`. Nothing goes to local disk. `CommitAsync` completes the upload; disposing without committing aborts it. With `StorageWriteOptions.LengthHint`, the part size rises so the upload stays within S3's 10,000 parts; without a hint, it grows after part 1,000.
 
-**Client caching** - `S3ClientFactoryBase` caches `IAmazonS3` instances by a configuration-derived key (region, endpoint, credentials) to avoid redundant client construction.
+**Client caching** - `S3ClientFactoryBase` caches `IAmazonS3` instances by endpoint (region, service URL, addressing style), with least-recently-used eviction. The key never includes a credential: credentials belong to the factory's options, so a lookup is one dictionary hit.
 
 **Pagination** - `ListAsync` internally uses `ListObjectsV2` with continuation tokens, streaming items as pages arrive.
 
@@ -48,8 +48,14 @@ s3://bucket-name/key/path
 ```csharp
 public class S3CoreOptions
 {
-    // Files above this size are uploaded using the S3 multipart API. Default: 64 MB.
-    public long MultipartUploadThresholdBytes { get; set; } = 64 * 1024 * 1024;
+    // Size of each upload part, at least 5 MiB. Default: 8 MiB.
+    public int PartSizeBytes { get; set; }
+
+    // Parts of one object that upload at the same time. Default: 4.
+    public int MaxConcurrency { get; set; }
+
+    // Endpoint clients kept in the cache. Default: 100.
+    public int ClientCacheSizeLimit { get; set; }
 }
 ```
 
@@ -70,8 +76,8 @@ public class MyS3Provider : S3CoreStorageProvider
 
 public class MyClientFactory : S3ClientFactoryBase
 {
-    protected override IAmazonS3 CreateClient(StorageUri uri) { ... }
-    protected override string BuildCacheKey(StorageUri uri) { ... }
+    protected override S3EndpointKey GetEndpoint(StorageUri uri) { ... }   // routing data only, never a secret
+    protected override IAmazonS3 CreateClient(S3EndpointKey endpoint) { ... }
 }
 ```
 

@@ -399,9 +399,7 @@ internal sealed class SftpClientPool : IDisposable, IAsyncDisposable
         // Build credential hash
         string authHash;
 
-        if (uri.Parameters.TryGetValue("password", out var password) && !string.IsNullOrEmpty(password))
-            authHash = ComputeHash($"password:{password}");
-        else if (uri.Parameters.TryGetValue("keyPath", out var keyPath) && !string.IsNullOrEmpty(keyPath))
+        if (uri.Parameters.TryGetValue("keyPath", out var keyPath) && !string.IsNullOrEmpty(keyPath))
             authHash = ComputeHash($"key:{keyPath}");
         else if (!string.IsNullOrEmpty(uri.Password))
             authHash = ComputeHash($"userinfo-password:{uri.Password}");

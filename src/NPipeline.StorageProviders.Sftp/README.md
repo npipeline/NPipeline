@@ -74,7 +74,7 @@ Credentials can be specified in the URI for per-operation configuration:
 
 ```csharp
 // Password via URI
-var uri = StorageUri.Parse("sftp://sftp.example.com/data/file.csv?username=user&password=secret");
+var uri = StorageUri.Parse("sftp://sftp.example.com/data/file.csv?username=user");
 
 // Key via URI
 var uri = StorageUri.Parse("sftp://sftp.example.com/data/file.csv?username=user&keyPath=/home/user/.ssh/id_rsa");
@@ -108,7 +108,7 @@ The provider uses the `sftp://` scheme:
 
 ```
 sftp://hostname/path/to/file.csv
-sftp://hostname:2222/path/to/file.csv?username=user&password=secret
+sftp://hostname:2222/path/to/file.csv?username=user
 ```
 
 ### URI Components
@@ -120,9 +120,9 @@ sftp://hostname:2222/path/to/file.csv?username=user&password=secret
 | Port           | URI port or default         | `22` (default) or `2222`          |
 | Path           | URI path                    | `/data/imports/file.csv`          |
 | Username       | URI userinfo or query param | `user`                            |
-| Password       | Query param                 | `?password=secret`                |
+| Password       | URI userinfo or options     | `user:secret@host`, `DefaultPassword` |
 | Key Path       | Query param                 | `?keyPath=/home/user/.ssh/id_rsa` |
-| Key Passphrase | Query param                 | `?keyPassphrase=secret`           |
+| Key Passphrase | Options                     | `DefaultKeyPassphrase`            |
 
 ## Configuration Options
 

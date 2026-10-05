@@ -1,16 +1,16 @@
 using Azure.Core;
 
-namespace NPipeline.StorageProviders.Adls;
+namespace NPipeline.StorageProviders.Azure;
 
 /// <summary>
-///     Retry settings for the ADLS Gen2 storage provider, applied to the Azure SDK's <see cref="RetryOptions" /> on both
-///     the Data Lake and Blob clients the provider creates.
+///     Retry settings for the Azure storage providers, applied to the Azure SDK's <see cref="RetryOptions" /> on the Blob and
+///     Data Lake clients the providers create.
 /// </summary>
 /// <remarks>
 ///     The Azure SDK owns the retry: it retries throttling (429), server errors (5xx), request timeouts, and network
 ///     failures, and honors the service's <c>Retry-After</c> hints. NPipeline adds no retry layer on top.
 /// </remarks>
-public sealed class AdlsGen2RetryOptions
+public sealed class AzureRetryOptions
 {
     private TimeSpan _delay = TimeSpan.FromMilliseconds(800);
     private TimeSpan _maxDelay = TimeSpan.FromSeconds(8);

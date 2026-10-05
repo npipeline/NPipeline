@@ -1,8 +1,4 @@
 using System.Collections.Concurrent;
-using System.Runtime.CompilerServices;
-using System.Security.Cryptography;
-using System.Text;
-using System.Text.Json;
 using Google.Apis.Auth.OAuth2;
 using Google.Cloud.Storage.V1;
 using NPipeline.StorageProviders.Gcp.Reliability;
@@ -11,16 +7,21 @@ using NPipeline.StorageProviders.Models;
 namespace NPipeline.StorageProviders.Gcp;
 
 /// <summary>
-///     Factory for creating and caching Google Cloud Storage clients with flexible authentication options.
-///     Implements credential resolution and client caching with size limits.
+///     Factory for creating and caching Google Cloud Storage clients. Credentials come from
+///     <see cref="GcsStorageProviderOptions" /> only; a URI carries routing data (<c>serviceUrl</c>, <c>projectId</c>),
+///     never secrets.
 /// </summary>
-public class GcsClientFactory
+/// <remarks>
+///     The factory owns the clients it creates and disposes them in <see cref="Dispose()" />. Evicting a client from the
+///     bounded cache does not dispose it, because a read or write stream opened earlier may still be using it.
+/// </remarks>
+public class GcsClientFactory : IDisposable, IAsyncDisposable
 {
-    private readonly object _cacheLock = new();
-    private readonly LinkedList<string> _cacheOrder = new();
-    private readonly ConcurrentDictionary<string, Lazy<StorageClient>> _clientCache = new();
-    private readonly ConcurrentDictionary<string, GoogleCredential> _credentialCache = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<GcsClientKey, CacheEntry> _clients = new();
+    private readonly object _evictionLock = new();
     private readonly GcsStorageProviderOptions _options;
+    private long _clock;
+    private int _disposed;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="GcsClientFactory" /> class.
@@ -33,15 +34,18 @@ public class GcsClientFactory
     }
 
     /// <summary>
-    ///     Gets or creates a Google Cloud Storage client for the specified storage URI.
-    ///     Credentials are resolved in the following order:
-    ///     1. URI parameters (accessToken, credentialsPath)
-    ///     2. DefaultCredentials from options
-    ///     3. Application Default Credentials (ADC) if UseDefaultCredentials is true
+    ///     Gets or creates a Google Cloud Storage client for the endpoint the URI names. The client is shared by every URI
+    ///     with the same <c>serviceUrl</c> and <c>projectId</c>. Credentials come from
+    ///     <see cref="GcsStorageProviderOptions.DefaultCredentials" />, then Application Default Credentials when
+    ///     <see cref="GcsStorageProviderOptions.UseDefaultCredentials" /> is true.
     /// </summary>
-    /// <param name="uri">The storage URI containing bucket and optional credentials.</param>
+    /// <param name="uri">The storage URI containing the bucket and optional routing parameters.</param>
     /// <param name="cancellationToken">Token to observe while waiting for the task to complete.</param>
     /// <returns>A task producing a <see cref="StorageClient" />.</returns>
+    /// <exception cref="ArgumentException">
+    ///     The URI carries an <c>accessToken</c> or <c>credentialsPath</c> parameter. Secrets do not belong in URIs; set
+    ///     <see cref="GcsStorageProviderOptions.DefaultCredentials" /> instead.
+    /// </exception>
     public virtual Task<StorageClient> GetClientAsync(
         StorageUri uri,
         CancellationToken cancellationToken = default)
@@ -49,63 +53,88 @@ public class GcsClientFactory
         ArgumentNullException.ThrowIfNull(uri);
         cancellationToken.ThrowIfCancellationRequested();
 
-        var credentials = GetCredentials(uri);
-        var serviceUrl = GetServiceUrl(uri);
-        var projectId = GetProjectId(uri);
+        RejectCredentialParameters(uri);
 
-        return GetClientAsync(credentials, serviceUrl, projectId, cancellationToken);
+        return GetClientAsync(GetServiceUrl(uri), GetProjectId(uri), cancellationToken);
     }
 
     /// <summary>
-    ///     Gets or creates a Google Cloud Storage client with the specified configuration.
+    ///     Gets or creates a Google Cloud Storage client for the specified endpoint.
     /// </summary>
-    /// <param name="credentials">Optional Google credentials. If null and UseDefaultCredentials is true, ADC will be used.</param>
     /// <param name="serviceUrl">Optional service URL for emulator or custom endpoints.</param>
     /// <param name="projectId">Optional project ID for operations that require project context.</param>
     /// <param name="cancellationToken">Token to observe while waiting for the task to complete.</param>
     /// <returns>A task producing a <see cref="StorageClient" />.</returns>
     public virtual Task<StorageClient> GetClientAsync(
-        GoogleCredential? credentials,
         Uri? serviceUrl,
         string? projectId,
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
 
-        var cacheKey = BuildCacheKey(credentials, serviceUrl, projectId);
+        // The key is non-secret endpoint data, so a hit is one dictionary lookup and one write of the recency stamp.
+        var key = new GcsClientKey(serviceUrl?.AbsoluteUri, projectId);
 
-        var lazyClient = _clientCache.GetOrAdd(cacheKey, key =>
-            new Lazy<StorageClient>(
-                () => CreateClient(key, credentials, serviceUrl),
-                LazyThreadSafetyMode.ExecutionAndPublication));
+        if (!_clients.TryGetValue(key, out var entry))
+        {
+            entry = _clients.GetOrAdd(key, static (_, state) => new CacheEntry(() => state.Factory.CreateClient(state.ServiceUrl)), (Factory: this, ServiceUrl: serviceUrl));
+        }
+
+        entry.LastUsed = Interlocked.Increment(ref _clock);
 
         try
         {
-            return Task.FromResult(lazyClient.Value);
+            var client = entry.Client.Value;
+
+            if (_clients.Count > _options.ClientCacheSizeLimit)
+                Evict(key);
+
+            return Task.FromResult(client);
         }
         catch
         {
-            _clientCache.TryRemove(new KeyValuePair<string, Lazy<StorageClient>>(cacheKey, lazyClient));
-
-            lock (_cacheLock)
-            {
-                var node = _cacheOrder.Find(cacheKey);
-
-                if (node is not null)
-                    _cacheOrder.Remove(node);
-            }
-
+            // A Lazy caches its exception; drop the entry so the next call tries again.
+            _ = _clients.TryRemove(new KeyValuePair<GcsClientKey, CacheEntry>(key, entry));
             throw;
         }
     }
 
-    private StorageClient CreateClient(string cacheKey, GoogleCredential? credentials, Uri? serviceUrl)
+    /// <summary>Disposes every client the factory created.</summary>
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    /// <inheritdoc />
+    public ValueTask DisposeAsync()
+    {
+        Dispose();
+        GC.SuppressFinalize(this);
+        return ValueTask.CompletedTask;
+    }
+
+    /// <summary>Disposes the cached clients.</summary>
+    /// <param name="disposing"><see langword="true" /> when called from <see cref="Dispose()" />.</param>
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!disposing || Interlocked.Exchange(ref _disposed, 1) != 0)
+            return;
+
+        foreach (var key in _clients.Keys)
+        {
+            if (_clients.TryRemove(key, out var entry) && entry.Client.IsValueCreated)
+                entry.Client.Value.Dispose();
+        }
+    }
+
+    private StorageClient CreateClient(Uri? serviceUrl)
     {
         var builder = new StorageClientBuilder();
 
-        // Set credentials
-        if (credentials is not null)
-            builder.Credential = credentials;
+        if (_options.DefaultCredentials is not null)
+            builder.Credential = _options.DefaultCredentials;
         else if (_options.UseDefaultCredentials)
         {
             try
@@ -124,7 +153,7 @@ public class GcsClientFactory
         {
             throw new InvalidOperationException(
                 "No Google Cloud credentials available. " +
-                "Provide credentials via options, URI parameters, or enable UseDefaultCredentials for Application Default Credentials.");
+                "Set GcsStorageProviderOptions.DefaultCredentials, or enable UseDefaultCredentials for Application Default Credentials.");
         }
 
         // Set service URL for emulator or custom endpoints
@@ -133,109 +162,72 @@ public class GcsClientFactory
 
         var newClient = builder.Build();
 
-        // GcsStorageProviderOptions.Resilience is the only retry layer. One try per HTTP request turns off the SDK's
-        // retry of metadata calls and its in-session resume of resumable uploads. The handler records Retry-After for
-        // the classifier; it never retries.
-        var messageHandler = newClient.Service.HttpClient.MessageHandler;
-        messageHandler.NumTries = 1;
-        messageHandler.AddUnsuccessfulResponseHandler(GcsRetryAfter.Handler);
+        // Retry layers, one per kind of request:
+        //  - Metadata, list, delete and copy calls pass RetryOptions.Never (or are raw requests the SDK does not mark
+        //    as retriable), so GcsStorageProviderOptions.Resilience is the only layer that retries them.
+        //  - Reads resume under that same policy in ResumingReadStream.
+        //  - Writes are a stream that cannot be replayed, so they retry inside the SDK's resumable-upload session: it
+        //    queries the session for the committed offset and re-sends from there. That needs the handler's default
+        //    NumTries, so it is deliberately left alone.
+        // The handler below records Retry-After for the classifier; it never retries.
+        newClient.Service.HttpClient.MessageHandler.AddUnsuccessfulResponseHandler(GcsRetryAfter.Handler);
 
-        OnClientCreated(cacheKey);
         return newClient;
     }
 
-    private void OnClientCreated(string cacheKey)
+    private void Evict(GcsClientKey keep)
     {
-        lock (_cacheLock)
+        lock (_evictionLock)
         {
-            if (_cacheOrder.Find(cacheKey) is not null)
-                return;
-
-            if (_cacheOrder.Count >= _options.ClientCacheSizeLimit)
+            while (_clients.Count > _options.ClientCacheSizeLimit)
             {
-                // Evict oldest entry
-                if (_cacheOrder.First is not null)
+                GcsClientKey? oldestKey = null;
+                var oldest = long.MaxValue;
+
+                foreach (var pair in _clients)
                 {
-                    var oldestKey = _cacheOrder.First.Value;
-                    _cacheOrder.RemoveFirst();
-                    _clientCache.TryRemove(oldestKey, out _);
+                    if (pair.Key.Equals(keep))
+                        continue;
+
+                    var used = pair.Value.LastUsed;
+
+                    if (used < oldest)
+                    {
+                        oldest = used;
+                        oldestKey = pair.Key;
+                    }
                 }
+
+                if (oldestKey is not { } victim || !_clients.TryRemove(victim, out _))
+                    return;
             }
-
-            _cacheOrder.AddLast(cacheKey);
         }
     }
 
-    /// <summary>
-    ///     Extracts Google credentials from the storage URI or returns default credentials.
-    /// </summary>
-    /// <param name="uri">The storage URI.</param>
-    /// <returns>The Google credentials, or null if using default credentials.</returns>
-    private GoogleCredential? GetCredentials(StorageUri uri)
+    private static void RejectCredentialParameters(StorageUri uri)
     {
-        // URI credentials are cached: the client cache keys on the credential instance, so a new instance per call
-        // would build (and cache) a new StorageClient, and re-read the key file, on every operation.
-        if (uri.Parameters.TryGetValue("accessToken", out var accessToken) &&
-            !string.IsNullOrWhiteSpace(accessToken))
-            return GetOrAddCredential($"token:{ComputeStableHash(accessToken)}", () => GoogleCredential.FromAccessToken(accessToken));
-
-        if (uri.Parameters.TryGetValue("credentialsPath", out var credentialsPath) &&
-            !string.IsNullOrWhiteSpace(credentialsPath))
+        foreach (var name in new[] { "accessToken", "credentialsPath" })
         {
-            var expandedPath = Path.GetFullPath(Environment.ExpandEnvironmentVariables(credentialsPath));
-
-            return GetOrAddCredential($"file:{expandedPath}", () =>
+            if (uri.Parameters.ContainsKey(name))
             {
-                if (!File.Exists(expandedPath))
-                {
-                    throw new FileNotFoundException(
-                        $"Google Cloud credentials file not found at path: {expandedPath}");
-                }
-
-                var json = File.ReadAllText(expandedPath);
-                var credentialType = ExtractCredentialType(json);
-                return CredentialFactory.FromJson(json, credentialType);
-            });
+                throw new ArgumentException(
+                    $"The '{name}' URI parameter is not supported: secrets do not belong in URIs. " +
+                    "Set GcsStorageProviderOptions.DefaultCredentials instead.",
+                    nameof(uri));
+            }
         }
-
-        // Return default credentials from options if available
-        if (_options.DefaultCredentials is not null)
-            return _options.DefaultCredentials;
-
-        // Return null to indicate ADC should be used (if enabled)
-        return null;
     }
-
-    private GoogleCredential GetOrAddCredential(string key, Func<GoogleCredential> create)
-    {
-        if (_credentialCache.TryGetValue(key, out var cached))
-            return cached;
-
-        var credential = create();
-
-        // Bounded like the client cache; rotating tokens would otherwise grow it without limit.
-        if (_credentialCache.Count >= _options.ClientCacheSizeLimit)
-            _credentialCache.Clear();
-
-        return _credentialCache.GetOrAdd(key, credential);
-    }
-
-    private static string ComputeStableHash(string value) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value)));
 
     /// <summary>
     ///     Extracts the service URL from the storage URI or returns the default service URL.
     /// </summary>
-    /// <param name="uri">The storage URI.</param>
-    /// <returns>The service URL, or null if using the default GCS endpoint.</returns>
     private Uri? GetServiceUrl(StorageUri uri)
     {
         if (uri.Parameters.TryGetValue("serviceUrl", out var serviceUrlString) &&
             !string.IsNullOrEmpty(serviceUrlString))
         {
             // StorageUri has already decoded the parameter; decoding again would corrupt values containing '%'.
-            var decoded = serviceUrlString;
-
-            if (Uri.TryCreate(decoded, UriKind.Absolute, out var serviceUrl))
+            if (Uri.TryCreate(serviceUrlString, UriKind.Absolute, out var serviceUrl))
                 return serviceUrl;
 
             throw new ArgumentException($"Invalid service URL: {serviceUrlString}", nameof(uri));
@@ -247,8 +239,6 @@ public class GcsClientFactory
     /// <summary>
     ///     Extracts the project ID from the storage URI or returns the default project ID.
     /// </summary>
-    /// <param name="uri">The storage URI.</param>
-    /// <returns>The project ID, or null if not specified.</returns>
     private string? GetProjectId(StorageUri uri)
     {
         if (uri.Parameters.TryGetValue("projectId", out var projectId) &&
@@ -256,28 +246,6 @@ public class GcsClientFactory
             return projectId;
 
         return _options.DefaultProjectId;
-    }
-
-    /// <summary>
-    ///     Builds a cache key for the client configuration.
-    /// </summary>
-    private static string BuildCacheKey(
-        GoogleCredential? credentials,
-        Uri? serviceUrl,
-        string? projectId)
-    {
-        var parts = new List<string>
-        {
-            serviceUrl?.ToString() ?? "default",
-            projectId ?? "no-project",
-        };
-
-        // Use credential hash to avoid exposing sensitive data
-        parts.Add(credentials is null
-            ? "adc"
-            : $"credential-{RuntimeHelpers.GetHashCode(credentials)}");
-
-        return string.Join("|", parts);
     }
 
     private static bool ShouldUseEmulatorFallback(Uri? serviceUrl)
@@ -289,22 +257,19 @@ public class GcsClientFactory
         return !string.IsNullOrWhiteSpace(emulatorHost);
     }
 
-    /// <summary>
-    ///     Extracts the credential type from a JSON credentials file.
-    /// </summary>
-    /// <param name="json">The JSON content of the credentials file.</param>
-    /// <returns>The credential type string.</returns>
-    private static string ExtractCredentialType(string json)
+    /// <summary>The non-secret data that identifies a client: the endpoint and the project.</summary>
+    private readonly record struct GcsClientKey(string? ServiceUrl, string? ProjectId);
+
+    private sealed class CacheEntry(Func<StorageClient> create)
     {
-        using var doc = JsonDocument.Parse(json);
-        var root = doc.RootElement;
+        private long _lastUsed;
 
-        if (root.TryGetProperty("type", out var typeElement))
+        public Lazy<StorageClient> Client { get; } = new(create, LazyThreadSafetyMode.ExecutionAndPublication);
+
+        public long LastUsed
         {
-            return typeElement.GetString()
-                   ?? throw new InvalidOperationException("Credential type is null in JSON.");
+            get => Volatile.Read(ref _lastUsed);
+            set => Volatile.Write(ref _lastUsed, value);
         }
-
-        throw new InvalidOperationException("Could not find 'type' property in credentials JSON.");
     }
 }

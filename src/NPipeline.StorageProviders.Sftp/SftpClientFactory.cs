@@ -9,6 +9,12 @@ namespace NPipeline.StorageProviders.Sftp;
 /// </summary>
 public class SftpClientFactory : IDisposable, IAsyncDisposable
 {
+    private static readonly (string Parameter, string Option)[] SecretParameters =
+    [
+        ("password", nameof(SftpStorageProviderOptions.DefaultPassword)),
+        ("keyPassphrase", nameof(SftpStorageProviderOptions.DefaultKeyPassphrase)),
+    ];
+
     private readonly SftpStorageProviderOptions _options;
     private bool _disposed;
 
@@ -206,17 +212,21 @@ public class SftpClientFactory : IDisposable, IAsyncDisposable
     {
         var methods = new List<AuthenticationMethod>();
 
-        // Check for explicit password in URI
-        if (uri.Parameters.TryGetValue("password", out var passwordParam) &&
-            !string.IsNullOrWhiteSpace(passwordParam))
+        // Secrets never travel in URI parameters: URIs are logged and compared. The password in the user information
+        // (user:pass@host) is the one exception, because that is the established form for SFTP, and it is redacted by ToString().
+        foreach (var (parameter, option) in SecretParameters)
         {
-            var username = GetUsername(uri);
-            methods.Add(new PasswordAuthenticationMethod(username, passwordParam));
+            if (uri.Parameters.ContainsKey(parameter))
+            {
+                throw new ArgumentException(
+                    $"The '{parameter}' URI parameter is no longer supported, because URIs are logged and compared. Set {option} in the provider options instead.",
+                    nameof(uri));
+            }
         }
 
         // Check for explicit key path in URI
-        else if (uri.Parameters.TryGetValue("keyPath", out var keyPathParam) &&
-                 !string.IsNullOrWhiteSpace(keyPathParam))
+        if (uri.Parameters.TryGetValue("keyPath", out var keyPathParam) &&
+            !string.IsNullOrWhiteSpace(keyPathParam))
         {
             var keyMethod = BuildKeyAuthenticationMethod(uri, keyPathParam);
 
@@ -255,7 +265,7 @@ public class SftpClientFactory : IDisposable, IAsyncDisposable
         {
             throw new ArgumentException(
                 "SFTP authentication requires either a password or private key. " +
-                "Provide credentials via URI parameters or configure defaults in options.",
+                "Put the password in the URI user information, give a keyPath, or configure defaults in options.",
                 nameof(uri));
         }
 
@@ -270,7 +280,7 @@ public class SftpClientFactory : IDisposable, IAsyncDisposable
         try
         {
             var username = GetUsername(uri);
-            var passphrase = GetKeyPassphrase(uri);
+            var passphrase = GetKeyPassphrase();
 
             if (!File.Exists(keyPath))
             {
@@ -295,13 +305,7 @@ public class SftpClientFactory : IDisposable, IAsyncDisposable
     }
 
     /// <summary>
-    ///     Gets the key passphrase from the URI or options.
+    ///     Gets the key passphrase from the options.
     /// </summary>
-    private string? GetKeyPassphrase(StorageUri uri)
-    {
-        if (uri.Parameters.TryGetValue("keyPassphrase", out var passphraseParam))
-            return passphraseParam;
-
-        return _options.DefaultKeyPassphrase;
-    }
+    private string? GetKeyPassphrase() => _options.DefaultKeyPassphrase;
 }

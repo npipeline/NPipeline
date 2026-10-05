@@ -32,8 +32,8 @@ internal sealed class FileSystemWriteStream : StorageWriteStream
             FileMode.CreateNew,
             FileAccess.Write,
             FileShare.None,
-            81920,
-            FileOptions.Asynchronous | FileOptions.SequentialScan);
+            0, // The connectors buffer through FileNodeOptions.BufferSize; a second buffer here only adds a copy.
+            FileOptions.Asynchronous);
     }
 
     public override bool CanRead => false;

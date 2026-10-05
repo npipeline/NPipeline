@@ -9,7 +9,7 @@ This sample application demonstrates the following features of the Azure Blob St
 
 1. **Basic Read/Write Operations** - Writing and reading simple text files
 2. **CSV Processing** - Creating, uploading, reading, and transforming CSV data
-3. **Large File Handling** - Uploading large files (>64MB) using block blob upload
+3. **Large File Handling** - Streaming large files to Azure in blocks, with no local temporary file
 4. **Listing and Filtering** - Listing blobs recursively and with prefix filters
 5. **Metadata Operations** - Uploading with custom metadata and retrieving blob properties
 6. **Error Handling** - Proper exception handling for various error scenarios
@@ -56,22 +56,23 @@ For production use, you'll need an Azure Storage account:
 
 ## Configuration
 
-The sample supports multiple configuration methods in the following priority order:
+The sample supports multiple configuration methods in the following priority order. The sample passes credentials to the provider through its options. A blob URI never carries a credential.
 
 ### 1. appsettings.json (Recommended for Development)
 
-Edit `appsettings.json`:
+Edit `appsettings.json`. The default configuration uses the Azurite emulator's published development account:
 
 ```json
 {
   "AzureStorage": {
-    "DefaultConnectionString": "UseDevelopmentStorage=true",
+    "AccountName": "devstoreaccount1",
+    "AccountKey": "<azurite-key>",
     "ServiceUrl": "http://127.0.0.1:10000/devstoreaccount1"
   }
 }
 ```
 
-For Azure Storage:
+For Azure Storage, use a connection string. A connection string names its own endpoint, so the sample ignores `ServiceUrl` when you set one:
 
 ```json
 {
@@ -86,23 +87,23 @@ For Azure Storage:
 Set environment variables:
 
 ```bash
-# For Azurite
-export AZURE_STORAGE_CONNECTION_STRING="UseDevelopmentStorage=true"
-
 # For Azure Storage
 export AZURE_STORAGE_CONNECTION_STRING="DefaultEndpointsProtocol=https;AccountName=youraccount;AccountKey=yourkey;EndpointSuffix=core.windows.net"
 ```
 
 ### 3. Individual Environment Variables
 
+The sample binds the `AzureStorage` section from environment variables too:
+
 ```bash
-export AZURE_STORAGE_ACCOUNT_NAME="youraccount"
-export AZURE_STORAGE_ACCOUNT_KEY="yourkey"
+export AzureStorage__AccountName="youraccount"
+export AzureStorage__AccountKey="yourkey"
+export AzureStorage__ServiceUrl="https://youraccount.blob.core.windows.net"
 ```
 
 ### 4. Code Configuration (Fallback)
 
-The sample includes a fallback to `UseDevelopmentStorage=true` for Azurite if no configuration is provided.
+If you configure nothing, the sample falls back to the Azurite emulator's development account at `http://127.0.0.1:10000/devstoreaccount1`.
 
 ## Authentication Methods
 
@@ -113,28 +114,35 @@ The Azure Blob Storage Provider supports multiple authentication methods:
 ```csharp
 services.AddAzureBlobStorageProvider(options =>
 {
-    options.DefaultConnectionString = "UseDevelopmentStorage=true";
-    // or
     options.DefaultConnectionString = "DefaultEndpointsProtocol=https;AccountName=...;AccountKey=...";
 });
 ```
 
 ### Account Key
 
-Set environment variables or configure in appsettings.json:
+Set the account name and key in the options. For Azurite, also set `ServiceUrl`:
 
-```bash
-export AZURE_STORAGE_ACCOUNT_NAME="youraccount"
-export AZURE_STORAGE_ACCOUNT_KEY="yourkey"
+```csharp
+services.AddAzureBlobStorageProvider(options =>
+{
+    options.AccountName = "youraccount";
+    options.DefaultAccountKey = "yourkey";
+});
 ```
 
 ### SAS Token (Shared Access Signature)
 
-Include the SAS token in your connection string or blob URI:
+Set the token in the options, with the account name. Set the token as Azure gives it to you; the provider sends it unchanged:
 
+```csharp
+services.AddAzureBlobStorageProvider(options =>
+{
+    options.AccountName = "youraccount";
+    options.DefaultSasToken = "sv=...&sp=...&sig=...";
+});
 ```
-azure://container/blob?sas_token=...
-```
+
+> **Breaking change:** The `connectionString`, `sasToken`, and `accountKey` URI parameters are no longer supported. A URI that carries one throws `ArgumentException` that names the option to set.
 
 ### Default Azure Credential Chain (Production)
 
@@ -205,13 +213,14 @@ When you run the sample, you'll see output similar to:
 ╚════════════════════════════════════════════════════════════════╝
 
   Azure Storage Configuration:
-    Connection String: UseDevelopmentStorage=true
+    Account Name: devstoreaccount1
+    Account Key: ***
     Service URL: http://127.0.0.1:10000/devstoreaccount1
 
   Upload Configuration:
-    Block Blob Threshold: 64 MB
+    Block Size (PartSizeBytes): 8 MiB
     Max Concurrency: 4
-    Max Transfer Size: 4 MB
+    Create Container If Missing: true
 
 ╔════════════════════════════════════════════════════════════════╗
 ║   Azure Blob Storage Provider - Comprehensive Demo Suite      ║
@@ -229,7 +238,7 @@ When you run the sample, you'll see output similar to:
   Supports Metadata: True
   Supports Hierarchy: False
   Capabilities:
-    - blockBlobUploadThresholdBytes: 67108864
+    - partSizeBytes: 8388608
     - supportsServiceUrl: True
     - supportsConnectionString: True
     - supportsSasToken: True
@@ -264,7 +273,7 @@ When you run the sample, you'll see output similar to:
   ✓ Cleanup completed
 
 ┌──────────────────────────────────────────────────────────────────┐
-│  Demo 3: Large File Handling (>64MB)                              │
+│  Demo 3: Large File Handling (streamed in blocks)                 │
 └──────────────────────────────────────────────────────────────────┘
   Generating large file (10MB)...
   ✓ File generated
@@ -351,19 +360,19 @@ When you run the sample, you'll see output similar to:
 ┌──────────────────────────────────────────────────────────────────┐
 │  Demo 7: Authentication Methods                                   │
 └──────────────────────────────────────────────────────────────────┘
-  The Azure Blob Storage Provider supports multiple authentication methods:
+  The Azure Blob Storage Provider supports multiple authentication methods.
+  You set credentials in AzureBlobStorageProviderOptions. A URI never carries a credential.
 
-  1. Connection String (Recommended for development):
-     - UseDevelopmentStorage=true (for Azurite emulator)
-     - DefaultEndpointsProtocol=https;AccountName=...;AccountKey=...;EndpointSuffix=core.windows.net
+  1. Connection String:
+     - options.DefaultConnectionString = "DefaultEndpointsProtocol=https;AccountName=...;AccountKey=...;EndpointSuffix=core.windows.net"
+     - A connection string names its own endpoint, so do not also set ServiceUrl
 
   2. Account Key:
-     - Set AZURE_STORAGE_ACCOUNT_NAME and AZURE_STORAGE_ACCOUNT_KEY environment variables
-     - Or configure via AzureBlobStorageProviderOptions.DefaultConnectionString
+     - options.AccountName and options.DefaultAccountKey
 
   3. SAS Token (Shared Access Signature):
-     - Include SAS token in the connection string or blob URI
-     - Example: azure://container/blob?sas_token=...
+     - options.AccountName and options.DefaultSasToken
+     - Set the token as Azure gives it to you; the provider sends it unchanged
 
   4. Default Azure Credential Chain (Production):
      - Uses DefaultAzureCredential from Azure.Identity
@@ -374,24 +383,29 @@ When you run the sample, you'll see output similar to:
      - Provide a custom TokenCredential via AzureBlobStorageProviderOptions.DefaultCredential
 
   Configuration Priority:
-    1. Connection string in URI parameters
-    2. AzureBlobStorageProviderOptions.DefaultConnectionString
-    3. AzureBlobStorageProviderOptions.DefaultCredential
-    4. Default credential chain (if UseDefaultCredentialChain is true)
+    1. AzureBlobStorageProviderOptions.DefaultConnectionString
+    2. AzureBlobStorageProviderOptions.DefaultSasToken
+    3. AzureBlobStorageProviderOptions.DefaultAccountKey
+    4. AzureBlobStorageProviderOptions.DefaultCredential
+    5. Default credential chain (if UseDefaultCredentialChain is true)
+
+  The connectionString, sasToken and accountKey URI parameters are no longer supported.
+  A URI that carries one throws ArgumentException that names the option to set.
 
   For this demo, we're using the Azurite emulator with:
-    ConnectionString: UseDevelopmentStorage=true
+    AccountName: devstoreaccount1 (and Azurite's published account key)
     ServiceUrl: http://127.0.0.1:10000/devstoreaccount1
 
   To configure authentication in your application:
 
   Option A - Environment Variables:
-    export AZURE_STORAGE_CONNECTION_STRING="UseDevelopmentStorage=true"
+    export AZURE_STORAGE_CONNECTION_STRING="DefaultEndpointsProtocol=https;AccountName=...;AccountKey=..."
 
   Option B - appsettings.json:
     {
       "AzureStorage": {
-        "DefaultConnectionString": "UseDevelopmentStorage=true",
+        "AccountName": "devstoreaccount1",
+        "AccountKey": "<azurite-key>",
         "ServiceUrl": "http://127.0.0.1:10000/devstoreaccount1"
       }
     }
@@ -399,8 +413,10 @@ When you run the sample, you'll see output similar to:
   Option C - Code Configuration:
     services.AddAzureBlobStorageProvider(options =>
     {
-        options.DefaultConnectionString = "UseDevelopmentStorage=true";
+        options.AccountName = "devstoreaccount1";
+        options.DefaultAccountKey = "<azurite-key>";
         options.ServiceUrl = new Uri("http://127.0.0.1:10000/devstoreaccount1");
+        options.CreateContainerIfMissing = true;
     });
 
 ╔════════════════════════════════════════════════════════════════╗
@@ -444,11 +460,12 @@ The sample uses Microsoft.Extensions.DependencyInjection for service registratio
 ```csharp
 services.AddAzureBlobStorageProvider(options =>
 {
-    options.DefaultConnectionString = "UseDevelopmentStorage=true";
+    options.AccountName = "devstoreaccount1";
+    options.DefaultAccountKey = "<azurite-key>";
     options.ServiceUrl = new Uri("http://127.0.0.1:10000/devstoreaccount1");
-    options.BlockBlobUploadThresholdBytes = 64 * 1024 * 1024;
-    options.UploadMaximumConcurrency = 4;
-    options.UploadMaximumTransferSizeBytes = 4 * 1024 * 1024;
+    options.PartSizeBytes = 8 * 1024 * 1024; // 8 MiB blocks
+    options.MaxConcurrency = 4;
+    options.CreateContainerIfMissing = true;  // containers are not created unless you ask
 });
 ```
 

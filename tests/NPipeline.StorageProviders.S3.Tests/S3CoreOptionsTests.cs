@@ -6,70 +6,56 @@ namespace NPipeline.StorageProviders.S3.Tests;
 public class S3CoreOptionsTests
 {
     [Fact]
-    public void Default_MultipartUploadThresholdBytes_Is64MB()
+    public void Defaults_Are8MiBPartsAndFourConcurrentUploads()
     {
-        // Arrange
         var options = new S3CoreOptions();
 
-        // Act & Assert
-        options.MultipartUploadThresholdBytes.Should().Be(64 * 1024 * 1024);
-    }
-
-    [Fact]
-    public void MultipartUploadThresholdBytes_CanBeChanged()
-    {
-        // Arrange
-        var options = new S3CoreOptions();
-
-        // Act
-        options.MultipartUploadThresholdBytes = 128 * 1024 * 1024;
-
-        // Assert
-        options.MultipartUploadThresholdBytes.Should().Be(128 * 1024 * 1024);
-    }
-
-    [Fact]
-    public void MultipartUploadThresholdBytes_CanBeSetToZero()
-    {
-        // Arrange
-        var options = new S3CoreOptions();
-
-        // Act
-        options.MultipartUploadThresholdBytes = 0;
-
-        // Assert
-        options.MultipartUploadThresholdBytes.Should().Be(0);
+        options.PartSizeBytes.Should().Be(8 * 1024 * 1024);
+        options.MaxConcurrency.Should().Be(4);
     }
 
     [Theory]
-    [InlineData(1)]
     [InlineData(5 * 1024 * 1024)]
     [InlineData(64 * 1024 * 1024)]
-    [InlineData(256 * 1024 * 1024)]
-    [InlineData(long.MaxValue)]
-    public void MultipartUploadThresholdBytes_AcceptsVariousValues(long threshold)
+    [InlineData(int.MaxValue)]
+    public void PartSizeBytes_AcceptsValuesFromTheS3Minimum(int size)
     {
-        // Arrange
+        var options = new S3CoreOptions { PartSizeBytes = size };
+
+        options.PartSizeBytes.Should().Be(size);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    [InlineData(5 * 1024 * 1024 - 1)]
+    public void PartSizeBytes_BelowTheS3Minimum_Throws(int size)
+    {
         var options = new S3CoreOptions();
 
-        // Act
-        options.MultipartUploadThresholdBytes = threshold;
+        var act = () => options.PartSizeBytes = size;
 
-        // Assert
-        options.MultipartUploadThresholdBytes.Should().Be(threshold);
+        act.Should().Throw<ArgumentOutOfRangeException>();
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void MaxConcurrency_NotPositive_Throws(int value)
+    {
+        var options = new S3CoreOptions();
+
+        var act = () => options.MaxConcurrency = value;
+
+        act.Should().Throw<ArgumentOutOfRangeException>();
     }
 
     [Fact]
     public void TwoInstances_HaveIndependentValues()
     {
-        // Arrange
-        var options1 = new S3CoreOptions();
+        var options1 = new S3CoreOptions { MaxConcurrency = 9 };
         var options2 = new S3CoreOptions();
 
-        // Act
-        options1.MultipartUploadThresholdBytes = 10;
-
-        // Assert
-        options2.MultipartUploadThresholdBytes.Should().Be(64 * 1024 * 1024);
+        options2.MaxConcurrency.Should().Be(4);
     }
 }

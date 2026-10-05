@@ -9,22 +9,19 @@ namespace NPipeline.StorageProviders.Azure.Tests;
 
 public class AzureBlobClientFactoryTests
 {
-    private readonly BlobServiceClient _fakeBlobServiceClient;
-    private readonly AzureBlobClientFactory _fakeClientFactory;
+    private const string ConnectionString = "DefaultEndpointsProtocol=https;AccountName=test;AccountKey=dGVzdA==;EndpointSuffix=core.windows.net";
 
-    public AzureBlobClientFactoryTests()
+    private static AzureBlobClientFactory NewFactory(Action<AzureBlobStorageProviderOptions>? configure = null)
     {
-        _fakeClientFactory = A.Fake<AzureBlobClientFactory>(c => c
-            .WithArgumentsForConstructor([new AzureBlobStorageProviderOptions()])
-            .CallsBaseMethods());
+        var options = new AzureBlobStorageProviderOptions { UseDefaultCredentialChain = false, DefaultSasToken = "sv=2022-11-02&sig=abc" };
+        configure?.Invoke(options);
 
-        _fakeBlobServiceClient = A.Fake<BlobServiceClient>();
+        return new AzureBlobClientFactory(options);
     }
 
     [Fact]
     public void Constructor_WithNullOptions_ThrowsArgumentNullException()
     {
-        // Act & Assert
         var exception = Assert.Throws<ArgumentNullException>(() => new AzureBlobClientFactory(null!));
         exception.ParamName.Should().Be("options");
     }
@@ -32,320 +29,163 @@ public class AzureBlobClientFactoryTests
     [Fact]
     public void Constructor_WithValidOptions_Succeeds()
     {
-        // Act
-        var factory = new AzureBlobClientFactory(new AzureBlobStorageProviderOptions());
-
-        // Assert
-        factory.Should().NotBeNull();
+        new AzureBlobClientFactory(new AzureBlobStorageProviderOptions()).Should().NotBeNull();
     }
 
     [Fact]
-    public async Task GetClientAsync_WithConnectionString_CreatesClient()
+    public async Task GetClientAsync_WithDefaultConnectionString_CreatesClient()
     {
-        // Arrange
-        A.CallTo(() => _fakeClientFactory.GetClientAsync(A<StorageUri>._, A<CancellationToken>._))
-            .Returns(Task.FromResult(_fakeBlobServiceClient));
+        var factory = NewFactory(o => o.DefaultConnectionString = ConnectionString);
 
-        var uri = StorageUri.Parse(
-            "azure://container/blob?connectionString=DefaultEndpointsProtocol=https;AccountName=test;AccountKey=test;EndpointSuffix=core.windows.net");
+        var client = await factory.GetClientAsync(StorageUri.Parse("azure://container/blob"));
 
-        // Act
-        var client = await _fakeClientFactory.GetClientAsync(uri);
-
-        // Assert
-        client.Should().NotBeNull();
-        client.Should().BeSameAs(_fakeBlobServiceClient);
+        client.Should().BeAssignableTo<BlobServiceClient>();
+        client.AccountName.Should().Be("test");
     }
 
     [Fact]
-    public async Task GetClientAsync_WithAccountKey_CreatesClient()
+    public async Task GetClientAsync_WithAccountKeyOption_CreatesClient()
     {
-        // Arrange
-        A.CallTo(() => _fakeClientFactory.GetClientAsync(A<StorageUri>._, A<CancellationToken>._))
-            .Returns(Task.FromResult(_fakeBlobServiceClient));
+        var factory = NewFactory(o =>
+        {
+            o.DefaultSasToken = null;
+            o.AccountName = "testaccount";
+            o.DefaultAccountKey = "dGVzdGtleQ==";
+        });
 
-        var uri = StorageUri.Parse("azure://container/blob?accountName=testaccount&accountKey=dGVzdGtleQ==");
+        var client = await factory.GetClientAsync(StorageUri.Parse("azure://container/blob"));
 
-        // Act
-        var client = await _fakeClientFactory.GetClientAsync(uri);
-
-        // Assert
-        client.Should().NotBeNull();
-        client.Should().BeSameAs(_fakeBlobServiceClient);
+        client.AccountName.Should().Be("testaccount");
+        client.Uri.Host.Should().Be("testaccount.blob.core.windows.net");
     }
 
     [Fact]
-    public async Task GetClientAsync_WithSasToken_CreatesClient()
+    public async Task GetClientAsync_AccountKeyWithoutAccountName_Throws()
     {
-        // Arrange
-        A.CallTo(() => _fakeClientFactory.GetClientAsync(A<StorageUri>._, A<CancellationToken>._))
-            .Returns(Task.FromResult(_fakeBlobServiceClient));
+        var factory = NewFactory(o =>
+        {
+            o.DefaultSasToken = null;
+            o.DefaultAccountKey = "dGVzdGtleQ==";
+            o.ServiceUrl = new Uri("https://localhost:10000/devstoreaccount1");
+        });
 
-        var uri = StorageUri.Parse(
-            "azure://container/blob?accountName=testaccount&sasToken=sv=2021-01-01&ss=b&srt=sco&sp=rwdlac&se=2021-01-02T00:00:00Z&st=2021-01-01T00:00:00Z&spr=https&sig=test");
+        var act = async () => await factory.GetClientAsync(StorageUri.Parse("azure://container/blob"));
 
-        // Act
-        var client = await _fakeClientFactory.GetClientAsync(uri);
+        await act.Should().ThrowAsync<ArgumentException>().WithMessage("*account name*");
+    }
 
-        // Assert
-        client.Should().NotBeNull();
-        client.Should().BeSameAs(_fakeBlobServiceClient);
+    [Fact]
+    public async Task GetClientAsync_WithSasTokenOption_CreatesClient()
+    {
+        var factory = NewFactory();
+
+        var client = await factory.GetClientAsync(StorageUri.Parse("azure://container/blob?accountName=testaccount"));
+
+        client.AccountName.Should().Be("testaccount");
     }
 
     [Fact]
     public async Task GetClientAsync_WithTokenCredential_CreatesClient()
     {
-        // Arrange
-        var tokenCredential = A.Fake<TokenCredential>();
-
-        var options = new AzureBlobStorageProviderOptions
+        var factory = NewFactory(o =>
         {
-            DefaultCredential = tokenCredential,
-        };
+            o.DefaultSasToken = null;
+            o.DefaultCredential = A.Fake<TokenCredential>();
+        });
 
-        var factory = new AzureBlobClientFactory(options);
+        var client = await factory.GetClientAsync(StorageUri.Parse("azure://container/blob?accountName=testaccount"));
 
-        var uri = StorageUri.Parse("azure://container/blob?accountName=testaccount");
-
-        // Act
-        var client = await factory.GetClientAsync(uri);
-
-        // Assert
-        client.Should().NotBeNull();
-        client.Should().BeAssignableTo<BlobServiceClient>();
+        client.AccountName.Should().Be("testaccount");
     }
 
     [Fact]
     public async Task GetClientAsync_WithDefaultCredentialChain_CreatesClient()
     {
-        // Arrange
-        var options = new AzureBlobStorageProviderOptions
+        var factory = NewFactory(o =>
         {
-            UseDefaultCredentialChain = true,
-        };
+            o.DefaultSasToken = null;
+            o.UseDefaultCredentialChain = true;
+        });
 
-        var factory = new AzureBlobClientFactory(options);
+        var client = await factory.GetClientAsync(StorageUri.Parse("azure://container/blob?accountName=testaccount"));
 
-        var uri = StorageUri.Parse("azure://container/blob?accountName=testaccount");
-
-        // Act
-        var client = await factory.GetClientAsync(uri);
-
-        // Assert
-        client.Should().NotBeNull();
-        client.Should().BeAssignableTo<BlobServiceClient>();
+        client.AccountName.Should().Be("testaccount");
     }
 
     [Fact]
-    public async Task GetClientAsync_WithServiceUrl_CreatesClient()
+    public async Task GetClientAsync_WithServiceUrlInUri_UsesIt()
     {
-        // Arrange
-        A.CallTo(() => _fakeClientFactory.GetClientAsync(A<StorageUri>._, A<CancellationToken>._))
-            .Returns(Task.FromResult(_fakeBlobServiceClient));
+        var factory = NewFactory();
 
-        var uri = StorageUri.Parse("azure://container/blob?serviceUrl=https://localhost:10000/devstoreaccount1");
+        var client = await factory.GetClientAsync(
+            StorageUri.Parse($"azure://container/blob?serviceUrl={Uri.EscapeDataString("https://localhost:10000/devstoreaccount1")}"));
 
-        // Act
-        var client = await _fakeClientFactory.GetClientAsync(uri);
+        client.Uri.Should().Be(new Uri("https://localhost:10000/devstoreaccount1"));
+    }
 
-        // Assert
-        client.Should().NotBeNull();
-        client.Should().BeSameAs(_fakeBlobServiceClient);
+    [Fact]
+    public async Task GetClientAsync_WithServiceUrlOption_UsesIt()
+    {
+        var factory = NewFactory(o => o.ServiceUrl = new Uri("https://localhost:10000/devstoreaccount1"));
+
+        var client = await factory.GetClientAsync(StorageUri.Parse("azure://container/blob"));
+
+        client.Uri.Should().Be(new Uri("https://localhost:10000/devstoreaccount1"));
     }
 
     [Fact]
     public async Task GetClientAsync_WithInvalidServiceUrl_ThrowsArgumentException()
     {
-        // Arrange
-        var uri = StorageUri.Parse("azure://container/blob?serviceUrl=invalid-url");
+        var factory = NewFactory();
 
-        var factory = new AzureBlobClientFactory(new AzureBlobStorageProviderOptions());
+        var act = async () => await factory.GetClientAsync(StorageUri.Parse("azure://container/blob?serviceUrl=invalid-url"));
 
-        // Act & Assert
-        await Assert.ThrowsAsync<ArgumentException>(() => factory.GetClientAsync(uri));
+        await act.Should().ThrowAsync<ArgumentException>();
     }
 
     [Fact]
-    public async Task GetClientAsync_WithSameConfiguration_ReturnsCachedClient()
+    public async Task GetClientAsync_WithoutAccountNameOrServiceUrl_Throws()
     {
-        // Arrange
-        var cachedClient = A.Fake<BlobServiceClient>();
+        var factory = NewFactory();
 
-        A.CallTo(() => _fakeClientFactory.GetClientAsync(A<StorageUri>._, A<CancellationToken>._))
-            .Returns(Task.FromResult(cachedClient));
+        var act = async () => await factory.GetClientAsync(StorageUri.Parse("azure://container/blob"));
 
-        var uri = StorageUri.Parse("azure://container/blob?accountName=testaccount&accountKey=dGVzdGtleQ==");
-
-        // Act
-        var result1 = await _fakeClientFactory.GetClientAsync(uri);
-        var result2 = await _fakeClientFactory.GetClientAsync(uri);
-
-        // Assert
-        result1.Should().BeSameAs(result2);
-        result1.Should().BeSameAs(cachedClient);
-
-        A.CallTo(() => _fakeClientFactory.GetClientAsync(A<StorageUri>._, A<CancellationToken>._))
-            .MustHaveHappened(2, Times.Exactly);
-    }
-
-    [Fact]
-    public async Task GetClientAsync_WithDifferentAccountKeys_ReturnsDifferentClients()
-    {
-        // Arrange
-        var client1 = A.Fake<BlobServiceClient>();
-        var client2 = A.Fake<BlobServiceClient>();
-        var callCount = 0;
-
-        A.CallTo(() => _fakeClientFactory.GetClientAsync(A<StorageUri>._, A<CancellationToken>._))
-            .ReturnsLazily(() =>
-            {
-                callCount++;
-
-                return Task.FromResult(callCount == 1
-                    ? client1
-                    : client2);
-            });
-
-        var uri1 = StorageUri.Parse("azure://container/blob?accountName=testaccount&accountKey=dGVzdGtleTE=");
-        var uri2 = StorageUri.Parse("azure://container/blob?accountName=testaccount&accountKey=dGVzdGtleTI=");
-
-        // Act
-        var result1 = await _fakeClientFactory.GetClientAsync(uri1);
-        var result2 = await _fakeClientFactory.GetClientAsync(uri2);
-
-        // Assert
-        result1.Should().NotBeSameAs(result2);
-    }
-
-    [Fact]
-    public async Task GetClientAsync_WithDifferentSasTokens_ReturnsDifferentClients()
-    {
-        // Arrange
-        var client1 = A.Fake<BlobServiceClient>();
-        var client2 = A.Fake<BlobServiceClient>();
-        var callCount = 0;
-
-        A.CallTo(() => _fakeClientFactory.GetClientAsync(A<StorageUri>._, A<CancellationToken>._))
-            .ReturnsLazily(() =>
-            {
-                callCount++;
-
-                return Task.FromResult(callCount == 1
-                    ? client1
-                    : client2);
-            });
-
-        var uri1 = StorageUri.Parse("azure://container/blob?accountName=testaccount&sasToken=token1");
-        var uri2 = StorageUri.Parse("azure://container/blob?accountName=testaccount&sasToken=token2");
-
-        // Act
-        var result1 = await _fakeClientFactory.GetClientAsync(uri1);
-        var result2 = await _fakeClientFactory.GetClientAsync(uri2);
-
-        // Assert
-        result1.Should().NotBeSameAs(result2);
-    }
-
-    [Fact]
-    public async Task GetClientAsync_WithDifferentServiceUrls_ReturnsDifferentClients()
-    {
-        // Arrange
-        var client1 = A.Fake<BlobServiceClient>();
-        var client2 = A.Fake<BlobServiceClient>();
-        var callCount = 0;
-
-        A.CallTo(() => _fakeClientFactory.GetClientAsync(A<StorageUri>._, A<CancellationToken>._))
-            .ReturnsLazily(() =>
-            {
-                callCount++;
-
-                return Task.FromResult(callCount == 1
-                    ? client1
-                    : client2);
-            });
-
-        var uri1 = StorageUri.Parse("azure://container/blob?serviceUrl=https://localhost:10000");
-        var uri2 = StorageUri.Parse("azure://container/blob?serviceUrl=https://localhost:10001");
-
-        // Act
-        var result1 = await _fakeClientFactory.GetClientAsync(uri1);
-        var result2 = await _fakeClientFactory.GetClientAsync(uri2);
-
-        // Assert
-        result1.Should().NotBeSameAs(result2);
-    }
-
-    [Fact]
-    public async Task GetClientAsync_WithDefaultConnectionString_UsesDefaultConnectionString()
-    {
-        // Arrange
-        var connectionString = "DefaultEndpointsProtocol=https;AccountName=test;AccountKey=test;EndpointSuffix=core.windows.net";
-
-        var options = new AzureBlobStorageProviderOptions
-        {
-            DefaultConnectionString = connectionString,
-        };
-
-        var factory = new AzureBlobClientFactory(options);
-
-        var uri = StorageUri.Parse("azure://container/blob");
-
-        // Act
-        var client = await factory.GetClientAsync(uri);
-
-        // Assert
-        client.Should().NotBeNull();
-        client.Should().BeAssignableTo<BlobServiceClient>();
-    }
-
-    [Fact]
-    public async Task GetClientAsync_WithDefaultServiceUrl_UsesDefaultServiceUrl()
-    {
-        // Arrange
-        var options = new AzureBlobStorageProviderOptions
-        {
-            ServiceUrl = new Uri("https://localhost:10000/devstoreaccount1"),
-        };
-
-        var factory = new AzureBlobClientFactory(options);
-
-        var uri = StorageUri.Parse("azure://container/blob");
-
-        // Act
-        var client = await factory.GetClientAsync(uri);
-
-        // Assert
-        client.Should().NotBeNull();
-        client.Should().BeAssignableTo<BlobServiceClient>();
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*Account name*");
     }
 
     [Fact]
     public async Task GetClientAsync_ServiceUrlWithDefaultConnectionString_Throws()
     {
-        // Arrange: previously this combination silently produced an anonymous client.
-        var options = new AzureBlobStorageProviderOptions
+        // Previously this combination silently produced an anonymous client.
+        var factory = NewFactory(o => o.DefaultConnectionString = ConnectionString);
+
+        var act = async () => await factory.GetClientAsync(
+            StorageUri.Parse($"azure://container/blob?serviceUrl={Uri.EscapeDataString("https://override.example.com")}"));
+
+        await act.Should().ThrowAsync<ArgumentException>().WithMessage("*service URL cannot be combined with a connection string*");
+    }
+
+    [Fact]
+    public async Task GetClientAsync_ServiceUrlOptionWithDefaultConnectionString_Throws()
+    {
+        var factory = NewFactory(o =>
         {
-            DefaultConnectionString = "DefaultEndpointsProtocol=https;AccountName=default;AccountKey=ZGVmYXVsdA==",
-        };
+            o.DefaultConnectionString = ConnectionString;
+            o.ServiceUrl = new Uri("https://override.example.com");
+        });
 
-        var factory = new AzureBlobClientFactory(options);
+        var act = async () => await factory.GetClientAsync(StorageUri.Parse("azure://container/blob"));
 
-        var uri = StorageUri.Parse("azure://container/blob?serviceUrl=https://override.example.com");
-
-        // Act
-        var act = async () => await factory.GetClientAsync(uri);
-
-        // Assert
         await act.Should().ThrowAsync<ArgumentException>().WithMessage("*service URL cannot be combined with a connection string*");
     }
 
     [Fact]
     public async Task GetClientAsync_NoCredentialsAndAnonymousNotAllowed_Throws()
     {
-        var factory = new AzureBlobClientFactory(new AzureBlobStorageProviderOptions
+        var factory = NewFactory(o =>
         {
-            ServiceUrl = new Uri("https://publicaccount.blob.core.windows.net"),
-            UseDefaultCredentialChain = false,
+            o.DefaultSasToken = null;
+            o.ServiceUrl = new Uri("https://publicaccount.blob.core.windows.net");
         });
 
         var act = async () => await factory.GetClientAsync(StorageUri.Parse("azure://container/blob"));
@@ -354,222 +194,173 @@ public class AzureBlobClientFactoryTests
     }
 
     [Fact]
-    public async Task GetClientAsync_DistinctSasTokens_ReturnDistinctClients()
+    public async Task GetClientAsync_WithAnonymousAccess_CreatesClient()
     {
-        // Every SAS token of one service version starts with the same characters ("sv=2022-11"),
-        // so the cache key must depend on the whole token.
-        var factory = new AzureBlobClientFactory(new AzureBlobStorageProviderOptions { UseDefaultCredentialChain = false });
+        var factory = NewFactory(o =>
+        {
+            o.DefaultSasToken = null;
+            o.ServiceUrl = new Uri("https://publicaccount.blob.core.windows.net");
+            o.AllowAnonymousAccess = true;
+        });
 
-        var first = await factory.GetClientAsync(StorageUri.Parse(
-            "azure://container/blob?accountName=acct&sasToken=" + Uri.EscapeDataString("sv=2022-11-02&sp=r&sig=AAAA")));
+        var client = await factory.GetClientAsync(StorageUri.Parse("azure://container/blob"));
 
-        var second = await factory.GetClientAsync(StorageUri.Parse(
-            "azure://container/blob?accountName=acct&sasToken=" + Uri.EscapeDataString("sv=2022-11-02&sp=rw&sig=BBBB")));
+        client.Should().BeAssignableTo<BlobServiceClient>();
+    }
+
+    [Theory]
+    [InlineData("connectionString", "DefaultConnectionString")]
+    [InlineData("sasToken", "DefaultSasToken")]
+    [InlineData("accountKey", "DefaultAccountKey")]
+    public async Task GetClientAsync_UriCarryingACredential_ThrowsNamingTheOption(string parameter, string option)
+    {
+        var factory = NewFactory(o => o.AccountName = "acct");
+        var uri = StorageUri.Parse($"azure://container/blob?accountName=acct&{parameter}=secret");
+
+        var act = async () => await factory.GetClientAsync(uri);
+
+        var exception = (await act.Should().ThrowAsync<ArgumentException>()).Which;
+        exception.Message.Should().Contain(parameter).And.Contain(option);
+        exception.Message.Should().NotContain("secret", "the exception must not echo the credential");
+    }
+
+    [Fact]
+    public async Task GetClientAsync_SameEndpoint_ReturnsTheSameClient()
+    {
+        var factory = NewFactory();
+        var uri = StorageUri.Parse("azure://container/blob?accountName=acct");
+
+        var first = await factory.GetClientAsync(uri);
+        var second = await factory.GetClientAsync(StorageUri.Parse("azure://other/path/x.txt?accountName=acct"));
+
+        second.Should().BeSameAs(first);
+    }
+
+    [Fact]
+    public async Task GetClientAsync_DifferentAccountNames_ReturnDifferentClients()
+    {
+        var factory = NewFactory();
+
+        var first = await factory.GetClientAsync(StorageUri.Parse("azure://container/blob?accountName=acct1"));
+        var second = await factory.GetClientAsync(StorageUri.Parse("azure://container/blob?accountName=acct2"));
+
+        second.Should().NotBeSameAs(first);
+        first.AccountName.Should().Be("acct1");
+        second.AccountName.Should().Be("acct2");
+    }
+
+    [Fact]
+    public async Task GetClientAsync_DifferentServiceUrls_ReturnDifferentClients()
+    {
+        var factory = NewFactory();
+
+        var first = await factory.GetClientAsync(StorageUri.Parse($"azure://container/blob?serviceUrl={Uri.EscapeDataString("https://localhost:10000/a")}"));
+        var second = await factory.GetClientAsync(StorageUri.Parse($"azure://container/blob?serviceUrl={Uri.EscapeDataString("https://localhost:10001/a")}"));
 
         second.Should().NotBeSameAs(first);
     }
 
     [Fact]
-    public async Task GetClientAsync_WithConnectionStringInUri_OverridesDefaultConnectionString()
+    public async Task GetClientAsync_AccountNameInUri_OverridesTheOptionDefault()
     {
-        // Arrange
-        var options = new AzureBlobStorageProviderOptions
-        {
-            DefaultConnectionString = "DefaultEndpointsProtocol=https;AccountName=default;AccountKey=default",
-        };
+        var factory = NewFactory(o => o.AccountName = "default");
 
-        var factory = new AzureBlobClientFactory(options);
+        var overridden = await factory.GetClientAsync(StorageUri.Parse("azure://container/blob?accountName=other"));
+        var defaulted = await factory.GetClientAsync(StorageUri.Parse("azure://container/blob"));
 
-        var uri = StorageUri.Parse("azure://container/blob?connectionString=DefaultEndpointsProtocol=https;AccountName=override;AccountKey=override");
-
-        // Act
-        var client = await factory.GetClientAsync(uri);
-
-        // Assert
-        client.Should().NotBeNull();
-        client.Should().BeAssignableTo<BlobServiceClient>();
+        overridden.AccountName.Should().Be("other");
+        defaulted.AccountName.Should().Be("default");
     }
 
     [Fact]
-    public async Task GetClientAsync_WithAccountNameInUri_UsesAccountName()
+    public async Task GetClientAsync_EmptyAccountNameParameter_FallsBackToTheOption()
     {
-        // Arrange
-        A.CallTo(() => _fakeClientFactory.GetClientAsync(A<StorageUri>._, A<CancellationToken>._))
-            .Returns(Task.FromResult(_fakeBlobServiceClient));
+        var factory = NewFactory(o => o.AccountName = "default");
 
-        var uri = StorageUri.Parse("azure://container/blob?accountName=myaccount");
+        var client = await factory.GetClientAsync(StorageUri.Parse("azure://container/blob?accountName="));
 
-        // Act
-        var client = await _fakeClientFactory.GetClientAsync(uri);
-
-        // Assert
-        client.Should().NotBeNull();
-        client.Should().BeSameAs(_fakeBlobServiceClient);
+        client.AccountName.Should().Be("default");
     }
 
     [Fact]
-    public async Task GetClientAsync_WithAnonymousAccess_CreatesClient()
+    public async Task GetClientAsync_CacheIsBoundedByClientCacheSizeLimit()
     {
-        // Arrange
-        var options = new AzureBlobStorageProviderOptions
-        {
-            ServiceUrl = new Uri("https://publicaccount.blob.core.windows.net"),
-            UseDefaultCredentialChain = false,
-            AllowAnonymousAccess = true,
-        };
+        var factory = NewFactory(o => o.ClientCacheSizeLimit = 1);
 
-        var factory = new AzureBlobClientFactory(options);
+        var firstA = await factory.GetClientAsync(StorageUri.Parse("azure://container/blob?accountName=acct1"));
+        var stillA = await factory.GetClientAsync(StorageUri.Parse("azure://container/blob?accountName=acct1"));
+        _ = await factory.GetClientAsync(StorageUri.Parse("azure://container/blob?accountName=acct2"));
+        var secondA = await factory.GetClientAsync(StorageUri.Parse("azure://container/blob?accountName=acct1"));
 
-        var uri = StorageUri.Parse("azure://container/blob");
-
-        // Act
-        var client = await factory.GetClientAsync(uri);
-
-        // Assert
-        client.Should().NotBeNull();
-        client.Should().BeAssignableTo<BlobServiceClient>();
+        stillA.Should().BeSameAs(firstA);
+        secondA.Should().NotBeSameAs(firstA, "acct1 was evicted when acct2 filled the one-entry cache");
     }
 
     [Fact]
-    public async Task GetClientAsync_WithConnectionStringTakesPrecedence()
+    public async Task GetClientAsync_CacheWithRoom_KeepsEveryEndpoint()
     {
-        // Arrange
-        A.CallTo(() => _fakeClientFactory.GetClientAsync(A<StorageUri>._, A<CancellationToken>._))
-            .Returns(Task.FromResult(_fakeBlobServiceClient));
+        var factory = NewFactory(o => o.ClientCacheSizeLimit = 2);
 
-        // Connection string should take precedence over other parameters
-        var uri = StorageUri.Parse(
-            "azure://container/blob?connectionString=DefaultEndpointsProtocol=https;AccountName=test;AccountKey=test&accountName=otheraccount&accountKey=otherkey");
+        var firstA = await factory.GetClientAsync(StorageUri.Parse("azure://container/blob?accountName=acct1"));
+        _ = await factory.GetClientAsync(StorageUri.Parse("azure://container/blob?accountName=acct2"));
+        var secondA = await factory.GetClientAsync(StorageUri.Parse("azure://container/blob?accountName=acct1"));
 
-        // Act
-        var client = await _fakeClientFactory.GetClientAsync(uri);
-
-        // Assert
-        client.Should().NotBeNull();
-        client.Should().BeSameAs(_fakeBlobServiceClient);
-    }
-
-    [Theory]
-    [InlineData("https://localhost:10000/devstoreaccount1")]
-    [InlineData("https://storageaccount.blob.core.windows.net")]
-    [InlineData("https://customendpoint.example.com")]
-    public async Task GetClientAsync_WithValidServiceUrls_CreatesClient(string serviceUrl)
-    {
-        // Arrange
-        A.CallTo(() => _fakeClientFactory.GetClientAsync(A<StorageUri>._, A<CancellationToken>._))
-            .Returns(Task.FromResult(_fakeBlobServiceClient));
-
-        var encodedUrl = Uri.EscapeDataString(serviceUrl);
-        var uri = StorageUri.Parse($"azure://container/blob?serviceUrl={encodedUrl}");
-
-        // Act
-        var client = await _fakeClientFactory.GetClientAsync(uri);
-
-        // Assert
-        client.Should().NotBeNull();
-        client.Should().BeSameAs(_fakeBlobServiceClient);
-    }
-
-    [Theory]
-    [InlineData("myaccount")]
-    [InlineData("my-storage-account")]
-    [InlineData("storageaccount123")]
-    public async Task GetClientAsync_WithValidAccountNames_CreatesClient(string accountName)
-    {
-        // Arrange
-        A.CallTo(() => _fakeClientFactory.GetClientAsync(A<StorageUri>._, A<CancellationToken>._))
-            .Returns(Task.FromResult(_fakeBlobServiceClient));
-
-        var uri = StorageUri.Parse($"azure://container/blob?accountName={accountName}");
-
-        // Act
-        var client = await _fakeClientFactory.GetClientAsync(uri);
-
-        // Assert
-        client.Should().NotBeNull();
-        client.Should().BeSameAs(_fakeBlobServiceClient);
+        secondA.Should().BeSameAs(firstA);
     }
 
     [Fact]
-    public async Task GetClientAsync_WithMixedCredentials_CreatesCorrectClient()
+    public async Task GetClientAsync_AfterDispose_Throws()
     {
-        // Arrange
-        var options = new AzureBlobStorageProviderOptions
-        {
-            DefaultCredential = A.Fake<TokenCredential>(),
-        };
+        var factory = NewFactory();
+        factory.Dispose();
 
-        var factory = new AzureBlobClientFactory(options);
+        var act = async () => await factory.GetClientAsync(StorageUri.Parse("azure://container/blob?accountName=acct"));
 
-        // URI with explicit connection string should take precedence
-        var uri = StorageUri.Parse("azure://container/blob?connectionString=DefaultEndpointsProtocol=https;AccountName=test;AccountKey=test");
-
-        // Act
-        var client = await factory.GetClientAsync(uri);
-
-        // Assert
-        client.Should().NotBeNull();
-        client.Should().BeAssignableTo<BlobServiceClient>();
+        await act.Should().ThrowAsync<ObjectDisposedException>();
     }
 
     [Fact]
-    public async Task GetClientAsync_WithEmptyConnectionStringParameter_IgnoresParameter()
+    public async Task GetClientAsync_WithCancelledToken_Throws()
     {
-        // Arrange
-        var options = new AzureBlobStorageProviderOptions
-        {
-            ServiceUrl = new Uri("https://storageaccount.blob.core.windows.net"),
-        };
+        var factory = NewFactory();
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
 
-        var factory = new AzureBlobClientFactory(options);
+        var act = async () => await factory.GetClientAsync(StorageUri.Parse("azure://container/blob?accountName=acct"), cts.Token);
 
-        var uri = StorageUri.Parse("azure://container/blob?connectionString=");
-
-        // Act
-        var client = await factory.GetClientAsync(uri);
-
-        // Assert
-        client.Should().NotBeNull();
-        client.Should().BeAssignableTo<BlobServiceClient>();
+        await act.Should().ThrowAsync<OperationCanceledException>();
     }
 
     [Fact]
-    public async Task GetClientAsync_WithEmptyAccountNameParameter_IgnoresParameter()
+    public async Task GetClientAsync_SasTokenOptionWithEscapedSignature_IsSentVerbatim()
     {
-        // Arrange
-        var options = new AzureBlobStorageProviderOptions
-        {
-            DefaultConnectionString = "DefaultEndpointsProtocol=https;AccountName=test;AccountKey=test",
-        };
-
-        var factory = new AzureBlobClientFactory(options);
-
-        var uri = StorageUri.Parse("azure://container/blob?accountName=");
-
-        // Act
-        var client = await factory.GetClientAsync(uri);
-
-        // Assert
-        client.Should().NotBeNull();
-        client.Should().BeAssignableTo<BlobServiceClient>();
-    }
-
-    [Fact]
-    public async Task GetClientAsync_SasTokenWithEscapedSignature_IsSentVerbatim()
-    {
-        // The user escapes the SAS token once to embed it in the URI, and StorageUri decodes it once. A second decode
-        // would turn %2B into a literal '+', which Azure Storage reads as a space, so the signature would not match.
+        // The signature's %2B must reach the wire as %2B: a '+' would be read as a space by Azure Storage and the
+        // signature would not match.
         using var server = new RecordingHttpServer();
         const string sas = "sv=2022-11-02&sr=b&sp=r&sig=ab%2Bcd%2Fef%3D";
 
-        var factory = new AzureBlobClientFactory(new AzureBlobStorageProviderOptions { UseDefaultCredentialChain = false });
-        var provider = new AzureBlobStorageProvider(factory, new AzureBlobStorageProviderOptions());
+        var options = new AzureBlobStorageProviderOptions { UseDefaultCredentialChain = false, DefaultSasToken = sas };
+        var provider = new AzureBlobStorageProvider(new AzureBlobClientFactory(options), options);
 
-        var uri = StorageUri.Parse(
-            $"azure://container/blob?accountName=acct&serviceUrl={Uri.EscapeDataString(server.BaseUrl + "acct")}&sasToken={Uri.EscapeDataString(sas)}");
+        var uri = StorageUri.Parse($"azure://container/blob?accountName=acct&serviceUrl={Uri.EscapeDataString(server.BaseUrl + "acct")}");
 
         _ = await provider.ExistsAsync(uri);
 
         server.RawUrls.Should().ContainSingle().Which.Should().Contain("sig=ab%2Bcd%2Fef%3D");
+    }
+
+    [Theory]
+    [InlineData("sv=2022-11-02&sr=b&sp=r&sig=ab+cd/ef=")]
+    [InlineData("sv=2022-11-02&sr=b&sp=r&sig=ab%2Bcd%2Fef%3D")]
+    public async Task GetClientAsync_SasTokenSignature_NeverChangesOnTheWire(string sas)
+    {
+        using var server = new RecordingHttpServer();
+        var options = new AzureBlobStorageProviderOptions { UseDefaultCredentialChain = false, DefaultSasToken = sas };
+        var provider = new AzureBlobStorageProvider(new AzureBlobClientFactory(options), options);
+
+        _ = await provider.ExistsAsync(StorageUri.Parse($"azure://container/blob?accountName=acct&serviceUrl={Uri.EscapeDataString(server.BaseUrl + "acct")}"));
+
+        var sig = sas[(sas.IndexOf("sig=", StringComparison.Ordinal) + 4)..];
+        server.RawUrls.Should().ContainSingle().Which.Should().Contain("sig=" + sig);
     }
 }

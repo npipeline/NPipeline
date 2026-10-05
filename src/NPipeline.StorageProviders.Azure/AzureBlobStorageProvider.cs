@@ -26,6 +26,7 @@ public sealed class AzureBlobStorageProvider : StorageProvider
     private static readonly IReadOnlyList<StorageScheme> SchemeList = [StorageScheme.Azure];
 
     private readonly AzureBlobClientFactory _clientFactory;
+    private readonly AzureContainerInitializer _containers;
     private readonly AzureBlobStorageProviderOptions _options;
 
     /// <summary>
@@ -37,6 +38,7 @@ public sealed class AzureBlobStorageProvider : StorageProvider
     {
         _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
         _options = options ?? throw new ArgumentNullException(nameof(options));
+        _containers = new AzureContainerInitializer(options);
     }
 
     /// <inheritdoc />
@@ -74,6 +76,8 @@ public sealed class AzureBlobStorageProvider : StorageProvider
         var (container, blob) = GetContainerAndBlob(uri, true);
         var blobServiceClient = await _clientFactory.GetClientAsync(uri, cancellationToken).ConfigureAwait(false);
 
+        await _containers.EnsureAsync(AzureClientBuilder.GetEndpoint(uri, _options), blobServiceClient, container, cancellationToken).ConfigureAwait(false);
+
         var contentType = !string.IsNullOrEmpty(options?.ContentType)
             ? options.ContentType
             : uri.Parameters.TryGetValue("contentType", out var ct) && !string.IsNullOrEmpty(ct)
@@ -85,9 +89,9 @@ public sealed class AzureBlobStorageProvider : StorageProvider
             container,
             blob,
             contentType,
-            _options.BlockBlobUploadThresholdBytes,
-            _options.UploadMaximumConcurrency,
-            _options.UploadMaximumTransferSizeBytes,
+            _options.PartSizeBytes,
+            _options.MaxConcurrency,
+            options?.LengthHint,
             options?.IfMatch,
             options?.Overwrite ?? true);
     }
@@ -232,20 +236,12 @@ public sealed class AzureBlobStorageProvider : StorageProvider
         var blobServiceClient = await _clientFactory.GetClientAsync(directory, cancellationToken).ConfigureAwait(false);
         var containerClient = blobServiceClient.GetBlobContainerClient(container);
 
-        // Check if container exists before enumerating to avoid 404 exceptions during enumeration
-        if (!await containerClient.ExistsAsync(cancellationToken).ConfigureAwait(false))
-            yield break;
-
         if (recursive)
         {
-            await foreach (var blobItem in containerClient.GetBlobsAsync(
-                               BlobTraits.Metadata,
-                               BlobStates.None,
-                               blobPrefix,
-                               cancellationToken).ConfigureAwait(false))
-            {
-                cancellationToken.ThrowIfCancellationRequested();
+            var blobs = containerClient.GetBlobsAsync(BlobTraits.None, BlobStates.None, blobPrefix, cancellationToken);
 
+            await foreach (var blobItem in AzureListing.GuardAsync(blobs, ex => AzureErrors.Translate(ex, container, blobPrefix), cancellationToken).ConfigureAwait(false))
+            {
                 // Zero-byte "folder marker" blobs (names ending in '/') are not files.
                 if (blobItem.Name.EndsWith('/'))
                     continue;
@@ -261,15 +257,15 @@ public sealed class AzureBlobStorageProvider : StorageProvider
         }
         else
         {
-            await foreach (var blobItem in containerClient.GetBlobsByHierarchyAsync(
-                               BlobTraits.Metadata,
-                               BlobStates.None,
-                               prefix: blobPrefix,
-                               delimiter: "/",
-                               cancellationToken: cancellationToken).ConfigureAwait(false))
-            {
-                cancellationToken.ThrowIfCancellationRequested();
+            var items = containerClient.GetBlobsByHierarchyAsync(
+                BlobTraits.None,
+                BlobStates.None,
+                prefix: blobPrefix,
+                delimiter: "/",
+                cancellationToken: cancellationToken);
 
+            await foreach (var blobItem in AzureListing.GuardAsync(items, ex => AzureErrors.Translate(ex, container, blobPrefix), cancellationToken).ConfigureAwait(false))
+            {
                 if (blobItem.IsPrefix)
                 {
                     yield return new StorageItem

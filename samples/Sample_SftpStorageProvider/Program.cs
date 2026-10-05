@@ -185,7 +185,7 @@ Console.WriteLine();
 Console.WriteLine("Example 6: Using URI-based credentials");
 Console.WriteLine("  You can specify credentials in the URI:");
 Console.WriteLine("    sftp://user:password@host/path/file.txt");
-Console.WriteLine("    sftp://host/path/file.txt?username=user&password=secret");
+Console.WriteLine("    sftp://user:secret@host/path/file.txt");
 Console.WriteLine("    sftp://host/path/file.txt?username=user&keyPath=/path/to/key");
 Console.WriteLine();
 

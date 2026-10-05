@@ -11,7 +11,7 @@ public sealed class AzureBlobStorageProviderConformanceTests(AzuriteFixture fixt
     private readonly string _container = $"conformance-{Guid.NewGuid():N}";
 
     protected override StorageUri RootUri => StorageUri.Parse(
-        $"azure://{_container}/root/?accountName={AzuriteFixture.AccountName}&accountKey={Uri.EscapeDataString(AzuriteFixture.AccountKey)}");
+        $"azure://{_container}/root/?accountName={AzuriteFixture.AccountName}");
 
     // The Azure client resolves "." and ".." segments in the request URL, so a blob cannot be named with them.
     protected override bool PreservesNonCanonicalPaths => false;
