@@ -67,11 +67,15 @@ try
     var writeUri = StorageUri.Parse("sftp://localhost/upload/sample.txt");
 
     await using var writeStream = await provider.OpenWriteAsync(writeUri);
-    using var writer = new StreamWriter(writeStream);
 
-    await writer.WriteLineAsync("Hello from SFTP Storage Provider!");
-    await writer.WriteLineAsync($"Written at: {DateTime.UtcNow:O}");
-    await writer.WriteLineAsync("This is a sample file created by NPipeline.");
+    await using (var writer = new StreamWriter(writeStream, leaveOpen: true))
+    {
+        await writer.WriteLineAsync("Hello from SFTP Storage Provider!");
+        await writer.WriteLineAsync($"Written at: {DateTime.UtcNow:O}");
+        await writer.WriteLineAsync("This is a sample file created by NPipeline.");
+    }
+
+    await writeStream.CommitAsync();
 
     Console.WriteLine("  ✓ File written successfully to /upload/sample.txt");
 }

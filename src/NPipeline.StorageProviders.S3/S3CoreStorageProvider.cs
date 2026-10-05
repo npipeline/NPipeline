@@ -93,7 +93,7 @@ public abstract class S3CoreStorageProvider : StorageProvider, IAsyncDisposable
                 ? ct
                 : null;
 
-        return new PassThroughWriteStream(new S3WriteStream(client, bucket, key, contentType, Options.MultipartUploadThresholdBytes));
+        return new S3WriteStream(client, bucket, key, contentType, Options.MultipartUploadThresholdBytes, ifMatch: options?.IfMatch, overwrite: options?.Overwrite ?? true);
     }
 
     /// <inheritdoc />

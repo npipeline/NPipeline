@@ -1,4 +1,5 @@
 using Azure;
+using NPipeline.StorageProviders.Exceptions;
 
 namespace NPipeline.StorageProviders.Azure;
 
@@ -17,6 +18,8 @@ internal static class AzureErrors
         {
             404 => NotFound(ex, container, blob, code),
             401 or 403 => AccessDenied(ex, container, blob, code),
+            412 => Precondition(ex),
+            409 when code is "BlobAlreadyExists" or "PathAlreadyExists" => Precondition(ex),
             400 => Invalid(ex, container, blob, code),
             _ => code switch
             {
@@ -46,4 +49,7 @@ internal static class AzureErrors
 
     private static ArgumentException Invalid(RequestFailedException ex, string container, string blob, string code) =>
         new($"Invalid Azure container '{container}' or blob '{blob}'. Status={ex.Status}, Code={code}. {ex.Message}", ex);
+
+    private static StoragePreconditionFailedException Precondition(RequestFailedException ex) =>
+        new($"Azure refused the conditional write: the object changed or already exists. {ex.Message}", ex);
 }

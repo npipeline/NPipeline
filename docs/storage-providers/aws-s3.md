@@ -172,11 +172,19 @@ var content = await reader.ReadToEndAsync();
 ```csharp
 var uri = StorageUri.Parse("s3://my-bucket/output.csv");
 
-using var stream = await provider.OpenWriteAsync(uri);
-using var writer = new StreamWriter(stream);
-await writer.WriteLineAsync("id,name,value");
-await writer.WriteLineAsync("1,Item A,100");
+await using var stream = await provider.OpenWriteAsync(uri, cancellationToken: ct);
+await using (var writer = new StreamWriter(stream, leaveOpen: true))
+{
+    await writer.WriteLineAsync("id,name,value");
+}
+
+// The object appears only after CommitAsync. Disposing the stream without it discards the data.
+await stream.CommitAsync(ct);
 ```
+
+Call `CommitAsync` once, after the last write. The provider buffers the data to a local temporary file and uploads it when you commit (as a multipart upload above `MultipartUploadThresholdBytes`). Disposing the stream without committing uploads nothing and leaves an existing object as it was. Upload errors surface from `CommitAsync`.
+
+`AwsS3StorageProvider` declares `ConditionalWrite`. Pass `new StorageWriteOptions { Overwrite = false }` to fail the commit if the object exists, or `new StorageWriteOptions { IfMatch = etag }` (an ETag from `GetMetadataAsync`) to commit only if the object is unchanged. A refused condition throws `StoragePreconditionFailedException` from `CommitAsync`. Set `StorageWriteOptions.ContentType` to set the content type.
 
 ### Listing
 

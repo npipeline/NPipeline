@@ -47,6 +47,7 @@ public sealed class GcsStorageProviderIntegrationTests
         {
             var payload = Encoding.UTF8.GetBytes("metadata payload");
             await writeStream.WriteAsync(payload, CancellationToken.None);
+            await writeStream.CommitAsync();
         }
 
         var exists = await context.Provider.ExistsAsync(uri);
@@ -98,8 +99,12 @@ public sealed class GcsStorageProviderIntegrationTests
     private static async Task WriteContentAsync(GcsStorageProvider provider, StorageUri uri, string content)
     {
         await using var writeStream = await provider.OpenWriteAsync(uri);
-        await using var writer = new StreamWriter(writeStream, Encoding.UTF8, leaveOpen: false);
-        await writer.WriteAsync(content);
+        await using (var writer = new StreamWriter(writeStream, Encoding.UTF8, leaveOpen: true))
+        {
+            await writer.WriteAsync(content);
+        }
+
+        await writeStream.CommitAsync();
     }
 
     private static bool TryCreateContext(out IntegrationContext context)

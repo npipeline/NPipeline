@@ -199,9 +199,13 @@ public sealed class Program
             await using var stream = await provider.OpenWriteAsync(fileUri);
 
             // Write the data
-            await using var writer = new StreamWriter(stream);
-            await writer.WriteAsync(sampleData);
-            await writer.FlushAsync();
+            await using (var writer = new StreamWriter(stream, leaveOpen: true))
+            {
+                await writer.WriteAsync(sampleData);
+            }
+
+            // Nothing reaches the bucket until the stream is committed
+            await stream.CommitAsync();
 
             Console.WriteLine("Data written:");
             Console.WriteLine("─────────────────────────────────────────────────────────────");

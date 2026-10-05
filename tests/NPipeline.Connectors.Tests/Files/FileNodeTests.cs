@@ -309,75 +309,53 @@ public sealed class FileSinkNodeTests
     private readonly InMemoryStorageProvider _provider = new();
 
     [Fact]
-    public async Task Writes_directly_to_a_provider_that_cannot_move()
+    public async Task Writes_the_target_once_and_commits_it()
     {
         await Write(new LineSink(new LineSinkOptions { Uri = Target, Provider = _provider }), "a", "b");
 
         Text(Target).Should().Be("a\nb\n");
         _provider.WriteRequests.Should().Equal(Target);
-    }
-
-    [Fact]
-    public async Task Writes_through_a_temporary_object_when_the_provider_can_move()
-    {
-        var provider = new MoveableProvider(_provider);
-
-        await Write(new LineSink(new LineSinkOptions { Uri = Target, Provider = provider }), "a");
-
-        Text(Target).Should().Be("a\n");
-        provider.Moves.Should().ContainSingle().Which.To.Should().Be(Target);
         _provider.Keys.Should().ContainSingle();
     }
 
     [Fact]
-    public async Task Always_copies_a_temporary_object_into_place_when_the_provider_cannot_move()
-    {
-        await Write(new LineSink(new LineSinkOptions { Uri = Target, Provider = _provider, AtomicWrite = AtomicWrite.Always }), "a");
-
-        Text(Target).Should().Be("a\n");
-        _provider.WriteRequests.Should().HaveCount(2);
-        _provider.Keys.Should().ContainSingle("the temporary object is deleted");
-    }
-
-    [Fact]
-    public async Task Never_writes_directly_even_when_the_provider_can_move()
-    {
-        var provider = new MoveableProvider(_provider);
-
-        await Write(new LineSink(new LineSinkOptions { Uri = Target, Provider = provider, AtomicWrite = AtomicWrite.Never }), "a");
-
-        provider.Moves.Should().BeEmpty();
-        _provider.WriteRequests.Should().Equal(Target);
-    }
-
-    [Fact]
-    public async Task The_temporary_object_keeps_the_uri_parameters()
+    public async Task Keeps_the_uri_parameters_on_the_written_file()
     {
         var target = StorageUri.Parse("mem://test/out/data.txt?region=ap-southeast-2");
 
-        await Write(new LineSink(new LineSinkOptions { Uri = target, Provider = _provider, AtomicWrite = AtomicWrite.Always }), "a");
+        await Write(new LineSink(new LineSinkOptions { Uri = target, Provider = _provider }), "a");
 
-        _provider.WriteRequests.Should().AllSatisfy(uri => uri.Parameters.Should().Contain("region", "ap-southeast-2"));
+        _provider.WriteRequests.Should().ContainSingle().Which.Parameters.Should().Contain("region", "ap-southeast-2");
     }
 
-    [Theory]
-    [InlineData(AtomicWrite.Never)]
-    [InlineData(AtomicWrite.Always)]
-    public async Task A_failed_write_leaves_nothing_behind(AtomicWrite atomicWrite)
+    [Fact]
+    public async Task A_failed_write_leaves_nothing_behind()
     {
-        var write = () => Write(new LineSink(new LineSinkOptions { Uri = Target, Provider = _provider, AtomicWrite = atomicWrite }), "a", "explode");
+        var write = () => Write(new LineSink(new LineSinkOptions { Uri = Target, Provider = _provider }), "a", "explode");
 
         await write.Should().ThrowAsync<InvalidOperationException>();
         _provider.Keys.Should().BeEmpty();
     }
 
     [Fact]
-    public async Task A_failed_direct_write_can_keep_its_partial_output()
+    public async Task A_failed_write_keeps_the_existing_file()
     {
-        var write = () => Write(new LineSink(new LineSinkOptions { Uri = Target, Provider = _provider, AtomicWrite = AtomicWrite.Never, DeletePartialOnFailure = false }), "a", "explode");
+        _provider.Put(Target, "old\n"u8.ToArray());
+        var write = () => Write(new LineSink(new LineSinkOptions { Uri = Target, Provider = _provider }), "a", "explode");
 
         await write.Should().ThrowAsync<InvalidOperationException>();
-        _provider.Keys.Should().ContainSingle();
+        Text(Target).Should().Be("old\n");
+    }
+
+    [Fact]
+    public async Task A_cancelled_write_leaves_nothing_behind()
+    {
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+        var write = () => Write(new LineSink(new LineSinkOptions { Uri = Target, Provider = _provider }), cts.Token, "a");
+
+        await write.Should().ThrowAsync<OperationCanceledException>();
+        _provider.Keys.Should().BeEmpty();
     }
 
     [Fact]
@@ -431,10 +409,12 @@ public sealed class FileSinkNodeTests
         metrics.Total("npipeline.connector.files_written").Should().Be(1);
     }
 
-    private static async Task Write(LineSink sink, params string?[] items)
+    private static Task Write(LineSink sink, params string?[] items) => Write(sink, CancellationToken.None, items);
+
+    private static async Task Write(LineSink sink, CancellationToken cancellationToken, params string?[] items)
     {
         await using var input = new DataStream<string?>(items.ToAsyncEnumerableCompat(), "items");
-        await sink.ConsumeAsync(input, new PipelineContext(), CancellationToken.None);
+        await sink.ConsumeAsync(input, new PipelineContext(), cancellationToken);
     }
 
     private string Text(StorageUri uri) => Encoding.UTF8.GetString(_provider.Get(uri));

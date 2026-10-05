@@ -1,5 +1,6 @@
 using System.Net;
 using Amazon.S3;
+using NPipeline.StorageProviders.Exceptions;
 
 namespace NPipeline.StorageProviders.S3;
 
@@ -11,6 +12,8 @@ internal static class S3Errors
         // The status code is authoritative; error codes vary by operation (GetObject reports "NoSuchKey", HeadObject "NotFound").
         Exception translated = ex.StatusCode switch
         {
+            HttpStatusCode.PreconditionFailed => Precondition(ex),
+            HttpStatusCode.Conflict when ex.ErrorCode is "ConditionalRequestConflict" => Precondition(ex),
             HttpStatusCode.NotFound => NotFound(ex, bucket, key),
             HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden => AccessDenied(ex, bucket, key),
             HttpStatusCode.BadRequest when ex.ErrorCode is "InvalidBucketName" or "InvalidKey" or "KeyTooLongError" => Invalid(ex, bucket, key),
@@ -40,4 +43,7 @@ internal static class S3Errors
 
     private static ArgumentException Invalid(AmazonS3Exception ex, string bucket, string key) =>
         new($"Invalid S3 bucket '{bucket}' or key '{key}'. {ex.Message}", ex);
+
+    private static StoragePreconditionFailedException Precondition(AmazonS3Exception ex) =>
+        new($"S3 refused the conditional write: the object changed or already exists. {ex.Message}", ex);
 }

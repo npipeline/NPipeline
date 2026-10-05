@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Azure;
+using NPipeline.StorageProviders.Exceptions;
 using Xunit;
 
 namespace NPipeline.StorageProviders.Adls.Tests;
@@ -17,7 +18,8 @@ public class AdlsErrorsTests
     [InlineData(400, null, typeof(ArgumentException))]
     [InlineData(0, "PathNotFound", typeof(FileNotFoundException))]
     [InlineData(0, "AuthenticationFailed", typeof(UnauthorizedAccessException))]
-    [InlineData(409, "PathAlreadyExists", typeof(IOException))]
+    [InlineData(409, "PathAlreadyExists", typeof(StoragePreconditionFailedException))]
+    [InlineData(412, "ConditionNotMet", typeof(StoragePreconditionFailedException))]
     [InlineData(429, "ServerBusy", typeof(IOException))]
     [InlineData(500, "InternalError", typeof(IOException))]
     public void Translate_MapsStatusFirstThenErrorCode(int status, string? errorCode, Type expectedType)

@@ -34,8 +34,38 @@ public interface IStorageProvider
 | Provider | Capabilities |
 |----------|--------------|
 | File system | Read, Write, List, Delete, Move, AtomicMove, Hierarchy |
-| S3, Azure Blob, GCS | Read, Write, List, Delete, Move (copy, then delete) |
-| ADLS Gen2, SFTP | Read, Write, List, Delete, Move, Hierarchy (plus AtomicMove where the rename is atomic) |
+| S3 (AWS) | Read, Write, List, Delete, Move (copy, then delete), ConditionalWrite |
+| S3-compatible, GCS | Read, Write, List, Delete, Move (copy, then delete) |
+| Azure Blob | Read, Write, List, Delete, Move (copy, then delete), ConditionalWrite |
+| ADLS Gen2 | Read, Write, List, Delete, Move, Hierarchy, ConditionalWrite (plus AtomicMove where the rename is atomic) |
+| SFTP | Read, Write, List, Delete, Move, Hierarchy (plus AtomicMove where the rename is atomic) |
+
+### Writes commit explicitly
+
+`OpenWriteAsync` returns a `StorageWriteStream`, a `Stream` with a `CommitAsync` method and an `ETag` property. What you write becomes visible at the target only when you call `await stream.CommitAsync()`, once, after the last write. If you dispose the stream without committing, the provider *abandons* the write: it discards everything you wrote, and the target is untouched (an existing object stays as it was). Disposing never uploads. Upload errors surface from `CommitAsync`, with the token you pass to it, not from `Dispose`.
+
+```csharp
+await using var stream = await provider.OpenWriteAsync(uri, cancellationToken: ct);
+await using (var writer = new StreamWriter(stream, leaveOpen: true))
+{
+    await writer.WriteAsync(text);
+}
+await stream.CommitAsync(ct);
+```
+
+A wrapper that closes the stream when it's disposed, such as `StreamWriter` or `GZipStream`, must not close the provider stream before you commit. Pass `leaveOpen: true`, or flush the wrapper and commit first.
+
+| Provider | Commit | Abandon |
+|----------|--------|---------|
+| File system, SFTP | Renames a hidden sibling temporary file (`.<name>.<guid>.tmp`) into place | Deletes the temporary file |
+| S3, Azure Blob, ADLS Gen2, GCS | Uploads the data buffered in a local temporary file (S3 uses multipart above the threshold) | Uploads nothing |
+
+Providers that declare `ConditionalWrite` (AWS S3, Azure Blob and ADLS Gen2) can also make a commit depend on the state of the target:
+
+- `StorageWriteOptions { Overwrite = false }` fails the commit if the target exists.
+- `StorageWriteOptions { IfMatch = etag }` commits only if the current ETag matches. Get the ETag from `GetMetadataAsync`.
+
+When a condition isn't met, `CommitAsync` throws `NPipeline.StorageProviders.Exceptions.StoragePreconditionFailedException`, which derives from `IOException`. S3-compatible stores, GCS, SFTP and the file system don't declare `ConditionalWrite`. `StorageWriteOptions.ContentType` sets the content type where the store has one; the `contentType` URI parameter is the fallback.
 
 ### Contract
 
@@ -192,7 +222,7 @@ using var readStream = await provider.OpenReadAsync(uri);
 // Write
 await using var writeStream = await provider.OpenWriteAsync(uri);
 await writeStream.WriteAsync(bytes);
-await writeStream.CommitAsync();
+await writeStream.CommitAsync();   // without this, disposing discards the data
 
 // Delete and move
 await provider.DeleteAsync(uri);

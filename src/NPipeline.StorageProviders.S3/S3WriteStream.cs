@@ -1,28 +1,28 @@
 using Amazon.S3;
 using Amazon.S3.Model;
+using NPipeline.StorageProviders.Abstractions;
 
 namespace NPipeline.StorageProviders.S3;
 
 /// <summary>
-///     A stream that buffers writes and uploads to S3 on disposal or flush.
-///     Supports multipart upload for files larger than the configured threshold.
+///     A write stream that buffers to a local file and uploads the object in <see cref="StorageWriteStream.CommitAsync" />:
+///     a single <c>PutObject</c>, or a multipart upload above the configured threshold. Disposing without committing uploads nothing.
 /// </summary>
-public sealed class S3WriteStream : Stream
+public sealed class S3WriteStream : SpooledWriteStream
 {
     private const int DefaultPartSize = 8 * 1024 * 1024; // 8 MB parts
     private const int MaxConcurrentUploads = 4;
 
     private readonly string _bucket;
     private readonly string? _contentType;
+    private readonly string? _ifMatch;
     private readonly string _key;
     private readonly long _multipartUploadThreshold;
     private readonly int _partSize;
+    private readonly bool _overwrite;
     private readonly object _readLock = new();
     private readonly IAmazonS3 _s3Client;
-    private readonly string _tempFilePath;
-    private bool _disposed;
-    private FileStream? _tempFileStream;
-    private bool _uploaded;
+    private Stream? _content;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="S3WriteStream" /> class.
@@ -33,203 +33,40 @@ public sealed class S3WriteStream : Stream
     /// <param name="contentType">Optional content type for the upload.</param>
     /// <param name="multipartUploadThreshold">Threshold in bytes for using multipart upload. Default is 64 MB.</param>
     /// <param name="partSize">Size of each part for multipart upload. Default is 8 MB.</param>
+    /// <param name="ifMatch">Commit only if the object's current ETag matches.</param>
+    /// <param name="overwrite">When <see langword="false" />, commit fails if the object exists.</param>
     public S3WriteStream(
         IAmazonS3 s3Client,
         string bucket,
         string key,
         string? contentType = null,
         long multipartUploadThreshold = 64 * 1024 * 1024,
-        int partSize = DefaultPartSize)
+        int partSize = DefaultPartSize,
+        string? ifMatch = null,
+        bool overwrite = true)
+        : base("s3-upload")
     {
         _s3Client = s3Client ?? throw new ArgumentNullException(nameof(s3Client));
         _bucket = bucket ?? throw new ArgumentNullException(nameof(bucket));
         _key = key ?? throw new ArgumentNullException(nameof(key));
         _contentType = contentType;
+        _ifMatch = ifMatch;
+        _overwrite = overwrite;
         _multipartUploadThreshold = multipartUploadThreshold;
         _partSize = Math.Max(partSize, 5 * 1024 * 1024); // Minimum 5 MB per S3 requirements
-        _tempFilePath = Path.Combine(Path.GetTempPath(), $"s3-upload-{Guid.NewGuid()}.tmp");
-
-        _tempFileStream = new FileStream(
-            _tempFilePath,
-            FileMode.Create,
-            FileAccess.ReadWrite,
-            FileShare.None,
-            81920,
-            FileOptions.DeleteOnClose | FileOptions.Asynchronous);
     }
 
     /// <inheritdoc />
-    public override bool CanRead => false;
-
-    /// <inheritdoc />
-    public override bool CanSeek => false;
-
-    /// <inheritdoc />
-    public override bool CanWrite => true;
-
-    /// <inheritdoc />
-    public override long Length
+    protected override async Task<string?> UploadAsync(Stream content, CancellationToken cancellationToken)
     {
-        get
-        {
-            ObjectDisposedException.ThrowIf(_disposed, this);
-            return _tempFileStream?.Length ?? 0;
-        }
-    }
-
-    /// <inheritdoc />
-    public override long Position
-    {
-        get => throw new NotSupportedException();
-        set => throw new NotSupportedException();
-    }
-
-    /// <inheritdoc />
-    public override void Flush()
-    {
-        // Flush is a no-op - upload happens on disposal
-    }
-
-    /// <inheritdoc />
-    public override Task FlushAsync(CancellationToken cancellationToken) =>
-
-        // Flush is a no-op - upload happens on disposal
-        Task.CompletedTask;
-
-    /// <inheritdoc />
-    public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
-
-    /// <inheritdoc />
-    public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
-
-    /// <inheritdoc />
-    public override void SetLength(long value)
-    {
-        throw new NotSupportedException();
-    }
-
-    /// <inheritdoc />
-    public override void Write(byte[] buffer, int offset, int count)
-    {
-        ObjectDisposedException.ThrowIf(_disposed, this);
-        _tempFileStream?.Write(buffer, offset, count);
-    }
-
-    /// <inheritdoc />
-    public override async Task WriteAsync(
-        byte[] buffer,
-        int offset,
-        int count,
-        CancellationToken cancellationToken)
-    {
-        ObjectDisposedException.ThrowIf(_disposed, this);
-
-        if (_tempFileStream is null)
-            ObjectDisposedException.ThrowIf(true, this);
-
-        await _tempFileStream.WriteAsync(new ReadOnlyMemory<byte>(buffer, offset, count), cancellationToken).ConfigureAwait(false);
-    }
-
-    /// <inheritdoc />
-    public override async ValueTask WriteAsync(
-        ReadOnlyMemory<byte> buffer,
-        CancellationToken cancellationToken = default)
-    {
-        ObjectDisposedException.ThrowIf(_disposed, this);
-
-        if (_tempFileStream is null)
-            ObjectDisposedException.ThrowIf(true, this);
-
-        await _tempFileStream.WriteAsync(buffer, cancellationToken).ConfigureAwait(false);
-    }
-
-    /// <inheritdoc />
-    protected override void Dispose(bool disposing)
-    {
-        if (_disposed)
-            return;
-
-        _disposed = true;
-
-        if (disposing)
-        {
-            try
-            {
-                if (!_uploaded && _tempFileStream is not null)
-                {
-                    // Flush the temp file stream to ensure all data is written
-                    _tempFileStream.Flush();
-
-                    // Reset position to beginning for upload
-                    _tempFileStream.Position = 0;
-
-                    // Upload to S3
-                    UploadAsync(CancellationToken.None).GetAwaiter().GetResult();
-                }
-            }
-            finally
-            {
-                _tempFileStream?.Dispose();
-                _tempFileStream = null;
-            }
-        }
-
-        base.Dispose(disposing);
-    }
-
-    /// <inheritdoc />
-    public override async ValueTask DisposeAsync()
-    {
-        if (_disposed)
-            return;
-
-        _disposed = true;
+        _content = content;
+        var contentLength = content.Length;
 
         try
         {
-            if (!_uploaded && _tempFileStream is not null)
-            {
-                // Flush the temp file stream to ensure all data is written
-                await _tempFileStream.FlushAsync(CancellationToken.None).ConfigureAwait(false);
-
-                // Reset position to beginning for upload
-                _tempFileStream.Position = 0;
-
-                // Upload to S3
-                await UploadAsync(CancellationToken.None).ConfigureAwait(false);
-            }
-        }
-        finally
-        {
-            if (_tempFileStream is not null)
-            {
-                await _tempFileStream.DisposeAsync().ConfigureAwait(false);
-                _tempFileStream = null;
-            }
-        }
-
-        await base.DisposeAsync().ConfigureAwait(false);
-    }
-
-    /// <summary>
-    ///     Uploads the buffered data to S3, using multipart upload for large files.
-    /// </summary>
-    /// <param name="cancellationToken">Token to observe while waiting for the task to complete.</param>
-    private async Task UploadAsync(CancellationToken cancellationToken)
-    {
-        if (_tempFileStream is null || _uploaded)
-            return;
-
-        _uploaded = true;
-
-        var contentLength = _tempFileStream.Length;
-
-        try
-        {
-            if (contentLength > 0 && contentLength >= _multipartUploadThreshold)
-                await UploadMultipartAsync(contentLength, cancellationToken).ConfigureAwait(false);
-            else
-                await UploadSingleAsync(cancellationToken).ConfigureAwait(false);
+            return contentLength > 0 && contentLength >= _multipartUploadThreshold
+                ? await UploadMultipartAsync(contentLength, cancellationToken).ConfigureAwait(false)
+                : await UploadSingleAsync(cancellationToken).ConfigureAwait(false);
         }
         catch (AmazonS3Exception ex)
         {
@@ -240,21 +77,28 @@ public sealed class S3WriteStream : Stream
     /// <summary>
     ///     Uploads the content using a single PutObject request.
     /// </summary>
-    private async Task UploadSingleAsync(CancellationToken cancellationToken)
+    private async Task<string?> UploadSingleAsync(CancellationToken cancellationToken)
     {
         var request = new PutObjectRequest
         {
             BucketName = _bucket,
             Key = _key,
-            InputStream = _tempFileStream,
+            InputStream = _content,
             AutoCloseStream = false,
             UseChunkEncoding = false,
         };
 
+        if (_ifMatch is not null)
+            request.IfMatch = _ifMatch;
+        else if (!_overwrite)
+            request.IfNoneMatch = "*";
+
         if (!string.IsNullOrEmpty(_contentType))
             request.ContentType = _contentType;
 
-        _ = await _s3Client.PutObjectAsync(request, cancellationToken).ConfigureAwait(false);
+        var response = await _s3Client.PutObjectAsync(request, cancellationToken).ConfigureAwait(false);
+
+        return response?.ETag;
     }
 
     /// <summary>
@@ -262,7 +106,7 @@ public sealed class S3WriteStream : Stream
     /// </summary>
     /// <param name="contentLength">The total length of the content to upload.</param>
     /// <param name="cancellationToken">Token to observe while waiting for the task to complete.</param>
-    private async Task UploadMultipartAsync(long contentLength, CancellationToken cancellationToken)
+    private async Task<string?> UploadMultipartAsync(long contentLength, CancellationToken cancellationToken)
     {
         // Initiate multipart upload
         var initiateRequest = new InitiateMultipartUploadRequest
@@ -320,7 +164,14 @@ public sealed class S3WriteStream : Stream
                 PartETags = orderedParts,
             };
 
-            _ = await _s3Client.CompleteMultipartUploadAsync(completeRequest, cancellationToken).ConfigureAwait(false);
+            if (_ifMatch is not null)
+                completeRequest.IfMatch = _ifMatch;
+            else if (!_overwrite)
+                completeRequest.IfNoneMatch = "*";
+
+            var completed = await _s3Client.CompleteMultipartUploadAsync(completeRequest, cancellationToken).ConfigureAwait(false);
+
+            return completed?.ETag;
         }
         catch
         {
@@ -366,15 +217,12 @@ public sealed class S3WriteStream : Stream
             // Allocate buffer per part to avoid race condition with parallel uploads
             var buffer = new byte[partSize];
 
-            // Read the part data - null check already done in UploadAsync
-            ObjectDisposedException.ThrowIf(_tempFileStream is null, typeof(S3WriteStream));
-
             int bytesRead;
 
             lock (_readLock)
             {
-                _tempFileStream.Position = offset;
-                bytesRead = _tempFileStream.Read(buffer, 0, partSize);
+                _content!.Position = offset;
+                bytesRead = _content.Read(buffer, 0, partSize);
             }
 
             if (bytesRead != partSize)

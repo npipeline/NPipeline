@@ -29,8 +29,7 @@ Targets .NET 8.0, 9.0 and 10.0.
   machine.
 - **Many files**: read a directory or a glob (`s3://bucket/2026/*.csv`) through any storage provider.
 - **Compression**: `.gz`, `.br` and `.zz` files are decompressed and compressed transparently.
-- **Safe writes**: on the file system the output is written under a temporary name and moved into place, and a failed
-  write removes its partial output.
+- **Safe writes**: the output file appears only when the write is complete, and a failed or cancelled write leaves the target as it was.
 - **Metrics and traces**: rows, bytes, files and row errors through `System.Diagnostics.Metrics` (`NPipeline.Connectors`).
 
 ## Usage
@@ -76,7 +75,7 @@ var source = CsvConnector.Source(uri, row => new Order(
 
 See the [CSV connector documentation](https://docs.npipeline.net/connectors/csv) for every option, and
 [File Connectors: Shared Behaviour](https://docs.npipeline.net/connectors/file-connectors) for globs, compression,
-atomic writes, row errors and metrics.
+commit behavior, row errors and metrics.
 
 ## Related Packages
 

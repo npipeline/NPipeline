@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using NPipeline.Connectors.DataLake.Reliability;
 using NPipeline.StorageProviders.Abstractions;
+using NPipeline.StorageProviders.Exceptions;
 using NPipeline.StorageProviders.Models;
 using NResilience;
 
@@ -19,11 +20,13 @@ namespace NPipeline.Connectors.DataLake.Manifest;
 ///     <para>
 ///         Each flush writes two files: the per-snapshot manifest <c>_manifest/snapshots/{snapshotId}.ndjson</c>, which
 ///         holds every entry this writer has flushed and is written only by this writer, and then the main manifest,
-///         which it appends to by reading the file, adding the new entries, and replacing it (by an atomic rename when the
-///         provider declares <see cref="StorageCapabilities.AtomicMove" />, otherwise by overwriting it in place).
+///         which it appends to by reading the file, adding the new entries, and replacing it. When the provider declares
+///         <see cref="StorageCapabilities.ConditionalWrite" />, the replacement commits only if the manifest's ETag is still the
+///         one that was read, and a conflict re-reads and retries, so concurrent writers lose no entries. Otherwise the
+///         replacement is an atomic rename (<see cref="StorageCapabilities.AtomicMove" />) or an in-place overwrite.
 ///     </para>
 ///     <para>
-///         The main manifest is last-writer-wins: there is no conditional write, so when two writers append at the same
+///         Without a conditional write the main manifest is last-writer-wins: when two writers append at the same
 ///         time, one writer's entries can be missing from it. <see cref="ManifestReader" /> recovers them by merging every
 ///         per-snapshot manifest into what it reads from the main manifest, so readers see all flushed entries. Tools that
 ///         read <c>manifest.ndjson</c> directly, without the snapshot files, can miss entries. Use a distinct snapshot ID
@@ -34,6 +37,10 @@ public sealed class ManifestWriter : IAsyncDisposable
 {
     private const string ManifestDirectoryName = "_manifest";
     private const string ManifestFileName = "manifest.ndjson";
+    private const int MaxConditionalAttempts = 16;
+
+    // NDJSON has no byte-order mark; the reader accepts one, so manifests written by older versions still read.
+    private static readonly UTF8Encoding Utf8NoBom = new(false);
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -197,15 +204,25 @@ public sealed class ManifestWriter : IAsyncDisposable
         // what readers use to recover entries a concurrent writer overwrote in the main manifest
         var content = BuildNdJsonContent([.. _flushedEntries, .. _pendingEntries]);
 
-        var stream = await _provider.OpenWriteAsync(_snapshotManifestUri, null, cancellationToken)
-            .ConfigureAwait(false);
+        await WriteAsync(_snapshotManifestUri, content, null, cancellationToken).ConfigureAwait(false);
+    }
 
-        await using var streamScope = stream.ConfigureAwait(false);
+    /// <summary>Writes <paramref name="content" /> to <paramref name="uri" /> and commits it.</summary>
+    private async Task WriteAsync(StorageUri uri, string content, StorageWriteOptions? options, CancellationToken cancellationToken)
+    {
+        var stream = await _provider.OpenWriteAsync(uri, options, cancellationToken).ConfigureAwait(false);
 
-        var writer = new StreamWriter(stream, Encoding.UTF8, leaveOpen: false);
-        await using var writerScope = writer.ConfigureAwait(false);
-        await writer.WriteAsync(content).ConfigureAwait(false);
-        await writer.FlushAsync(cancellationToken).ConfigureAwait(false);
+        await using (stream.ConfigureAwait(false))
+        {
+            var writer = new StreamWriter(stream, Utf8NoBom, leaveOpen: true);
+            await using (writer.ConfigureAwait(false))
+            {
+                await writer.WriteAsync(content.AsMemory(), cancellationToken).ConfigureAwait(false);
+                await writer.FlushAsync(cancellationToken).ConfigureAwait(false);
+            }
+
+            await stream.CommitAsync(cancellationToken).ConfigureAwait(false);
+        }
     }
 
     private async Task AppendToMainManifestWithRetryAsync(CancellationToken cancellationToken)
@@ -220,55 +237,86 @@ public sealed class ManifestWriter : IAsyncDisposable
 
     private async Task AppendToMainManifestAtomicAsync(string newContent, CancellationToken cancellationToken)
     {
-        // Check if main manifest exists
-        bool manifestExists;
-
         // Providers return null for a missing file. Any other failure must propagate: treating it as "missing" would
         // overwrite the manifest with only the new entries.
+        StorageMetadata? metadata;
+
         try
         {
-            var metadata = await _provider.GetMetadataAsync(_manifestUri, cancellationToken).ConfigureAwait(false);
-            manifestExists = metadata is not null;
+            metadata = await _provider.GetMetadataAsync(_manifestUri, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
         {
-            manifestExists = false;
+            metadata = null;
         }
 
-        if (manifestExists)
+        if (_provider.Capabilities.HasFlag(StorageCapabilities.ConditionalWrite))
         {
-            // For atomic appends, we use a temp file pattern when the provider supports it
-            if (_provider.Capabilities.HasFlag(StorageCapabilities.AtomicMove))
-            {
-                await AppendWithAtomicRenameAsync(newContent, cancellationToken)
-                    .ConfigureAwait(false);
-            }
-            else
-            {
-                // Fallback: read-modify-write (less safe for concurrent writes)
-                await AppendWithReadModifyWriteAsync(newContent, cancellationToken).ConfigureAwait(false);
-            }
+            await AppendConditionallyAsync(newContent, metadata, cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        if (metadata is null)
+        {
+            await WriteAsync(_manifestUri, newContent, null, cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        var combined = await CombineWithExistingAsync(newContent, cancellationToken).ConfigureAwait(false);
+
+        if (combined is null)
+            return;
+
+        if (_provider.Capabilities.HasFlag(StorageCapabilities.AtomicMove))
+        {
+            // Write to a temporary file, then rename it over the manifest
+            var tempUri = CreateTempManifestUri();
+            await WriteAsync(tempUri, combined, null, cancellationToken).ConfigureAwait(false);
+            await _provider.MoveAsync(tempUri, _manifestUri, cancellationToken).ConfigureAwait(false);
         }
         else
         {
-            // Create new manifest
-            var writeStream = await _provider.OpenWriteAsync(_manifestUri, null, cancellationToken)
-                .ConfigureAwait(false);
-
-            await using var writeStreamScope = writeStream.ConfigureAwait(false);
-
-            var writer = new StreamWriter(writeStream, Encoding.UTF8, leaveOpen: false);
-            await using var writerScope = writer.ConfigureAwait(false);
-            await writer.WriteAsync(newContent).ConfigureAwait(false);
-            await writer.FlushAsync(cancellationToken).ConfigureAwait(false);
+            // Fallback: read-modify-write (less safe for concurrent writes)
+            await WriteAsync(_manifestUri, combined, null, cancellationToken).ConfigureAwait(false);
         }
     }
 
-    private async Task AppendWithAtomicRenameAsync(
-        string newContent,
-        CancellationToken cancellationToken)
+    /// <summary>
+    ///     Appends with a conditional write: create the manifest only if nobody else has, or replace it only if its ETag is
+    ///     still the one read. A refused write means another writer committed first, so the manifest is read again.
+    /// </summary>
+    private async Task AppendConditionallyAsync(string newContent, StorageMetadata? metadata, CancellationToken cancellationToken)
     {
-        // Read existing content
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                if (metadata is null)
+                {
+                    await WriteAsync(_manifestUri, newContent, new StorageWriteOptions { Overwrite = false }, cancellationToken).ConfigureAwait(false);
+                    return;
+                }
+
+                var combined = await CombineWithExistingAsync(newContent, cancellationToken).ConfigureAwait(false);
+
+                if (combined is null)
+                    return;
+
+                // With no ETag to match, an unconditional replace is all the store offers.
+                var options = metadata.ETag is null ? null : new StorageWriteOptions { IfMatch = metadata.ETag };
+                await WriteAsync(_manifestUri, combined, options, cancellationToken).ConfigureAwait(false);
+                return;
+            }
+            catch (StoragePreconditionFailedException) when (attempt < MaxConditionalAttempts)
+            {
+                metadata = await _provider.GetMetadataAsync(_manifestUri, cancellationToken).ConfigureAwait(false);
+            }
+        }
+    }
+
+    /// <summary>The manifest's content plus <paramref name="newContent" />, or <see langword="null" /> when an earlier attempt already committed it.</summary>
+    private async Task<string?> CombineWithExistingAsync(string newContent, CancellationToken cancellationToken)
+    {
         string existingContent;
 
         var readStream = await _provider.OpenReadAsync(_manifestUri, cancellationToken).ConfigureAwait(false);
@@ -281,66 +329,11 @@ public sealed class ManifestWriter : IAsyncDisposable
 
         // An earlier attempt may have committed before it failed; don't append the same entries twice
         if (ContainsEntries(existingContent, newContent))
-            return;
+            return null;
 
-        // Build combined content
-        var combinedContent = existingContent;
-
-        if (!existingContent.EndsWith('\n') && !string.IsNullOrEmpty(existingContent))
-            combinedContent += '\n';
-
-        combinedContent += newContent;
-
-        // Write to temp file
-        var tempUri = CreateTempManifestUri();
-
-        var writeStream = await _provider.OpenWriteAsync(tempUri, null, cancellationToken).ConfigureAwait(false);
-
-        await using (writeStream.ConfigureAwait(false))
-        {
-            var writer = new StreamWriter(writeStream, Encoding.UTF8, leaveOpen: false);
-            await using var writerScope = writer.ConfigureAwait(false);
-            await writer.WriteAsync(combinedContent).ConfigureAwait(false);
-            await writer.FlushAsync(cancellationToken).ConfigureAwait(false);
-        }
-
-        // Atomic rename
-        await _provider.MoveAsync(tempUri, _manifestUri, cancellationToken).ConfigureAwait(false);
-    }
-
-    private async Task AppendWithReadModifyWriteAsync(string newContent, CancellationToken cancellationToken)
-    {
-        // Read existing content and append
-        string existingContent;
-
-        var readStream = await _provider.OpenReadAsync(_manifestUri, cancellationToken).ConfigureAwait(false);
-
-        await using (readStream.ConfigureAwait(false))
-        {
-            using var reader = new StreamReader(readStream, Encoding.UTF8);
-            existingContent = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
-        }
-
-        // An earlier attempt may have committed before it failed; don't append the same entries twice
-        if (ContainsEntries(existingContent, newContent))
-            return;
-
-        var combinedContent = existingContent;
-
-        if (!existingContent.EndsWith('\n') && !string.IsNullOrEmpty(existingContent))
-            combinedContent += '\n';
-
-        combinedContent += newContent;
-
-        var writeStream = await _provider.OpenWriteAsync(_manifestUri, null, cancellationToken)
-            .ConfigureAwait(false);
-
-        await using var writeStreamScope = writeStream.ConfigureAwait(false);
-
-        var writer = new StreamWriter(writeStream, Encoding.UTF8, leaveOpen: false);
-        await using var writerScope = writer.ConfigureAwait(false);
-        await writer.WriteAsync(combinedContent).ConfigureAwait(false);
-        await writer.FlushAsync(cancellationToken).ConfigureAwait(false);
+        return !existingContent.EndsWith('\n') && !string.IsNullOrEmpty(existingContent)
+            ? $"{existingContent}\n{newContent}"
+            : existingContent + newContent;
     }
 
     private static bool ContainsEntries(string existingContent, string newContent) =>

@@ -48,7 +48,7 @@ public sealed class AdlsGen2StorageProvider : StorageProvider
     /// <inheritdoc />
     public override StorageCapabilities Capabilities =>
         StorageCapabilities.Read | StorageCapabilities.Write | StorageCapabilities.List | StorageCapabilities.Delete | StorageCapabilities.Move |
-        StorageCapabilities.Hierarchy;
+        StorageCapabilities.Hierarchy | StorageCapabilities.ConditionalWrite;
 
     /// <inheritdoc />
     protected override async Task DeleteCoreAsync(StorageUri uri, CancellationToken cancellationToken)
@@ -144,7 +144,7 @@ public sealed class AdlsGen2StorageProvider : StorageProvider
                 ? ct
                 : null;
 
-        return new PassThroughWriteStream(new AdlsGen2WriteStream(
+        return new AdlsGen2WriteStream(
             blobServiceClient,
             filesystem,
             path,
@@ -152,7 +152,8 @@ public sealed class AdlsGen2StorageProvider : StorageProvider
             _options.UploadThresholdBytes,
             _options.UploadMaximumConcurrency,
             _options.UploadMaximumTransferSizeBytes,
-            cancellationToken));
+            options?.IfMatch,
+            options?.Overwrite ?? true);
     }
 
     /// <inheritdoc />

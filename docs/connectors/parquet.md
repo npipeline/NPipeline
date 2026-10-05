@@ -12,7 +12,7 @@ file layout: the source reads each row group's mapped columns into typed arrays 
 boxing or name lookups, and the sink writes members straight into typed column buffers. Columns a record does not map
 are never read.
 
-Globs, atomic writes, row errors, parallel reads and metrics work the same in every file connector; see
+Globs, commit behavior, row errors, parallel reads and metrics work the same in every file connector; see
 [File Connectors: Shared Behaviour](file-connectors.md). Parquet compresses inside the file, so the stream compression
 option does not apply.
 
@@ -159,8 +159,8 @@ builder.AddSink(sink, "orders-out");
 
 The sink writes each readable member as a column (see [Types](#types)) and flushes a row group every `RowGroupSize`
 rows or once the buffered values reach about `RowGroupBytes`, whichever comes first, so wide rows do not hold hundreds
-of megabytes in memory. `sink.Schema` is the schema it writes. On the file system, the file is written under a
-temporary name and moved into place when complete; object stores are written directly.
+of megabytes in memory. `sink.Schema` is the schema it writes. The file appears only when the write is
+complete; see [Commit behavior](file-connectors.md#commit-behavior).
 
 A `null` item fails the write by default; set `NullItems = NullItemHandling.Skip` to drop them.
 
@@ -174,7 +174,7 @@ A `null` item fails the write by default; set `NullItems = NullItemHandling.Skip
 | `Naming` | `AsIs` | How member names become column names |
 
 Plus the [shared sink options](file-connectors.md#options-every-file-source-and-sink-has): `Provider`, `Resolver`,
-`BufferSize`, `AtomicWrite`, `NullItems` and `DeletePartialOnFailure`.
+`BufferSize` and `NullItems`.
 
 Row groups of 50,000 to 1,000,000 rows suit most query engines: larger groups compress better and prune coarser.
 `Zstd` gives smaller files than `Snappy` for a little more CPU.
@@ -222,7 +222,7 @@ builder.AddDeadLetterSink(new MyDeadLetterSink()); // receives ConnectorRecordFa
 
 ## Next Steps
 
-- [File Connectors: Shared Behaviour](file-connectors.md): globs, atomic writes, row errors, parallel reads, metrics
+- [File Connectors: Shared Behaviour](file-connectors.md): globs, commit behavior, row errors, parallel reads, metrics
 - [Data Lake Connector](datalake.md): partitioned Parquet tables with snapshots and time travel
 - [CSV Connector](csv.md): delimited text
 - [Storage Providers](../storage-providers/index.md): read Parquet from S3, Azure Blob, GCS or SFTP

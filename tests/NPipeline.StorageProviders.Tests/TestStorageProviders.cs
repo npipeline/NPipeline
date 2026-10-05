@@ -27,7 +27,7 @@ internal sealed class TestStorageProvider(string name, StorageCapabilities capab
     protected override Task<StorageWriteStream> OpenWriteCoreAsync(StorageUri uri, StorageWriteOptions? options, CancellationToken cancellationToken)
     {
         Calls.Add("write");
-        return Task.FromResult<StorageWriteStream>(new PassThroughWriteStream(new MemoryStream()));
+        return Task.FromResult<StorageWriteStream>(new NPipeline.Tests.Common.MemoryWriteStream(_ => null));
     }
 
     protected override Task<StorageMetadata?> GetMetadataCoreAsync(StorageUri uri, CancellationToken cancellationToken)

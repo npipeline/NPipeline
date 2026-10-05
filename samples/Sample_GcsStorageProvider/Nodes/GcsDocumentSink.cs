@@ -67,6 +67,7 @@ public class GcsDocumentSink : SinkNode<string>
                 await using var stream = await _storageProvider.OpenWriteAsync(uri, null, cancellationToken);
                 var bytes = Encoding.UTF8.GetBytes(document);
                 await stream.WriteAsync(bytes, cancellationToken);
+                await stream.CommitAsync(cancellationToken);
 
                 Console.WriteLine($"  Wrote {bytes.Length} bytes");
             }

@@ -336,6 +336,8 @@ public sealed class DataLakeCompactor
             // The rows keep the schema of the file they were read from; the group shares one layout.
             await ParquetRowWriter.WriteAsync(stream, records[0].Schema, records, _options.Codec, _options.RowGroupSize, cancellationToken)
                 .ConfigureAwait(false);
+
+            await stream.CommitAsync(cancellationToken).ConfigureAwait(false);
         }
     }
 

@@ -111,6 +111,7 @@ public async Task WriteFileAsync(string filesystem, string path, Stream content)
     var uri = StorageUri.Parse($"adls://{filesystem}/{path}");
     await using var writeStream = await _storageProvider.OpenWriteAsync(uri);
     await content.CopyToAsync(writeStream);
+    await writeStream.CommitAsync(); // uploads the buffered data; disposing without a commit discards it
 }
 ```
 

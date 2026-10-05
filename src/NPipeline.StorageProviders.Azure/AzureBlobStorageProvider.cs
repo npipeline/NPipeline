@@ -47,7 +47,7 @@ public sealed class AzureBlobStorageProvider : StorageProvider
 
     /// <inheritdoc />
     public override StorageCapabilities Capabilities => StorageCapabilities.Read | StorageCapabilities.Write | StorageCapabilities.List
-        | StorageCapabilities.Delete | StorageCapabilities.Move;
+        | StorageCapabilities.Delete | StorageCapabilities.Move | StorageCapabilities.ConditionalWrite;
 
     /// <inheritdoc />
     protected override async Task<Stream> OpenReadCoreAsync(StorageUri uri, CancellationToken cancellationToken)
@@ -80,7 +80,7 @@ public sealed class AzureBlobStorageProvider : StorageProvider
                 ? ct
                 : null;
 
-        return new PassThroughWriteStream(new AzureBlobWriteStream(
+        return new AzureBlobWriteStream(
             blobServiceClient,
             container,
             blob,
@@ -88,7 +88,8 @@ public sealed class AzureBlobStorageProvider : StorageProvider
             _options.BlockBlobUploadThresholdBytes,
             _options.UploadMaximumConcurrency,
             _options.UploadMaximumTransferSizeBytes,
-            cancellationToken));
+            options?.IfMatch,
+            options?.Overwrite ?? true);
     }
 
     /// <inheritdoc />

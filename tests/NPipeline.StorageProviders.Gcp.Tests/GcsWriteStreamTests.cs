@@ -244,7 +244,7 @@ public class GcsWriteStreamTests
     }
 
     [Fact]
-    public async Task DisposeAsync_UploadsToGcs()
+    public async Task CommitAsync_UploadsToGcs()
     {
         // Arrange
         A.CallTo(() => _fakeStorageClient.UploadObjectAsync(
@@ -259,6 +259,7 @@ public class GcsWriteStreamTests
         await stream.WriteAsync(data, 0, data.Length);
 
         // Act
+        await stream.CommitAsync();
         await stream.DisposeAsync();
 
         // Assert
@@ -274,7 +275,7 @@ public class GcsWriteStreamTests
     }
 
     [Fact]
-    public void Dispose_UploadsToGcs()
+    public void Dispose_WithoutCommit_UploadsNothing()
     {
         // Arrange
         A.CallTo(() => _fakeStorageClient.UploadObjectAsync(
@@ -300,11 +301,11 @@ public class GcsWriteStreamTests
                 A<Stream>._,
                 A<UploadObjectOptions>._,
                 A<CancellationToken>._))
-            .MustHaveHappenedOnceExactly();
+            .MustNotHaveHappened();
     }
 
     [Fact]
-    public async Task DisposeAsync_WithoutContentType_UploadsToGcsWithoutContentType()
+    public async Task CommitAsync_WithoutContentType_UploadsToGcsWithoutContentType()
     {
         // Arrange
         A.CallTo(() => _fakeStorageClient.UploadObjectAsync(
@@ -319,6 +320,7 @@ public class GcsWriteStreamTests
         await stream.WriteAsync(data, 0, data.Length);
 
         // Act
+        await stream.CommitAsync();
         await stream.DisposeAsync();
 
         // Assert
@@ -334,7 +336,7 @@ public class GcsWriteStreamTests
     }
 
     [Fact]
-    public async Task DisposeAsync_WithUnauthorized_ThrowsUnauthorizedAccessException()
+    public async Task CommitAsync_WithUnauthorized_ThrowsUnauthorizedAccessException()
     {
         // Arrange
         var gcsException = new GoogleApiException("storage", "Unauthorized")
@@ -354,11 +356,11 @@ public class GcsWriteStreamTests
         await stream.WriteAsync(data, 0, data.Length);
 
         // Act & Assert
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(async () => await stream.DisposeAsync());
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(async () => await stream.CommitAsync());
     }
 
     [Fact]
-    public async Task DisposeAsync_WithForbidden_ThrowsUnauthorizedAccessException()
+    public async Task CommitAsync_WithForbidden_ThrowsUnauthorizedAccessException()
     {
         // Arrange
         var gcsException = new GoogleApiException("storage", "Forbidden")
@@ -378,11 +380,11 @@ public class GcsWriteStreamTests
         await stream.WriteAsync(data, 0, data.Length);
 
         // Act & Assert
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(async () => await stream.DisposeAsync());
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(async () => await stream.CommitAsync());
     }
 
     [Fact]
-    public async Task DisposeAsync_WithNotFound_ThrowsFileNotFoundException()
+    public async Task CommitAsync_WithNotFound_ThrowsFileNotFoundException()
     {
         // Arrange
         var gcsException = new GoogleApiException("storage", "Not found")
@@ -402,11 +404,11 @@ public class GcsWriteStreamTests
         await stream.WriteAsync(data, 0, data.Length);
 
         // Act & Assert
-        await Assert.ThrowsAsync<FileNotFoundException>(async () => await stream.DisposeAsync());
+        await Assert.ThrowsAsync<FileNotFoundException>(async () => await stream.CommitAsync());
     }
 
     [Fact]
-    public async Task DisposeAsync_WithBadRequest_ThrowsArgumentException()
+    public async Task CommitAsync_WithBadRequest_ThrowsArgumentException()
     {
         // Arrange
         var gcsException = new GoogleApiException("storage", "Bad request")
@@ -426,11 +428,11 @@ public class GcsWriteStreamTests
         await stream.WriteAsync(data, 0, data.Length);
 
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentException>(async () => await stream.DisposeAsync());
+        await Assert.ThrowsAsync<ArgumentException>(async () => await stream.CommitAsync());
     }
 
     [Fact]
-    public async Task DisposeAsync_WithConflict_ThrowsIOException()
+    public async Task CommitAsync_WithConflict_ThrowsIOException()
     {
         // Arrange
         var gcsException = new GoogleApiException("storage", "Conflict")
@@ -450,11 +452,11 @@ public class GcsWriteStreamTests
         await stream.WriteAsync(data, 0, data.Length);
 
         // Act & Assert
-        await Assert.ThrowsAsync<IOException>(async () => await stream.DisposeAsync());
+        await Assert.ThrowsAsync<IOException>(async () => await stream.CommitAsync());
     }
 
     [Fact]
-    public async Task DisposeAsync_WithGenericError_ThrowsIOException()
+    public async Task CommitAsync_WithGenericError_ThrowsIOException()
     {
         // Arrange
         var gcsException = new GoogleApiException("storage", "Internal error")
@@ -474,11 +476,11 @@ public class GcsWriteStreamTests
         await stream.WriteAsync(data, 0, data.Length);
 
         // Act & Assert
-        await Assert.ThrowsAsync<IOException>(async () => await stream.DisposeAsync());
+        await Assert.ThrowsAsync<IOException>(async () => await stream.CommitAsync());
     }
 
     [Fact]
-    public async Task DisposeAsync_CalledMultipleTimes_UploadsOnlyOnce()
+    public async Task CommitAsync_CalledMultipleTimes_UploadsOnlyOnce()
     {
         // Arrange
         A.CallTo(() => _fakeStorageClient.UploadObjectAsync(
@@ -493,6 +495,7 @@ public class GcsWriteStreamTests
         await stream.WriteAsync(data, 0, data.Length);
 
         // Act
+        await stream.CommitAsync();
         await stream.DisposeAsync();
         await stream.DisposeAsync();
 
@@ -506,7 +509,7 @@ public class GcsWriteStreamTests
     }
 
     [Fact]
-    public void Dispose_CalledMultipleTimes_UploadsOnlyOnce()
+    public void Dispose_WithoutCommit_CalledMultipleTimes_UploadsNothing()
     {
         // Arrange
         A.CallTo(() => _fakeStorageClient.UploadObjectAsync(
@@ -530,11 +533,11 @@ public class GcsWriteStreamTests
                 A<Stream>._,
                 A<UploadObjectOptions>._,
                 A<CancellationToken>._))
-            .MustHaveHappenedOnceExactly();
+            .MustNotHaveHappened();
     }
 
     [Fact]
-    public async Task DisposeAsync_WithLargeData_UploadsAllData()
+    public async Task CommitAsync_WithLargeData_UploadsAllData()
     {
         // Arrange
         A.CallTo(() => _fakeStorageClient.UploadObjectAsync(
@@ -555,6 +558,7 @@ public class GcsWriteStreamTests
         await stream.WriteAsync(data, 0, data.Length);
 
         // Act
+        await stream.CommitAsync();
         await stream.DisposeAsync();
 
         // Assert
@@ -567,7 +571,7 @@ public class GcsWriteStreamTests
     }
 
     [Fact]
-    public async Task DisposeAsync_WithMultipleWrites_UploadsAllData()
+    public async Task CommitAsync_WithMultipleWrites_UploadsAllData()
     {
         // Arrange
         A.CallTo(() => _fakeStorageClient.UploadObjectAsync(
@@ -586,6 +590,7 @@ public class GcsWriteStreamTests
             await stream.WriteAsync(data, 0, data.Length);
         }
 
+        await stream.CommitAsync();
         await stream.DisposeAsync();
 
         // Assert
@@ -602,7 +607,7 @@ public class GcsWriteStreamTests
     [InlineData("text/csv")]
     [InlineData("application/octet-stream")]
     [InlineData("image/png")]
-    public async Task DisposeAsync_WithVariousContentTypes_SetsContentTypeCorrectly(string contentType)
+    public async Task CommitAsync_WithVariousContentTypes_SetsContentTypeCorrectly(string contentType)
     {
         // Arrange
         A.CallTo(() => _fakeStorageClient.UploadObjectAsync(
@@ -617,6 +622,7 @@ public class GcsWriteStreamTests
         await stream.WriteAsync(data, 0, data.Length);
 
         // Act
+        await stream.CommitAsync();
         await stream.DisposeAsync();
 
         // Assert
@@ -684,7 +690,7 @@ public class GcsWriteStreamTests
     }
 
     [Fact]
-    public async Task DisposeAsync_WithEmptyStream_StillUploads()
+    public async Task CommitAsync_WithEmptyStream_StillUploads()
     {
         // Arrange
         A.CallTo(() => _fakeStorageClient.UploadObjectAsync(
@@ -697,6 +703,7 @@ public class GcsWriteStreamTests
         var stream = new GcsWriteStream(_fakeStorageClient, TestBucket, TestObjectName);
 
         // Act - No data written
+        await stream.CommitAsync();
         await stream.DisposeAsync();
 
         // Assert
@@ -737,11 +744,10 @@ public class GcsWriteStreamTests
     }
 
     [Fact]
-    public void Dispose_WhenUploadThrowsOperationCanceledException_PropagatesCancellation()
+    public async Task CommitAsync_WhenUploadThrowsOperationCanceledException_PropagatesCancellation()
     {
-        // Arrange - upload cancels during synchronous Dispose
-        var cts = new CancellationTokenSource();
-        cts.Cancel();
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
 
         A.CallTo(() => _fakeStorageClient.UploadObjectAsync(
                 A<Object>._,
@@ -753,18 +759,17 @@ public class GcsWriteStreamTests
         var stream = new GcsWriteStream(_fakeStorageClient, TestBucket, TestObjectName);
         stream.Write([1, 2, 3], 0, 3);
 
-        // Act & Assert - OperationCanceledException propagates even from sync Dispose
-        var act = () => stream.Dispose();
-        act.Should().Throw<OperationCanceledException>();
+        var act = () => stream.CommitAsync();
+        await act.Should().ThrowAsync<OperationCanceledException>();
 
-        // Stream should be in disposed state after the throw
+        // The stream was not committed, so disposing it uploads nothing more.
+        stream.Dispose();
         stream.CanWrite.Should().BeFalse();
     }
 
     [Fact]
-    public async Task DisposeAsync_CalledAfterDispose_IsIdempotent()
+    public async Task CommitAsync_CalledTwice_Throws()
     {
-        // Arrange
         A.CallTo(() => _fakeStorageClient.UploadObjectAsync(
                 A<Object>._,
                 A<Stream>._,
@@ -773,14 +778,14 @@ public class GcsWriteStreamTests
             .Returns(Task.FromResult(new Object()));
 
         var stream = new GcsWriteStream(_fakeStorageClient, TestBucket, TestObjectName);
-        var data = new byte[] { 1, 2, 3, 4, 5 };
-        await stream.WriteAsync(data, 0, data.Length);
+        await stream.WriteAsync(new byte[] { 1, 2, 3, 4, 5 }, 0, 5);
 
-        // Act - mix async and sync dispose
-        stream.Dispose();
+        await stream.CommitAsync();
+        var second = () => stream.CommitAsync();
+
+        await second.Should().ThrowAsync<InvalidOperationException>();
         await stream.DisposeAsync();
 
-        // Assert - upload only happened once
         A.CallTo(() => _fakeStorageClient.UploadObjectAsync(
                 A<Object>._,
                 A<Stream>._,
@@ -790,7 +795,7 @@ public class GcsWriteStreamTests
     }
 
     [Fact]
-    public async Task DisposeAsync_WithoutCallerToken_UploadHasNoTimeout()
+    public async Task CommitAsync_WithoutCallerToken_UploadHasNoTimeout()
     {
         // The upload used to run under a hard-coded 5-minute CancelAfter, which cut off large uploads.
         CancellationToken uploadToken = default;
@@ -802,6 +807,7 @@ public class GcsWriteStreamTests
         var stream = new GcsWriteStream(_fakeStorageClient, TestBucket, TestObjectName);
         await stream.WriteAsync(new byte[] { 1 });
 
+        await stream.CommitAsync();
         await stream.DisposeAsync();
 
         uploadToken.CanBeCanceled.Should().BeFalse();

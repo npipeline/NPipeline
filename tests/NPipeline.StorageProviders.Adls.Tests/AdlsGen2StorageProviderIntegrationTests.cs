@@ -199,6 +199,7 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
         {
             var buffer = Encoding.UTF8.GetBytes(content);
             await writeStream.WriteAsync(buffer);
+            await writeStream.CommitAsync();
         }
 
         // Assert
@@ -225,6 +226,7 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
         {
             var buffer = Encoding.UTF8.GetBytes(newContent);
             await writeStream.WriteAsync(buffer);
+            await writeStream.CommitAsync();
         }
 
         // Assert
@@ -250,6 +252,7 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
         {
             var buffer = Encoding.UTF8.GetBytes(content);
             await writeStream.WriteAsync(buffer);
+            await writeStream.CommitAsync();
         }
 
         // Assert
@@ -272,6 +275,7 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
         {
             var buffer = Encoding.UTF8.GetBytes(content);
             await writeStream.WriteAsync(buffer);
+            await writeStream.CommitAsync();
         }
 
         // Assert
@@ -293,6 +297,7 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
         using (var writeStream = await _provider!.OpenWriteAsync(uri))
         {
             await writeStream.WriteAsync(largeContent);
+            await writeStream.CommitAsync();
         }
 
         // Assert
@@ -341,6 +346,7 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
         using (var writeStream = await customProvider.OpenWriteAsync(uri))
         {
             await writeStream.WriteAsync(largeContent);
+            await writeStream.CommitAsync();
         }
 
         // Assert
@@ -735,6 +741,7 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
         {
             var buffer = Encoding.UTF8.GetBytes(content);
             await writeStream.WriteAsync(buffer);
+            await writeStream.CommitAsync();
         }
 
         using var readStream = await provider.OpenReadAsync(uri);
@@ -783,6 +790,7 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
         {
             var buffer = Encoding.UTF8.GetBytes(content);
             await writeStream.WriteAsync(buffer);
+            await writeStream.CommitAsync();
         }
 
         using var readStream = await provider.OpenReadAsync(uri);
@@ -896,6 +904,7 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
             using var writeStream = await _provider!.OpenWriteAsync(uri);
             var buffer = Encoding.UTF8.GetBytes($"Content {index}");
             await writeStream.WriteAsync(buffer);
+            await writeStream.CommitAsync();
         });
 
         await Task.WhenAll(tasks);

@@ -124,14 +124,13 @@ public sealed class GcsStorageProvider : StorageProvider
                 ? ct
                 : null;
 
-        return new PassThroughWriteStream(new GcsWriteStream(
+        return new GcsWriteStream(
             client,
             bucket,
             objectName,
             contentType,
             _options.UploadChunkSizeBytes,
-            _resilience,
-            cancellationToken));
+            _resilience);
     }
 
     /// <inheritdoc />

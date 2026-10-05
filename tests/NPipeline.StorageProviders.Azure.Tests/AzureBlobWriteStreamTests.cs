@@ -3,6 +3,7 @@ using Azure;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using FakeItEasy;
+using NPipeline.StorageProviders.Exceptions;
 using Xunit;
 
 #pragma warning disable IDE0058 // Expression value is never used (assertion helpers return values)
@@ -268,7 +269,7 @@ public class AzureBlobWriteStreamTests
     }
 
     [Fact]
-    public async Task DisposeAsync_UploadsToAzure()
+    public async Task CommitAsync_UploadsToAzure()
     {
         // Arrange
         var fakeContainerClient = A.Fake<BlobContainerClient>();
@@ -288,6 +289,7 @@ public class AzureBlobWriteStreamTests
         await stream.WriteAsync(data, 0, data.Length);
 
         // Act
+        await stream.CommitAsync();
         await stream.DisposeAsync();
 
         // Assert
@@ -299,7 +301,7 @@ public class AzureBlobWriteStreamTests
     }
 
     [Fact]
-    public void Dispose_UploadsToAzure()
+    public void Dispose_WithoutCommit_UploadsNothing()
     {
         // Arrange
         var fakeContainerClient = A.Fake<BlobContainerClient>();
@@ -326,11 +328,11 @@ public class AzureBlobWriteStreamTests
                 A<Stream>._,
                 A<BlobUploadOptions>.That.Matches(o => o.HttpHeaders != null && o.HttpHeaders.ContentType == "application/json"),
                 A<CancellationToken>._))
-            .MustHaveHappenedOnceExactly();
+            .MustNotHaveHappened();
     }
 
     [Fact]
-    public async Task DisposeAsync_WithoutContentType_UploadsToAzureWithoutContentType()
+    public async Task CommitAsync_WithoutContentType_UploadsToAzureWithoutContentType()
     {
         // Arrange
         var fakeContainerClient = A.Fake<BlobContainerClient>();
@@ -350,6 +352,7 @@ public class AzureBlobWriteStreamTests
         await stream.WriteAsync(data, 0, data.Length);
 
         // Act
+        await stream.CommitAsync();
         await stream.DisposeAsync();
 
         // Assert
@@ -361,7 +364,7 @@ public class AzureBlobWriteStreamTests
     }
 
     [Fact]
-    public async Task DisposeAsync_WithAuthenticationFailed_ThrowsUnauthorizedAccessException()
+    public async Task CommitAsync_WithAuthenticationFailed_ThrowsUnauthorizedAccessException()
     {
         // Arrange
         var fakeContainerClient = A.Fake<BlobContainerClient>();
@@ -383,11 +386,11 @@ public class AzureBlobWriteStreamTests
         await stream.WriteAsync(data, 0, data.Length);
 
         // Act & Assert
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(async () => await stream.DisposeAsync());
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(async () => await stream.CommitAsync());
     }
 
     [Fact]
-    public async Task DisposeAsync_WithAuthorizationFailed_ThrowsUnauthorizedAccessException()
+    public async Task CommitAsync_WithAuthorizationFailed_ThrowsUnauthorizedAccessException()
     {
         // Arrange
         var fakeContainerClient = A.Fake<BlobContainerClient>();
@@ -409,11 +412,11 @@ public class AzureBlobWriteStreamTests
         await stream.WriteAsync(data, 0, data.Length);
 
         // Act & Assert
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(async () => await stream.DisposeAsync());
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(async () => await stream.CommitAsync());
     }
 
     [Fact]
-    public async Task DisposeAsync_WithInvalidResourceName_ThrowsArgumentException()
+    public async Task CommitAsync_WithInvalidResourceName_ThrowsArgumentException()
     {
         // Arrange
         var fakeContainerClient = A.Fake<BlobContainerClient>();
@@ -435,11 +438,11 @@ public class AzureBlobWriteStreamTests
         await stream.WriteAsync(data, 0, data.Length);
 
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentException>(async () => await stream.DisposeAsync());
+        await Assert.ThrowsAsync<ArgumentException>(async () => await stream.CommitAsync());
     }
 
     [Fact]
-    public async Task DisposeAsync_WithInvalidQueryParameterValue_ThrowsArgumentException()
+    public async Task CommitAsync_WithInvalidQueryParameterValue_ThrowsArgumentException()
     {
         // Arrange
         var fakeContainerClient = A.Fake<BlobContainerClient>();
@@ -461,11 +464,11 @@ public class AzureBlobWriteStreamTests
         await stream.WriteAsync(data, 0, data.Length);
 
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentException>(async () => await stream.DisposeAsync());
+        await Assert.ThrowsAsync<ArgumentException>(async () => await stream.CommitAsync());
     }
 
     [Fact]
-    public async Task DisposeAsync_WithContainerNotFound_ThrowsFileNotFoundException()
+    public async Task CommitAsync_WithContainerNotFound_ThrowsFileNotFoundException()
     {
         // Arrange
         var fakeContainerClient = A.Fake<BlobContainerClient>();
@@ -487,11 +490,11 @@ public class AzureBlobWriteStreamTests
         await stream.WriteAsync(data, 0, data.Length);
 
         // Act & Assert
-        await Assert.ThrowsAsync<FileNotFoundException>(async () => await stream.DisposeAsync());
+        await Assert.ThrowsAsync<FileNotFoundException>(async () => await stream.CommitAsync());
     }
 
     [Fact]
-    public async Task DisposeAsync_WithBlobNotFound_ThrowsFileNotFoundException()
+    public async Task CommitAsync_WithBlobNotFound_ThrowsFileNotFoundException()
     {
         // Arrange
         var fakeContainerClient = A.Fake<BlobContainerClient>();
@@ -513,11 +516,11 @@ public class AzureBlobWriteStreamTests
         await stream.WriteAsync(data, 0, data.Length);
 
         // Act & Assert
-        await Assert.ThrowsAsync<FileNotFoundException>(async () => await stream.DisposeAsync());
+        await Assert.ThrowsAsync<FileNotFoundException>(async () => await stream.CommitAsync());
     }
 
     [Fact]
-    public async Task DisposeAsync_WithGenericError_ThrowsIOException()
+    public async Task CommitAsync_WithGenericError_ThrowsIOException()
     {
         // Arrange
         var fakeContainerClient = A.Fake<BlobContainerClient>();
@@ -539,11 +542,11 @@ public class AzureBlobWriteStreamTests
         await stream.WriteAsync(data, 0, data.Length);
 
         // Act & Assert
-        await Assert.ThrowsAsync<IOException>(async () => await stream.DisposeAsync());
+        await Assert.ThrowsAsync<IOException>(async () => await stream.CommitAsync());
     }
 
     [Fact]
-    public async Task DisposeAsync_CalledMultipleTimes_UploadsOnlyOnce()
+    public async Task CommitAsync_CalledMultipleTimes_UploadsOnlyOnce()
     {
         // Arrange
         var fakeContainerClient = A.Fake<BlobContainerClient>();
@@ -563,6 +566,7 @@ public class AzureBlobWriteStreamTests
         await stream.WriteAsync(data, 0, data.Length);
 
         // Act
+        await stream.CommitAsync();
         await stream.DisposeAsync();
         await stream.DisposeAsync();
 
@@ -572,7 +576,7 @@ public class AzureBlobWriteStreamTests
     }
 
     [Fact]
-    public void Dispose_CalledMultipleTimes_UploadsOnlyOnce()
+    public void Dispose_WithoutCommit_CalledMultipleTimes_UploadsNothing()
     {
         // Arrange
         var fakeContainerClient = A.Fake<BlobContainerClient>();
@@ -597,11 +601,11 @@ public class AzureBlobWriteStreamTests
 
         // Assert
         A.CallTo(() => fakeBlobClient.UploadAsync(A<Stream>._, A<BlobUploadOptions>._, A<CancellationToken>._))
-            .MustHaveHappenedOnceExactly();
+            .MustNotHaveHappened();
     }
 
     [Fact]
-    public async Task DisposeAsync_WithLargeData_UploadsAllData()
+    public async Task CommitAsync_WithLargeData_UploadsAllData()
     {
         // Arrange
         var fakeContainerClient = A.Fake<BlobContainerClient>();
@@ -628,6 +632,7 @@ public class AzureBlobWriteStreamTests
         await stream.WriteAsync(data, 0, data.Length);
 
         // Act
+        await stream.CommitAsync();
         await stream.DisposeAsync();
 
         // Assert
@@ -636,7 +641,7 @@ public class AzureBlobWriteStreamTests
     }
 
     [Fact]
-    public async Task DisposeAsync_WithMultipleWrites_UploadsAllData()
+    public async Task CommitAsync_WithMultipleWrites_UploadsAllData()
     {
         // Arrange
         var fakeContainerClient = A.Fake<BlobContainerClient>();
@@ -660,6 +665,7 @@ public class AzureBlobWriteStreamTests
             await stream.WriteAsync(data, 0, data.Length);
         }
 
+        await stream.CommitAsync();
         await stream.DisposeAsync();
 
         // Assert
@@ -672,7 +678,7 @@ public class AzureBlobWriteStreamTests
     [InlineData("text/csv")]
     [InlineData("application/octet-stream")]
     [InlineData("image/png")]
-    public async Task DisposeAsync_WithVariousContentTypes_SetsContentTypeCorrectly(string contentType)
+    public async Task CommitAsync_WithVariousContentTypes_SetsContentTypeCorrectly(string contentType)
     {
         // Arrange
         var fakeContainerClient = A.Fake<BlobContainerClient>();
@@ -692,6 +698,7 @@ public class AzureBlobWriteStreamTests
         await stream.WriteAsync(data, 0, data.Length);
 
         // Act
+        await stream.CommitAsync();
         await stream.DisposeAsync();
 
         // Assert
@@ -703,7 +710,7 @@ public class AzureBlobWriteStreamTests
     }
 
     [Fact]
-    public async Task DisposeAsync_WithCustomConcurrency_UsesCustomConcurrency()
+    public async Task CommitAsync_WithCustomConcurrency_UsesCustomConcurrency()
     {
         // Arrange
         var fakeContainerClient = A.Fake<BlobContainerClient>();
@@ -724,6 +731,7 @@ public class AzureBlobWriteStreamTests
         await stream.WriteAsync(data, 0, data.Length);
 
         // Act
+        await stream.CommitAsync();
         await stream.DisposeAsync();
 
         // Assert
@@ -735,7 +743,7 @@ public class AzureBlobWriteStreamTests
     }
 
     [Fact]
-    public async Task DisposeAsync_WithCustomTransferSize_UsesCustomTransferSize()
+    public async Task CommitAsync_WithCustomTransferSize_UsesCustomTransferSize()
     {
         // Arrange
         var fakeContainerClient = A.Fake<BlobContainerClient>();
@@ -756,6 +764,7 @@ public class AzureBlobWriteStreamTests
         await stream.WriteAsync(data, 0, data.Length);
 
         // Act
+        await stream.CommitAsync();
         await stream.DisposeAsync();
 
         // Assert
@@ -767,7 +776,7 @@ public class AzureBlobWriteStreamTests
     }
 
     [Fact]
-    public async Task DisposeAsync_TempFileIsCleanedUp()
+    public async Task CommitAsync_TempFileIsCleanedUp()
     {
         // Arrange
         var fakeContainerClient = A.Fake<BlobContainerClient>();
@@ -787,6 +796,7 @@ public class AzureBlobWriteStreamTests
         await stream.WriteAsync(data, 0, data.Length);
 
         // Act
+        await stream.CommitAsync();
         await stream.DisposeAsync();
 
         // Assert - The temp file should be cleaned up (FileOptions.DeleteOnClose is set)
@@ -797,7 +807,7 @@ public class AzureBlobWriteStreamTests
     }
 
     [Fact]
-    public async Task DisposeAsync_WithEmptyData_UploadsEmptyBlob()
+    public async Task CommitAsync_WithEmptyData_UploadsEmptyBlob()
     {
         // Arrange
         var fakeContainerClient = A.Fake<BlobContainerClient>();
@@ -817,6 +827,7 @@ public class AzureBlobWriteStreamTests
         // Don't write any data - upload empty blob
 
         // Act
+        await stream.CommitAsync();
         await stream.DisposeAsync();
 
         // Assert
@@ -825,7 +836,7 @@ public class AzureBlobWriteStreamTests
     }
 
     [Fact]
-    public async Task DisposeAsync_WithoutCallerToken_UploadHasNoTimeout()
+    public async Task CommitAsync_WithoutCallerToken_UploadHasNoTimeout()
     {
         // The upload used to run under a hard-coded 5-minute CancelAfter, which cut off large uploads. With no caller
         // token, the upload's token must not be cancellable at all.
@@ -843,8 +854,101 @@ public class AzureBlobWriteStreamTests
         var stream = new AzureBlobWriteStream(_fakeBlobServiceClient, TestContainer, TestBlob);
         await stream.WriteAsync(new byte[] { 1 });
 
+        await stream.CommitAsync();
         await stream.DisposeAsync();
 
         uploadToken.CanBeCanceled.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task CommitAsync_WithIfMatch_SendsTheETagAsACondition()
+    {
+        var (containerClient, blobClient) = FakeClients();
+        var stream = new AzureBlobWriteStream(_fakeBlobServiceClient, TestContainer, TestBlob, ifMatch: "\"0x8DC\"");
+        await stream.WriteAsync(new byte[] { 1 });
+
+        await stream.CommitAsync();
+
+        A.CallTo(() => blobClient.UploadAsync(
+                A<Stream>._,
+                A<BlobUploadOptions>.That.Matches(o => o.Conditions != null && o.Conditions.IfMatch == new global::Azure.ETag("\"0x8DC\"") && o.Conditions.IfNoneMatch == null),
+                A<CancellationToken>._))
+            .MustHaveHappenedOnceExactly();
+    }
+
+    [Fact]
+    public async Task CommitAsync_WithOverwriteFalse_SendsIfNoneMatchStar()
+    {
+        var (_, blobClient) = FakeClients();
+        var stream = new AzureBlobWriteStream(_fakeBlobServiceClient, TestContainer, TestBlob, overwrite: false);
+        await stream.WriteAsync(new byte[] { 1 });
+
+        await stream.CommitAsync();
+
+        A.CallTo(() => blobClient.UploadAsync(
+                A<Stream>._,
+                A<BlobUploadOptions>.That.Matches(o => o.Conditions != null && o.Conditions.IfNoneMatch == global::Azure.ETag.All),
+                A<CancellationToken>._))
+            .MustHaveHappenedOnceExactly();
+    }
+
+    [Fact]
+    public async Task CommitAsync_WithNoConditions_SendsNone()
+    {
+        var (_, blobClient) = FakeClients();
+        var stream = new AzureBlobWriteStream(_fakeBlobServiceClient, TestContainer, TestBlob);
+        await stream.WriteAsync(new byte[] { 1 });
+
+        await stream.CommitAsync();
+
+        A.CallTo(() => blobClient.UploadAsync(A<Stream>._, A<BlobUploadOptions>.That.Matches(o => o.Conditions == null), A<CancellationToken>._))
+            .MustHaveHappenedOnceExactly();
+    }
+
+    [Theory]
+    [InlineData(412, "ConditionNotMet")]
+    [InlineData(409, "BlobAlreadyExists")]
+    public async Task CommitAsync_WhenTheConditionFails_ThrowsStoragePreconditionFailedException(int status, string code)
+    {
+        var (_, blobClient) = FakeClients();
+
+        A.CallTo(() => blobClient.UploadAsync(A<Stream>._, A<BlobUploadOptions>._, A<CancellationToken>._))
+            .Throws(new RequestFailedException(status, "failed", code, null));
+
+        var stream = new AzureBlobWriteStream(_fakeBlobServiceClient, TestContainer, TestBlob, overwrite: false);
+        await stream.WriteAsync(new byte[] { 1 });
+
+        await Assert.ThrowsAsync<StoragePreconditionFailedException>(async () => await stream.CommitAsync());
+    }
+
+    [Fact]
+    public async Task CommitAsync_ExposesTheETagOfTheUploadedBlob()
+    {
+        var (_, blobClient) = FakeClients();
+        var info = BlobsModelFactory.BlobContentInfo(new global::Azure.ETag("\"0x8DD\""), DateTimeOffset.UtcNow, null, null, null, 0);
+
+        A.CallTo(() => blobClient.UploadAsync(A<Stream>._, A<BlobUploadOptions>._, A<CancellationToken>._))
+            .Returns(Task.FromResult(Response.FromValue(info, A.Fake<Response>())));
+
+        var stream = new AzureBlobWriteStream(_fakeBlobServiceClient, TestContainer, TestBlob);
+        await stream.WriteAsync(new byte[] { 1 });
+
+        await stream.CommitAsync();
+
+        stream.ETag.Should().Be("\"0x8DD\"");
+    }
+
+    private (BlobContainerClient Container, BlobClient Blob) FakeClients()
+    {
+        var containerClient = A.Fake<BlobContainerClient>();
+        var blobClient = A.Fake<BlobClient>();
+
+        A.CallTo(() => _fakeBlobServiceClient.GetBlobContainerClient(TestContainer)).Returns(containerClient);
+        A.CallTo(() => containerClient.GetBlobClient(TestBlob)).Returns(blobClient);
+
+        A.CallTo(() => blobClient.UploadAsync(A<Stream>._, A<BlobUploadOptions>._, A<CancellationToken>._))
+            .ReturnsLazily(() => Task.FromResult(A.Fake<Response<BlobContentInfo>>()));
+
+        return (containerClient, blobClient);
     }
 }

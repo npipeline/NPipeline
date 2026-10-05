@@ -255,7 +255,7 @@ public abstract class StorageProviderConformanceTests : IAsyncLifetime
     [Fact]
     public async Task List_NonRecursive_YieldsDirectChildrenAndDirectories()
     {
-        if (!Provider.Capabilities.HasFlag(StorageCapabilities.List))
+        if (!Provider.Capabilities.HasFlag(StorageCapabilities.List) || !SupportsList)
             return;
 
         await WriteListingLayoutAsync();
@@ -269,7 +269,7 @@ public abstract class StorageProviderConformanceTests : IAsyncLifetime
     [Fact]
     public async Task List_Recursive_YieldsEveryFileAndNoDirectories()
     {
-        if (!Provider.Capabilities.HasFlag(StorageCapabilities.List))
+        if (!Provider.Capabilities.HasFlag(StorageCapabilities.List) || !SupportsList)
             return;
 
         await WriteListingLayoutAsync();
@@ -283,7 +283,7 @@ public abstract class StorageProviderConformanceTests : IAsyncLifetime
     [Fact]
     public async Task List_DirectoryWithoutTrailingSlash_DoesNotMatchSiblingPrefix()
     {
-        if (!Provider.Capabilities.HasFlag(StorageCapabilities.List))
+        if (!Provider.Capabilities.HasFlag(StorageCapabilities.List) || !SupportsList)
             return;
 
         await WriteListingLayoutAsync();
@@ -296,7 +296,7 @@ public abstract class StorageProviderConformanceTests : IAsyncLifetime
     [Fact]
     public async Task List_MissingDirectory_YieldsNothing()
     {
-        if (!Provider.Capabilities.HasFlag(StorageCapabilities.List))
+        if (!Provider.Capabilities.HasFlag(StorageCapabilities.List) || !SupportsList)
             return;
 
         (await ListAsync(RootUri.Combine("no-such-directory/"), true)).Should().BeEmpty();
@@ -306,7 +306,7 @@ public abstract class StorageProviderConformanceTests : IAsyncLifetime
     [Fact]
     public async Task List_YieldedUris_KeepTheCallersParameters()
     {
-        if (!Provider.Capabilities.HasFlag(StorageCapabilities.List))
+        if (!Provider.Capabilities.HasFlag(StorageCapabilities.List) || !SupportsList)
             return;
 
         await WriteListingLayoutAsync();
@@ -376,6 +376,139 @@ public abstract class StorageProviderConformanceTests : IAsyncLifetime
             await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await ListAsync(RootUri, true, token));
     }
 
+    [Fact]
+    public async Task Write_DisposedWithoutCommit_LeavesNothingAtTheTarget()
+    {
+        if (!Provider.Capabilities.HasFlag(StorageCapabilities.Write))
+            return;
+
+        var uri = RootUri.Combine("abandoned.bin");
+
+        await using (var stream = await Provider.OpenWriteAsync(uri))
+        {
+            await stream.WriteAsync(Pattern(1024));
+        }
+
+        (await Provider.ExistsAsync(uri)).Should().BeFalse("an uncommitted write must never become visible");
+        (await Provider.GetMetadataAsync(uri)).Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Write_DisposedWithoutCommit_KeepsTheExistingObject()
+    {
+        if (!Provider.Capabilities.HasFlag(StorageCapabilities.Write))
+            return;
+
+        var uri = RootUri.Combine("existing.bin");
+        var original = Pattern(512);
+        await WriteAsync(uri, original);
+
+        await using (var stream = await Provider.OpenWriteAsync(uri))
+        {
+            await stream.WriteAsync(Pattern(4096));
+        }
+
+        (await ReadAsync(uri)).Should().Equal(original);
+    }
+
+    [Fact]
+    public async Task Write_Committed_ReplacesTheExistingObject()
+    {
+        if (!Provider.Capabilities.HasFlag(StorageCapabilities.Write))
+            return;
+
+        var uri = RootUri.Combine("replaced.bin");
+        await WriteAsync(uri, Pattern(10_000));
+
+        var replacement = Pattern(100);
+        await WriteAsync(uri, replacement);
+
+        (await ReadAsync(uri)).Should().Equal(replacement, "the new content must not leave the old object's tail behind");
+    }
+
+    [Fact]
+    public async Task Write_CommittedTwice_Throws()
+    {
+        if (!Provider.Capabilities.HasFlag(StorageCapabilities.Write))
+            return;
+
+        await using var stream = await Provider.OpenWriteAsync(RootUri.Combine("twice.bin"));
+        await stream.WriteAsync(Pattern(16));
+        await stream.CommitAsync();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => stream.CommitAsync());
+    }
+
+    [Fact]
+    public async Task Write_Committed_LeavesNoTemporaryObjectsBehind()
+    {
+        if (!Provider.Capabilities.HasFlag(StorageCapabilities.Write) || !SupportsList)
+            return;
+
+        await WriteAsync(RootUri.Combine("only.bin"), Pattern(64));
+
+        var names = (await ListAsync(RootUri, true)).Select(i => i.Uri.Name).ToList();
+        names.Should().Equal("only.bin");
+    }
+
+    [Fact]
+    public async Task Write_OverwriteFalse_RefusesAnExistingObject()
+    {
+        if (!Provider.Capabilities.HasFlag(StorageCapabilities.ConditionalWrite))
+            return;
+
+        var uri = RootUri.Combine("create-only.bin");
+        await WriteAsync(uri, Pattern(8));
+
+        await using var stream = await Provider.OpenWriteAsync(uri, new StorageWriteOptions { Overwrite = false });
+        await stream.WriteAsync(Pattern(16));
+
+        await Assert.ThrowsAsync<StoragePreconditionFailedException>(() => stream.CommitAsync());
+        (await ReadAsync(uri)).Should().Equal(Pattern(8));
+    }
+
+    [Fact]
+    public async Task Write_OverwriteFalse_CreatesAMissingObject()
+    {
+        if (!Provider.Capabilities.HasFlag(StorageCapabilities.ConditionalWrite))
+            return;
+
+        var uri = RootUri.Combine("create-new.bin");
+
+        await using (var stream = await Provider.OpenWriteAsync(uri, new StorageWriteOptions { Overwrite = false }))
+        {
+            await stream.WriteAsync(Pattern(32));
+            await stream.CommitAsync();
+        }
+
+        (await ReadAsync(uri)).Should().Equal(Pattern(32));
+    }
+
+    [Fact]
+    public async Task Write_IfMatch_CommitsOnlyWhileTheETagIsCurrent()
+    {
+        if (!Provider.Capabilities.HasFlag(StorageCapabilities.ConditionalWrite))
+            return;
+
+        var uri = RootUri.Combine("if-match.bin");
+        await WriteAsync(uri, Pattern(8));
+        var etag = (await Provider.GetMetadataAsync(uri))!.ETag;
+        etag.Should().NotBeNullOrEmpty();
+
+        await using (var current = await Provider.OpenWriteAsync(uri, new StorageWriteOptions { IfMatch = etag }))
+        {
+            await current.WriteAsync(Pattern(16));
+            await current.CommitAsync();
+        }
+
+        // The first commit changed the object, so the same ETag is now stale.
+        await using var stale = await Provider.OpenWriteAsync(uri, new StorageWriteOptions { IfMatch = etag });
+        await stale.WriteAsync(Pattern(24));
+
+        await Assert.ThrowsAsync<StoragePreconditionFailedException>(() => stale.CommitAsync());
+        (await ReadAsync(uri)).Should().Equal(Pattern(16));
+    }
+
     private async Task WriteListingLayoutAsync()
     {
         await WriteAsync(RootUri.Combine("logs/a.csv"), [1]);
@@ -399,6 +532,7 @@ public abstract class StorageProviderConformanceTests : IAsyncLifetime
     {
         await using var stream = await Provider.OpenWriteAsync(uri);
         await stream.WriteAsync(content);
+        await stream.CommitAsync();
     }
 
     private async Task<byte[]> ReadAsync(StorageUri uri)

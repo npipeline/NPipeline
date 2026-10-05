@@ -153,26 +153,6 @@ internal static class FileNodeSupport
             FileShare.None,
             bufferSize,
             FileOptions.DeleteOnClose | FileOptions.Asynchronous);
-
-    public static StorageUri TemporaryUri(StorageUri target) =>
-        // Everything but the path is kept: parameters, port and user info select the account, region or endpoint.
-        target.WithPath($"{target.Path}.tmp-{Guid.NewGuid():N}");
-
-    public static async Task TryDeleteAsync(IStorageProvider provider, StorageUri uri)
-    {
-        if (!provider.Capabilities.HasFlag(StorageCapabilities.Delete))
-            return;
-
-        try
-        {
-            // CancellationToken.None: cleanup runs because the operation failed, which is often a cancellation.
-            await provider.DeleteAsync(uri, CancellationToken.None).ConfigureAwait(false);
-        }
-        catch (Exception)
-        {
-            // Best effort: the original failure is the one to report.
-        }
-    }
 }
 
 /// <summary>Disposes the streams it holds in reverse order, so wrappers flush into the streams they wrap.</summary>

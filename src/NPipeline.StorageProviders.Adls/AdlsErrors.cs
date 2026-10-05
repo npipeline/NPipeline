@@ -1,4 +1,5 @@
 using Azure;
+using NPipeline.StorageProviders.Exceptions;
 
 namespace NPipeline.StorageProviders.Adls;
 
@@ -17,6 +18,8 @@ internal static class AdlsErrors
         {
             404 => NotFound(ex, filesystem, path, code),
             401 or 403 => AccessDenied(ex, filesystem, path, code),
+            412 => Precondition(ex),
+            409 when code is "BlobAlreadyExists" or "PathAlreadyExists" => Precondition(ex),
             400 => Invalid(ex, filesystem, path, code),
             _ => code switch
             {
@@ -46,4 +49,7 @@ internal static class AdlsErrors
 
     private static ArgumentException Invalid(RequestFailedException ex, string filesystem, string path, string code) =>
         new($"Invalid ADLS filesystem '{filesystem}' or path '{path}'. Status={ex.Status}, Code={code}. {ex.Message}", ex);
+
+    private static StoragePreconditionFailedException Precondition(RequestFailedException ex) =>
+        new($"ADLS refused the conditional write: the object changed or already exists. {ex.Message}", ex);
 }

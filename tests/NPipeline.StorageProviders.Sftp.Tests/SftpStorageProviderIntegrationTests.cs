@@ -253,10 +253,79 @@ public sealed class SftpStorageProviderIntegrationTests(SftpServerFixture server
         await act.Should().ThrowAsync<Renci.SshNet.Common.SshConnectionException>();
     }
 
+    [Fact]
+    public async Task OpenWriteAsync_DisposedWithoutCommit_LeavesNothingBehind()
+    {
+        using var factory = new SftpClientFactory(server.CreateOptions());
+        var provider = new SftpStorageProvider(factory, server.CreateOptions());
+        var directory = $"{Guid.NewGuid():N}";
+        var uri = server.Uri($"{directory}/abandoned.txt");
+
+        await using (var stream = await provider.OpenWriteAsync(uri))
+        {
+            await stream.WriteAsync(Encoding.UTF8.GetBytes(new string('x', 10_000)));
+            await stream.FlushAsync();
+        }
+
+        (await provider.ExistsAsync(uri)).Should().BeFalse();
+        var names = await ListNamesAsync(provider, server.Uri($"{directory}/"));
+        names.Should().BeEmpty("the temporary file is deleted when the write is abandoned");
+    }
+
+    [Fact]
+    public async Task OpenWriteAsync_DisposedWithoutCommit_KeepsTheExistingFile()
+    {
+        using var factory = new SftpClientFactory(server.CreateOptions());
+        var provider = new SftpStorageProvider(factory, server.CreateOptions());
+        var uri = server.Uri($"{Guid.NewGuid():N}/keep.txt");
+        await WriteAsync(provider, uri, "original");
+
+        await using (var stream = await provider.OpenWriteAsync(uri))
+        {
+            await stream.WriteAsync(Encoding.UTF8.GetBytes("replacement that never commits"));
+        }
+
+        (await ReadAsync(provider, uri)).Should().Be("original");
+    }
+
+    [Fact]
+    public async Task OpenWriteAsync_BeforeCommit_TheTargetIsNotVisible_AndAfterCommitNoTemporaryFileRemains()
+    {
+        using var factory = new SftpClientFactory(server.CreateOptions());
+        var provider = new SftpStorageProvider(factory, server.CreateOptions());
+        var directory = $"{Guid.NewGuid():N}";
+        var uri = server.Uri($"{directory}/final.txt");
+
+        await using (var stream = await provider.OpenWriteAsync(uri))
+        {
+            await stream.WriteAsync(Encoding.UTF8.GetBytes("content"));
+            await stream.FlushAsync();
+            (await provider.ExistsAsync(uri)).Should().BeFalse("the content goes to a temporary file until the commit");
+
+            await stream.CommitAsync();
+        }
+
+        (await ReadAsync(provider, uri)).Should().Be("content");
+        (await ListNamesAsync(provider, server.Uri($"{directory}/"))).Should().Equal("final.txt");
+    }
+
+    private static async Task<List<string>> ListNamesAsync(SftpStorageProvider provider, StorageUri directory)
+    {
+        var names = new List<string>();
+
+        await foreach (var item in provider.ListAsync(directory))
+        {
+            names.Add(item.Uri.Name);
+        }
+
+        return names;
+    }
+
     private static async Task WriteAsync(SftpStorageProvider provider, StorageUri uri, string content)
     {
         await using var stream = await provider.OpenWriteAsync(uri);
         await stream.WriteAsync(Encoding.UTF8.GetBytes(content));
+        await stream.CommitAsync();
     }
 
     private static async Task<string> ReadAsync(SftpStorageProvider provider, StorageUri uri)

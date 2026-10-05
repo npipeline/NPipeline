@@ -1,3 +1,4 @@
+using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Models;
 
 namespace NPipeline.StorageProviders.S3.Aws;
@@ -24,4 +25,7 @@ public class AwsS3StorageProvider : S3CoreStorageProvider
 
     /// <inheritdoc />
     public override IReadOnlyList<StorageScheme> Schemes => SchemeList;
+
+    /// <summary>AWS S3 honours <c>If-Match</c> and <c>If-None-Match</c> on writes; S3-compatible services are not assumed to.</summary>
+    public override StorageCapabilities Capabilities => base.Capabilities | StorageCapabilities.ConditionalWrite;
 }

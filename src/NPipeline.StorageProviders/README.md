@@ -35,7 +35,7 @@ dotnet add package NPipeline.StorageProviders
 Primary interface defining storage operations:
 
 - `OpenReadAsync`: Open stream for reading
-- `OpenWriteAsync`: Open stream for writing
+- `OpenWriteAsync`: Open a `StorageWriteStream` for writing. The data appears at the target only after `CommitAsync`; disposing without a commit discards it
 - `ListAsync`: Enumerate items in a location
 - `GetMetadataAsync`: Retrieve file metadata
 - `ExistsAsync`: Check if an item exists
@@ -90,6 +90,8 @@ await using var stream = await provider.OpenReadAsync(uri);
 
 // Write stream
 await using var writeStream = await provider.OpenWriteAsync(uri);
+await writeStream.WriteAsync(bytes);
+await writeStream.CommitAsync(); // without this, disposing discards the data
 ```
 
 ### Custom Provider Registration
