@@ -250,5 +250,35 @@ public sealed class FileSystemStorageProviderTests : IAsyncLifetime
             root.Delete(true);
         }
     }
-}
 
+    [Fact]
+    public async Task OpenReadAsync_ParsedPathWithSpace_Reads()
+    {
+        var path = Path.Combine(_testDirectory, "my file #1.txt");
+        await File.WriteAllTextAsync(path, "hi");
+
+        await using var stream = await _provider.OpenReadAsync(StorageUri.Parse(path));
+        using var reader = new StreamReader(stream);
+
+        (await reader.ReadToEndAsync()).Should().Be("hi");
+    }
+
+    [Fact]
+    public async Task ListAsync_ListedUri_RoundTripsThroughText()
+    {
+        await File.WriteAllTextAsync(Path.Combine(_testDirectory, "a b%20#c.csv"), "x");
+
+        var listed = new List<StorageItem>();
+
+        await foreach (var item in _provider.ListAsync(StorageUri.FromFilePath(_testDirectory)))
+        {
+            listed.Add(item);
+        }
+
+        var uri = listed.Single().Uri;
+
+        StorageUri.Parse(uri.ToString()).Should().Be(uri);
+        await using var stream = await _provider.OpenReadAsync(StorageUri.Parse(uri.ToString()));
+        stream.CanRead.Should().BeTrue();
+    }
+}

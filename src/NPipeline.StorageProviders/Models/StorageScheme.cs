@@ -4,11 +4,13 @@ namespace NPipeline.StorageProviders.Models;
 ///     Lightweight value object representing a storage URI scheme (e.g. "file", "s3").
 ///     - Case-insensitive, normalized to lowercase
 ///     - Open set: any valid scheme per RFC 3986 (alpha, followed by alpha|digit|+|-|.)
-///     - Implicit conversions to/from string for ergonomics
-///     - Provides well-known schemes via static properties
+///     - Implicit conversion to string; explicit conversion from string (it throws on invalid input)
+///     - Provides well-known schemes via static readonly fields
 /// </summary>
 public readonly record struct StorageScheme
 {
+    private readonly string? _value;
+
     /// <summary>
     ///     Initializes a new instance of the <see cref="StorageScheme" /> struct.
     /// </summary>
@@ -27,95 +29,95 @@ public readonly record struct StorageScheme
                 nameof(value));
         }
 
-        Value = normalized;
+        _value = normalized;
     }
 
     /// <summary>
-    ///     Gets the normalized lowercase value of the storage scheme.
+    ///     Gets the normalized lowercase value of the storage scheme. Empty for <c>default(StorageScheme)</c>.
     /// </summary>
-    public string Value { get; }
+    public string Value => _value ?? string.Empty;
 
     // Well-known schemes (non-exhaustive). These are conveniences only.
     /// <summary>
     ///     Gets a <see cref="StorageScheme" /> instance representing the "file" scheme.
     /// </summary>
-    public static StorageScheme File => new("file");
+    public static readonly StorageScheme File = new("file");
 
     /// <summary>
     ///     Gets a <see cref="StorageScheme" /> instance representing the "postgres" scheme.
     /// </summary>
-    public static StorageScheme Postgres => new("postgres");
+    public static readonly StorageScheme Postgres = new("postgres");
 
     /// <summary>
     ///     Gets a <see cref="StorageScheme" /> instance representing the "postgresql" scheme.
     /// </summary>
-    public static StorageScheme Postgresql => new("postgresql");
+    public static readonly StorageScheme Postgresql = new("postgresql");
 
     /// <summary>
     ///     Gets a <see cref="StorageScheme" /> instance representing the "mssql" scheme.
     /// </summary>
-    public static StorageScheme Mssql => new("mssql");
+    public static readonly StorageScheme Mssql = new("mssql");
 
     /// <summary>
     ///     Gets a <see cref="StorageScheme" /> instance representing the "sqlserver" scheme.
     /// </summary>
-    public static StorageScheme SqlServer => new("sqlserver");
+    public static readonly StorageScheme SqlServer = new("sqlserver");
 
     /// <summary>
     ///     Gets a <see cref="StorageScheme" /> instance representing the "s3" scheme.
     /// </summary>
-    public static StorageScheme S3 => new("s3");
+    public static readonly StorageScheme S3 = new("s3");
 
     /// <summary>
     ///     Gets a <see cref="StorageScheme" /> instance representing "azure" scheme.
     /// </summary>
-    public static StorageScheme Azure => new("azure");
+    public static readonly StorageScheme Azure = new("azure");
 
     /// <summary>
     ///     Gets a <see cref="StorageScheme" /> instance representing the "adls" scheme
     ///     for Azure Data Lake Storage Gen2.
     /// </summary>
-    public static StorageScheme Adls => new("adls");
+    public static readonly StorageScheme Adls = new("adls");
 
     /// <summary>
     ///     Gets a <see cref="StorageScheme" /> instance representing the "gs" scheme for Google Cloud Storage.
     /// </summary>
-    public static StorageScheme Gcs => new("gs");
+    public static readonly StorageScheme Gcs = new("gs");
 
     /// <summary>
     ///     Gets a <see cref="StorageScheme" /> instance representing the "cosmosdb" scheme.
     /// </summary>
-    public static StorageScheme CosmosDb => new("cosmosdb");
+    public static readonly StorageScheme CosmosDb = new("cosmosdb");
 
     /// <summary>
     ///     Gets a <see cref="StorageScheme" /> instance representing the "cosmos" scheme.
     /// </summary>
-    public static StorageScheme Cosmos => new("cosmos");
+    public static readonly StorageScheme Cosmos = new("cosmos");
 
     /// <summary>
     ///     Gets a <see cref="StorageScheme" /> instance representing the "cosmos-mongo" scheme.
     /// </summary>
-    public static StorageScheme CosmosMongo => new("cosmos-mongo");
+    public static readonly StorageScheme CosmosMongo = new("cosmos-mongo");
 
     /// <summary>
     ///     Gets a <see cref="StorageScheme" /> instance representing the "cosmos-cassandra" scheme.
     /// </summary>
-    public static StorageScheme CosmosCassandra => new("cosmos-cassandra");
+    public static readonly StorageScheme CosmosCassandra = new("cosmos-cassandra");
 
     /// <summary>
     ///     Gets a <see cref="StorageScheme" /> instance representing the "sftp" scheme.
     /// </summary>
-    public static StorageScheme Sftp => new("sftp");
+    public static readonly StorageScheme Sftp = new("sftp");
 
     /// <summary>
     ///     Gets a <see cref="StorageScheme" /> instance representing the "mysql" scheme.
     /// </summary>
-    public static StorageScheme MySql => new("mysql");
+    public static readonly StorageScheme MySql = new("mysql");
 
     /// <summary>
     ///     Gets a <see cref="StorageScheme" /> instance representing the "mariadb" scheme.
     /// </summary>
-    public static StorageScheme MariaDb => new("mariadb");
+    public static readonly StorageScheme MariaDb = new("mariadb");
 
     /// <summary>
     ///     Attempts to parse the specified string into a <see cref="StorageScheme" /> instance.
@@ -170,11 +172,12 @@ public readonly record struct StorageScheme
     }
 
     /// <summary>
-    ///     Implicitly converts a string to a <see cref="StorageScheme" /> instance.
+    ///     Explicitly converts a string to a <see cref="StorageScheme" /> instance. It is explicit because it throws for an invalid scheme.
     /// </summary>
     /// <param name="value">The string to convert.</param>
     /// <returns>A new <see cref="StorageScheme" /> instance representing the specified string.</returns>
-    public static implicit operator StorageScheme(string value) => new(value);
+    /// <exception cref="ArgumentException">Thrown when the scheme is null, whitespace, or invalid.</exception>
+    public static explicit operator StorageScheme(string value) => new(value);
 
     /// <summary>
     ///     Implicitly converts a <see cref="StorageScheme" /> instance to a string.
@@ -186,6 +189,6 @@ public readonly record struct StorageScheme
     /// <summary>
     ///     Returns the string representation of the <see cref="StorageScheme" />.
     /// </summary>
-    /// <returns>The normalized scheme value, or an empty string if the value is null.</returns>
-    public override string ToString() => Value ?? string.Empty;
+    /// <returns>The normalized scheme value, or an empty string for the default value.</returns>
+    public override string ToString() => Value;
 }

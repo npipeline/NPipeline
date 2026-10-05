@@ -173,7 +173,7 @@ public sealed class TableSnapshot
                 ? $"/{e.Path.TrimStart('/')}"
                 : $"/{basePath}/{e.Path.TrimStart('/')}";
 
-            return StorageUri.Parse($"{TableBasePath.Scheme}://{TableBasePath.Host}{fullPath}");
+            return TableBasePath.WithPath(fullPath);
         }).ToList();
     }
 

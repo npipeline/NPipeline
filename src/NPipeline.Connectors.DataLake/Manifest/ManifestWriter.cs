@@ -79,12 +79,12 @@ public sealed class ManifestWriter : IAsyncDisposable
 
         // Build manifest URIs
         var manifestPath = BuildManifestPath(tableBasePath);
-        _manifestUri = StorageUri.Parse($"{tableBasePath.Scheme}://{tableBasePath.Host}{manifestPath}");
+        _manifestUri = tableBasePath.WithPath(manifestPath);
 
         var snapshotManifestPath = BuildSnapshotManifestPath(tableBasePath, snapshotId);
 
         _snapshotManifestUri =
-            StorageUri.Parse($"{tableBasePath.Scheme}://{tableBasePath.Host}{snapshotManifestPath}");
+            tableBasePath.WithPath(snapshotManifestPath);
     }
 
     /// <summary>
@@ -354,7 +354,7 @@ public sealed class ManifestWriter : IAsyncDisposable
         var tempSuffix = $".tmp-{Guid.NewGuid():N}";
         var manifestPath = _manifestUri.Path ?? string.Empty;
         var tempPath = manifestPath + tempSuffix;
-        return StorageUri.Parse($"{_manifestUri.Scheme}://{_manifestUri.Host}{tempPath}");
+        return _manifestUri.WithPath(tempPath);
     }
 
     private static string BuildNdJsonContent(IReadOnlyList<ManifestEntry> entries)

@@ -22,7 +22,7 @@ public sealed class FileReadContext
     internal FileReadContext(StorageUri uri, FileSourceOptions options, string connector, DeadLetterChannel deadLetters)
     {
         Uri = uri;
-        Source = FileNodeSupport.Describe(uri);
+        Source = uri.ToString();
         _options = options;
         _connector = connector;
         _deadLetters = deadLetters;

@@ -191,7 +191,7 @@ public sealed class ManifestReader
     private StorageUri BuildManifestUri()
     {
         var manifestPath = BuildManifestPath();
-        return StorageUri.Parse($"{_tableBasePath.Scheme}://{_tableBasePath.Host}{manifestPath}");
+        return _tableBasePath.WithPath(manifestPath);
     }
 
     private StorageUri BuildSnapshotManifestUri(string snapshotId)
@@ -202,7 +202,7 @@ public sealed class ManifestReader
             ? $"/{ManifestDirectoryName}/snapshots/{snapshotId}.ndjson"
             : $"/{basePath}/{ManifestDirectoryName}/snapshots/{snapshotId}.ndjson";
 
-        return StorageUri.Parse($"{_tableBasePath.Scheme}://{_tableBasePath.Host}{snapshotPath}");
+        return _tableBasePath.WithPath(snapshotPath);
     }
 
     private string BuildManifestPath()
@@ -244,7 +244,7 @@ public sealed class ManifestReader
         var snapshotsPath = BuildSnapshotsDirectoryPath();
 
         var snapshotsUri =
-            StorageUri.Parse($"{_tableBasePath.Scheme}://{_tableBasePath.Host}{snapshotsPath}");
+            _tableBasePath.WithPath(snapshotsPath);
 
         // Providers list a missing directory as empty. Any other listing or read failure propagates: skipping a snapshot
         // file would silently drop the entries it recovers.

@@ -314,19 +314,7 @@ public sealed class SftpStorageProvider : IStorageProvider, IStorageProviderMeta
 
     private static StorageUri BuildItemUri(StorageUri baseUri, string path)
     {
-        var portPart = baseUri.Port.HasValue
-            ? $":{baseUri.Port.Value}"
-            : "";
-
-        var userInfoPart = !string.IsNullOrEmpty(baseUri.UserInfo)
-            ? $"{baseUri.UserInfo}@"
-            : "";
-
-        var queryString = baseUri.Parameters.Count > 0
-            ? "?" + string.Join("&", baseUri.Parameters.Select(p => $"{Uri.EscapeDataString(p.Key)}={Uri.EscapeDataString(p.Value)}"))
-            : "";
-
-        return StorageUri.Parse($"sftp://{userInfoPart}{baseUri.Host}{portPart}{path}{queryString}");
+        return baseUri.WithPath(path);
     }
 
     private static Exception TranslateSftpException(Exception ex, string host, string path)

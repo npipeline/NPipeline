@@ -420,7 +420,7 @@ public sealed class AdlsGen2StorageProvider
                     {
                         yield return new StorageItem
                         {
-                            Uri = StorageUri.Parse($"adls://{filesystem}/{dirPath}"),
+                            Uri = prefix.WithPath("/" + dirPath),
                             Size = 0,
                             LastModified = default,
                             IsDirectory = true,
@@ -430,7 +430,7 @@ public sealed class AdlsGen2StorageProvider
 
                 yield return new StorageItem
                 {
-                    Uri = StorageUri.Parse($"adls://{filesystem}/{blobItem.Name}"),
+                    Uri = prefix.WithPath("/" + blobItem.Name),
                     Size = blobItem.Properties?.ContentLength ?? 0,
                     LastModified = blobItem.Properties?.LastModified ?? default,
                     IsDirectory = false,
@@ -448,7 +448,7 @@ public sealed class AdlsGen2StorageProvider
                 {
                     yield return new StorageItem
                     {
-                        Uri = StorageUri.Parse($"adls://{filesystem}/{item.Blob.Name}"),
+                        Uri = prefix.WithPath("/" + item.Blob.Name),
                         Size = item.Blob.Properties?.ContentLength ?? 0,
                         LastModified = item.Blob.Properties?.LastModified ?? default,
                         IsDirectory = false,
@@ -460,7 +460,7 @@ public sealed class AdlsGen2StorageProvider
 
                     yield return new StorageItem
                     {
-                        Uri = StorageUri.Parse($"adls://{filesystem}/{dirName}"),
+                        Uri = prefix.WithPath("/" + dirName),
                         Size = 0,
                         LastModified = default,
                         IsDirectory = true,

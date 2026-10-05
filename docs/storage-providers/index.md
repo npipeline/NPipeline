@@ -118,7 +118,23 @@ var gcs = StorageUri.Parse("gs://my-bucket/data/orders.csv");
 var sftp = StorageUri.Parse("sftp://server.example.com/data/orders.csv");
 ```
 
-Properties: `Scheme`, `Host`, `Path`, `Port`, `UserInfo`, `Parameters`.
+Properties: `Scheme`, `Host`, `Port`, `UserName`, `Password`, `Path`, `Parameters`, `Name`, `Parent` and `IsDirectory`.
+
+`StorageUri` is immutable and has value semantics: two URIs parsed from the same text are equal, and a URI works as a dictionary key. Build variants with `WithPath`, `WithParameter`, `WithoutParameter` and `Combine`:
+
+```csharp
+var uri = StorageUri.Parse("s3://my-bucket/data/orders.csv?region=us-west-2");
+
+var other = uri.WithPath("/data/customers.csv");   // keeps the host and the region
+```
+
+The text is decoded once, when you parse it, and `Path` is the literal object key or file path:
+
+- `s3://my-bucket/my%20file.csv` and `s3://my-bucket/my file.csv` are both the key `my file.csv`. To address a key that contains a literal `%`, write `%25`.
+- `#`, `..` and `//` stay in the path as you wrote them. Write `?` in a key as `%3F`, because `?` starts the query string.
+- Text that doesn't start with `scheme://` is a local file path, for example `C:\data\orders.csv` or `./orders.csv`.
+
+`ToString()` percent-encodes the URI and replaces the password and the values of secret parameters, such as `secretKey` and `sasToken`, with `***`, so it's safe to log. `ToUnredactedString()` keeps them.
 
 ## Built-in FileSystem Provider
 

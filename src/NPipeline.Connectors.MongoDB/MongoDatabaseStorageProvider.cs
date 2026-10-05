@@ -57,9 +57,11 @@ public class MongoDatabaseStorageProvider : IDatabaseStorageProvider
         // (e.g. 'collection') that the MongoDB driver would reject as unknown options.
         var scheme = uri.Scheme.Value;
 
-        var userInfo = !string.IsNullOrWhiteSpace(uri.UserInfo)
-            ? $"{uri.UserInfo}@"
-            : "";
+        var userInfo = string.IsNullOrWhiteSpace(uri.UserName)
+            ? ""
+            : uri.Password is null
+                ? $"{Uri.EscapeDataString(uri.UserName)}@"
+                : $"{Uri.EscapeDataString(uri.UserName)}:{Uri.EscapeDataString(uri.Password)}@";
 
         var host = uri.Host ?? "localhost";
 

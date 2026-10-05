@@ -31,12 +31,6 @@ internal static class FileNodeSupport
         return provider;
     }
 
-    /// <summary>The URI as text without its query string, which may carry credentials.</summary>
-    public static string Describe(StorageUri uri) =>
-        uri.Host is null
-            ? $"{uri.Scheme.Value}://{uri.Path}"
-            : $"{uri.Scheme.Value}://{uri.Host}{uri.Path}";
-
     public static string StreamName(Type nodeType, Type itemType)
     {
         var name = nodeType.Name;
@@ -64,7 +58,7 @@ internal static class FileNodeSupport
         if (wildcard >= 0)
         {
             var prefixEnd = path.LastIndexOf('/', wildcard);
-            listUri = uri with { Path = path[..(prefixEnd + 1)] };
+            listUri = uri.WithPath(path[..(prefixEnd + 1)]);
             recursive = path.AsSpan(wildcard).Contains('/') || path.Contains("**", StringComparison.Ordinal);
             pattern = GlobToRegex(path);
         }
@@ -84,13 +78,13 @@ internal static class FileNodeSupport
 
                 // The listed URI can lack the original's parameters (credentials, region), so keep everything but the path.
                 if (matches)
-                    files.Add(uri with { Path = itemPath });
+                    files.Add(uri.WithPath(itemPath));
             }
         }
         catch (NotSupportedException ex)
         {
             throw new NotSupportedException(
-                $"'{Describe(uri)}' is a directory or glob, but {provider.GetType().Name} cannot list objects.", ex);
+                $"'{uri}' is a directory or glob, but {provider.GetType().Name} cannot list objects.", ex);
         }
 
         files.Sort(static (a, b) => string.CompareOrdinal(a.Path, b.Path));
@@ -180,7 +174,7 @@ internal static class FileNodeSupport
 
     public static StorageUri TemporaryUri(StorageUri target) =>
         // Everything but the path is kept: parameters, port and user info select the account, region or endpoint.
-        target with { Path = $"{target.Path}.tmp-{Guid.NewGuid():N}" };
+        target.WithPath($"{target.Path}.tmp-{Guid.NewGuid():N}");
 
     public static async Task TryDeleteAsync(IStorageProvider provider, StorageUri uri)
     {

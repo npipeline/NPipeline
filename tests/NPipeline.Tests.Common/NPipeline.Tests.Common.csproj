@@ -5,12 +5,18 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+        <IsTestProject>false</IsTestProject>
     </PropertyGroup>
 
     <PropertyGroup>
         <NoWarn>$(NoWarn);CS1591;CA1711</NoWarn>
         <GenerateDocumentationFile>false</GenerateDocumentationFile>
     </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="AwesomeAssertions"/>
+        <PackageReference Include="xunit"/>
+    </ItemGroup>
 
     <ItemGroup>
         <ProjectReference Include="..\..\src\NPipeline\NPipeline.csproj"/>

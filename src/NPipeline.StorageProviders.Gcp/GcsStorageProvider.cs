@@ -329,7 +329,7 @@ public sealed class GcsStorageProvider : IStorageProvider, IStorageProviderMetad
                     continue;
 
                 var objectKey = obj.Name;
-                var itemUri = StorageUri.Parse($"gs://{bucket}/{objectKey}");
+                var itemUri = prefix.WithPath("/" + objectKey);
                 var size = (long)(obj.Size ?? 0);
 
                 yield return new StorageItem
@@ -351,7 +351,7 @@ public sealed class GcsStorageProvider : IStorageProvider, IStorageProviderMetad
                         continue;
 
                     var directoryPath = commonPrefix.TrimEnd('/');
-                    var itemUri = StorageUri.Parse($"gs://{bucket}/{directoryPath}");
+                    var itemUri = prefix.WithPath("/" + directoryPath);
 
                     yield return new StorageItem
                     {
