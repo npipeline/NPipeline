@@ -8,7 +8,7 @@ S3-compatible storage provider for NPipeline. Implements `IStorageProvider` for 
 - **Custom endpoint** - point to any S3-compatible service URL
 - **Path-style addressing** - enabled by default (`ForcePathStyle = true`), required by most S3-compatible services
 - **Configurable signing region** - override the AWS signing region (use `"auto"` for Cloudflare R2)
-- **Multipart uploads** - automatic multipart upload for objects above the configurable threshold
+- **Streaming uploads** - parts upload while you write; no local temporary file, and memory is bounded by `PartSizeBytes × (MaxConcurrency + 1)`
 - **Client caching** - a single `IAmazonS3` client is created and reused across all requests
 - **Async streaming** - all reads, writes, and listings stream data without materialising full objects in memory
 
@@ -65,7 +65,8 @@ s3://bucket-name/key/path
 | `SecretKey` | `string` | **(required)** | Secret key (equivalent to AWS secret access key) |
 | `SigningRegion` | `string` | `"us-east-1"` | Region string used only for request signing |
 | `ForcePathStyle` | `bool` | `true` | Use path-style URLs - required by most S3-compatible services |
-| `MultipartUploadThresholdBytes` | `long` | `67108864` (64 MB) | Objects above this size use S3 multipart upload |
+| `PartSizeBytes` | `int` | `8388608` (8 MiB) | Size of each upload part, at least 5 MiB. An object that fits in one part uses a single `PutObject`. |
+| `MaxConcurrency` | `int` | `4` | Parts of one object that upload at the same time |
 | `Schemes` | `IReadOnlyList<string>` | `["s3"]` | URI schemes the provider handles. Set `["minio"]` to use it beside the AWS provider in one resolver |
 
 ## Using a custom scheme

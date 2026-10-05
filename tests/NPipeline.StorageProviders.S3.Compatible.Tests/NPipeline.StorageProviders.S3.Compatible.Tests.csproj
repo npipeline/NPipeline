@@ -23,12 +23,14 @@
         <PackageReference Include="FakeItEasy"/>
         <PackageReference Include="AWSSDK.S3"/>
         <PackageReference Include="AWSSDK.Core"/>
+        <PackageReference Include="Testcontainers.Floci"/>
     </ItemGroup>
 
     <ItemGroup>
         <ProjectReference Include="..\..\src\NPipeline.Extensions.Testing.AwesomeAssertions\NPipeline.Extensions.Testing.AwesomeAssertions.csproj"/>
         <ProjectReference Include="..\..\src\NPipeline.Extensions.DependencyInjection\NPipeline.Extensions.DependencyInjection.csproj"/>
         <ProjectReference Include="..\..\src\NPipeline.StorageProviders.S3.Compatible\NPipeline.StorageProviders.S3.Compatible.csproj"/>
+        <ProjectReference Include="..\NPipeline.Tests.Common\NPipeline.Tests.Common.csproj"/>
         <ProjectReference Include="..\..\src\NPipeline\NPipeline.csproj"/>
         <ProjectReference Include="..\..\src\NPipeline.StorageProviders\NPipeline.StorageProviders.csproj"/>
     </ItemGroup>

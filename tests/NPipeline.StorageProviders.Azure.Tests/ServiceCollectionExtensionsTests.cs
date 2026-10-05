@@ -19,7 +19,7 @@ public class ServiceCollectionExtensionsTests
         services.AddAzureBlobStorageProvider(options =>
         {
             options.DefaultConnectionString = "DefaultEndpointsProtocol=https;AccountName=test;AccountKey=test;EndpointSuffix=core.windows.net";
-            options.BlockBlobUploadThresholdBytes = 128 * 1024 * 1024;
+            options.PartSizeBytes = 128 * 1024 * 1024;
         });
 
         // Assert
@@ -76,7 +76,7 @@ public class ServiceCollectionExtensionsTests
         services.AddAzureBlobStorageProvider(options =>
         {
             options.DefaultConnectionString = "DefaultEndpointsProtocol=https;AccountName=test;AccountKey=test;EndpointSuffix=core.windows.net";
-            options.BlockBlobUploadThresholdBytes = 256 * 1024 * 1024;
+            options.PartSizeBytes = 256 * 1024 * 1024;
         });
 
         // Assert
@@ -84,7 +84,7 @@ public class ServiceCollectionExtensionsTests
         var options1 = provider.GetRequiredService<AzureBlobStorageProviderOptions>();
         var options2 = provider.GetRequiredService<AzureBlobStorageProviderOptions>();
         options1.Should().BeSameAs(options2);
-        options1.BlockBlobUploadThresholdBytes.Should().Be(256 * 1024 * 1024);
+        options1.PartSizeBytes.Should().Be(256 * 1024 * 1024);
     }
 
     [Fact]
@@ -96,7 +96,7 @@ public class ServiceCollectionExtensionsTests
         var options = new AzureBlobStorageProviderOptions
         {
             DefaultConnectionString = "DefaultEndpointsProtocol=https;AccountName=test;AccountKey=test;EndpointSuffix=core.windows.net",
-            BlockBlobUploadThresholdBytes = 128 * 1024 * 1024,
+            PartSizeBytes = 128 * 1024 * 1024,
         };
 
         // Act
@@ -159,7 +159,7 @@ public class ServiceCollectionExtensionsTests
         var options = new AzureBlobStorageProviderOptions
         {
             DefaultConnectionString = "DefaultEndpointsProtocol=https;AccountName=test;AccountKey=test;EndpointSuffix=core.windows.net",
-            BlockBlobUploadThresholdBytes = 256 * 1024 * 1024,
+            PartSizeBytes = 256 * 1024 * 1024,
         };
 
         // Act
@@ -170,7 +170,7 @@ public class ServiceCollectionExtensionsTests
         var options1 = provider.GetRequiredService<AzureBlobStorageProviderOptions>();
         var options2 = provider.GetRequiredService<AzureBlobStorageProviderOptions>();
         options1.Should().BeSameAs(options2);
-        options1.BlockBlobUploadThresholdBytes.Should().Be(256 * 1024 * 1024);
+        options1.PartSizeBytes.Should().Be(256 * 1024 * 1024);
     }
 
     [Fact]
@@ -213,17 +213,17 @@ public class ServiceCollectionExtensionsTests
         // Act
         services.AddAzureBlobStorageProvider(options =>
         {
-            options.BlockBlobUploadThresholdBytes = 64 * 1024 * 1024;
-            options.UploadMaximumConcurrency = 4;
-            options.UploadMaximumTransferSizeBytes = 4 * 1024 * 1024;
+            options.PartSizeBytes = 64 * 1024 * 1024;
+            options.MaxConcurrency = 6;
+            options.CreateContainerIfMissing = true;
         });
 
         // Assert
         var provider = services.BuildServiceProvider();
         var options = provider.GetRequiredService<AzureBlobStorageProviderOptions>();
-        options.BlockBlobUploadThresholdBytes.Should().Be(64 * 1024 * 1024);
-        options.UploadMaximumConcurrency.Should().Be(4);
-        options.UploadMaximumTransferSizeBytes.Should().Be(4 * 1024 * 1024);
+        options.PartSizeBytes.Should().Be(64 * 1024 * 1024);
+        options.MaxConcurrency.Should().Be(6);
+        options.CreateContainerIfMissing.Should().BeTrue();
     }
 
     [Fact]

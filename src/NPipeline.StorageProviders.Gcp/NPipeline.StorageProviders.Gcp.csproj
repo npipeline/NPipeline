@@ -11,6 +11,7 @@
         <PackageReference Include="Google.Apis.Auth"/>
         <PackageReference Include="Microsoft.Extensions.DependencyInjection"/>
         <PackageReference Include="NResilience"/>
+        <PackageReference Include="System.IO.Pipelines"/>
     </ItemGroup>
 
     <ItemGroup>

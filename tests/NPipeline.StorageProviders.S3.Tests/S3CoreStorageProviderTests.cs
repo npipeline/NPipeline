@@ -573,7 +573,9 @@ public class S3CoreStorageProviderTests : IAsyncDisposable
             _client = client;
         }
 
-        protected override IAmazonS3 CreateClient(StorageUri uri) => _client;
+        protected override S3EndpointKey GetEndpoint(StorageUri uri) => new(null, null, false);
+
+        protected override IAmazonS3 CreateClient(S3EndpointKey endpoint) => _client;
     }
 
     private sealed class TestStorageProvider : S3CoreStorageProvider

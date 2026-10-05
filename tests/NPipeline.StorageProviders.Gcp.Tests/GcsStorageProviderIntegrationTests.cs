@@ -22,9 +22,13 @@ public sealed class GcsStorageProviderIntegrationTests
         var expected = $"hello-gcs-{Guid.NewGuid():N}";
 
         await using (var writeStream = await context.Provider.OpenWriteAsync(uri))
-        await using (var writer = new StreamWriter(writeStream, Encoding.UTF8, leaveOpen: false))
         {
-            await writer.WriteAsync(expected);
+            await using (var writer = new StreamWriter(writeStream, new UTF8Encoding(false), leaveOpen: true))
+            {
+                await writer.WriteAsync(expected);
+            }
+
+            await writeStream.CommitAsync();
         }
 
         await using var readStream = await context.Provider.OpenReadAsync(uri);
@@ -32,6 +36,39 @@ public sealed class GcsStorageProviderIntegrationTests
         var actual = await reader.ReadToEndAsync();
 
         Assert.Equal(expected, actual);
+    }
+
+    [Fact]
+    public async Task OpenWriteAndOpenRead_StreamAMultiChunkObject()
+    {
+        if (!TryCreateContext(out var context))
+            return;
+
+        var uri = StorageUri.Parse($"gs://{context.Bucket}/{RunId}/large.bin");
+        var block = new byte[64 * 1024];
+        new Random(42).NextBytes(block);
+        const int blocks = 320; // 20 MiB, more than one 16 MiB chunk
+
+        await using (var writeStream = await context.Provider.OpenWriteAsync(uri))
+        {
+            for (var i = 0; i < blocks; i++)
+            {
+                await writeStream.WriteAsync(block);
+            }
+
+            await writeStream.CommitAsync();
+        }
+
+        await using var readStream = await context.Provider.OpenReadAsync(uri);
+        var buffer = new byte[block.Length];
+
+        for (var i = 0; i < blocks; i++)
+        {
+            await readStream.ReadExactlyAsync(buffer);
+            Assert.True(buffer.AsSpan().SequenceEqual(block), $"block {i} differs");
+        }
+
+        Assert.Equal(0, await readStream.ReadAsync(buffer));
     }
 
     [Fact]
@@ -92,8 +129,8 @@ public sealed class GcsStorageProviderIntegrationTests
             nonRecursiveItems.Add(item);
         }
 
-        Assert.Contains(nonRecursiveItems, item => item.IsDirectory && item.Uri.Path.EndsWith("/a", StringComparison.Ordinal));
-        Assert.Contains(nonRecursiveItems, item => item.IsDirectory && item.Uri.Path.EndsWith("/b", StringComparison.Ordinal));
+        Assert.Contains(nonRecursiveItems, item => item.IsDirectory && item.Uri.Path.TrimEnd('/').EndsWith("/a", StringComparison.Ordinal));
+        Assert.Contains(nonRecursiveItems, item => item.IsDirectory && item.Uri.Path.TrimEnd('/').EndsWith("/b", StringComparison.Ordinal));
     }
 
     private static async Task WriteContentAsync(GcsStorageProvider provider, StorageUri uri, string content)

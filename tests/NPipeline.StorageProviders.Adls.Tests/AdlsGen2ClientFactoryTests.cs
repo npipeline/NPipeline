@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Azure.Storage.Blobs;
 using Azure.Storage.Files.DataLake;
 using NPipeline.StorageProviders.Models;
 using Xunit;
@@ -7,184 +8,188 @@ namespace NPipeline.StorageProviders.Adls.Tests;
 
 public class AdlsGen2ClientFactoryTests
 {
-    private readonly AdlsGen2ClientFactory _factory;
-    private readonly AdlsGen2StorageProviderOptions _options;
+    private const string ConnectionString = "DefaultEndpointsProtocol=https;AccountName=testaccount;AccountKey=dGVzdA==;EndpointSuffix=core.windows.net";
 
-    public AdlsGen2ClientFactoryTests()
+    private static AdlsGen2ClientFactory NewFactory(Action<AdlsGen2StorageProviderOptions>? configure = null)
     {
-        _options = new AdlsGen2StorageProviderOptions();
-        _factory = new AdlsGen2ClientFactory(_options);
+        var options = new AdlsGen2StorageProviderOptions { UseDefaultCredentialChain = false, DefaultSasToken = "sv=2022-11-02&sig=abc" };
+        configure?.Invoke(options);
+
+        return new AdlsGen2ClientFactory(options);
     }
 
     [Fact]
     public void Constructor_WithNullOptions_ThrowsArgumentNullException()
     {
-        // Act & Assert
         Assert.Throws<ArgumentNullException>(() => new AdlsGen2ClientFactory(null!));
     }
 
     [Fact]
-    public async Task GetClientAsync_WithConnectionString_ReturnsClient()
+    public async Task GetClientAsync_WithDefaultConnectionString_ReturnsDataLakeAndBlobClients()
     {
-        // Arrange
-        var connectionString = "DefaultEndpointsProtocol=https;AccountName=testaccount;AccountKey=dGVzdA==;EndpointSuffix=core.windows.net";
-        var uri = StorageUri.Parse($"adls://filesystem/path/file.txt?connectionString={Uri.EscapeDataString(connectionString)}");
-
-        // Act
-        var client = await _factory.GetClientAsync(uri);
-
-        // Assert
-        client.Should().NotBeNull();
-        client.Should().BeOfType<DataLakeServiceClient>();
-    }
-
-    [Fact]
-    public async Task GetClientAsync_WithAccountKey_ReturnsClient()
-    {
-        // Arrange
-        var accountName = "testaccount";
-        var accountKey = "dGVzdA==";
-        var uri = StorageUri.Parse($"adls://filesystem/path/file.txt?accountName={accountName}&accountKey={Uri.EscapeDataString(accountKey)}");
-
-        // Act
-        var client = await _factory.GetClientAsync(uri);
-
-        // Assert
-        client.Should().NotBeNull();
-        client.Should().BeOfType<DataLakeServiceClient>();
-    }
-
-    [Fact]
-    public async Task GetClientAsync_WithSasToken_ReturnsClient()
-    {
-        // Arrange
-        var accountName = "testaccount";
-        var sasToken = "sv=2024-01-01&sig=test";
-        var uri = StorageUri.Parse($"adls://filesystem/path/file.txt?accountName={accountName}&sasToken={Uri.EscapeDataString(sasToken)}");
-
-        // Act
-        var client = await _factory.GetClientAsync(uri);
-
-        // Assert
-        client.Should().NotBeNull();
-        client.Should().BeOfType<DataLakeServiceClient>();
-    }
-
-    [Fact]
-    public async Task GetClientAsync_WithServiceUrl_ReturnsClient()
-    {
-        // Arrange
-        var serviceUrl = "https://testaccount.dfs.core.windows.net";
-        var uri = StorageUri.Parse($"adls://filesystem/path/file.txt?serviceUrl={Uri.EscapeDataString(serviceUrl)}&accountName=testaccount");
-
-        // Act
-        var client = await _factory.GetClientAsync(uri);
-
-        // Assert
-        client.Should().NotBeNull();
-        client.Should().BeOfType<DataLakeServiceClient>();
-    }
-
-    [Fact]
-    public async Task GetClientAsync_CachesClient()
-    {
-        // Arrange
-        var connectionString = "DefaultEndpointsProtocol=https;AccountName=testaccount;AccountKey=dGVzdA==;EndpointSuffix=core.windows.net";
-        var uri = StorageUri.Parse($"adls://filesystem/path/file.txt?connectionString={Uri.EscapeDataString(connectionString)}");
-
-        // Act
-        var client1 = await _factory.GetClientAsync(uri);
-        var client2 = await _factory.GetClientAsync(uri);
-
-        // Assert
-        client1.Should().BeSameAs(client2);
-    }
-
-    [Fact]
-    public async Task GetClientAsync_WithDifferentConnectionStrings_ReturnsDifferentClients()
-    {
-        // Arrange
-        var connectionString1 = "DefaultEndpointsProtocol=https;AccountName=testaccount1;AccountKey=dGVzdA==;EndpointSuffix=core.windows.net";
-        var connectionString2 = "DefaultEndpointsProtocol=https;AccountName=testaccount2;AccountKey=dGVzdA==;EndpointSuffix=core.windows.net";
-        var uri1 = StorageUri.Parse($"adls://filesystem/path/file.txt?connectionString={Uri.EscapeDataString(connectionString1)}");
-        var uri2 = StorageUri.Parse($"adls://filesystem/path/file.txt?connectionString={Uri.EscapeDataString(connectionString2)}");
-
-        // Act
-        var client1 = await _factory.GetClientAsync(uri1);
-        var client2 = await _factory.GetClientAsync(uri2);
-
-        // Assert
-        client1.Should().NotBeSameAs(client2);
-    }
-
-    [Fact]
-    public async Task GetClientAsync_WithDefaultConnectionString_UsesDefault()
-    {
-        // Arrange
-        var connectionString = "DefaultEndpointsProtocol=https;AccountName=defaultaccount;AccountKey=dGVzdA==;EndpointSuffix=core.windows.net";
-        _options.DefaultConnectionString = connectionString;
-        var factory = new AdlsGen2ClientFactory(_options);
+        var factory = NewFactory(o => o.DefaultConnectionString = ConnectionString);
         var uri = StorageUri.Parse("adls://filesystem/path/file.txt");
 
-        // Act
-        var client = await factory.GetClientAsync(uri);
+        var dfs = await factory.GetClientAsync(uri);
+        var blob = await factory.GetBlobServiceClientAsync(uri);
 
-        // Assert
-        client.Should().NotBeNull();
+        dfs.Should().BeOfType<DataLakeServiceClient>();
+        blob.Should().BeAssignableTo<BlobServiceClient>();
+        dfs.AccountName.Should().Be("testaccount");
+        blob.AccountName.Should().Be("testaccount");
+    }
+
+    [Fact]
+    public async Task GetClientAsync_WithAccountKeyOption_ReturnsClients()
+    {
+        var factory = NewFactory(o =>
+        {
+            o.DefaultSasToken = null;
+            o.AccountName = "testaccount";
+            o.DefaultAccountKey = "dGVzdA==";
+        });
+
+        var uri = StorageUri.Parse("adls://filesystem/path/file.txt");
+
+        (await factory.GetClientAsync(uri)).Uri.Host.Should().Be("testaccount.dfs.core.windows.net");
+        (await factory.GetBlobServiceClientAsync(uri)).Uri.Host.Should().Be("testaccount.blob.core.windows.net");
+    }
+
+    [Fact]
+    public async Task GetClientAsync_WithSasTokenOption_ReturnsClient()
+    {
+        var factory = NewFactory();
+
+        var client = await factory.GetClientAsync(StorageUri.Parse("adls://filesystem/path/file.txt?accountName=testaccount"));
+
         client.Should().BeOfType<DataLakeServiceClient>();
     }
 
     [Fact]
-    public async Task GetClientAsync_WithDefaultServiceUrl_UsesDefault()
+    public async Task GetClientAsync_WithServiceUrlInUri_UsesItForBothClients()
     {
-        // Arrange
-        var serviceUrl = new Uri("https://testaccount.dfs.core.windows.net");
-        _options.ServiceUrl = serviceUrl;
-        var factory = new AdlsGen2ClientFactory(_options);
-        var uri = StorageUri.Parse("adls://filesystem/path/file.txt");
+        var factory = NewFactory();
+        var uri = StorageUri.Parse($"adls://filesystem/path/file.txt?accountName=acct&serviceUrl={Uri.EscapeDataString("https://acct.dfs.core.windows.net")}");
 
-        // Act
-        var client = await factory.GetClientAsync(uri);
+        (await factory.GetClientAsync(uri)).Uri.Host.Should().Be("acct.dfs.core.windows.net");
 
-        // Assert
-        client.Should().NotBeNull();
-        client.Should().BeOfType<DataLakeServiceClient>();
+        // The Blob API endpoint is derived from the Data Lake one.
+        (await factory.GetBlobServiceClientAsync(uri)).Uri.Host.Should().Be("acct.blob.core.windows.net");
+    }
+
+    [Fact]
+    public async Task GetClientAsync_WithServiceUrlOption_UsesIt()
+    {
+        var factory = NewFactory(o => o.ServiceUrl = new Uri("https://testaccount.dfs.core.windows.net"));
+
+        var client = await factory.GetClientAsync(StorageUri.Parse("adls://filesystem/path/file.txt"));
+
+        client.Uri.Host.Should().Be("testaccount.dfs.core.windows.net");
+    }
+
+    [Fact]
+    public async Task GetClientAsync_SameEndpoint_ReturnsTheSameClients()
+    {
+        var factory = NewFactory(o => o.DefaultConnectionString = ConnectionString);
+
+        var dfs1 = await factory.GetClientAsync(StorageUri.Parse("adls://filesystem/a.txt"));
+        var dfs2 = await factory.GetClientAsync(StorageUri.Parse("adls://other/b/c.txt"));
+        var blob1 = await factory.GetBlobServiceClientAsync(StorageUri.Parse("adls://filesystem/a.txt"));
+        var blob2 = await factory.GetBlobServiceClientAsync(StorageUri.Parse("adls://other/b/c.txt"));
+
+        dfs2.Should().BeSameAs(dfs1);
+        blob2.Should().BeSameAs(blob1);
+    }
+
+    [Fact]
+    public async Task GetClientAsync_DifferentAccountNames_ReturnDifferentClients()
+    {
+        var factory = NewFactory();
+
+        var uri1 = StorageUri.Parse("adls://filesystem/a.txt?accountName=acct1");
+        var uri2 = StorageUri.Parse("adls://filesystem/a.txt?accountName=acct2");
+
+        (await factory.GetClientAsync(uri2)).Should().NotBeSameAs(await factory.GetClientAsync(uri1));
+        (await factory.GetBlobServiceClientAsync(uri2)).Should().NotBeSameAs(await factory.GetBlobServiceClientAsync(uri1));
+    }
+
+    [Fact]
+    public async Task GetClientAsync_DifferentServiceUrls_ReturnDifferentClients()
+    {
+        var factory = NewFactory();
+
+        var uri1 = StorageUri.Parse($"adls://filesystem/a.txt?accountName=acct&serviceUrl={Uri.EscapeDataString("https://localhost:10000/acct")}");
+        var uri2 = StorageUri.Parse($"adls://filesystem/a.txt?accountName=acct&serviceUrl={Uri.EscapeDataString("https://localhost:10001/acct")}");
+
+        (await factory.GetClientAsync(uri2)).Should().NotBeSameAs(await factory.GetClientAsync(uri1));
+    }
+
+    [Fact]
+    public async Task GetClientAsync_CacheIsBoundedByClientCacheSizeLimit()
+    {
+        var factory = NewFactory(o => o.ClientCacheSizeLimit = 1);
+
+        var firstA = await factory.GetClientAsync(StorageUri.Parse("adls://filesystem/a.txt?accountName=acct1"));
+        var firstBlobA = await factory.GetBlobServiceClientAsync(StorageUri.Parse("adls://filesystem/a.txt?accountName=acct1"));
+        _ = await factory.GetClientAsync(StorageUri.Parse("adls://filesystem/a.txt?accountName=acct2"));
+        _ = await factory.GetBlobServiceClientAsync(StorageUri.Parse("adls://filesystem/a.txt?accountName=acct2"));
+
+        (await factory.GetClientAsync(StorageUri.Parse("adls://filesystem/a.txt?accountName=acct1"))).Should().NotBeSameAs(firstA);
+        (await factory.GetBlobServiceClientAsync(StorageUri.Parse("adls://filesystem/a.txt?accountName=acct1"))).Should().NotBeSameAs(firstBlobA);
+    }
+
+    [Theory]
+    [InlineData("connectionString", "DefaultConnectionString")]
+    [InlineData("sasToken", "DefaultSasToken")]
+    [InlineData("accountKey", "DefaultAccountKey")]
+    public async Task GetClientAsync_UriCarryingACredential_ThrowsNamingTheOption(string parameter, string option)
+    {
+        var factory = NewFactory(o => o.AccountName = "acct");
+        var uri = StorageUri.Parse($"adls://filesystem/path?accountName=acct&{parameter}=secret");
+
+        var dfs = async () => await factory.GetClientAsync(uri);
+        var blob = async () => await factory.GetBlobServiceClientAsync(uri);
+
+        foreach (var act in new Func<Task>[] { dfs, blob })
+        {
+            var exception = (await act.Should().ThrowAsync<ArgumentException>()).Which;
+            exception.Message.Should().Contain(parameter).And.Contain(option);
+            exception.Message.Should().NotContain("secret");
+        }
     }
 
     [Fact]
     public async Task GetClientAsync_WithNoCredentials_ThrowsInvalidOperationException()
     {
-        // Arrange - no credentials configured
-        var uri = StorageUri.Parse("adls://filesystem/path/file.txt");
+        var factory = new AdlsGen2ClientFactory(new AdlsGen2StorageProviderOptions { UseDefaultCredentialChain = false, AccountName = "acct" });
 
-        // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() => _factory.GetClientAsync(uri));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => factory.GetClientAsync(StorageUri.Parse("adls://filesystem/path/file.txt")));
     }
 
     [Fact]
-    public async Task GetClientAsync_WithCancellationToken_PassesToken()
+    public async Task GetClientAsync_WithoutAccountNameOrServiceUrl_ThrowsInvalidOperationException()
     {
-        // Arrange
-        var connectionString = "DefaultEndpointsProtocol=https;AccountName=testaccount;AccountKey=dGVzdA==;EndpointSuffix=core.windows.net";
-        var uri = StorageUri.Parse($"adls://filesystem/path/file.txt?connectionString={Uri.EscapeDataString(connectionString)}");
+        var factory = NewFactory();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => factory.GetClientAsync(StorageUri.Parse("adls://filesystem/path/file.txt")));
+    }
+
+    [Fact]
+    public async Task GetClientAsync_WithCancelledToken_Throws()
+    {
+        var factory = NewFactory(o => o.DefaultConnectionString = ConnectionString);
         using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
 
-        // Act
-        var client = await _factory.GetClientAsync(uri, cts.Token);
-
-        // Assert
-        client.Should().NotBeNull();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => factory.GetClientAsync(StorageUri.Parse("adls://filesystem/path/file.txt"), cts.Token));
     }
 
     [Fact]
     public async Task GetClientAsync_ServiceUrlWithDefaultConnectionString_Throws()
     {
-        var factory = new AdlsGen2ClientFactory(new AdlsGen2StorageProviderOptions
-        {
-            DefaultConnectionString = "DefaultEndpointsProtocol=https;AccountName=default;AccountKey=ZGVmYXVsdA==",
-        });
-
-        var uri = StorageUri.Parse("adls://filesystem/path?serviceUrl=https://override.example.com");
+        var factory = NewFactory(o => o.DefaultConnectionString = ConnectionString);
+        var uri = StorageUri.Parse($"adls://filesystem/path?serviceUrl={Uri.EscapeDataString("https://override.example.com")}");
 
         var dfs = async () => await factory.GetClientAsync(uri);
         var blob = async () => await factory.GetBlobServiceClientAsync(uri);
@@ -208,16 +213,31 @@ public class AdlsGen2ClientFactoryTests
     }
 
     [Fact]
-    public async Task GetClientAsync_SasTokenWithEscapedSignature_IsSentVerbatim()
+    public async Task GetClientAsync_WithAnonymousAccess_ReturnsClients()
     {
-        // See the Azure Blob test of the same name: a second decode would send '+' instead of %2B.
+        var factory = new AdlsGen2ClientFactory(new AdlsGen2StorageProviderOptions
+        {
+            ServiceUrl = new Uri("https://account.dfs.core.windows.net"),
+            UseDefaultCredentialChain = false,
+            AllowAnonymousAccess = true,
+        });
+
+        var uri = StorageUri.Parse("adls://filesystem/path");
+
+        (await factory.GetClientAsync(uri)).Should().NotBeNull();
+        (await factory.GetBlobServiceClientAsync(uri)).Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task GetBlobServiceClientAsync_SasTokenOptionWithEscapedSignature_IsSentVerbatim()
+    {
+        // A '%2B' in the signature must reach the wire as %2B: Azure Storage reads a '+' as a space.
         using var server = new RecordingHttpServer();
         const string sas = "sv=2022-11-02&sr=b&sp=r&sig=ab%2Bcd%2Fef%3D";
 
-        var factory = new AdlsGen2ClientFactory(new AdlsGen2StorageProviderOptions { UseDefaultCredentialChain = false });
+        var factory = NewFactory(o => o.DefaultSasToken = sas);
 
-        var uri = StorageUri.Parse(
-            $"adls://filesystem/file?accountName=acct&serviceUrl={Uri.EscapeDataString(server.BaseUrl + "acct")}&sasToken={Uri.EscapeDataString(sas)}");
+        var uri = StorageUri.Parse($"adls://filesystem/file?accountName=acct&serviceUrl={Uri.EscapeDataString(server.BaseUrl + "acct")}");
 
         var client = await factory.GetBlobServiceClientAsync(uri);
 
@@ -225,11 +245,42 @@ public class AdlsGen2ClientFactoryTests
         {
             _ = await client.GetBlobContainerClient("filesystem").GetBlobClient("file").ExistsAsync();
         }
-        catch (Azure.RequestFailedException)
+        catch (global::Azure.RequestFailedException)
         {
             // The recording server answers 404 without an error code; only the request URL matters here.
         }
 
         server.RawUrls.Should().ContainSingle().Which.Should().Contain("sig=ab%2Bcd%2Fef%3D");
+    }
+
+    [Fact]
+    public async Task GetClientAsync_DataLakeClient_SasTokenIsSentVerbatim()
+    {
+        using var server = new RecordingHttpServer();
+        const string sas = "sv=2022-11-02&sr=b&sp=r&sig=ab%2Bcd%2Fef%3D";
+
+        var factory = NewFactory(o => o.DefaultSasToken = sas);
+        var uri = StorageUri.Parse($"adls://filesystem/file?accountName=acct&serviceUrl={Uri.EscapeDataString(server.BaseUrl + "acct")}");
+
+        var client = await factory.GetClientAsync(uri);
+
+        try
+        {
+            _ = await client.GetFileSystemClient("filesystem").GetFileClient("file").ExistsAsync();
+        }
+        catch (global::Azure.RequestFailedException)
+        {
+        }
+
+        server.RawUrls.Should().ContainSingle().Which.Should().Contain("sig=ab%2Bcd%2Fef%3D");
+    }
+
+    [Fact]
+    public void Dispose_CanBeCalledTwice()
+    {
+        var factory = NewFactory();
+
+        factory.Dispose();
+        factory.Invoking(f => f.Dispose()).Should().NotThrow();
     }
 }

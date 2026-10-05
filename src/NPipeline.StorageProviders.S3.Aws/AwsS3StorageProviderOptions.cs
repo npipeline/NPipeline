@@ -11,13 +11,14 @@ public sealed class AwsS3StorageProviderOptions : S3CoreOptions
 {
     /// <summary>
     ///     Gets or sets the default AWS region endpoint.
-    ///     If not specified, defaults to US East 1.
+    ///     If not specified, the SDK resolves the region (environment, profile, instance metadata).
     /// </summary>
     public RegionEndpoint? DefaultRegion { get; set; }
 
     /// <summary>
     ///     Gets or sets the default AWS credentials.
-    ///     If not specified, the default AWS credential chain is used.
+    ///     If not specified, the default AWS credential chain is used. Credentials are never read from URIs.
+    ///     The SDK refreshes temporary credentials itself, so supply the <see cref="AWSCredentials" /> object, not a snapshot.
     /// </summary>
     public AWSCredentials? DefaultCredentials { get; set; }
 

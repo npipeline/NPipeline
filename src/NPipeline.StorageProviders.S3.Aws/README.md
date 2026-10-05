@@ -7,7 +7,7 @@ AWS S3 storage provider for NPipeline. Implements `IStorageProvider` using the A
 - **Default credential chain** - environment variables → shared credentials file → EC2 instance profile → ECS task role
 - **Explicit credentials** - `BasicAWSCredentials` or `SessionAWSCredentials` via options or URI parameters
 - **Per-URI region overrides** - set region per-request using the `?region=` URI parameter
-- **Multipart uploads** - files above the configurable threshold use the S3 multipart API automatically
+- **Streaming uploads** - parts upload while you write; no local temporary file, and memory is bounded by `PartSizeBytes × (MaxConcurrency + 1)`
 - **Client caching** - `IAmazonS3` clients are cached by region/endpoint/credentials to minimise overhead
 - **Path-style addressing** - opt in with `ForcePathStyle = true` for Floci or older S3-compatible endpoints
 - **Async streaming** - all reads, writes, and listings stream data without materialising the full object in memory
@@ -61,33 +61,30 @@ s3://bucket-name/key/path?region=ap-southeast-2
 | Parameter | Description | Example |
 |-----------|-------------|---------|
 | `region` | AWS region name | `region=ap-southeast-2` |
-| `accessKey` | AWS access key ID | `accessKey=AKIAIOSFODNN7EXAMPLE` |
-| `secretKey` | AWS secret access key | `secretKey=wJalrXUtnFEMI/...` |
-| `sessionToken` | STS session token (with `accessKey`+`secretKey`) | `sessionToken=AQoDY...` |
 | `serviceUrl` | Custom S3 endpoint URL | `serviceUrl=http%3A%2F%2Flocalhost%3A4566` |
 | `pathStyle` | Force path-style addressing | `pathStyle=true` |
 | `contentType` | MIME type applied on write | `contentType=application/json` |
 
-> **Security:** Avoid embedding credentials in URIs in production - URIs may appear in logs. Use the credential chain or `DefaultCredentials` in options instead.
+> **Security:** The `accessKey`, `secretKey` and `sessionToken` URI parameters aren't supported, because URIs are logged and compared. A URI that carries one throws an `ArgumentException`. Set `DefaultCredentials` in the options, or use the credential chain.
 
 ## Configuration
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
-| `DefaultRegion` | `RegionEndpoint?` | `null` (→ `USEast1`) | AWS region for S3 API calls |
+| `DefaultRegion` | `RegionEndpoint?` | `null` | AWS region for S3 API calls. When neither this nor a `region` parameter is set, the AWS SDK resolves the region. |
 | `DefaultCredentials` | `AWSCredentials?` | `null` | Explicit AWS credentials |
 | `UseDefaultCredentialChain` | `bool` | `true` | Fall back to the standard AWS credential chain |
 | `ServiceUrl` | `Uri?` | `null` | Custom S3 endpoint (Floci, MinIO via AWS provider) |
 | `ForcePathStyle` | `bool` | `false` | Use path-style URLs instead of virtual-hosted-style |
-| `MultipartUploadThresholdBytes` | `long` | `67108864` (64 MB) | Objects above this size use the S3 multipart upload API |
+| `PartSizeBytes` | `int` | `8388608` (8 MiB) | Size of each upload part, at least 5 MiB. An object that fits in one part uses a single `PutObject`. |
+| `MaxConcurrency` | `int` | `4` | Parts of one object that upload at the same time |
 
 ## Authentication
 
-Credentials are resolved in priority order:
+Credentials come from the provider options only, and one set applies to every client the provider creates:
 
-1. **Per-URI** - `accessKey` + `secretKey` (+ optional `sessionToken`) in the URI query string
-2. **Options** - `DefaultCredentials` set on `AwsS3StorageProviderOptions`
-3. **Default credential chain** - when `UseDefaultCredentialChain = true` (default)
+1. **Options** - `DefaultCredentials` set on `AwsS3StorageProviderOptions`
+2. **Default credential chain** - when `UseDefaultCredentialChain = true` (default)
 
 ```csharp
 // Production - use the default credential chain (IAM role, instance profile, etc.)
@@ -123,7 +120,7 @@ services.AddAwsS3StorageProvider(options =>
 services.AddAwsS3StorageProvider(new AwsS3StorageProviderOptions
 {
     DefaultRegion = RegionEndpoint.USEast1,
-    MultipartUploadThresholdBytes = 128 * 1024 * 1024 // 128 MB
+    PartSizeBytes = 16 * 1024 * 1024 // 16 MiB parts
 });
 ```
 

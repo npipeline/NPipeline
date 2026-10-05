@@ -10,12 +10,11 @@ namespace NPipeline.StorageProviders.Gcp.Reliability;
 /// </summary>
 /// <remarks>
 ///     <para>
-///         The provider runs each GCS request (metadata, list page, download, and upload) through this policy. Exactly one
-///         layer retries: clients built by <see cref="GcsClientFactory" /> send each HTTP request once
-///         (<c>ConfigurableMessageHandler.NumTries = 1</c>), which turns off the Google SDK's own retry of metadata
-///         calls and its in-session resume of resumable uploads, and metadata calls pass
-///         <c>RetryOptions.Never</c>. A retried download starts again with an empty buffer, and a retried upload
-///         re-sends the whole object from its first byte, so neither can leave a partial or duplicated object.
+///         The provider runs each metadata, list, delete and copy request through this policy, and reopens a download
+///         that fails part-way from the failed offset (<see cref="GcsResumingReadStream" />). Exactly one layer retries
+///         each request: metadata calls pass <c>RetryOptions.Never</c>, so the Google SDK does not retry them as well.
+///         Writes are not run through this policy, because a stream cannot be replayed: they retry inside the SDK's
+///         resumable-upload session, which re-sends from the offset the server reports.
 ///     </para>
 ///     <para>
 ///         <see cref="NResilience.Resilience.AttemptTimeout" /> and <see cref="NResilience.Resilience.Deadline" />

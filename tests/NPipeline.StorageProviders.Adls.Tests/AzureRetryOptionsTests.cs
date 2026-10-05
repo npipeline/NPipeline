@@ -1,11 +1,12 @@
 using AwesomeAssertions;
 using Azure.Core;
 using Azure.Storage.Files.DataLake;
+using NPipeline.StorageProviders.Azure;
 using Xunit;
 
 namespace NPipeline.StorageProviders.Adls.Tests;
 
-public class AdlsGen2RetryOptionsTests
+public class AzureRetryOptionsTests
 {
     [Fact]
     public void Defaults_MatchThePreviouslyHardcodedSdkSettings()
@@ -43,7 +44,7 @@ public class AdlsGen2RetryOptionsTests
     {
         var options = new AdlsGen2StorageProviderOptions
         {
-            Retry = new AdlsGen2RetryOptions
+            Retry = new AzureRetryOptions
             {
                 Mode = RetryMode.Fixed,
                 MaxRetries = 2,
@@ -67,7 +68,7 @@ public class AdlsGen2RetryOptionsTests
     {
         var factory = new AdlsGen2ClientFactory(new AdlsGen2StorageProviderOptions
         {
-            Retry = new AdlsGen2RetryOptions { MaxRetries = 0 },
+            Retry = new AzureRetryOptions { MaxRetries = 0 },
         });
 
         factory.CreateClientOptions().Retry.MaxRetries.Should().Be(0);
@@ -76,7 +77,7 @@ public class AdlsGen2RetryOptionsTests
     [Fact]
     public void InvalidValues_AreRejected()
     {
-        var retry = new AdlsGen2RetryOptions();
+        var retry = new AzureRetryOptions();
 
         FluentActions.Invoking(() => retry.MaxRetries = -1).Should().Throw<ArgumentOutOfRangeException>();
         FluentActions.Invoking(() => retry.Delay = TimeSpan.FromSeconds(-1)).Should().Throw<ArgumentOutOfRangeException>();

@@ -52,7 +52,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IClassFixture<Azu
     #region Delete and Move Tests
 
     private StorageUri BlobUri(string container, string blob) =>
-        StorageUri.Parse($"azure://{container}/{blob}?accountName={AzuriteAccountName}&accountKey={Uri.EscapeDataString(AzuriteAccountKey)}");
+        StorageUri.Parse($"azure://{container}/{blob}?accountName={AzuriteAccountName}");
 
     [Fact]
     public async Task DeleteAsync_ExistingBlob_RemovesIt()
@@ -144,7 +144,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IClassFixture<Azu
         await CreateTestBlobAsync(containerName, blobName, expectedContent);
 
         var uri = StorageUri.Parse(
-            $"azure://{containerName}/{blobName}?accountName={AzuriteFixture.AccountName}&accountKey={AzuriteFixture.AccountKey}");
+            $"azure://{containerName}/{blobName}?accountName={AzuriteFixture.AccountName}");
 
         // Act
         using var stream = await Provider.OpenReadAsync(uri);
@@ -163,7 +163,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IClassFixture<Azu
         var blobName = "non-existent-file.txt";
 
         var uri = StorageUri.Parse(
-            $"azure://{containerName}/{blobName}?accountName={AzuriteFixture.AccountName}&accountKey={AzuriteFixture.AccountKey}");
+            $"azure://{containerName}/{blobName}?accountName={AzuriteFixture.AccountName}");
 
         // Act
         var act = async () => await Provider.OpenReadAsync(uri);
@@ -189,7 +189,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IClassFixture<Azu
         await blobClient.UploadAsync(uploadStream, true);
 
         var uri = StorageUri.Parse(
-            $"azure://{containerName}/{blobName}?accountName={AzuriteFixture.AccountName}&accountKey={AzuriteFixture.AccountKey}");
+            $"azure://{containerName}/{blobName}?accountName={AzuriteFixture.AccountName}");
 
         // Act
         using var stream = await Provider.OpenReadAsync(uri);
@@ -218,7 +218,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IClassFixture<Azu
         await CreateTestBlobAsync(containerName, blobName, expectedContent, "application/json");
 
         var uri = StorageUri.Parse(
-            $"azure://{containerName}/{blobName}?accountName={AzuriteFixture.AccountName}&accountKey={AzuriteFixture.AccountKey}");
+            $"azure://{containerName}/{blobName}?accountName={AzuriteFixture.AccountName}");
 
         // Act
         using var stream = await Provider.OpenReadAsync(uri);
@@ -242,7 +242,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IClassFixture<Azu
         var content = "New file content";
 
         var uri = StorageUri.Parse(
-            $"azure://{containerName}/{blobName}?accountName={AzuriteFixture.AccountName}&accountKey={AzuriteFixture.AccountKey}");
+            $"azure://{containerName}/{blobName}?accountName={AzuriteFixture.AccountName}");
 
         // Act
         using (var writeStream = await _provider!.OpenWriteAsync(uri))
@@ -269,7 +269,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IClassFixture<Azu
         var newContent = "New content";
         await CreateTestBlobAsync(containerName, blobName, originalContent);
 
-        var uri = StorageUri.Parse($"azure://{containerName}/{blobName}?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
+        var uri = StorageUri.Parse($"azure://{containerName}/{blobName}?accountName={AzuriteAccountName}");
 
         // Act
         using (var writeStream = await _provider!.OpenWriteAsync(uri))
@@ -295,7 +295,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IClassFixture<Azu
         var content = JsonSerializer.Serialize(new { test = "data" });
 
         var uri = StorageUri.Parse(
-            $"azure://{containerName}/{blobName}?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}&contentType=application/json");
+            $"azure://{containerName}/{blobName}?accountName={AzuriteAccountName}&contentType=application/json");
 
         // Act
         using (var writeStream = await _provider!.OpenWriteAsync(uri))
@@ -318,7 +318,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IClassFixture<Azu
         var containerName = GetUniqueContainerName();
         var blobName = "small-file.txt";
         var content = "Small content";
-        var uri = StorageUri.Parse($"azure://{containerName}/{blobName}?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
+        var uri = StorageUri.Parse($"azure://{containerName}/{blobName}?accountName={AzuriteAccountName}");
 
         // Act
         using (var writeStream = await _provider!.OpenWriteAsync(uri))
@@ -341,7 +341,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IClassFixture<Azu
         var blobName = "large-file.bin";
         var largeContent = new byte[LargeBlobSizeBytes];
         new Random().NextBytes(largeContent);
-        var uri = StorageUri.Parse($"azure://{containerName}/{blobName}?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
+        var uri = StorageUri.Parse($"azure://{containerName}/{blobName}?accountName={AzuriteAccountName}");
 
         // Act
         using (var writeStream = await _provider!.OpenWriteAsync(uri))
@@ -367,7 +367,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IClassFixture<Azu
     }
 
     [Fact]
-    public async Task OpenWriteAsync_WithCustomConcurrencyAndTransferSize_UploadsSuccessfully()
+    public async Task OpenWriteAsync_WithCustomConcurrencyAndPartSize_UploadsSuccessfully()
     {
         // Arrange
         var containerName = GetUniqueContainerName();
@@ -380,16 +380,18 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IClassFixture<Azu
         {
             ServiceUrl = _options!.ServiceUrl,
             ServiceVersion = _options.ServiceVersion,
-            BlockBlobUploadThresholdBytes = LargeBlobSizeBytes / 2,
-            UploadMaximumConcurrency = 4,
-            UploadMaximumTransferSizeBytes = 256 * 1024,
+            AccountName = AzuriteAccountName,
+            DefaultAccountKey = AzuriteAccountKey,
+            PartSizeBytes = 256 * 1024,
+            MaxConcurrency = 4,
+            CreateContainerIfMissing = true,
             UseDefaultCredentialChain = false,
         };
 
         var clientFactory = new AzureBlobClientFactory(customOptions);
         var customProvider = new AzureBlobStorageProvider(clientFactory, customOptions);
 
-        var uri = StorageUri.Parse($"azure://{containerName}/{blobName}?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
+        var uri = StorageUri.Parse($"azure://{containerName}/{blobName}?accountName={AzuriteAccountName}");
 
         // Act
         using (var writeStream = await customProvider.OpenWriteAsync(uri))
@@ -426,7 +428,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IClassFixture<Azu
         var blobName = "existing-file.txt";
         await CreateTestBlobAsync(containerName, blobName, "Test content");
 
-        var uri = StorageUri.Parse($"azure://{containerName}/{blobName}?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
+        var uri = StorageUri.Parse($"azure://{containerName}/{blobName}?accountName={AzuriteAccountName}");
 
         // Act
         var exists = await _provider!.ExistsAsync(uri);
@@ -441,7 +443,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IClassFixture<Azu
         // Arrange
         var containerName = GetUniqueContainerName();
         var blobName = "non-existent-file.txt";
-        var uri = StorageUri.Parse($"azure://{containerName}/{blobName}?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
+        var uri = StorageUri.Parse($"azure://{containerName}/{blobName}?accountName={AzuriteAccountName}");
 
         // Act
         var exists = await _provider!.ExistsAsync(uri);
@@ -458,7 +460,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IClassFixture<Azu
         var blobName = "test-file.txt";
         await CreateTestBlobAsync(containerName, blobName, "Test content");
 
-        var uri = StorageUri.Parse($"azure://{containerName}/{blobName}?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
+        var uri = StorageUri.Parse($"azure://{containerName}/{blobName}?accountName={AzuriteAccountName}");
 
         // Act
         var exists = await _provider!.ExistsAsync(uri);
@@ -480,7 +482,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IClassFixture<Azu
         await CreateTestBlobAsync(containerName, "folder/file2.txt", "Content 2");
         await CreateTestBlobAsync(containerName, "folder/subfolder/file3.txt", "Content 3");
 
-        var prefixUri = StorageUri.Parse($"azure://{containerName}/?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
+        var prefixUri = StorageUri.Parse($"azure://{containerName}/?accountName={AzuriteAccountName}");
 
         // Act
         var items = await _provider!.ListAsync(prefixUri, true).ToListAsync();
@@ -501,7 +503,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IClassFixture<Azu
         await CreateTestBlobAsync(containerName, "folder/file2.txt", "Content 2");
         await CreateTestBlobAsync(containerName, "folder/subfolder/file3.txt", "Content 3");
 
-        var prefixUri = StorageUri.Parse($"azure://{containerName}/?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
+        var prefixUri = StorageUri.Parse($"azure://{containerName}/?accountName={AzuriteAccountName}");
 
         // Act
         var items = await _provider!.ListAsync(prefixUri).ToListAsync();
@@ -521,7 +523,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IClassFixture<Azu
         await CreateTestBlobAsync(containerName, "data/file2.txt", "Content 2");
         await CreateTestBlobAsync(containerName, "logs/file3.txt", "Content 3");
 
-        var prefixUri = StorageUri.Parse($"azure://{containerName}/data/?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
+        var prefixUri = StorageUri.Parse($"azure://{containerName}/data/?accountName={AzuriteAccountName}");
 
         // Act
         var items = await _provider!.ListAsync(prefixUri, true).ToListAsync();
@@ -538,7 +540,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IClassFixture<Azu
     {
         // Arrange
         var containerName = GetUniqueContainerName();
-        var prefixUri = StorageUri.Parse($"azure://{containerName}/?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
+        var prefixUri = StorageUri.Parse($"azure://{containerName}/?accountName={AzuriteAccountName}");
 
         // Act
         var items = await _provider!.ListAsync(prefixUri, true).ToListAsync();
@@ -557,7 +559,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IClassFixture<Azu
         await CreateTestBlobAsync(containerName, "level1/level2/medium.txt", "Medium content");
         await CreateTestBlobAsync(containerName, "level1/shallow.txt", "Shallow content");
 
-        var prefixUri = StorageUri.Parse($"azure://{containerName}/?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
+        var prefixUri = StorageUri.Parse($"azure://{containerName}/?accountName={AzuriteAccountName}");
 
         // Act
         var items = await _provider!.ListAsync(prefixUri, true).ToListAsync();
@@ -583,7 +585,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IClassFixture<Azu
         var content = "Test content for metadata";
         await CreateTestBlobAsync(containerName, blobName, content, "text/plain");
 
-        var uri = StorageUri.Parse($"azure://{containerName}/{blobName}?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
+        var uri = StorageUri.Parse($"azure://{containerName}/{blobName}?accountName={AzuriteAccountName}");
 
         // Act
         var metadata = await _provider!.GetMetadataAsync(uri);
@@ -602,7 +604,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IClassFixture<Azu
         // Arrange
         var containerName = GetUniqueContainerName();
         var blobName = "non-existent-file.txt";
-        var uri = StorageUri.Parse($"azure://{containerName}/{blobName}?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
+        var uri = StorageUri.Parse($"azure://{containerName}/{blobName}?accountName={AzuriteAccountName}");
 
         // Act
         var metadata = await _provider!.GetMetadataAsync(uri);
@@ -632,7 +634,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IClassFixture<Azu
             ["custom_key_2"] = "custom-value-2",
         });
 
-        var uri = StorageUri.Parse($"azure://{containerName}/{blobName}?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
+        var uri = StorageUri.Parse($"azure://{containerName}/{blobName}?accountName={AzuriteAccountName}");
 
         // Act
         var metadata = await _provider!.GetMetadataAsync(uri);
@@ -655,7 +657,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IClassFixture<Azu
         var content = "Full metadata test content";
         await CreateTestBlobAsync(containerName, blobName, content, "application/json");
 
-        var uri = StorageUri.Parse($"azure://{containerName}/{blobName}?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
+        var uri = StorageUri.Parse($"azure://{containerName}/{blobName}?accountName={AzuriteAccountName}");
 
         // Act
         var metadata = await _provider!.GetMetadataAsync(uri);
@@ -685,6 +687,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IClassFixture<Azu
             DefaultConnectionString = _fixture.GetConnectionString(),
             ServiceVersion = _options!.ServiceVersion,
             UseDefaultCredentialChain = false,
+            CreateContainerIfMissing = true,
         };
 
         var clientFactory = new AzureBlobClientFactory(options);
@@ -715,7 +718,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IClassFixture<Azu
         // Arrange
         var containerName = GetUniqueContainerName();
         var blobName = "account-key-test.txt";
-        var uri = StorageUri.Parse($"azure://{containerName}/{blobName}?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
+        var uri = StorageUri.Parse($"azure://{containerName}/{blobName}?accountName={AzuriteAccountName}");
         var content = "Account key test";
 
         // Act
@@ -750,10 +753,22 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IClassFixture<Azu
         var invalidKey =
             "dGVzdGtleWZvcmF6dXJpdGVzdGluZ3VudGhvcml6ZWRhY2Nlc3NleGNlcHRpb250ZXN0aW5nd2l0aHZhbGlkYmFzZTY0ZW5jb2Rpbmd0aGF0cGFzc2VzdmFsaWRhdGlvbididXRmYWlsc2F1dGhlbnRpY2F0aW9u";
 
-        var uri = StorageUri.Parse($"azure://{containerName}/{blobName}?accountName={AzuriteAccountName}&accountKey={invalidKey}");
+        var uri = StorageUri.Parse($"azure://{containerName}/{blobName}?accountName={AzuriteAccountName}");
 
         // Act
-        var act = async () => await _provider!.OpenReadAsync(uri);
+        var badOptions = new AzureBlobStorageProviderOptions
+        {
+            ServiceUrl = _options.ServiceUrl,
+            ServiceVersion = _options.ServiceVersion,
+            AccountName = AzuriteAccountName,
+            DefaultAccountKey = invalidKey,
+            UseDefaultCredentialChain = false,
+        };
+
+        var badProvider = new AzureBlobStorageProvider(new AzureBlobClientFactory(badOptions), badOptions);
+
+        // Act
+        var act = async () => await badProvider.OpenReadAsync(uri);
 
         // Assert
         await act.Should().ThrowAsync<UnauthorizedAccessException>();
@@ -765,7 +780,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IClassFixture<Azu
         // Arrange
         var invalidContainerName = "Invalid Container Name!"; // Contains spaces and special chars
         var blobName = "test-file.txt";
-        var uri = StorageUri.Parse($"azure://{invalidContainerName}/{blobName}?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
+        var uri = StorageUri.Parse($"azure://{invalidContainerName}/{blobName}?accountName={AzuriteAccountName}");
 
         // Act
         var act = async () => await _provider!.OpenReadAsync(uri);
@@ -779,8 +794,8 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IClassFixture<Azu
     {
         // Arrange
         var containerName = GetUniqueContainerName();
-        var invalidBlobName = "invalid/blob/name/with/invalid/chars?"; // Contains invalid characters
-        var uri = StorageUri.Parse($"azure://{containerName}/{invalidBlobName}?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
+        var invalidBlobName = "invalid/blob/name/with/invalid/chars%3F"; // Contains an encoded question mark, which blob names reject
+        var uri = StorageUri.Parse($"azure://{containerName}/{invalidBlobName}?accountName={AzuriteAccountName}");
 
         // Act
         var act = async () => await _provider!.OpenReadAsync(uri);
@@ -802,7 +817,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IClassFixture<Azu
         var content = "Concurrent read test content";
         await CreateTestBlobAsync(containerName, blobName, content);
 
-        var uri = StorageUri.Parse($"azure://{containerName}/{blobName}?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
+        var uri = StorageUri.Parse($"azure://{containerName}/{blobName}?accountName={AzuriteAccountName}");
 
         // Act
         var tasks = Enumerable.Range(0, 10).Select(async _ =>
@@ -826,7 +841,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IClassFixture<Azu
         var containerName = GetUniqueContainerName();
 
         var uris = Enumerable.Range(0, 10)
-            .Select(i => StorageUri.Parse($"azure://{containerName}/file-{i}.txt?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}"))
+            .Select(i => StorageUri.Parse($"azure://{containerName}/file-{i}.txt?accountName={AzuriteAccountName}"))
             .ToArray();
 
         // Act
@@ -857,7 +872,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IClassFixture<Azu
         var initialContent = "Initial content";
         await CreateTestBlobAsync(containerName, blobName, initialContent);
 
-        var uri = StorageUri.Parse($"azure://{containerName}/{blobName}?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
+        var uri = StorageUri.Parse($"azure://{containerName}/{blobName}?accountName={AzuriteAccountName}");
 
         // Act
         var readTask = Task.Run(async () =>

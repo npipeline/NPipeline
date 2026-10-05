@@ -18,6 +18,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\NPipeline.StorageProviders\NPipeline.StorageProviders.csproj"/>
+        <ProjectReference Include="..\NPipeline.StorageProviders.Azure\NPipeline.StorageProviders.Azure.csproj"/>
     </ItemGroup>
 
     <ItemGroup>

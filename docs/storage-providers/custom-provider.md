@@ -96,7 +96,39 @@ Declaring a capability you don't implement, or the reverse, is a bug: connectors
 - Disposing the stream without a commit discards everything written. The target stays untouched, and an existing object stays as it was. Dispose never uploads.
 - Upload failures surface from `CommitAsync`, using the caller's token, not from `Dispose`.
 
-For an object store, derive from `SpooledWriteStream` (also in `NPipeline.StorageProviders.Abstractions`). It buffers the writes to a local temporary file, deletes the file when the stream is disposed, and calls your `UploadAsync` from `CommitAsync`. You only upload the content and return the ETag:
+For an object store that has a multi-part upload API, derive from `ChunkedUploadStream` (also in `NPipeline.StorageProviders.Abstractions`). It uploads while the caller writes, so nothing goes to local disk: it collects the writes into pooled part buffers (`partSizeBytes` each), hands every full buffer to your `UploadPartAsync`, and keeps accepting writes while up to `maxConcurrency` parts upload. Memory use is about `partSizeBytes × (maxConcurrency + 1)`, and a writer that outruns the network waits instead of buffering without limit. You implement five methods:
+
+```csharp
+internal sealed class MyStoreWriteStream(MyClient client, string key)
+    : ChunkedUploadStream(partSizeBytes: 8 * 1024 * 1024, maxConcurrency: 4)
+{
+    private string? _sessionId;
+    private readonly ConcurrentDictionary<int, string> _partTags = new();
+
+    // Called once, before the first part. Start the multi-part session here.
+    protected override async Task BeginAsync(CancellationToken ct) =>
+        _sessionId = await client.StartAsync(key, ct);
+
+    // Parts upload concurrently and may finish in any order. `data` is valid until the task completes.
+    protected override async Task UploadPartAsync(int partNumber, long offset, ReadOnlyMemory<byte> data, CancellationToken ct) =>
+        _partTags[partNumber] = await client.UploadPartAsync(_sessionId!, partNumber, data, ct);
+
+    // An object that fits in one part skips the session and goes in one request.
+    protected override Task<string?> UploadSingleAsync(ReadOnlyMemory<byte> data, CancellationToken ct) =>
+        client.PutAsync(key, data, ct);
+
+    // Called by CommitAsync after every part has uploaded. Return the object's ETag, or null.
+    protected override Task<string?> CompleteAsync(int partCount, long totalLength, CancellationToken ct) =>
+        client.CompleteAsync(_sessionId!, _partTags.OrderBy(p => p.Key).Select(p => p.Value), ct);
+
+    // Called when the stream is disposed without a commit, if BeginAsync ran. Failures are ignored.
+    protected override Task AbortAsync() => client.AbortAsync(_sessionId!);
+}
+```
+
+If a part fails, the stream faults: the next `WriteAsync` or `CommitAsync` throws that failure, and the other in-flight parts are cancelled. Override `PartSizeFor` to grow the part size for very large objects, so the object stays within the store's part limit.
+
+If the store takes an object only in a single request, derive from `SpooledWriteStream` instead. It buffers the writes to a local temporary file, deletes the file when the stream is disposed, and calls your `UploadAsync` from `CommitAsync`:
 
 ```csharp
 internal sealed class FtpWriteStream(FtpClient client, string path) : SpooledWriteStream("ftp-upload")
@@ -112,6 +144,21 @@ internal sealed class FtpWriteStream(FtpClient client, string path) : SpooledWri
 For a store that can rename, such as a file system or an SFTP server, write to a hidden sibling temporary file and rename it into place in `CommitAsync`. Delete the temporary file when the stream is disposed without a commit.
 
 Declare `ConditionalWrite` only if the store enforces `StorageWriteOptions.Overwrite = false` and `IfMatch` atomically, for example with `If-None-Match` and `If-Match` headers. When a condition isn't met, throw `StoragePreconditionFailedException` (in `NPipeline.StorageProviders.Exceptions`) from `CommitAsync`. Don't declare the capability if you check the condition and then write in two steps: concurrent writers can slip between them.
+
+## Caching clients
+
+A provider that talks to a service through an SDK client usually needs one client per endpoint, not one per operation. Use `ClientCache<TKey, TClient>` (in `NPipeline.StorageProviders.Utilities`):
+
+```csharp
+private readonly record struct Endpoint(string Host, int? Port);   // routing data only
+
+private readonly ClientCache<Endpoint, MyClient> _clients = new(limit: 100);
+
+private MyClient GetClient(StorageUri uri) =>
+    _clients.GetOrCreate(new Endpoint(uri.Host!, uri.Port), key => new MyClient(key.Host, key.Port, _options.Credentials));
+```
+
+A cache hit is one dictionary lookup, and the cache drops the least recently used client when it grows past the limit. Build the key from the URI's routing data (host, port, account, region) and never from a secret or a hash of one. Take credentials from your provider's options, so one set applies to every client and the key stays safe to log. An evicted client is not disposed, because an operation may still use it; `Dispose` on the cache disposes the clients that remain, so make your provider `IAsyncDisposable` and dispose the cache there.
 
 ## Error contract
 

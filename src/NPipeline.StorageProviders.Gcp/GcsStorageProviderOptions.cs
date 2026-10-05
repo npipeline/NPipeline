@@ -36,18 +36,12 @@ public sealed class GcsStorageProviderOptions
     public Uri? ServiceUrl { get; set; }
 
     /// <summary>
-    ///     Gets or sets the chunk size in bytes for resumable uploads.
+    ///     Gets or sets the chunk size in bytes for resumable uploads. Writes stream to GCS in chunks of this size, so it
+    ///     also bounds the memory a write holds (about two chunks).
     ///     Must be positive and a multiple of 256 KiB (262,144 bytes).
     ///     Default is 16 MB.
     /// </summary>
     public int UploadChunkSizeBytes { get; set; } = 16 * 1024 * 1024;
-
-    /// <summary>
-    ///     Gets or sets the buffer threshold in bytes for switching upload strategies.
-    ///     Reserved for future use.
-    ///     Default is 64 MB.
-    /// </summary>
-    public long UploadBufferThresholdBytes { get; set; } = 64 * 1024 * 1024;
 
     /// <summary>
     ///     Gets or sets the maximum number of cached StorageClient instances.
@@ -63,9 +57,11 @@ public sealed class GcsStorageProviderOptions
     ///     off.
     /// </summary>
     /// <remarks>
-    ///     This is the only retry layer: clients built by <see cref="GcsClientFactory" /> have the Google SDK's own retry
-    ///     turned off. A custom factory that builds its own clients should set
-    ///     <c>client.Service.HttpClient.MessageHandler.NumTries = 1</c> to keep it that way.
+    ///     This policy retries metadata, list, delete and copy calls, and reopens a download that fails part-way (from the
+    ///     failed offset). It does not retry writes: a write is a stream that cannot be replayed, so it retries inside the
+    ///     Google SDK's resumable-upload session instead. Clients built by <see cref="GcsClientFactory" /> keep the SDK's
+    ///     default retry for that, and the provider's other calls turn the SDK's retry off per request
+    ///     (<c>RetryOptions.Never</c>), so no request is retried by two layers. A custom factory should do the same.
     /// </remarks>
     public Resilience Resilience { get; set; } = GcsStorageResilience.Default;
 

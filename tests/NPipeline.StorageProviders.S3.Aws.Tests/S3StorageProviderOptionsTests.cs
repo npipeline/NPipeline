@@ -19,7 +19,7 @@ public class AwsS3StorageProviderOptionsTests
         options.UseDefaultCredentialChain.Should().BeTrue();
         options.ServiceUrl.Should().BeNull();
         options.ForcePathStyle.Should().BeFalse();
-        options.MultipartUploadThresholdBytes.Should().Be(64 * 1024 * 1024);
+        options.PartSizeBytes.Should().Be(8 * 1024 * 1024);
     }
 
     [Fact]
@@ -91,17 +91,17 @@ public class AwsS3StorageProviderOptionsTests
     }
 
     [Fact]
-    public void MultipartUploadThresholdBytes_CanBeSet()
+    public void PartSizeBytes_CanBeSet()
     {
         // Arrange
         var options = new AwsS3StorageProviderOptions();
-        var expectedThreshold = 128 * 1024 * 1024;
+        var expectedThreshold = 16 * 1024 * 1024;
 
         // Act
-        options.MultipartUploadThresholdBytes = expectedThreshold;
+        options.PartSizeBytes = expectedThreshold;
 
         // Assert
-        options.MultipartUploadThresholdBytes.Should().Be(expectedThreshold);
+        options.PartSizeBytes.Should().Be(expectedThreshold);
     }
 
     [Fact]
@@ -116,7 +116,7 @@ public class AwsS3StorageProviderOptionsTests
         options.UseDefaultCredentialChain = false;
         options.ServiceUrl = new Uri("https://s3.example.com");
         options.ForcePathStyle = true;
-        options.MultipartUploadThresholdBytes = 32 * 1024 * 1024;
+        options.PartSizeBytes = 32 * 1024 * 1024;
 
         // Assert
         options.DefaultRegion.Should().Be(RegionEndpoint.EUWest1);
@@ -124,7 +124,7 @@ public class AwsS3StorageProviderOptionsTests
         options.UseDefaultCredentialChain.Should().BeFalse();
         options.ServiceUrl.Should().Be(new Uri("https://s3.example.com"));
         options.ForcePathStyle.Should().BeTrue();
-        options.MultipartUploadThresholdBytes.Should().Be(32 * 1024 * 1024);
+        options.PartSizeBytes.Should().Be(32 * 1024 * 1024);
     }
 
     [Fact]
@@ -193,22 +193,20 @@ public class AwsS3StorageProviderOptionsTests
     }
 
     [Theory]
-    [InlineData(0L)]
-    [InlineData(1024L)]
-    [InlineData(5242880L)]
-    [InlineData(67108864L)]
-    [InlineData(134217728L)]
-    [InlineData(1073741824L)]
-    public void MultipartUploadThresholdBytes_AcceptsVariousValues(long threshold)
+    [InlineData(5242880)]
+    [InlineData(67108864)]
+    [InlineData(134217728)]
+    [InlineData(1073741824)]
+    public void PartSizeBytes_AcceptsVariousValues(int threshold)
     {
         // Arrange
         var options = new AwsS3StorageProviderOptions();
 
         // Act
-        options.MultipartUploadThresholdBytes = threshold;
+        options.PartSizeBytes = threshold;
 
         // Assert
-        options.MultipartUploadThresholdBytes.Should().Be(threshold);
+        options.PartSizeBytes.Should().Be(threshold);
     }
 
     [Theory]
@@ -263,13 +261,13 @@ public class AwsS3StorageProviderOptionsTests
     }
 
     [Fact]
-    public void DefaultMultipartUploadThresholdBytes_Is64MB()
+    public void DefaultPartSizeBytes_Is8MiB()
     {
         // Arrange
         var options = new AwsS3StorageProviderOptions();
 
         // Act & Assert
-        options.MultipartUploadThresholdBytes.Should().Be(64 * 1024 * 1024);
+        options.PartSizeBytes.Should().Be(8 * 1024 * 1024);
     }
 
     [Fact]

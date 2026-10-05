@@ -29,15 +29,28 @@ public sealed class Program
             {
                 services.AddAdlsGen2StorageProvider(options =>
                 {
-                    // For local Azurite development:
-                    // options.DefaultConnectionString = "UseDevelopmentStorage=true";
-                    // options.ServiceUrl = new Uri("http://127.0.0.1:10000/devstoreaccount1/");
+                    // Credentials always come from the options, never from the URI.
+
+                    // For local Azurite development, use the full connection string. It names its own
+                    // endpoint, so do not also set ServiceUrl:
+                    // options.DefaultConnectionString =
+                    //     "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=<azurite-key>;" +
+                    //     "BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;";
 
                     // For Azure with DefaultAzureCredential:
-                    // options.ServiceUrl = new Uri("https://<account>.dfs.core.windows.net/");
+                    // options.AccountName = "<account>";
                     // options.UseDefaultCredentialChain = true;
 
-                    options.UploadThresholdBytes = 64 * 1024 * 1024; // 64 MB
+                    // Or with an account key or a SAS token:
+                    // options.AccountName = "<account>";
+                    // options.DefaultAccountKey = "<account-key>";   // or options.DefaultSasToken = "<sas-token>";
+
+                    // Writes stream to the service in blocks, with no local temporary file.
+                    options.PartSizeBytes = 8 * 1024 * 1024; // 8 MiB blocks
+                    options.MaxConcurrency = 4;
+
+                    // The provider does not create filesystems unless you ask it to.
+                    options.CreateContainerIfMissing = true;
                 });
             })
             .Build();
@@ -113,7 +126,7 @@ public sealed class Program
                 Console.WriteLine($"  {type}  {item.Uri}");
             }
 
-            // --- Move (atomic rename) ---
+            // --- Move (an atomic rename with a hierarchical namespace; copy and delete without one) ---
             var destUri = StorageUri.Parse($"adls://{filesystem}/samples/renamed.txt");
             Console.WriteLine($"Moving {uri}  ->  {destUri}");
             await provider.MoveAsync(uri, destUri);

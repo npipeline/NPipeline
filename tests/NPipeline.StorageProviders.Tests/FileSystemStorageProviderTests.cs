@@ -212,6 +212,83 @@ public sealed class FileSystemStorageProviderTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ListAsync_Recursive_SymlinkLoop_TerminatesAndYieldsEachFileOnce()
+    {
+        if (OperatingSystem.IsWindows())
+            return; // Creating symlinks needs elevation on Windows.
+
+        var sub = Path.Combine(_testDirectory, "sub");
+        Directory.CreateDirectory(sub);
+        await File.WriteAllTextAsync(Path.Combine(sub, "a.txt"), "a");
+        Directory.CreateSymbolicLink(Path.Combine(sub, "loop"), _testDirectory);
+
+        var items = new List<StorageItem>();
+
+        await foreach (var item in _provider.ListAsync(StorageUri.FromFilePath(_testDirectory), true))
+            items.Add(item);
+
+        items.Should().ContainSingle(i => i.Uri.Path.EndsWith("/a.txt", StringComparison.Ordinal));
+        items.Should().NotContain(i => i.IsDirectory);
+    }
+
+    [Fact]
+    public async Task ListAsync_IncludesHiddenFiles()
+    {
+        await File.WriteAllTextAsync(Path.Combine(_testDirectory, ".hidden"), "x");
+        await File.WriteAllTextAsync(Path.Combine(_testDirectory, "shown.txt"), "x");
+
+        var names = new List<string>();
+
+        await foreach (var item in _provider.ListAsync(StorageUri.FromFilePath(_testDirectory)))
+            names.Add(item.Uri.Name);
+
+        names.Should().BeEquivalentTo(".hidden", "shown.txt");
+    }
+
+    [Fact]
+    public async Task ListAsync_FileEntries_CarrySizeAndTimestampFromTheDirectoryRead()
+    {
+        var path = Path.Combine(_testDirectory, "sized.bin");
+        await File.WriteAllBytesAsync(path, new byte[1234]);
+
+        StorageItem? listed = null;
+
+        await foreach (var item in _provider.ListAsync(StorageUri.FromFilePath(_testDirectory)))
+            listed = item;
+
+        listed!.Size.Should().Be(1234);
+        listed.LastModified.Should().BeCloseTo(new DateTimeOffset(File.GetLastWriteTimeUtc(path)), TimeSpan.FromSeconds(1));
+        listed.IsDirectory.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task GetMetadataAsync_ETag_ChangesWhenTheLengthChangesWithinOneTimestamp()
+    {
+        var path = Path.Combine(_testDirectory, "etag.bin");
+        await File.WriteAllBytesAsync(path, new byte[10]);
+        var stamp = File.GetLastWriteTimeUtc(path);
+        var uri = StorageUri.FromFilePath(path);
+
+        var before = (await _provider.GetMetadataAsync(uri))!.ETag;
+        await File.WriteAllBytesAsync(path, new byte[11]);
+        File.SetLastWriteTimeUtc(path, stamp);
+        var after = (await _provider.GetMetadataAsync(uri))!.ETag;
+
+        after.Should().NotBe(before);
+    }
+
+    [Fact]
+    public async Task GetMetadataAsync_Parquet_HasTheParquetContentType()
+    {
+        var path = Path.Combine(_testDirectory, "t.parquet");
+        await File.WriteAllBytesAsync(path, new byte[4]);
+
+        var metadata = await _provider.GetMetadataAsync(StorageUri.FromFilePath(path));
+
+        metadata!.ContentType.Should().Be("application/vnd.apache.parquet");
+    }
+
+    [Fact]
     public async Task ListAsync_Recursive_CaseDistinctDirectories_ListsBoth()
     {
         var root = Directory.CreateTempSubdirectory("np-case-");

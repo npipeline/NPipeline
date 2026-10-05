@@ -8,6 +8,7 @@ using Azure.Storage.Files.DataLake.Models;
 using FakeItEasy;
 using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Models;
+using NPipeline.StorageProviders.Azure;
 using Xunit;
 
 namespace NPipeline.StorageProviders.Adls.Tests;
@@ -133,7 +134,7 @@ public class AdlsGen2StorageProviderTests
 
         // Assert
         result.Should().NotBeNull();
-        result.Should().BeOfType<AdlsGen2WriteStream>();
+        result.Should().BeOfType<AzureBlobWriteStream>();
     }
 
     [Fact]
@@ -238,7 +239,6 @@ public class AdlsGen2StorageProviderTests
         // Arrange
         var blobServiceClient = A.Fake<BlobServiceClient>();
         var containerClient = A.Fake<BlobContainerClient>();
-        var existsResponse = A.Fake<Response<bool>>();
 
         var file1 = BlobsModelFactory.BlobItem("path/file1.txt", false, null, null, null);
         var file2 = BlobsModelFactory.BlobItem("path/file2.txt", false, null, null, null);
@@ -254,8 +254,6 @@ public class AdlsGen2StorageProviderTests
             .Returns(Task.FromResult(blobServiceClient));
 
         A.CallTo(() => blobServiceClient.GetBlobContainerClient("filesystem")).Returns(containerClient);
-        A.CallTo(() => existsResponse.Value).Returns(true);
-        A.CallTo(() => containerClient.ExistsAsync(A<CancellationToken>._)).Returns(Task.FromResult(existsResponse));
 
         A.CallTo(() => containerClient.GetBlobsByHierarchyAsync(
                 A<BlobTraits>._, A<BlobStates>._, A<string>._, A<string>._, A<CancellationToken>._))
@@ -286,7 +284,6 @@ public class AdlsGen2StorageProviderTests
         // Arrange
         var blobServiceClient = A.Fake<BlobServiceClient>();
         var containerClient = A.Fake<BlobContainerClient>();
-        var existsResponse = A.Fake<Response<bool>>();
 
         var file1 = BlobsModelFactory.BlobItem("path/file1.txt", false, null, null, null);
         var file2 = BlobsModelFactory.BlobItem("path/subdir/file2.txt", false, null, null, null);
@@ -296,8 +293,6 @@ public class AdlsGen2StorageProviderTests
             .Returns(Task.FromResult(blobServiceClient));
 
         A.CallTo(() => blobServiceClient.GetBlobContainerClient("filesystem")).Returns(containerClient);
-        A.CallTo(() => existsResponse.Value).Returns(true);
-        A.CallTo(() => containerClient.ExistsAsync(A<CancellationToken>._)).Returns(Task.FromResult(existsResponse));
 
         A.CallTo(() => containerClient.GetBlobsAsync(
                 A<BlobTraits>._, A<BlobStates>._, A<string>._, A<CancellationToken>._))
@@ -467,6 +462,9 @@ public class AdlsGen2StorageProviderTests
     [Fact]
     public async Task MoveAsync_WithValidPaths_MovesSuccessfully()
     {
+        // These renames only happen on an account with a hierarchical namespace.
+        StubHierarchicalNamespace(true);
+
         // Arrange
         var serviceClient = A.Fake<DataLakeServiceClient>();
         var fileSystemClient = A.Fake<DataLakeFileSystemClient>();
@@ -498,6 +496,9 @@ public class AdlsGen2StorageProviderTests
     [Fact]
     public async Task MoveAsync_AcrossFilesystems_PassesDestinationFilesystem()
     {
+        // These renames only happen on an account with a hierarchical namespace.
+        StubHierarchicalNamespace(true);
+
         // Arrange
         var serviceClient = A.Fake<DataLakeServiceClient>();
         var fileSystemClient = A.Fake<DataLakeFileSystemClient>();
@@ -526,6 +527,9 @@ public class AdlsGen2StorageProviderTests
     [Fact]
     public async Task MoveAsync_WithinFilesystem_PassesNoDestinationFilesystem()
     {
+        // These renames only happen on an account with a hierarchical namespace.
+        StubHierarchicalNamespace(true);
+
         var serviceClient = A.Fake<DataLakeServiceClient>();
         var fileSystemClient = A.Fake<DataLakeFileSystemClient>();
         var sourceFileClient = A.Fake<DataLakeFileClient>();
@@ -652,6 +656,18 @@ public class AdlsGen2StorageProviderTests
     #endregion
 
     #region Helper Methods
+
+    private void StubHierarchicalNamespace(bool enabled)
+    {
+        var blobService = A.Fake<BlobServiceClient>();
+
+        A.CallTo(() => _clientFactory.GetBlobServiceClientAsync(A<StorageUri>._, A<CancellationToken>._))
+            .Returns(Task.FromResult(blobService));
+
+        A.CallTo(() => blobService.GetAccountInfoAsync(A<CancellationToken>._))
+            .Returns(Task.FromResult(Response.FromValue(
+                BlobsModelFactory.AccountInfo(SkuName.StandardLrs, AccountKind.StorageV2, enabled), A.Fake<Response>())));
+    }
 
     private static PathItem CreatePathItem(string path, bool isDirectory, long contentLength) =>
         PathItemFactory.CreatePathItem(

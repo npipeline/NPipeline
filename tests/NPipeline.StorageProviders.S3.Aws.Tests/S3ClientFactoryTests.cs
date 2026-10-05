@@ -56,21 +56,17 @@ public class AwsS3ClientFactoryTests
         client.Should().BeSameAs(_fakeS3Client);
     }
 
-    [Fact]
-    public async Task GetClientAsync_WithExplicitCredentialsInURI_CreatesClientWithCredentials()
+    [Theory]
+    [InlineData("accessKey=AKIA&secretKey=secret")]
+    [InlineData("secretKey=secret")]
+    [InlineData("sessionToken=token")]
+    public async Task GetClientAsync_WithCredentialsInUri_ThrowsAndNamesTheOption(string query)
     {
-        // Arrange
-        A.CallTo(() => _fakeClientFactory.GetClientAsync(A<StorageUri>._, A<CancellationToken>._))
-            .Returns(Task.FromResult(_fakeS3Client));
+        var factory = new AwsS3ClientFactory(new AwsS3StorageProviderOptions());
 
-        var uri = StorageUri.Parse("s3://test-bucket/test-key?accessKey=AKIAIOSFODNN7EXAMPLE&secretKey=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY");
+        var act = () => factory.GetClientAsync(StorageUri.Parse($"s3://bucket/key?{query}"));
 
-        // Act
-        var client = await _fakeClientFactory.GetClientAsync(uri);
-
-        // Assert
-        client.Should().NotBeNull();
-        client.Should().BeSameAs(_fakeS3Client);
+        (await act.Should().ThrowAsync<ArgumentException>()).WithMessage("*DefaultCredentials*");
     }
 
     [Fact]
@@ -207,35 +203,6 @@ public class AwsS3ClientFactoryTests
 
         A.CallTo(() => _fakeClientFactory.GetClientAsync(A<StorageUri>._, A<CancellationToken>._))
             .MustHaveHappened(2, Times.Exactly);
-    }
-
-    [Fact]
-    public async Task GetClientAsync_WithDifferentCredentials_ReturnsDifferentClients()
-    {
-        // Arrange
-        var client1 = A.Fake<IAmazonS3>();
-        var client2 = A.Fake<IAmazonS3>();
-        var callCount = 0;
-
-        A.CallTo(() => _fakeClientFactory.GetClientAsync(A<StorageUri>._, A<CancellationToken>._))
-            .ReturnsLazily(() =>
-            {
-                callCount++;
-
-                return Task.FromResult(callCount == 1
-                    ? client1
-                    : client2);
-            });
-
-        var uri1 = StorageUri.Parse("s3://test-bucket/test-key?accessKey=key1&secretKey=secret1");
-        var uri2 = StorageUri.Parse("s3://test-bucket/test-key?accessKey=key2&secretKey=secret2");
-
-        // Act
-        var result1 = await _fakeClientFactory.GetClientAsync(uri1);
-        var result2 = await _fakeClientFactory.GetClientAsync(uri2);
-
-        // Assert
-        result1.Should().NotBeSameAs(result2);
     }
 
     [Fact]
@@ -473,39 +440,107 @@ public class AwsS3ClientFactoryTests
     }
 
     [Fact]
-    public void CreateClient_RegionParameter_SetsRegionEndpoint()
+    public async Task GetClientAsync_RegionParameter_SetsRegionEndpoint()
     {
-        var factory = new ProbeFactory(new AwsS3StorageProviderOptions());
+        using var factory = new AwsS3ClientFactory(Options());
 
-        var client = factory.Create(StorageUri.Parse("s3://bucket/key?region=ap-southeast-2&accessKey=AKIA&secretKey=secret"));
+        var client = await factory.GetClientAsync(StorageUri.Parse("s3://bucket/key?region=ap-southeast-2"));
 
         client.Config.RegionEndpoint.Should().Be(Amazon.RegionEndpoint.APSoutheast2);
     }
 
     [Fact]
-    public void CreateClient_DefaultRegionOption_IsUsed()
+    public async Task GetClientAsync_DefaultRegionOption_IsUsed()
     {
-        var factory = new ProbeFactory(new AwsS3StorageProviderOptions { DefaultRegion = Amazon.RegionEndpoint.EUWest1 });
+        using var factory = new AwsS3ClientFactory(Options(o => o.DefaultRegion = Amazon.RegionEndpoint.EUWest1));
 
-        var client = factory.Create(StorageUri.Parse("s3://bucket/key?accessKey=AKIA&secretKey=secret"));
+        var client = await factory.GetClientAsync(StorageUri.Parse("s3://bucket/key"));
 
         client.Config.RegionEndpoint.Should().Be(Amazon.RegionEndpoint.EUWest1);
     }
 
     [Fact]
-    public void CreateClient_ServiceUrlAndRegion_SetsAuthenticationRegion()
+    public async Task GetClientAsync_ServiceUrlAndRegion_SetsAuthenticationRegion()
     {
-        var factory = new ProbeFactory(new AwsS3StorageProviderOptions());
+        using var factory = new AwsS3ClientFactory(Options());
 
-        var client = factory.Create(StorageUri.Parse(
-            "s3://bucket/key?region=eu-central-1&serviceUrl=http%3A%2F%2Flocalhost%3A9000&accessKey=AKIA&secretKey=secret"));
+        var client = await factory.GetClientAsync(StorageUri.Parse(
+            "s3://bucket/key?region=eu-central-1&serviceUrl=http%3A%2F%2Flocalhost%3A9000"));
 
         client.Config.ServiceURL.Should().StartWith("http://localhost:9000");
         client.Config.AuthenticationRegion.Should().Be("eu-central-1");
     }
 
-    private sealed class ProbeFactory(AwsS3StorageProviderOptions options) : AwsS3ClientFactory(options)
+    [Fact]
+    public async Task GetClientAsync_SameEndpointDifferentBuckets_SharesOneClientAndNeverResolvesCredentials()
     {
-        public IAmazonS3 Create(StorageUri uri) => CreateClient(uri);
+        var credentials = new CountingCredentials();
+        using var factory = new AwsS3ClientFactory(Options(o => o.DefaultCredentials = credentials));
+
+        var first = await factory.GetClientAsync(StorageUri.Parse("s3://bucket-a/x?region=us-east-1"));
+        var second = await factory.GetClientAsync(StorageUri.Parse("s3://bucket-b/y?region=us-east-1"));
+        var third = await factory.GetClientAsync(StorageUri.Parse("s3://bucket-a/z?region=us-east-1"));
+
+        second.Should().BeSameAs(first);
+        third.Should().BeSameAs(first);
+
+        // Looking a client up costs one dictionary hit: it never touches the credentials, which for assumed-role or
+        // instance-profile credentials can mean a network call.
+        credentials.Resolutions.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task GetClientAsync_DifferentRegions_AreDifferentEndpoints()
+    {
+        using var factory = new AwsS3ClientFactory(Options());
+
+        var east = await factory.GetClientAsync(StorageUri.Parse("s3://bucket/key?region=us-east-1"));
+        var west = await factory.GetClientAsync(StorageUri.Parse("s3://bucket/key?region=us-west-2"));
+
+        west.Should().NotBeSameAs(east);
+    }
+
+    [Fact]
+    public async Task GetClientAsync_NoCredentialsAndNoDefaultChain_Throws()
+    {
+        using var factory = new AwsS3ClientFactory(new AwsS3StorageProviderOptions { UseDefaultCredentialChain = false });
+
+        var act = () => factory.GetClientAsync(StorageUri.Parse("s3://bucket/key?region=us-east-1"));
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    [Fact]
+    public async Task GetClientAsync_CachedClients_AreDisposedWithTheFactory()
+    {
+        var factory = new AwsS3ClientFactory(Options());
+        var client = (AmazonS3Client)await factory.GetClientAsync(StorageUri.Parse("s3://bucket/key?region=us-east-1"));
+
+        factory.Dispose();
+
+        // A disposed AmazonS3Client refuses further calls.
+        var act = () => client.GetObjectMetadataAsync("bucket", "key");
+
+        await act.Should().ThrowAsync<ObjectDisposedException>();
+    }
+
+    private static AwsS3StorageProviderOptions Options(Action<AwsS3StorageProviderOptions>? configure = null)
+    {
+        var options = new AwsS3StorageProviderOptions { DefaultCredentials = new BasicAWSCredentials("AKIA", "secret") };
+        configure?.Invoke(options);
+
+        return options;
+    }
+
+    private sealed class CountingCredentials : AWSCredentials
+    {
+        public int Resolutions { get; private set; }
+
+        public override ImmutableCredentials GetCredentials()
+        {
+            Resolutions++;
+
+            return new ImmutableCredentials("AKIA", "secret", null);
+        }
     }
 }

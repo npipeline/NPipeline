@@ -10,10 +10,13 @@ ADLS Gen2 accounts using the `adls://` URI scheme.
 ## Key Features
 
 - **One `IStorageProvider`** - Derives from `StorageProvider`; read, write, exists, list, and metadata operations
-- **Delete** - Native path delete with idempotent behavior (`StorageCapabilities.Delete`)
-- **Move** - Rename via `DataLakePathClient.RenameAsync` (`StorageCapabilities.Move`). `AtomicMove` is not declared yet, because a rejected rename still falls back to copy-and-delete
+- **Streaming writes** - Uploads block blobs while you write, with no local temporary file. An object that fits in one block uploads in one request
+- **Delete** - Deletes a file, idempotently (`StorageCapabilities.Delete`)
+- **Move** - With a hierarchical namespace, the Data Lake rename (`DataLakePathClient.RenameAsync`) only: a rejected rename throws and never degrades to copy-and-delete. Without one (a plain blob account, or Azurite), a blob copy and a delete (`StorageCapabilities.Move`). `AtomicMove` isn't declared, because it depends on the account
+- **Hierarchical listing** - With a hierarchical namespace, `ListAsync` uses the Data Lake path API and returns real directories. Without one, it lists blobs by prefix
+- **Built on the Azure package** - Shares `AzureAccountOptions`, `AzureRetryOptions`, the client builder, and `AzureBlobWriteStream` with `NPipeline.StorageProviders.Azure`, which this package references
 - **True hierarchical namespace** - Declares `StorageCapabilities.Hierarchy` (unlike Azure Blob Storage)
-- **Production-hardened** - Client caching, retries, cancellation, structured exception translation
+- **Production-hardened** - Endpoint-keyed client caching, retries, cancellation, structured exception translation
 - **Testable** - Unit tests with fakes, integration tests against Azurite
 
 ## Installation
@@ -35,24 +38,25 @@ adls://<filesystem>/<path/to/file.ext>[?param=value&...]
 
 ### Supported Query Parameters
 
-| Parameter          | Description                                      |
-|--------------------|--------------------------------------------------|
-| `accountName`      | Storage account name (overrides options default) |
-| `accountKey`       | Shared-key credential (base64)                   |
-| `sasToken`         | SAS token                                        |
-| `connectionString` | Full connection string                           |
-| `contentType`      | MIME type hint applied on write                  |
+| Parameter     | Description                                           |
+|---------------|-------------------------------------------------------|
+| `accountName` | Storage account name (overrides `AccountName`)        |
+| `serviceUrl`  | Custom service URL (overrides `ServiceUrl`)           |
+| `contentType` | MIME type hint applied on write                       |
+
+A URI never carries credentials. The `connectionString`, `sasToken`, and `accountKey` parameters throw `ArgumentException` that names the option to set instead.
 
 ## Authentication
 
-The provider supports multiple authentication methods with the following priority:
+You set credentials in the options. The provider uses the first of these that you set:
 
-1. Per-URI `connectionString` query parameter
-2. Per-URI `accountKey` query parameter → `StorageSharedKeyCredential`
-3. Per-URI `sasToken` query parameter → `AzureSasCredential`
-4. `Options.DefaultConnectionString`
-5. `Options.DefaultCredential`
-6. `Options.DefaultCredentialChain` (lazy `DefaultAzureCredential`) when `UseDefaultCredentialChain = true`
+1. `Options.DefaultConnectionString`. A connection string names its own endpoint, so combining it with `ServiceUrl` throws `ArgumentException`
+2. `Options.DefaultSasToken` → `AzureSasCredential`
+3. `Options.DefaultAccountKey`, with `AccountName` or an `accountName` URI parameter → `StorageSharedKeyCredential`
+4. `Options.DefaultCredential`
+5. The default credential chain (lazy `DefaultAzureCredential`) when `UseDefaultCredentialChain = true`
+
+If none is available and `AllowAnonymousAccess` is `false`, creating a client throws `InvalidOperationException`.
 
 ## Usage
 
@@ -70,13 +74,16 @@ services.AddAdlsGen2StorageProvider(options =>
 });
 ```
 
-### With Service URL (for Azurite or custom endpoints)
+### Azurite or custom endpoints
+
+A connection string names its own endpoint, so don't combine it with `ServiceUrl`. To use `ServiceUrl` instead, set `AccountName` and `DefaultAccountKey` (or another credential).
 
 ```csharp
 services.AddAdlsGen2StorageProvider(options =>
 {
-    options.ServiceUrl = new Uri("http://127.0.0.1:10000/devstoreaccount1/");
-    options.DefaultConnectionString = "UseDevelopmentStorage=true";
+    options.DefaultConnectionString =
+        "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=<azurite-key>;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;";
+    options.CreateContainerIfMissing = true;
 });
 ```
 
@@ -105,13 +112,15 @@ public class MyService
 
 ### Writing a File
 
+The provider uploads blocks while you write. By default it doesn't create the filesystem; set `CreateContainerIfMissing` to create it on first use.
+
 ```csharp
 public async Task WriteFileAsync(string filesystem, string path, Stream content)
 {
     var uri = StorageUri.Parse($"adls://{filesystem}/{path}");
     await using var writeStream = await _storageProvider.OpenWriteAsync(uri);
     await content.CopyToAsync(writeStream);
-    await writeStream.CommitAsync(); // uploads the buffered data; disposing without a commit discards it
+    await writeStream.CommitAsync(); // commits the uploaded blocks; disposing without a commit discards them
 }
 ```
 
@@ -171,24 +180,28 @@ public async Task MoveFileAsync(string filesystem, string sourcePath, string des
 
 ## Configuration Options
 
-| Property                         | Type                                    | Default            | Description                                                       |
-|----------------------------------|-----------------------------------------|--------------------|-------------------------------------------------------------------|
-| `DefaultCredential`              | `TokenCredential?`                      | `null`             | Custom token credential                                           |
-| `DefaultConnectionString`        | `string?`                               | `null`             | Storage account connection string                                 |
-| `UseDefaultCredentialChain`      | `bool`                                  | `true`             | Use `DefaultAzureCredential` when no other credential is provided |
-| `ServiceUrl`                     | `Uri?`                                  | `null`             | Custom service URL (e.g., for Azurite)                            |
-| `ServiceVersion`                 | `DataLakeClientOptions.ServiceVersion?` | `null`             | REST API version                                                  |
-| `UploadThresholdBytes`           | `long`                                  | `67108864` (64 MB) | Threshold for chunked uploads                                     |
-| `UploadMaximumConcurrency`       | `int?`                                  | `null`             | Max concurrent upload operations                                  |
-| `UploadMaximumTransferSizeBytes` | `int?`                                  | `null`             | Max bytes per transfer chunk                                      |
-| `ClientCacheSizeLimit`           | `int`                                   | `100`              | Max cached service clients                                        |
-| `Retry`                          | `AdlsGen2RetryOptions`                  | see below          | Azure SDK retry settings                                          |
+| Property                    | Type                                    | Default     | Description                                                                           |
+|-----------------------------|-----------------------------------------|-------------|---------------------------------------------------------------------------------------|
+| `AccountName`               | `string?`                               | `null`      | Default account name; the `accountName` URI parameter overrides it                    |
+| `DefaultConnectionString`   | `string?`                               | `null`      | Storage account connection string                                                     |
+| `DefaultSasToken`           | `string?`                               | `null`      | Shared access signature token                                                         |
+| `DefaultAccountKey`         | `string?`                               | `null`      | Storage account key; needs an account name                                            |
+| `DefaultCredential`         | `TokenCredential?`                      | `null`      | Custom token credential                                                               |
+| `UseDefaultCredentialChain` | `bool`                                  | `true`      | Use `DefaultAzureCredential` when no other credential is provided                     |
+| `AllowAnonymousAccess`      | `bool`                                  | `false`     | Connect without credentials when none are configured                                  |
+| `ServiceUrl`                | `Uri?`                                  | `null`      | Custom service URL (e.g., for Azurite)                                                |
+| `ServiceVersion`            | `DataLakeClientOptions.ServiceVersion?` | `null`      | REST API version                                                                      |
+| `PartSizeBytes`             | `int`                                   | `8 MiB`     | Size of each upload block; a file that fits in one block uploads in one request       |
+| `MaxConcurrency`            | `int`                                   | `4`         | Most blocks of one file that upload at the same time                                  |
+| `CreateContainerIfMissing`  | `bool`                                  | `false`     | Create the filesystem on the first write to it                                        |
+| `ClientCacheSizeLimit`      | `int`                                   | `100`       | Most clients kept in each cache, one per endpoint                                     |
+| `Retry`                     | `AzureRetryOptions`                     | see below   | Azure SDK retry settings                                                              |
 
 ### Resilience
 
 The Azure SDK retries each request natively (429, 5xx, request timeouts, and network failures, honoring
 `Retry-After`), and NPipeline adds no retry layer on top. `Retry` configures the SDK's `RetryOptions` on both the
-Data Lake and Blob clients the provider creates:
+Data Lake and Blob clients the provider creates. The type is `AzureRetryOptions` (namespace `NPipeline.StorageProviders.Azure`), which was `AdlsGen2RetryOptions` in earlier releases:
 
 | Property | Default | Description |
 |----------|---------|-------------|
@@ -201,7 +214,7 @@ Data Lake and Blob clients the provider creates:
 ```csharp
 services.AddAdlsGen2StorageProvider(options =>
 {
-    options.Retry = new AdlsGen2RetryOptions
+    options.Retry = new AzureRetryOptions
     {
         MaxRetries = 3,
         NetworkTimeout = TimeSpan.FromSeconds(30)
@@ -215,8 +228,8 @@ services.AddAdlsGen2StorageProvider(options =>
 |----------------------|------------------------------|---------------------------------------|
 | SDK package          | `Azure.Storage.Blobs`        | `Azure.Storage.Files.DataLake`        |
 | Hierarchy            | Flat (virtual `/` delimiter) | True POSIX-like directory tree        |
-| Atomic rename / move | Not supported natively       | `RenameAsync` - O(1) atomic           |
-| Write semantics      | Block upload                 | Append + flush (or block upload)      |
+| Atomic rename / move | Not supported natively       | `RenameAsync` - O(1) atomic (with HNS) |
+| Write semantics      | Streaming block upload       | Streaming block upload (Blob API)     |
 | ACLs                 | RBAC/container-level only    | Per-file and per-directory POSIX ACLs |
 | URI scheme           | `azure://`                   | `adls://`                             |
 | `Hierarchy` capability | not declared               | declared                              |
@@ -230,20 +243,19 @@ The provider translates Azure `RequestFailedException` errors to standard .NET e
 | `AuthenticationFailed`, `AuthorizationFailed`, 401, 403 | `UnauthorizedAccessException` |
 | `FilesystemNotFound`, `PathNotFound`, 404               | `FileNotFoundException`       |
 | `InvalidResourceName`, 400                              | `ArgumentException`           |
-| `PathAlreadyExists`, 409                                | `IOException`                 |
+| `PathAlreadyExists`, `BlobAlreadyExists` (409), 412     | `StoragePreconditionFailedException` |
 | 429 / 5xx                                               | `IOException` (retryable)     |
 
-Listing: the directory URI ends with `/`; a non-recursive listing yields files and directory entries (`IsDirectory = true`, `Size` and `LastModified` null), and a recursive listing yields files only.
+Listing: the directory URI ends with `/`; a non-recursive listing yields files and directory entries (`IsDirectory = true`), and a recursive listing yields files only. With a hierarchical namespace, directory entries are real directories with a `LastModified` time, and empty directories appear. Without one, they are name prefixes. Names are case-sensitive. Listing makes no existence check, and a missing filesystem or directory yields no items.
 
 ## Development & Testing
 
-For local development, you can use [Azurite](https://docs.microsoft.com/azure/storage/common/storage-use-azurite) with ADLS Gen2 support:
+Azurite has no hierarchical namespace, so against it the provider lists blobs by prefix and moves by copy and delete. The rename and `GetPaths` code paths are covered by unit tests with fakes. Validate against a real ADLS Gen2 account before production.
 
 ```bash
-# Run Azurite with ADLS Gen2 support
-docker run -p 10000:10000 -p 10001:10001 -p 10002:10002 \
+docker run -p 10000:10000 \
     mcr.microsoft.com/azure-storage/azurite \
-    azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0 --location data --debug data/debug.log
+    azurite --blobHost 0.0.0.0 --skipApiVersionCheck --inMemoryPersistence
 ```
 
 ## License

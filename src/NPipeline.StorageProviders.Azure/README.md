@@ -13,7 +13,7 @@ The Azure Blob Storage Provider provides seamless integration with Azure Blob St
 - **Comprehensive error handling** with proper exception translation
 - **Metadata support** for retrieving blob metadata
 - **Listing operations** with recursive and non-recursive modes
-- **Block blob upload** for large files with configurable thresholds
+- **Streaming block blob upload** - blocks upload while you write, with no local temporary file, and a small object uploads in one request
 
 ### Why Use This Provider
 
@@ -22,7 +22,7 @@ Use the Azure Blob Storage Provider when your application needs to:
 - Store and retrieve data in Azure Blob Storage
 - Integrate cloud storage into NPipeline data pipelines
 - Leverage Azure's scalability and durability for data storage
-- Handle large files through streaming and block blob uploads
+- Handle large files through streaming block blob uploads
 - Work with Azure Storage Emulator (Azurite) for local development
 
 ## Installation
@@ -78,8 +78,9 @@ var services = new ServiceCollection();
 
 services.AddAzureBlobStorageProvider(options =>
 {
+    options.AccountName = "mystorageaccount";
     options.UseDefaultCredentialChain = true;
-    options.BlockBlobUploadThresholdBytes = 64 * 1024 * 1024; // 64 MB
+    options.PartSizeBytes = 8 * 1024 * 1024; // 8 MiB blocks (the default)
 });
 
 var serviceProvider = services.BuildServiceProvider();
@@ -92,9 +93,8 @@ var provider = serviceProvider.GetRequiredService<AzureBlobStorageProvider>();
 using NPipeline.StorageProviders.Azure;
 using NPipeline.StorageProviders.Models;
 
-var provider = new AzureBlobStorageProvider(
-    new AzureBlobClientFactory(new AzureBlobStorageProviderOptions()),
-    new AzureBlobStorageProviderOptions());
+var options = new AzureBlobStorageProviderOptions { AccountName = "mystorageaccount" };
+var provider = new AzureBlobStorageProvider(new AzureBlobClientFactory(options), options);
 
 var uri = StorageUri.Parse("azure://my-container/data.csv");
 
@@ -107,9 +107,8 @@ Console.WriteLine(content);
 ### Simple Write Example
 
 ```csharp
-var provider = new AzureBlobStorageProvider(
-    new AzureBlobClientFactory(new AzureBlobStorageProviderOptions()),
-    new AzureBlobStorageProviderOptions());
+var options = new AzureBlobStorageProviderOptions { AccountName = "mystorageaccount", CreateContainerIfMissing = true };
+var provider = new AzureBlobStorageProvider(new AzureBlobClientFactory(options), options);
 
 var uri = StorageUri.Parse("azure://my-container/output.csv");
 
@@ -120,7 +119,7 @@ await using (var writer = new StreamWriter(stream, leaveOpen: true))
     await writer.WriteLineAsync("1,Item A,100");
 }
 
-// The blob appears only after CommitAsync. Disposing without it uploads nothing.
+// The blob appears only after CommitAsync. Disposing without it leaves any existing blob unchanged.
 await stream.CommitAsync();
 ```
 
@@ -133,7 +132,11 @@ using NPipeline.StorageProviders.Models;
 
 // Setup
 var services = new ServiceCollection();
-services.AddAzureBlobStorageProvider();
+services.AddAzureBlobStorageProvider(options =>
+{
+    options.AccountName = "mystorageaccount";
+    options.CreateContainerIfMissing = true;
+});
 var provider = services.BuildServiceProvider().GetRequiredService<AzureBlobStorageProvider>();
 
 // Write
@@ -159,22 +162,35 @@ using (var reader = new StreamReader(readStream))
 ```csharp
 services.AddAzureBlobStorageProvider(options =>
 {
+    options.AccountName = "mystorageaccount";
     options.UseDefaultCredentialChain = true;
-    options.BlockBlobUploadThresholdBytes = 64 * 1024 * 1024; // 64 MB
+    options.PartSizeBytes = 8 * 1024 * 1024; // 8 MiB
+    options.MaxConcurrency = 4;
 });
 ```
 
 ### Configuration Options (AzureBlobStorageProviderOptions)
 
-| Property                         | Type               | Default                    | Description                                                                                                                                  |
-|----------------------------------|--------------------|----------------------------|----------------------------------------------------------------------------------------------------------------------------------------------|
-| `DefaultCredential`              | `TokenCredential?` | `null`                     | Default Azure credential for authentication. If not specified, uses `DefaultAzureCredential` chain when `UseDefaultCredentialChain` is true. |
-| `DefaultConnectionString`        | `string?`          | `null`                     | Default connection string for Azure Storage. Takes precedence over `DefaultCredential` if specified.                                         |
-| `UseDefaultCredentialChain`      | `bool`             | `true`                     | Whether to use the default Azure credential chain (environment variables, managed identity, Visual Studio, Azure CLI).                       |
-| `ServiceUrl`                     | `Uri?`             | `null`                     | Optional service URL for Azure Storage-compatible endpoints (e.g., Azurite). If not specified, uses the Azure Blob Storage endpoint.         |
-| `BlockBlobUploadThresholdBytes`  | `long`             | `64 * 1024 * 1024` (64 MB) | Threshold in bytes for using block blob upload when writing files.                                                                           |
-| `UploadMaximumConcurrency`       | `int?`             | `null`                     | Maximum concurrent upload requests for large blobs. If not specified, uses SDK default.                                                      |
-| `UploadMaximumTransferSizeBytes` | `int?`             | `null`                     | Maximum transfer size in bytes for each upload chunk. If not specified, uses SDK default.                                                    |
+`AzureBlobStorageProviderOptions` derives from `AzureAccountOptions`, which the ADLS Gen2 provider shares. Credentials belong in these options and never in the URI.
+
+| Property                    | Type                                | Default | Description                                                                                                                                       |
+|-----------------------------|-------------------------------------|---------|---------------------------------------------------------------------------------------------------------------------------------------------------|
+| `AccountName`               | `string?`                           | `null`  | Default storage account name. An `accountName` URI parameter overrides it. Required with `DefaultAccountKey`.                                     |
+| `DefaultConnectionString`   | `string?`                           | `null`  | Connection string. It carries its own endpoint and credentials, so it can't be combined with `ServiceUrl`.                                        |
+| `DefaultSasToken`           | `string?`                           | `null`  | Shared access signature token. The provider sends it exactly as you set it.                                                                       |
+| `DefaultAccountKey`         | `string?`                           | `null`  | Storage account key. Needs `AccountName` or an `accountName` URI parameter.                                                                       |
+| `DefaultCredential`         | `TokenCredential?`                  | `null`  | Default Azure credential. If not specified, uses the `DefaultAzureCredential` chain when `UseDefaultCredentialChain` is true.                     |
+| `UseDefaultCredentialChain` | `bool`                              | `true`  | Whether to use the default Azure credential chain (environment variables, managed identity, Visual Studio, Azure CLI).                            |
+| `AllowAnonymousAccess`      | `bool`                              | `false` | Connect without credentials when none are configured, for public containers. When `false`, a missing credential throws.                          |
+| `ServiceUrl`                | `Uri?`                              | `null`  | Service URL for Azure Storage-compatible endpoints (e.g., Azurite). A `serviceUrl` URI parameter overrides it.                                    |
+| `ServiceVersion`            | `BlobClientOptions.ServiceVersion?` | `null`  | Blob service API version                                                                                                                          |
+| `Retry`                     | `AzureRetryOptions`                 | see below | Retry settings of the Azure SDK clients the provider creates.                                                                                  |
+| `PartSizeBytes`             | `int`                               | 8 MiB   | Size of each upload block. An object that fits in one block uploads in one request. Memory use while writing is about `PartSizeBytes × (MaxConcurrency + 1)`. |
+| `MaxConcurrency`            | `int`                               | `4`     | Most blocks of one object that upload at the same time.                                                                                           |
+| `CreateContainerIfMissing`  | `bool`                              | `false` | Create a container on the first write to it, once for each endpoint. Off by default, because creating containers needs permissions a least-privilege token usually lacks. |
+| `ClientCacheSizeLimit`      | `int`                               | `100`   | Most `BlobServiceClient` instances kept in the cache, one per endpoint (account name and service URL). The cache never uses a credential as a key. |
+
+`AzureRetryOptions` (`Mode`, `MaxRetries`, `Delay`, `MaxDelay`, `NetworkTimeout`) has the defaults of the Azure SDK: exponential retries, 5 retries, an 800 ms base delay, an 8 s longest delay, and a 100 s network timeout. It was `AdlsGen2RetryOptions` in the ADLS package in earlier releases.
 
 ### Custom Configuration Examples
 
@@ -183,8 +199,10 @@ services.AddAzureBlobStorageProvider(options =>
 ```csharp
 services.AddAzureBlobStorageProvider(options =>
 {
-    options.ServiceUrl = new Uri("http://localhost:10000/devstoreaccount1");
-    options.DefaultConnectionString = "UseDevelopmentStorage=true";
+    options.ServiceUrl = new Uri("http://127.0.0.1:10000/devstoreaccount1");
+    options.AccountName = "devstoreaccount1";
+    options.DefaultAccountKey = "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==";
+    options.CreateContainerIfMissing = true;
 });
 ```
 
@@ -203,9 +221,21 @@ services.AddAzureBlobStorageProvider(options =>
 ```csharp
 services.AddAzureBlobStorageProvider(options =>
 {
-    options.BlockBlobUploadThresholdBytes = 128 * 1024 * 1024; // 128 MB
-    options.UploadMaximumConcurrency = 8; // 8 concurrent uploads
-    options.UploadMaximumTransferSizeBytes = 8 * 1024 * 1024; // 8 MB chunks
+    options.PartSizeBytes = 16 * 1024 * 1024; // 16 MiB blocks
+    options.MaxConcurrency = 8; // 8 blocks upload at once
+});
+```
+
+#### Configuration with Custom Retry Settings
+
+```csharp
+services.AddAzureBlobStorageProvider(options =>
+{
+    options.Retry = new AzureRetryOptions
+    {
+        MaxRetries = 3,
+        NetworkTimeout = TimeSpan.FromSeconds(30)
+    };
 });
 ```
 
@@ -214,6 +244,7 @@ services.AddAzureBlobStorageProvider(options =>
 ```csharp
 services.AddAzureBlobStorageProvider(options =>
 {
+    options.AccountName = "mystorageaccount";
     options.UseDefaultCredentialChain = true; // Uses Managed Identity in Azure
     options.DefaultCredential = new DefaultAzureCredential();
 });
@@ -221,12 +252,14 @@ services.AddAzureBlobStorageProvider(options =>
 
 ### Service URL Configuration (Azurite)
 
-For local development with Azurite, configure the service URL:
+For local development with Azurite, configure the service URL, the account name, and the account key:
 
 ```csharp
 services.AddAzureBlobStorageProvider(options =>
 {
-    options.ServiceUrl = new Uri("http://localhost:10000/devstoreaccount1");
+    options.ServiceUrl = new Uri("http://127.0.0.1:10000/devstoreaccount1");
+    options.AccountName = "devstoreaccount1";
+    options.DefaultAccountKey = "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==";
 });
 ```
 
@@ -234,11 +267,13 @@ services.AddAzureBlobStorageProvider(options =>
 
 ## Authentication Methods
 
-The Azure Blob Storage Provider supports multiple authentication methods with a clear priority order.
+The Azure Blob Storage Provider supports multiple authentication methods. You set credentials in the provider options. A URI never carries a credential, because URIs are logged and compared. When you set more than one, the first of these wins: connection string, SAS token, account key, `DefaultCredential`, the default credential chain.
+
+> **Breaking change:** The `connectionString`, `sasToken`, and `accountKey` URI parameters are no longer supported. A URI that carries one throws `ArgumentException` that names the option to set instead.
 
 ### Connection String Authentication
 
-Connection strings provide the simplest authentication method for development and testing.
+Connection strings provide the simplest authentication method for development and testing. A connection string names its own endpoint, so you can't combine it with `ServiceUrl`.
 
 ```csharp
 services.AddAzureBlobStorageProvider(options =>
@@ -265,13 +300,10 @@ services.AddAzureBlobStorageProvider(options =>
 Use account key authentication for explicit credential management:
 
 ```csharp
-// Via URI parameters
-var uri = StorageUri.Parse("azure://my-container/blob.csv?accountName=mystorageaccount&accountKey=mykey");
-
-// Via options (not recommended for production)
 services.AddAzureBlobStorageProvider(options =>
 {
-    options.DefaultConnectionString = $"DefaultEndpointsProtocol=https;AccountName=mystorageaccount;AccountKey={accountKey}";
+    options.AccountName = "mystorageaccount";
+    options.DefaultAccountKey = accountKey; // not recommended for production
 });
 ```
 
@@ -280,17 +312,14 @@ services.AddAzureBlobStorageProvider(options =>
 Shared Access Signature (SAS) tokens provide time-limited, scoped access:
 
 ```csharp
-// Via URI parameters (URL-encoded)
-var uri = StorageUri.Parse("azure://my-container/blob.csv?sasToken=sp%3Dr%26st%3D2023-01-01");
-
-// Via connection string
 services.AddAzureBlobStorageProvider(options =>
 {
-    options.DefaultConnectionString = "BlobEndpoint=https://mystorageaccount.blob.core.windows.net/;SharedAccessSignature=sv=2023-01-01&ss=b&sp=rwdlac&se=2024-01-01T00:00:00Z&st=2023-01-01T00:00:00Z&spr=https&sig=mysignature";
+    options.AccountName = "mystorageaccount";
+    options.DefaultSasToken = "sv=2023-01-01&ss=b&sp=rwdlac&se=2024-01-01T00:00:00Z&st=2023-01-01T00:00:00Z&spr=https&sig=mysignature";
 });
 ```
 
-> **Note:** SAS tokens must be URL-encoded when included as URI parameters.
+> **Note:** Set the token as the Azure portal gives it to you, with its signature still percent-encoded. The provider doesn't decode or re-encode it.
 
 ### Default Azure Credential Chain
 
@@ -355,18 +384,17 @@ azure://container-name/path/to/blob.csv?parameter1=value1&parameter2=value2
 | **Scheme**     | URI scheme, must be `azure`                                    | `azure`                          |
 | **Host**       | Container name                                                 | `my-container`                   |
 | **Path**       | Blob name (can include "/" for virtual directories)            | `data/input.csv`                 |
-| **Parameters** | Optional query parameters for authentication and configuration | `accountName=xxx&accountKey=yyy` |
+| **Parameters** | Optional query parameters that select the endpoint or set the content type | `accountName=xxx&contentType=text/csv` |
 
 ### Supported Parameters
 
-| Parameter          | Description                                 | Example                                                                          |
-|--------------------|---------------------------------------------|----------------------------------------------------------------------------------|
-| `accountName`      | Azure storage account name                  | `accountName=mystorageaccount`                                                   |
-| `accountKey`       | Azure storage account key                   | `accountKey=mykey`                                                               |
-| `sasToken`         | Shared Access Signature token (URL-encoded) | `sasToken=sp%3Dr%26st%3D2023-01-01`                                              |
-| `connectionString` | Full connection string                      | `connectionString=DefaultEndpointsProtocol=https;AccountName=xxx;AccountKey=yyy` |
-| `serviceUrl`       | Custom service URL (e.g., Azurite)          | `serviceUrl=http://localhost:10000/devstoreaccount1`                             |
-| `contentType`      | Content type for uploads                    | `contentType=application/json`                                                   |
+| Parameter     | Description                                          | Example                                              |
+|---------------|------------------------------------------------------|------------------------------------------------------|
+| `accountName` | Azure storage account name. Overrides `AccountName`. | `accountName=mystorageaccount`                       |
+| `serviceUrl`  | Custom service URL (e.g., Azurite). Overrides `ServiceUrl`. | `serviceUrl=http://localhost:10000/devstoreaccount1` |
+| `contentType` | Content type for uploads                             | `contentType=application/json`                       |
+
+The `connectionString`, `sasToken`, and `accountKey` parameters throw `ArgumentException`. Set `DefaultConnectionString`, `DefaultSasToken`, or `DefaultAccountKey` in the options instead.
 
 ### URI Examples
 
@@ -376,16 +404,12 @@ azure://container-name/path/to/blob.csv?parameter1=value1&parameter2=value2
 var uri = StorageUri.Parse("azure://my-container/data/input.csv");
 ```
 
-#### With Account Name and Key
+#### With Another Account Name
+
+The credentials come from the options. The URI selects the account.
 
 ```csharp
-var uri = StorageUri.Parse("azure://my-container/data/input.csv?accountName=mystorageaccount&accountKey=mykey");
-```
-
-#### With SAS Token (URL-encoded)
-
-```csharp
-var uri = StorageUri.Parse("azure://my-container/data/output.json?sasToken=sp%3Dr%26st%3D2023-01-01");
+var uri = StorageUri.Parse("azure://my-container/data/input.csv?accountName=mystorageaccount");
 ```
 
 #### With Azurite Endpoint
@@ -400,12 +424,6 @@ var uri = StorageUri.Parse("azure://my-container/data/file.csv?serviceUrl=http:/
 var uri = StorageUri.Parse("azure://my-container/data/output.json?contentType=application/json");
 ```
 
-#### With Connection String
-
-```csharp
-var uri = StorageUri.Parse("azure://my-container/data/file.csv?connectionString=UseDevelopmentStorage=true");
-```
-
 ### Azurite URI Format
 
 For local development with Azurite, use the following format:
@@ -418,6 +436,8 @@ var uri = StorageUri.Parse("azure://my-container/data/file.csv?serviceUrl=http:/
 services.AddAzureBlobStorageProvider(options =>
 {
     options.ServiceUrl = new Uri("http://localhost:10000/devstoreaccount1");
+    options.AccountName = "devstoreaccount1";
+    options.DefaultAccountKey = "<azurite-key>";
 });
 
 // Then use simple URI
@@ -464,7 +484,9 @@ await using (var writer = new StreamWriter(stream, leaveOpen: true))
 await stream.CommitAsync();
 ```
 
-The provider buffers the data to a local temporary file and uploads it in `CommitAsync`. Disposing the stream without committing uploads nothing and leaves an existing blob as it was. Upload errors surface from `CommitAsync`.
+The provider uploads blocks while you write and doesn't use a local temporary file. A block fills, and its upload starts while you keep writing; when `MaxConcurrency` blocks are in flight, `WriteAsync` waits. `CommitAsync` uploads the last block and commits the block list, and only then does the blob appear. If the whole object fits in one block, `CommitAsync` uploads it in a single request. Disposing the stream without committing leaves an existing blob as it was; the staged blocks stay uncommitted, and Azure discards them after a week. A failed block surfaces from the next `WriteAsync` or from `CommitAsync`.
+
+The provider doesn't create the container unless you set `CreateContainerIfMissing`. A write to a missing container fails with `FileNotFoundException` from `CommitAsync`.
 
 The provider declares `StorageCapabilities.ConditionalWrite`. With `new StorageWriteOptions { Overwrite = false }` the commit fails if the blob exists. With `new StorageWriteOptions { IfMatch = etag }` (an ETag from `GetMetadataAsync`) it commits only if the current ETag matches. A refused condition throws `StoragePreconditionFailedException` from `CommitAsync`. `StorageWriteOptions.ContentType` sets the content type; the `contentType` URI parameter is the fallback.
 
@@ -567,24 +589,22 @@ await using (var stream = await provider.OpenWriteAsync(txtUri))
 }
 ```
 
-### Handling Large Files (>64MB)
+### Handling Large Files
 
-Large files are automatically uploaded using block blob upload when they exceed the `BlockBlobUploadThresholdBytes`:
+The provider streams a large file in blocks of `PartSizeBytes` (8 MiB by default). Each block uploads while you keep writing, so the provider never holds the whole file in memory or on disk:
 
 ```csharp
 var provider = serviceProvider.GetRequiredService<AzureBlobStorageProvider>();
 var uri = StorageUri.Parse("azure://my-container/large-file.bin");
 
-// Generate a 100MB file
-var fileSize = 100 * 1024 * 1024;
-var buffer = new byte[fileSize];
-new Random().NextBytes(buffer);
+// Pass the expected length so the provider picks a block size that stays within 50,000 blocks.
+var options = new StorageWriteOptions { LengthHint = 100L * 1024 * 1024 };
 
-// Upload - automatically uses block blob upload for files > 64MB
-await using (var stream = await provider.OpenWriteAsync(uri))
+await using (var stream = await provider.OpenWriteAsync(uri, options))
 {
-    await stream.WriteAsync(buffer, CancellationToken.None);
-    await stream.CommitAsync(CancellationToken.None); // the upload happens here
+    await using var source = File.OpenRead("large-file.bin");
+    await source.CopyToAsync(stream); // blocks upload while this runs
+    await stream.CommitAsync();       // uploads the last block and commits the block list
 }
 
 Console.WriteLine("Large file uploaded successfully!");
@@ -595,41 +615,41 @@ Console.WriteLine("Large file uploaded successfully!");
 ```csharp
 services.AddAzureBlobStorageProvider(options =>
 {
-    options.BlockBlobUploadThresholdBytes = 128 * 1024 * 1024; // 128 MB threshold
-    options.UploadMaximumConcurrency = 8; // 8 concurrent uploads
-    options.UploadMaximumTransferSizeBytes = 8 * 1024 * 1024; // 8 MB chunks
+    options.PartSizeBytes = 16 * 1024 * 1024; // 16 MiB blocks
+    options.MaxConcurrency = 8; // 8 blocks upload at once
 });
 ```
 
 ## Advanced Features
 
-### Block Blob Upload for Large Files
+### Block Blob Upload
 
-The provider automatically uses block blob upload for files larger than `BlockBlobUploadThresholdBytes` (default 64 MB). Block blob upload provides:
+The provider writes block blobs. Each full block is staged while you write, and `CommitAsync` commits the block list. This provides:
 
-- **Resumable uploads** - Can retry individual blocks
-- **Parallel uploads** - Multiple blocks uploaded concurrently
-- **Memory efficiency** - Blocks uploaded as they're written
+- **Streaming** - Blocks upload as they fill, with no local temporary file
+- **Parallel uploads** - Up to `MaxConcurrency` blocks upload at the same time. When all the slots are busy, `WriteAsync` waits, which limits memory use to about `PartSizeBytes × (MaxConcurrency + 1)`
+- **A one-request fast path** - An object that fits in one block uploads with a single `Put Blob` request
+- **No partial blobs** - The blob appears only when you commit. A write that you dispose without committing leaves any existing blob as it was, and its staged blocks expire on the service after a week
 
 ```csharp
-// Files larger than 64 MB automatically use block blob upload
 var largeUri = StorageUri.Parse("azure://my-container/large-file.bin");
 await using (var stream = await provider.OpenWriteAsync(largeUri))
 {
-    // Write data - provider handles block blob upload automatically
     await stream.WriteAsync(largeData);
     await stream.CommitAsync();
 }
 ```
 
-### Custom Upload Concurrency
+A block blob holds at most 50,000 blocks. If you know the object's length, pass it in `StorageWriteOptions.LengthHint` and the provider raises the block size to fit. Without a hint, the provider enlarges the blocks after the first 10,000.
 
-Control the number of concurrent upload requests for large files:
+### Upload Concurrency
+
+`MaxConcurrency` sets how many blocks of one object upload at the same time:
 
 ```csharp
 services.AddAzureBlobStorageProvider(options =>
 {
-    options.UploadMaximumConcurrency = 8; // Upload 8 blocks in parallel
+    options.MaxConcurrency = 8; // Upload 8 blocks in parallel
 });
 ```
 
@@ -639,32 +659,27 @@ services.AddAzureBlobStorageProvider(options =>
 - **Medium files (10-100 MB):** 4-8 concurrent uploads
 - **Large files (> 100 MB):** 8-16 concurrent uploads
 
-### Custom Transfer Size
+### Block Size
 
-Control the size of each upload chunk:
+`PartSizeBytes` sets the size of each block:
 
 ```csharp
 services.AddAzureBlobStorageProvider(options =>
 {
-    options.UploadMaximumTransferSizeBytes = 8 * 1024 * 1024; // 8 MB chunks
+    options.PartSizeBytes = 16 * 1024 * 1024; // 16 MiB blocks
 });
 ```
 
-**Recommended values:**
-
-- **Minimum:** 4 MB
-- **Default:** SDK default (typically 4-8 MB)
-- **Maximum:** 100 MB
+A larger block means fewer requests but more memory for each writer. Memory use while writing is about `PartSizeBytes × (MaxConcurrency + 1)`.
 
 ### Client Caching
 
-The `AzureBlobClientFactory` automatically caches `BlobServiceClient` instances based on:
+The `AzureBlobClientFactory` caches one `BlobServiceClient` for each endpoint, which is the pair of:
 
 - Storage account name
-- Credential type and value
 - Service endpoint URL
 
-This reduces overhead for repeated operations with the same configuration.
+The cache never uses a credential, or a value derived from one, as a key, because every client the provider creates uses the credentials in the options. The cache holds at most `ClientCacheSizeLimit` clients (100 by default) and drops the least recently used one when it is full.
 
 ```csharp
 // First call creates and caches the client
@@ -691,7 +706,7 @@ await using (var stream = await provider.OpenReadAsync(uri))
     }
 }
 
-// Streaming write - buffers the chunks to a local temporary file and uploads them on commit
+// Streaming write - uploads blocks while you write, then commits the block list
 await using (var stream = await provider.OpenWriteAsync(uri))
 {
     // Write data in chunks
@@ -936,9 +951,9 @@ await blobClient.ExistsAsync(cancellationToken).ConfigureAwait(false);
 1. **Reuse providers** - Register as singleton in DI container
 2. **Use appropriate regions** - Choose region closest to your application
 3. **Batch operations** - List multiple blobs at once instead of individual existence checks
-4. **Optimize block blob threshold** - Adjust based on your typical file sizes
+4. **Tune the block size** - Adjust `PartSizeBytes` based on your typical file sizes
 5. **Use compression** - Compress data before uploading for large files
-6. **Configure concurrency** - Tune `UploadMaximumConcurrency` for your network
+6. **Configure concurrency** - Tune `MaxConcurrency` for your network
 7. **Use streaming** - Always stream large files instead of loading into memory
 
 ## Testing
@@ -1074,7 +1089,7 @@ public async Task OpenReadAsync_HandlesValidUris(string uriString)
 
 ### Credential Management
 
-- **Never log credentials** - Credentials in URIs can appear in logs, error messages, and debugging output
+- **Keep credentials out of URIs** - URIs appear in logs, error messages, and debugging output, so the provider rejects the `connectionString`, `sasToken`, and `accountKey` URI parameters. Set credentials in the options
 - **Use managed identity** when running on Azure infrastructure (App Service, Functions, AKS)
 - **Use credential chain** - Prefer environment variables or managed identity over explicit credentials
 - **Rotate credentials regularly** - Use Azure Key Vault for credential management
@@ -1163,8 +1178,12 @@ var sasToken = sasBuilder.ToSasQueryParameters(
     new StorageSharedKeyCredential(accountName, accountKey))
     .ToString();
 
-// Use SAS token in URI
-var uri = StorageUri.Parse($"azure://{container}/{blob}?sasToken={Uri.EscapeDataString(sasToken)}");
+// Use the SAS token through the options
+services.AddAzureBlobStorageProvider(options =>
+{
+    options.AccountName = accountName;
+    options.DefaultSasToken = sasToken;
+});
 ```
 
 ## Limitations
@@ -1185,17 +1204,22 @@ Azure Blob Storage is a flat object storage system (no true hierarchical directo
 
 ### Large File Handling
 
-- Block blob upload is used for files larger than `BlockBlobUploadThresholdBytes` (default 64 MB)
-- The threshold is configurable via `AzureBlobStorageProviderOptions`
-- For very large files, ensure sufficient memory and network bandwidth
+- Blocks of `PartSizeBytes` (8 MiB by default) upload while you write; an object that fits in one block uploads in one request
+- A block blob holds at most 50,000 blocks. Pass `StorageWriteOptions.LengthHint` for objects larger than about 390 GiB at the default block size
+- Memory use while writing is about `PartSizeBytes × (MaxConcurrency + 1)` for each open write stream
 
 ```csharp
-// Configure threshold based on your needs
+// Configure block size and concurrency based on your needs
 services.AddAzureBlobStorageProvider(options =>
 {
-    options.BlockBlobUploadThresholdBytes = 128 * 1024 * 1024; // 128 MB
+    options.PartSizeBytes = 16 * 1024 * 1024; // 16 MiB
+    options.MaxConcurrency = 8;
 });
 ```
+
+### Move Is Not Atomic
+
+`MoveAsync` copies the blob within the account and then deletes the source, so a failure between the two steps can leave both blobs. Moving between accounts throws `ArgumentException`.
 
 ### Concurrent Operations
 
@@ -1363,16 +1387,16 @@ options.ServiceUrl = new Uri("https://mystorageaccount.blob.core.windows.net");
 
 **Solutions:**
 
-1. Increase `UploadMaximumConcurrency`
-2. Increase `UploadMaximumTransferSizeBytes`
+1. Increase `MaxConcurrency`
+2. Increase `PartSizeBytes`
 3. Check network bandwidth
 4. Use region closer to your application
 
 ```csharp
 services.AddAzureBlobStorageProvider(options =>
 {
-    options.UploadMaximumConcurrency = 16; // More concurrent uploads
-    options.UploadMaximumTransferSizeBytes = 16 * 1024 * 1024; // 16 MB chunks
+    options.MaxConcurrency = 16; // More concurrent uploads
+    options.PartSizeBytes = 16 * 1024 * 1024; // 16 MiB blocks
 });
 ```
 
@@ -1425,7 +1449,7 @@ Derives from `StorageProvider`. Declares `StorageCapabilities.Read | Write | Lis
 | `ListAsync(StorageUri directory, bool recursive, CancellationToken ct)`        | `IAsyncEnumerable<StorageItem>` | Lists blobs below a directory (the URI is treated as ending in `/`) |
 | `GetMetadataAsync(StorageUri uri, CancellationToken ct)`                       | `Task<StorageMetadata?>`        | Retrieves metadata for the blob, or `null` when it is missing    |
 
-Listing: a non-recursive listing yields blobs and prefix entries (`IsDirectory = true`, `Size` and `LastModified` null). A recursive listing yields blobs only. Listed URIs keep the caller's parameters.
+Listing: a non-recursive listing yields blobs and prefix entries (`IsDirectory = true`, `Size` and `LastModified` null). A recursive listing yields blobs only. Listed URIs keep the caller's parameters. Listing makes no request to check that the container exists and requests no blob metadata, and listing a container that doesn't exist yields no items.
 
 ### AzureBlobStorageProviderOptions
 
@@ -1435,15 +1459,24 @@ Configuration options for the Azure Blob Storage Provider.
 
 **Properties:**
 
-| Property                         | Type               | Default            | Description                                                 |
-|----------------------------------|--------------------|--------------------|-------------------------------------------------------------|
-| `DefaultCredential`              | `TokenCredential?` | `null`             | Default Azure credential for authentication                 |
-| `DefaultConnectionString`        | `string?`          | `null`             | Default connection string for Azure Storage                 |
-| `UseDefaultCredentialChain`      | `bool`             | `true`             | Whether to use the default Azure credential chain           |
-| `ServiceUrl`                     | `Uri?`             | `null`             | Optional service URL for Azure Storage-compatible endpoints |
-| `BlockBlobUploadThresholdBytes`  | `long`             | `64 * 1024 * 1024` | Threshold in bytes for using block blob upload              |
-| `UploadMaximumConcurrency`       | `int?`             | `null`             | Maximum concurrent upload requests for large blobs          |
-| `UploadMaximumTransferSizeBytes` | `int?`             | `null`             | Maximum transfer size in bytes for each upload chunk        |
+`AzureBlobStorageProviderOptions` derives from `AzureAccountOptions`, which also supplies the properties below. The ADLS Gen2 provider shares them.
+
+| Property                    | Type                                | Default   | Description                                                                 |
+|-----------------------------|-------------------------------------|-----------|-----------------------------------------------------------------------------|
+| `AccountName`               | `string?`                           | `null`    | Default storage account name                                                |
+| `DefaultConnectionString`   | `string?`                           | `null`    | Connection string                                                           |
+| `DefaultSasToken`           | `string?`                           | `null`    | Shared access signature token                                               |
+| `DefaultAccountKey`         | `string?`                           | `null`    | Storage account key                                                         |
+| `DefaultCredential`         | `TokenCredential?`                  | `null`    | Default Azure credential for authentication                                 |
+| `UseDefaultCredentialChain` | `bool`                              | `true`    | Whether to use the default Azure credential chain                           |
+| `AllowAnonymousAccess`      | `bool`                              | `false`   | Connect without credentials when none are configured                        |
+| `ServiceUrl`                | `Uri?`                              | `null`    | Optional service URL for Azure Storage-compatible endpoints                 |
+| `ServiceVersion`            | `BlobClientOptions.ServiceVersion?` | `null`    | Blob service API version                                                    |
+| `Retry`                     | `AzureRetryOptions`                 | see above | Azure SDK retry settings                                                    |
+| `PartSizeBytes`             | `int`                               | 8 MiB     | Size of each upload block                                                   |
+| `MaxConcurrency`            | `int`                               | `4`       | Most blocks of one object that upload at the same time                      |
+| `CreateContainerIfMissing`  | `bool`                              | `false`   | Create a container on the first write to it                                 |
+| `ClientCacheSizeLimit`      | `int`                               | `100`     | Most clients kept in the cache                                              |
 
 ### ServiceCollectionExtensions
 
@@ -1468,8 +1501,9 @@ public static IServiceCollection AddAzureBlobStorageProvider(
 ```csharp
 services.AddAzureBlobStorageProvider(options =>
 {
+    options.AccountName = "mystorageaccount";
     options.UseDefaultCredentialChain = true;
-    options.BlockBlobUploadThresholdBytes = 64 * 1024 * 1024;
+    options.PartSizeBytes = 8 * 1024 * 1024;
 });
 ```
 
@@ -1488,8 +1522,10 @@ public static IServiceCollection AddAzureBlobStorageProvider(
 ```csharp
 var options = new AzureBlobStorageProviderOptions
 {
-    DefaultConnectionString = "UseDevelopmentStorage=true",
-    ServiceUrl = new Uri("http://localhost:10000/devstoreaccount1")
+    ServiceUrl = new Uri("http://localhost:10000/devstoreaccount1"),
+    AccountName = "devstoreaccount1",
+    DefaultAccountKey = "<azurite-key>",
+    CreateContainerIfMissing = true
 };
 
 services.AddAzureBlobStorageProvider(options);

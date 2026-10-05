@@ -95,7 +95,7 @@ await using (var write = await provider.OpenWriteAsync(uri))
 }
 ```
 
-The provider buffers the data to a local temporary file and uploads it in `CommitAsync`. Upload errors surface from `CommitAsync`. This provider doesn't declare `ConditionalWrite`.
+The upload streams to GCS while you write, with no local temporary file. `CommitAsync` finishes it; disposing without committing cancels it and no object appears. Upload errors surface from `CommitAsync` (or an earlier write). This provider doesn't declare `ConditionalWrite`.
 
 ### Reading Objects
 
@@ -151,15 +151,13 @@ var recursive = provider.ListAsync(StorageUri.Parse("gs://my-bucket/data/"), rec
 
 ## URI Parameters
 
-You can override configuration settings per-object using query parameters in the `gs://` URI:
+You can override routing settings per-object using query parameters in the `gs://` URI. Credentials are never read from a URI: `accessToken` and `credentialsPath` are rejected with an `ArgumentException`. Set `GcsStorageProviderOptions.DefaultCredentials` instead.
 
 | Parameter         | Purpose                      | Example                                              |
 |-------------------|------------------------------|------------------------------------------------------|
 | `projectId`       | Override default project ID  | `gs://bucket/file?projectId=alt-project`             |
 | `contentType`     | MIME type for the object     | `gs://bucket/file?contentType=application/json`      |
 | `serviceUrl`      | Custom endpoint (emulator)   | `gs://bucket/file?serviceUrl=http://localhost:4443`  |
-| `accessToken`     | OAuth 2.0 access token       | `gs://bucket/file?accessToken=ya29.xxx`              |
-| `credentialsPath` | Path to service account JSON | `gs://bucket/file?credentialsPath=/path/to/key.json` |
 
 ### Examples
 
@@ -196,14 +194,7 @@ services.AddGcsStorageProvider(options =>
 
 ### Service Account Key
 
-Explicitly provide a service account JSON file via the `credentialsPath` URI parameter:
-
-```csharp
-var uri = StorageUri.Parse("gs://my-bucket/data.csv?credentialsPath=/secure/service-account-key.json");
-await using var stream = await provider.OpenReadAsync(uri);
-```
-
-Alternatively, load credentials in code and set `DefaultCredentials`:
+Load the credentials in code and set `DefaultCredentials`:
 
 ```csharp
 using Google.Apis.Auth.OAuth2;
@@ -217,10 +208,10 @@ services.AddGcsStorageProvider(options =>
 
 ### Access Token
 
-Use a manually-provided OAuth 2.0 access token. Tokens are short-lived and must be refreshed periodically:
+For a manually provided OAuth 2.0 access token, which is short-lived and must be refreshed by you:
 
 ```csharp
-var uri = StorageUri.Parse("gs://bucket/file?accessToken=ya29.xxx");
+options.DefaultCredentials = GoogleCredential.FromAccessToken("ya29.xxx");
 ```
 
 ### Local Emulator
@@ -246,7 +237,7 @@ export STORAGE_EMULATOR_HOST="http://localhost:4443"
 
 ## Resilience
 
-The provider sends every GCS request (object metadata, each page of a listing, downloads, and uploads) through
+The provider sends GCS requests (object metadata, each page of a listing, delete, copy, and reopening a failed download) through
 [NResilience](https://github.com/nresilience/NResilience). The `Resilience` option configures it. The default,
 `GcsStorageResilience.Default`, does the following:
 
@@ -269,21 +260,20 @@ services.AddGcsStorageProvider(options =>
 });
 ```
 
-A retried download starts again with an empty buffer, and a retried upload re-sends the whole object from its
-first byte in a new upload session. Uploading an object replaces it, so a retry can't leave a partial or duplicated
-object.
+Reads and writes use different retry layers, because a stream cannot be replayed:
 
-The provider is the only layer that retries. Clients built by `GcsClientFactory` send each HTTP request once
-(`ConfigurableMessageHandler.NumTries = 1`), which turns off the Google SDK's retry of metadata calls and its
-in-session resume of resumable uploads, and metadata requests also pass `RetryOptions.Never`. Two consequences:
+- **Metadata, list, delete and copy calls** run under `Resilience`. The Google SDK's own retry is off for them
+  (`RetryOptions.Never`), so only one layer retries each request.
+- **Reads** stream the object (see [Streaming reads](#streaming-reads)). If the connection fails part-way, the
+  stream reopens the object at the current offset under `Resilience`. `Resilience.None` turns the resume off.
+- **Writes** stream to GCS while you write (see [Streaming writes](#streaming-writes)), so the provider can't re-send
+  the data from the start. Transient chunk failures are retried inside the Google SDK's resumable-upload session:
+  the SDK asks the server how many bytes it holds and re-sends from that offset. `Resilience` does not apply to
+  writes. If the SDK gives up, the next `WriteAsync` or `CommitAsync` throws, and you write the object again from
+  the start.
 
-- A transient failure part-way through a large upload restarts the upload after a backoff instead of resuming the
-  session immediately.
-- If you subclass `GcsClientFactory` and build your own `StorageClient`, set
-  `client.Service.HttpClient.MessageHandler.NumTries = 1` on it. Otherwise the SDK's upload resume runs inside each
-  provider attempt and the attempts multiply.
-
-A `GcsWriteStream` that you construct directly, rather than through the provider's `OpenWriteAsync`, uploads once without retrying.
+If you subclass `GcsClientFactory` and build your own `StorageClient`, keep the SDK's default retry on it so
+resumable uploads can retry. Pass `RetryOptions.Never` on any metadata calls you add.
 
 ## Errors
 
@@ -291,9 +281,9 @@ Failures follow the storage provider contract and keep the Google exception as t
 
 ## Important Notes
 
-- **Upload Chunking** - For large objects, uploads are split into 256 KiB chunks. The chunk size parameter must be a positive multiple of 256 KiB.
+- **Streaming** - Reads stream from the HTTP response and resume from the failed offset if the connection drops. Writes upload while you write, as a resumable session fed from a bounded pipe, so no local temporary file is used and memory is about two `UploadChunkSizeBytes` chunks. `CommitAsync` makes the object appear; disposing without it discards the upload. A failed write can't be replayed, so the SDK retries chunks inside the session and, if it gives up, you write the object again.
+- **Upload Chunking** - `UploadChunkSizeBytes` must be a positive multiple of 256 KiB (default 16 MB).
 - **Transient Errors** - The provider retries transient failures according to `Resilience`. See [Resilience](#resilience).
-- **Streaming** - Use `OpenReadAsync` and `OpenWriteAsync` for efficient handling of large objects without loading them entirely into memory.
 - **Metadata Freshness** - Object metadata may be cached briefly. For critical operations requiring current state, consider adding a small delay between checks.
 - **Special Characters** - Object names with special characters must be URL-encoded in URIs.
 

@@ -30,10 +30,10 @@ public class S3CompatibleStorageProviderOptionsTests
     }
 
     [Fact]
-    public void DefaultMultipartUploadThresholdBytes_Is64MB()
+    public void DefaultPartSizeBytes_Is8MiB()
     {
         var options = CreateValid();
-        options.MultipartUploadThresholdBytes.Should().Be(64 * 1024 * 1024);
+        options.PartSizeBytes.Should().Be(8 * 1024 * 1024);
     }
 
     // ── Required fields ───────────────────────────────────────────────────
@@ -110,17 +110,17 @@ public class S3CompatibleStorageProviderOptionsTests
     }
 
     [Fact]
-    public void MultipartUploadThresholdBytes_CanBeOverridden()
+    public void PartSizeBytes_CanBeOverridden()
     {
         var options = new S3CompatibleStorageProviderOptions
         {
             ServiceUrl = new Uri("http://localhost:9000"),
             AccessKey = "key",
             SecretKey = "secret",
-            MultipartUploadThresholdBytes = 128 * 1024 * 1024,
+            PartSizeBytes = 128 * 1024 * 1024,
         };
 
-        options.MultipartUploadThresholdBytes.Should().Be(128 * 1024 * 1024);
+        options.PartSizeBytes.Should().Be(128 * 1024 * 1024);
     }
 
     // ── Immutability (init-only) ───────────────────────────────────────────
