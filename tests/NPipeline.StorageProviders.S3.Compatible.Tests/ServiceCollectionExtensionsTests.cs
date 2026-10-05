@@ -1,5 +1,7 @@
 using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using NPipeline.StorageProviders.Abstractions;
+using NPipeline.StorageProviders.DependencyInjection;
 using NPipeline.StorageProviders.Models;
 using Xunit;
 
@@ -145,15 +147,63 @@ public class ServiceCollectionExtensionsTests
     // ── Provider functionality after DI ───────────────────────────────────
 
     [Fact]
-    public void AddS3CompatibleStorageProvider_ProviderCanHandleS3Uris()
+    public async Task AddS3CompatibleStorageProvider_Twice_RegistersOneProvider()
     {
         var services = new ServiceCollection();
         services.AddS3CompatibleStorageProvider(CreateValidOptions());
+        services.AddS3CompatibleStorageProvider(CreateValidOptions());
 
-        var sp = services.BuildServiceProvider();
-        var provider = sp.GetRequiredService<S3CompatibleStorageProvider>();
+        await using var sp = services.BuildServiceProvider();
 
-        provider.CanHandle(StorageUri.Parse("s3://bucket/key"))
-            .Should().BeTrue();
+        sp.GetServices<IStorageProvider>().OfType<S3CompatibleStorageProvider>().Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task AddS3CompatibleStorageProvider_ProviderIsResolvableThroughIStorageResolver()
+    {
+        var services = new ServiceCollection();
+        services.AddStorageResolver(false);
+        services.AddS3CompatibleStorageProvider(CreateValidOptions());
+
+        await using var sp = services.BuildServiceProvider();
+
+        sp.GetRequiredService<IStorageResolver>().Resolve(StorageUri.Parse("s3://bucket/key"))
+            .Should().BeOfType<S3CompatibleStorageProvider>();
+    }
+
+    [Fact]
+    public async Task AddS3CompatibleStorageProvider_CustomScheme_IsResolvable()
+    {
+        var options = new S3CompatibleStorageProviderOptions
+        {
+            ServiceUrl = new Uri("http://localhost:9000"),
+            AccessKey = "key",
+            SecretKey = "secret",
+            Schemes = ["minio"],
+        };
+
+        var services = new ServiceCollection();
+        services.AddStorageResolver(false);
+        services.AddS3CompatibleStorageProvider(options);
+
+        await using var sp = services.BuildServiceProvider();
+        var resolver = sp.GetRequiredService<IStorageResolver>();
+
+        resolver.Resolve(StorageUri.Parse("minio://bucket/key")).Should().BeOfType<S3CompatibleStorageProvider>();
+        resolver.TryResolve(StorageUri.Parse("s3://bucket/key"), out _).Should().BeFalse();
+    }
+
+    [Fact]
+    public void AddS3CompatibleStorageProvider_WithEmptySchemes_ThrowsArgumentException()
+    {
+        var options = new S3CompatibleStorageProviderOptions
+        {
+            ServiceUrl = new Uri("http://localhost:9000"),
+            AccessKey = "key",
+            SecretKey = "secret",
+            Schemes = [],
+        };
+
+        Assert.Throws<ArgumentException>(() => new ServiceCollection().AddS3CompatibleStorageProvider(options));
     }
 }

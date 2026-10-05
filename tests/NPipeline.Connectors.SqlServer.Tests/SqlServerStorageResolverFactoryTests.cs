@@ -1,3 +1,5 @@
+using NPipeline.StorageProviders.Exceptions;
+using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Models;
 
 namespace NPipeline.Connectors.SqlServer.Tests;
@@ -14,7 +16,7 @@ public sealed class SqlServerStorageResolverFactoryTests
         var resolver = SqlServerStorageResolverFactory.CreateResolver();
 
         // Assert
-        var providers = resolver.GetAvailableProviders();
+        var providers = resolver.Providers;
         Assert.Single(providers);
         Assert.IsType<SqlServerDatabaseStorageProvider>(providers.First());
     }
@@ -27,7 +29,7 @@ public sealed class SqlServerStorageResolverFactoryTests
         var uri = StorageUri.Parse("mssql://localhost/mydb");
 
         // Act
-        var provider = resolver.ResolveProvider(uri);
+        var provider = resolver.Resolve(uri);
 
         // Assert
         Assert.NotNull(provider);
@@ -43,8 +45,8 @@ public sealed class SqlServerStorageResolverFactoryTests
         var sqlserverUri = StorageUri.Parse("sqlserver://localhost/mydb");
 
         // Act
-        var mssqlProvider = resolver.ResolveProvider(mssqlUri);
-        var sqlserverProvider = resolver.ResolveProvider(sqlserverUri);
+        var mssqlProvider = resolver.Resolve(mssqlUri);
+        var sqlserverProvider = resolver.Resolve(sqlserverUri);
 
         // Assert
         Assert.NotNull(mssqlProvider);

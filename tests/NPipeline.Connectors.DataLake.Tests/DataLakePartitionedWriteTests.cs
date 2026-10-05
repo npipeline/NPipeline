@@ -26,8 +26,8 @@ public sealed class DataLakePartitionedWriteTests : IAsyncDisposable
         _tempDir = Path.Combine(Path.GetTempPath(), $"datalake_write_{Guid.NewGuid():N}");
         _ = Directory.CreateDirectory(_tempDir);
         _tableUri = StorageUri.FromFilePath(_tempDir);
-        var resolver = StorageProviderFactory.CreateResolver();
-        _provider = StorageProviderFactory.GetProviderOrThrow(resolver, _tableUri);
+        var resolver = StorageResolver.Default;
+        _provider = resolver.Resolve(_tableUri);
     }
 
     public async ValueTask DisposeAsync()
@@ -443,7 +443,7 @@ public sealed class DataLakePartitionedWriteTests : IAsyncDisposable
             CreateOrder(2, "2025-01-01", "US"),
         };
 
-        var resolver = StorageProviderFactory.CreateResolver();
+        var resolver = StorageResolver.Default;
 
         var sink = new DataLakePartitionedSinkNode<OrderRecord>(
             _tableUri, spec, resolver);

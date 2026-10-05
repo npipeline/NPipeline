@@ -1,3 +1,5 @@
+using NPipeline.StorageProviders.Exceptions;
+using NPipeline.StorageProviders.Abstractions;
 using MySqlConnector;
 using NPipeline.StorageProviders.Models;
 
@@ -21,7 +23,7 @@ public sealed class MySqlDatabaseStorageProviderTests
         var uri = StorageUri.Parse("mysql://localhost/mydb");
 
         // Act
-        var result = _provider.CanHandle(uri);
+        var result = _provider.Schemes.Contains(uri.Scheme);
 
         // Assert
         Assert.True(result);
@@ -34,7 +36,7 @@ public sealed class MySqlDatabaseStorageProviderTests
         var uri = StorageUri.Parse("mariadb://localhost/mydb");
 
         // Act
-        var result = _provider.CanHandle(uri);
+        var result = _provider.Schemes.Contains(uri.Scheme);
 
         // Assert
         Assert.True(result);
@@ -47,7 +49,7 @@ public sealed class MySqlDatabaseStorageProviderTests
         var uri = StorageUri.Parse("postgres://localhost/mydb");
 
         // Act
-        var result = _provider.CanHandle(uri);
+        var result = _provider.Schemes.Contains(uri.Scheme);
 
         // Assert
         Assert.False(result);
@@ -60,7 +62,7 @@ public sealed class MySqlDatabaseStorageProviderTests
         var uri = StorageUri.Parse("sqlserver://localhost/mydb");
 
         // Act
-        var result = _provider.CanHandle(uri);
+        var result = _provider.Schemes.Contains(uri.Scheme);
 
         // Assert
         Assert.False(result);
@@ -146,9 +148,9 @@ public sealed class MySqlDatabaseStorageProviderTests
     public void Scheme_ReturnsMySqlScheme()
     {
         // Act
-        var scheme = _provider.Scheme;
+        var schemes = _provider.Schemes;
 
         // Assert
-        Assert.Equal(StorageScheme.MySql, scheme);
+        Assert.Contains(StorageScheme.MySql, schemes);
     }
 }

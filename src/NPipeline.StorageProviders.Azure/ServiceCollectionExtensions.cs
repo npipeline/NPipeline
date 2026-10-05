@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using NPipeline.StorageProviders.Abstractions;
 
 namespace NPipeline.StorageProviders.Azure;
@@ -18,22 +19,12 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         Action<AzureBlobStorageProviderOptions>? configure = null)
     {
-        // Configure options
+        ArgumentNullException.ThrowIfNull(services);
+
         var options = new AzureBlobStorageProviderOptions();
         configure?.Invoke(options);
 
-        // Register options as singleton
-        _ = services.AddSingleton(options);
-
-        // Register AzureBlobClientFactory as singleton
-        _ = services.AddSingleton<AzureBlobClientFactory>();
-
-        // Register AzureBlobStorageProvider as singleton
-        _ = services.AddSingleton<AzureBlobStorageProvider>();
-        _ = services.AddSingleton<IStorageProvider>(sp => sp.GetRequiredService<AzureBlobStorageProvider>());
-        _ = services.AddSingleton<IStorageProviderMetadataProvider>(sp => sp.GetRequiredService<AzureBlobStorageProvider>());
-
-        return services;
+        return Register(services, options);
     }
 
     /// <summary>
@@ -46,18 +37,18 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         AzureBlobStorageProviderOptions options)
     {
+        ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(options);
 
-        // Register options as singleton
-        _ = services.AddSingleton(options);
+        return Register(services, options);
+    }
 
-        // Register AzureBlobClientFactory as singleton
-        _ = services.AddSingleton<AzureBlobClientFactory>();
-
-        // Register AzureBlobStorageProvider as singleton
-        _ = services.AddSingleton<AzureBlobStorageProvider>();
-        _ = services.AddSingleton<IStorageProvider>(sp => sp.GetRequiredService<AzureBlobStorageProvider>());
-        _ = services.AddSingleton<IStorageProviderMetadataProvider>(sp => sp.GetRequiredService<AzureBlobStorageProvider>());
+    private static IServiceCollection Register(IServiceCollection services, AzureBlobStorageProviderOptions options)
+    {
+        services.TryAddSingleton(options);
+        services.TryAddSingleton<AzureBlobClientFactory>();
+        services.TryAddSingleton<AzureBlobStorageProvider>();
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IStorageProvider, AzureBlobStorageProvider>());
 
         return services;
     }

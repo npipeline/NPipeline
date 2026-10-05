@@ -97,14 +97,14 @@ services.AddAwsS3StorageProvider(new AwsS3StorageProviderOptions
 });
 ```
 
-Registers: `IStorageProvider`, `IStorageProviderMetadataProvider`
+Registers: `IStorageProvider`
 
 ## Features
 
 - **Multipart uploads** - files above `MultipartUploadThresholdBytes` are uploaded using the S3 multipart API
 - **Client caching** - S3 clients are cached and reused per region/endpoint
 - **Virtual-hosted addressing** - default; set `ForcePathStyle = true` for Floci or older S3-compatible services
-- **Metadata** - implements `IStorageProviderMetadataProvider` for `Size`, `LastModified`, `ContentType`, `ETag`
+- **Metadata** - `GetMetadataAsync` returns `Size`, `LastModified`, `ContentType`, `ETag`
 
 ## URI Parameters
 

@@ -13,6 +13,10 @@
     </ItemGroup>
 
     <ItemGroup>
+        <InternalsVisibleTo Include="NPipeline.StorageProviders.S3.Tests"/>
+    </ItemGroup>
+
+    <ItemGroup>
         <ProjectReference Include="..\NPipeline.StorageProviders\NPipeline.StorageProviders.csproj"/>
         <ProjectReference Include="..\NPipeline\NPipeline.csproj"/>
     </ItemGroup>

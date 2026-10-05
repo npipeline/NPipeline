@@ -9,7 +9,7 @@ namespace NPipeline.Connectors.MongoDB;
 ///     MongoDB storage provider that implements the database storage provider interface.
 ///     Allows MongoDB connectors to work with the storage provider abstraction.
 /// </summary>
-public class MongoDatabaseStorageProvider : IDatabaseStorageProvider
+public class MongoDatabaseStorageProvider : StorageProvider, IDatabaseStorageProvider
 {
     /// <summary>
     ///     The MongoDB URI schemes supported by this provider.
@@ -23,17 +23,23 @@ public class MongoDatabaseStorageProvider : IDatabaseStorageProvider
     private static readonly HashSet<string> _npipelineParams =
         new(StringComparer.OrdinalIgnoreCase) { "collection", "table", "database" };
 
-    /// <summary>
-    ///     Gets the primary URI scheme for this provider.
-    /// </summary>
-    public StorageScheme Scheme => new("mongodb");
+    private static readonly IReadOnlyList<StorageScheme> SupportedSchemeList = [new StorageScheme("mongodb"), new StorageScheme("mongodb+srv")];
+
+    /// <inheritdoc />
+    public override string Name => "MongoDB";
+
+    /// <inheritdoc />
+    public override IReadOnlyList<StorageScheme> Schemes => SupportedSchemeList;
+
+    /// <inheritdoc />
+    public override StorageCapabilities Capabilities => StorageCapabilities.None;
 
     /// <summary>
     ///     Determines whether this provider can handle the specified storage URI.
     /// </summary>
     /// <param name="uri">The storage URI to check.</param>
     /// <returns>True if the URI uses a MongoDB scheme; otherwise, false.</returns>
-    public bool CanHandle(StorageUri uri)
+    private static bool CanHandle(StorageUri uri)
     {
         ArgumentNullException.ThrowIfNull(uri);
         return SupportedSchemes.Any(s => string.Equals(uri.Scheme.Value, s, StringComparison.OrdinalIgnoreCase));
@@ -100,64 +106,6 @@ public class MongoDatabaseStorageProvider : IDatabaseStorageProvider
         var connection = new MongoDatabaseConnection(client);
 
         return Task.FromResult<IDatabaseConnection>(connection);
-    }
-
-    /// <summary>
-    ///     Opens a readable stream for the specified storage URI.
-    ///     Note: This is not typically used for MongoDB operations.
-    /// </summary>
-    /// <param name="uri">The storage location to read from.</param>
-    /// <param name="cancellationToken">Token to observe while waiting for the task to complete.</param>
-    /// <returns>A task producing a readable stream.</returns>
-    /// <exception cref="NotSupportedException">Always thrown as MongoDB doesn't support stream-based reads.</exception>
-    public Task<Stream> OpenReadAsync(StorageUri uri, CancellationToken cancellationToken = default) =>
-        throw new NotSupportedException(
-            "MongoDB does not support stream-based reads. Use GetConnectionAsync() to obtain a database connection.");
-
-    /// <summary>
-    ///     Opens a writable stream for the specified storage URI.
-    ///     Note: This is not typically used for MongoDB operations.
-    /// </summary>
-    /// <param name="uri">The storage location to write to.</param>
-    /// <param name="cancellationToken">Token to observe while waiting for the task to complete.</param>
-    /// <returns>A task producing a writable stream.</returns>
-    /// <exception cref="NotSupportedException">Always thrown as MongoDB doesn't support stream-based writes.</exception>
-    public Task<Stream> OpenWriteAsync(StorageUri uri, CancellationToken cancellationToken = default) =>
-        throw new NotSupportedException(
-            "MongoDB does not support stream-based writes. Use GetConnectionAsync() to obtain a database connection.");
-
-    /// <summary>
-    ///     Checks whether a resource exists at the specified storage URI.
-    /// </summary>
-    /// <param name="uri">The storage location to check.</param>
-    /// <param name="cancellationToken">Token to observe while waiting for the task to complete.</param>
-    /// <returns>True if the database/collection exists; otherwise, false.</returns>
-    public async Task<bool> ExistsAsync(StorageUri uri, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(uri);
-
-        if (!CanHandle(uri))
-            return false;
-
-        var connectionString = GetConnectionString(uri);
-        var client = MongoConnectionFactory.CreateClient(connectionString);
-
-        // Extract database name from path
-        var databaseName = ExtractDatabaseName(uri.Path);
-
-        if (string.IsNullOrEmpty(databaseName))
-            return false;
-
-        // Check if database exists by listing databases
-        using var cursor = await client.ListDatabaseNamesAsync(cancellationToken).ConfigureAwait(false);
-
-        while (await cursor.MoveNextAsync(cancellationToken).ConfigureAwait(false))
-        {
-            if (cursor.Current.Contains(databaseName))
-                return true;
-        }
-
-        return false;
     }
 
     private static string SerializeParameters(IReadOnlyDictionary<string, string> parameters)

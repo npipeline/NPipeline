@@ -8,7 +8,7 @@ namespace NPipeline.StorageProviders.S3;
 ///     Abstract base class for creating and caching Amazon S3 clients.
 ///     Subclasses are responsible for wiring credentials and configuration specific to their environment.
 /// </summary>
-public abstract class S3ClientFactoryBase
+public abstract class S3ClientFactoryBase : IDisposable
 {
     private readonly ConcurrentDictionary<string, IAmazonS3> _clientCache = new();
 
@@ -48,5 +48,19 @@ public abstract class S3ClientFactoryBase
     public virtual void ClearCache()
     {
         _clientCache.Clear();
+    }
+
+    /// <summary>
+    ///     Disposes every cached client and clears the cache.
+    /// </summary>
+    public void Dispose()
+    {
+        foreach (var client in _clientCache.Values)
+        {
+            client.Dispose();
+        }
+
+        _clientCache.Clear();
+        GC.SuppressFinalize(this);
     }
 }

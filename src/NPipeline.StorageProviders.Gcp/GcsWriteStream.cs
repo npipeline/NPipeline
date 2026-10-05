@@ -26,7 +26,7 @@ public sealed class GcsWriteStream : Stream
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="GcsWriteStream" /> class. The upload is sent once, without retries;
-    ///     streams opened through <see cref="GcsStorageProvider.OpenWriteAsync" /> retry according to
+    ///     streams opened through <see cref="GcsStorageProvider" /> retry according to
     ///     <see cref="GcsStorageProviderOptions.Resilience" />.
     /// </summary>
     /// <param name="storageClient">The Google Cloud Storage client.</param>
@@ -300,7 +300,7 @@ public sealed class GcsWriteStream : Stream
         }
         catch (GoogleApiException ex)
         {
-            throw GcsStorageProvider.TranslateGcsException(ex, _bucket, _objectName, "upload");
+            throw GcsErrors.Translate(ex, _bucket, _objectName, "upload");
         }
     }
 

@@ -1,3 +1,5 @@
+using NPipeline.StorageProviders.Exceptions;
+using NPipeline.StorageProviders.Abstractions;
 using AwesomeAssertions;
 using NPipeline.StorageProviders.Models;
 
@@ -23,7 +25,7 @@ public sealed class MySqlStorageResolverFactoryTests
         var uri = StorageUri.Parse("mysql://localhost/testdb");
 
         // Act
-        var provider = resolver.ResolveProvider(uri);
+        var provider = resolver.Resolve(uri);
 
         // Assert
         _ = provider.Should().NotBeNull();
@@ -38,7 +40,7 @@ public sealed class MySqlStorageResolverFactoryTests
         var uri = StorageUri.Parse("mariadb://localhost/testdb");
 
         // Act
-        var provider = resolver.ResolveProvider(uri);
+        var provider = resolver.Resolve(uri);
 
         // Assert
         _ = provider.Should().NotBeNull();

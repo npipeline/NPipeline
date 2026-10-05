@@ -129,12 +129,12 @@ services.AddAdlsGen2StorageProvider(options =>
 });
 ```
 
-Registers: `IStorageProvider`, `IDeletableStorageProvider`, `IMoveableStorageProvider`, `IStorageProviderMetadataProvider`
+Registers: `IStorageProvider`
 
 ## Features
 
-- **Atomic rename/move** - `IMoveableStorageProvider` uses the Data Lake rename API; falls back to copy + delete on failure
-- **Idempotent delete** - `IDeletableStorageProvider` treats 404 as success
+- **Atomic rename/move** - `MoveAsync` uses the Data Lake rename API; falls back to copy + delete on failure
+- **Idempotent delete** - `DeleteAsync` treats 404 as success
 - **Dual client caches** - separate LRU caches for Blob and DataLake clients
 - **Metadata** - `Size`, `LastModified`, `ContentType`, `ETag`
 
@@ -199,8 +199,7 @@ if (metadata is not null)
 ### Deleting (Idempotent)
 
 ```csharp
-if (provider is IDeletableStorageProvider del)
-    await del.DeleteAsync(uri);   // succeeds even if path doesn't exist
+await provider.DeleteAsync(uri);   // succeeds even if path doesn't exist
 ```
 
 ### Moving / Renaming (Atomic)
@@ -208,12 +207,9 @@ if (provider is IDeletableStorageProvider del)
 ADLS Gen2's O(1) server-side rename is the primary differentiator over Azure Blob:
 
 ```csharp
-if (provider is IMoveableStorageProvider mov)
-{
-    var src = StorageUri.Parse("adls://my-filesystem/staging/records.csv");
-    var dest = StorageUri.Parse("adls://my-filesystem/processed/records.csv");
-    await mov.MoveAsync(src, dest);
-}
+var src = StorageUri.Parse("adls://my-filesystem/staging/records.csv");
+var dest = StorageUri.Parse("adls://my-filesystem/processed/records.csv");
+await provider.MoveAsync(src, dest);
 ```
 
 > Cross-account moves are not supported. Both source and destination must be within the same storage account.
@@ -228,21 +224,9 @@ if (provider is IMoveableStorageProvider mov)
 | `PathAlreadyExists`, 409 | `IOException` |
 | 429 / 5xx (transient) | `IOException` (preserves retryable context) |
 
-`AdlsStorageException` (inherits `ConnectorException`) carries `Filesystem` and `Path` properties for structured diagnostics.
-
 ## Provider Capabilities
 
-Via `IStorageProviderMetadataProvider.GetMetadata()`:
-
-| Capability | Value |
-|------------|-------|
-| `SupportsRead` | `true` |
-| `SupportsWrite` | `true` |
-| `SupportsListing` | `true` |
-| `SupportsMetadata` | `true` |
-| `SupportsHierarchy` | `true` |
-| `supportsAtomicMove` | `true` |
-| `supportsNativeDelete` | `true` |
+`provider.Capabilities` is `Read | Write | List | Delete | Move | Hierarchy` (plus `AtomicMove` where the move is the Data Lake rename).
 
 ## Azurite (Local Development)
 

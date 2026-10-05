@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Models;
 using NPipeline.StorageProviders.Sftp;
 
@@ -45,17 +46,17 @@ services.AddSftpStorageProvider(options =>
 
 // Build the service provider
 using var serviceProvider = services.BuildServiceProvider();
-var provider = serviceProvider.GetRequiredService<SftpStorageProvider>();
+var provider = serviceProvider.GetServices<IStorageProvider>().OfType<SftpStorageProvider>().Single();
 
 // Display provider metadata
 Console.WriteLine("Provider Metadata:");
-var metadata = provider.GetMetadata();
+var metadata = provider;
 Console.WriteLine($"  Name: {metadata.Name}");
-Console.WriteLine($"  Supported Schemes: {string.Join(", ", metadata.SupportedSchemes)}");
-Console.WriteLine($"  Supports Read: {metadata.SupportsRead}");
-Console.WriteLine($"  Supports Write: {metadata.SupportsWrite}");
-Console.WriteLine($"  Supports Listing: {metadata.SupportsListing}");
-Console.WriteLine($"  Supports Hierarchy: {metadata.SupportsHierarchy}");
+Console.WriteLine($"  Supported Schemes: {string.Join(", ", metadata.Schemes)}");
+Console.WriteLine($"  Supports Read: {metadata.Capabilities.HasFlag(NPipeline.StorageProviders.Abstractions.StorageCapabilities.Read)}");
+Console.WriteLine($"  Supports Write: {metadata.Capabilities.HasFlag(NPipeline.StorageProviders.Abstractions.StorageCapabilities.Write)}");
+Console.WriteLine($"  Supports Listing: {metadata.Capabilities.HasFlag(NPipeline.StorageProviders.Abstractions.StorageCapabilities.List)}");
+Console.WriteLine($"  Supports Hierarchy: {metadata.Capabilities.HasFlag(NPipeline.StorageProviders.Abstractions.StorageCapabilities.Hierarchy)}");
 Console.WriteLine();
 
 // Example 1: Write a file to SFTP

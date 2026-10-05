@@ -281,7 +281,7 @@ public sealed class AzureBlobWriteStream : Stream
         }
         catch (RequestFailedException ex)
         {
-            throw TranslateAzureException(ex, _container, _blob);
+            throw AzureErrors.Translate(ex, _container, _blob);
         }
     }
 
@@ -356,36 +356,5 @@ public sealed class AzureBlobWriteStream : Stream
         }
 
         _ = await blobClient.UploadAsync(_tempFileStream, options, cancellationToken).ConfigureAwait(false);
-    }
-
-    private static Exception TranslateAzureException(RequestFailedException ex, string container, string blob)
-    {
-        var code = ex.ErrorCode ?? string.Empty;
-        var status = ex.Status;
-
-        return code switch
-        {
-            "AuthenticationFailed" or "AuthorizationFailed" or "AuthorizationFailure"
-                => new UnauthorizedAccessException(
-                    $"Access denied to Azure container '{container}' and blob '{blob}'. Status={status}, Code={code}. {ex.Message}", ex),
-            "InvalidQueryParameterValue" or "InvalidResourceName"
-                => new ArgumentException(
-                    $"Invalid Azure container '{container}' or blob '{blob}'. Status={status}, Code={code}. {ex.Message}", ex),
-            "ContainerNotFound" or "BlobNotFound"
-                => new FileNotFoundException(
-                    $"Azure container '{container}' or blob '{blob}' not found. Status={status}, Code={code}.", ex),
-            _ when status is 401 or 403
-                => new UnauthorizedAccessException(
-                    $"Access denied to Azure container '{container}' and blob '{blob}'. Status={status}, Code={code}. {ex.Message}", ex),
-            _ when status == 400
-                => new ArgumentException(
-                    $"Invalid Azure container '{container}' or blob '{blob}'. Status={status}, Code={code}. {ex.Message}", ex),
-            _ when status == 404
-                => new FileNotFoundException(
-                    $"Azure container '{container}' or blob '{blob}' not found. Status={status}, Code={code}.", ex),
-            _
-                => new IOException(
-                    $"Failed to upload to Azure container '{container}' and blob '{blob}'. Status={status}, Code={code}. {ex.Message}", ex),
-        };
     }
 }

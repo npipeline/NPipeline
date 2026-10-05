@@ -45,25 +45,22 @@ public sealed class Program
         try
         {
             var provider = host.Services.GetRequiredService<IStorageProvider>();
-            var metadataProvider = host.Services.GetRequiredService<IStorageProviderMetadataProvider>();
-            var deletableProvider = host.Services.GetRequiredService<IDeletableStorageProvider>();
-            var moveableProvider = host.Services.GetRequiredService<IMoveableStorageProvider>();
 
             // --- Provider metadata ---
-            var providerMetadata = metadataProvider.GetMetadata();
+            var providerMetadata = provider;
             Console.WriteLine("Provider information:");
             Console.WriteLine($"  Name             : {providerMetadata.Name}");
-            Console.WriteLine($"  Schemes          : {string.Join(", ", providerMetadata.SupportedSchemes)}");
-            Console.WriteLine($"  SupportsHierarchy: {providerMetadata.SupportsHierarchy}");
-            Console.WriteLine($"  SupportsRead     : {providerMetadata.SupportsRead}");
-            Console.WriteLine($"  SupportsWrite    : {providerMetadata.SupportsWrite}");
-            Console.WriteLine($"  SupportsListing  : {providerMetadata.SupportsListing}");
-            Console.WriteLine($"  SupportsMetadata : {providerMetadata.SupportsMetadata}");
+            Console.WriteLine($"  Schemes          : {string.Join(", ", providerMetadata.Schemes)}");
+            Console.WriteLine($"  SupportsHierarchy: {providerMetadata.Capabilities.HasFlag(StorageCapabilities.Hierarchy)}");
+            Console.WriteLine($"  SupportsRead     : {providerMetadata.Capabilities.HasFlag(StorageCapabilities.Read)}");
+            Console.WriteLine($"  SupportsWrite    : {providerMetadata.Capabilities.HasFlag(StorageCapabilities.Write)}");
+            Console.WriteLine($"  SupportsListing  : {providerMetadata.Capabilities.HasFlag(StorageCapabilities.List)}");
+            Console.WriteLine($"  SupportsMetadata : {providerMetadata.Capabilities.HasFlag(StorageCapabilities.Read)}");
             Console.WriteLine();
 
             // --- Scheme check ---
             var sampleUri = StorageUri.Parse("adls://my-container/samples/test-file.txt");
-            Console.WriteLine($"CanHandle adls:// URI: {provider.CanHandle(sampleUri)}");
+            Console.WriteLine($"Provider serves adls:// URIs: {provider.Schemes.Contains(sampleUri.Scheme)}");
             Console.WriteLine();
 
             // The following operations require an active ADLS Gen2 / Azurite endpoint.
@@ -118,12 +115,12 @@ public sealed class Program
             // --- Move (atomic rename) ---
             var destUri = StorageUri.Parse($"adls://{filesystem}/samples/renamed.txt");
             Console.WriteLine($"Moving {uri}  ->  {destUri}");
-            await moveableProvider.MoveAsync(uri, destUri);
+            await provider.MoveAsync(uri, destUri);
             Console.WriteLine("  Move completed.");
 
             // --- Delete ---
             Console.WriteLine($"Deleting: {destUri}");
-            await deletableProvider.DeleteAsync(destUri);
+            await provider.DeleteAsync(destUri);
             Console.WriteLine("  Delete completed.");
             */
 

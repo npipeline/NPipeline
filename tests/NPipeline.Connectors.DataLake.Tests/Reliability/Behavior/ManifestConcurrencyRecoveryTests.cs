@@ -113,35 +113,34 @@ public sealed class ManifestConcurrencyRecoveryTests : IDisposable
     ///     it was frozen. Writers run one after another but each sees the same stale manifest, which is exactly the
     ///     interleaving of two concurrent read-modify-write appends.
     /// </summary>
-    private class StaleReadProvider : IStorageProvider
+    private class StaleReadProvider : StorageProvider
     {
         private byte[]? _frozen;
         private string _mainManifestFile = string.Empty;
 
         protected FileSystemStorageProvider Inner { get; } = new();
 
-        public StorageScheme Scheme => Inner.Scheme;
+        public override string Name => "Stale read";
 
-        public bool CanHandle(StorageUri uri) => Inner.CanHandle(uri);
+        public override IReadOnlyList<StorageScheme> Schemes => Inner.Schemes;
 
-        public Task<Stream> OpenReadAsync(StorageUri uri, CancellationToken cancellationToken = default) =>
+        public override StorageCapabilities Capabilities => Inner.Capabilities & ~(StorageCapabilities.Move | StorageCapabilities.AtomicMove | StorageCapabilities.Delete);
+
+        protected override Task<Stream> OpenReadCoreAsync(StorageUri uri, CancellationToken cancellationToken) =>
             IsMainManifest(uri) && _frozen is { } frozen
                 ? Task.FromResult<Stream>(new MemoryStream(frozen, false))
                 : Inner.OpenReadAsync(uri, cancellationToken);
 
-        public Task<Stream> OpenWriteAsync(StorageUri uri, CancellationToken cancellationToken = default) =>
-            Inner.OpenWriteAsync(uri, cancellationToken);
+        protected override Task<StorageWriteStream> OpenWriteCoreAsync(StorageUri uri, StorageWriteOptions? options, CancellationToken cancellationToken) =>
+            Inner.OpenWriteAsync(uri, options, cancellationToken);
 
-        public Task<bool> ExistsAsync(StorageUri uri, CancellationToken cancellationToken = default) =>
+        protected override Task<bool> ExistsCoreAsync(StorageUri uri, CancellationToken cancellationToken) =>
             Inner.ExistsAsync(uri, cancellationToken);
 
-        public IAsyncEnumerable<StorageItem> ListAsync(
-            StorageUri prefix,
-            bool recursive = false,
-            CancellationToken cancellationToken = default) =>
-            Inner.ListAsync(prefix, recursive, cancellationToken);
+        protected override IAsyncEnumerable<StorageItem> ListCoreAsync(StorageUri directory, bool recursive, CancellationToken cancellationToken) =>
+            Inner.ListAsync(directory, recursive, cancellationToken);
 
-        public Task<StorageMetadata?> GetMetadataAsync(StorageUri uri, CancellationToken cancellationToken = default) =>
+        protected override Task<StorageMetadata?> GetMetadataCoreAsync(StorageUri uri, CancellationToken cancellationToken) =>
             Inner.GetMetadataAsync(uri, cancellationToken);
 
         public static StaleReadProvider Create(bool moveable, string mainManifestFile)
@@ -161,10 +160,12 @@ public sealed class ManifestConcurrencyRecoveryTests : IDisposable
         private static bool IsMainManifest(StorageUri uri) =>
             uri.Path?.EndsWith("/_manifest/manifest.ndjson", StringComparison.Ordinal) == true;
 
-        private sealed class Moveable : StaleReadProvider, IMoveableStorageProvider
+        private sealed class Moveable : StaleReadProvider
         {
-            public Task MoveAsync(StorageUri sourceUri, StorageUri destinationUri, CancellationToken cancellationToken = default) =>
-                Inner.MoveAsync(sourceUri, destinationUri, cancellationToken);
+            public override StorageCapabilities Capabilities => Inner.Capabilities & ~StorageCapabilities.Delete;
+
+            protected override Task MoveCoreAsync(StorageUri source, StorageUri destination, CancellationToken cancellationToken) =>
+                Inner.MoveAsync(source, destination, cancellationToken);
         }
     }
 }

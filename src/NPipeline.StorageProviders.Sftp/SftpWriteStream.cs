@@ -18,28 +18,38 @@ public sealed class SftpWriteStream : Stream
     private readonly Stream _sftpStream;
     private bool _disposed;
 
+    private SftpWriteStream(IPooledConnection lease, Stream sftpStream)
+    {
+        _lease = lease ?? throw new ArgumentNullException(nameof(lease));
+        _sftpStream = sftpStream ?? throw new ArgumentNullException(nameof(sftpStream));
+    }
+
     /// <summary>
-    ///     Initializes a new instance of the <see cref="SftpWriteStream" /> class.
+    ///     Opens the remote file for writing, truncating an existing file. The returned stream owns <paramref name="lease" />;
+    ///     if opening fails, the caller keeps it.
     /// </summary>
     /// <param name="lease">The pooled connection lease.</param>
     /// <param name="remotePath">The remote file path.</param>
     /// <param name="createDirectory">Whether to create the parent directory if it doesn't exist.</param>
-    internal SftpWriteStream(
+    /// <param name="cancellationToken">Token to observe while waiting for the task to complete.</param>
+    internal static async Task<SftpWriteStream> OpenAsync(
         IPooledConnection lease,
         string remotePath,
-        bool createDirectory = true)
+        bool createDirectory,
+        CancellationToken cancellationToken)
     {
-        _lease = lease ?? throw new ArgumentNullException(nameof(lease));
+        ArgumentNullException.ThrowIfNull(lease);
 
         if (string.IsNullOrWhiteSpace(remotePath))
             throw new ArgumentException("Remote path cannot be null or whitespace.", nameof(remotePath));
 
-        // Ensure parent directory exists
         if (createDirectory)
-            EnsureParentDirectoryExists(lease.Client, remotePath);
+            await EnsureParentDirectoryExistsAsync(lease.Client, remotePath, cancellationToken).ConfigureAwait(false);
 
         // FileMode.Create truncates; SftpClient.OpenWrite opens with OpenOrCreate, which leaves the old file's tail after shorter content.
-        _sftpStream = lease.Client.Open(remotePath, FileMode.Create, FileAccess.Write);
+        var stream = await lease.Client.OpenAsync(remotePath, FileMode.Create, FileAccess.Write, cancellationToken).ConfigureAwait(false);
+
+        return new SftpWriteStream(lease, stream);
     }
 
     /// <inheritdoc />
@@ -176,19 +186,16 @@ public sealed class SftpWriteStream : Stream
         await base.DisposeAsync().ConfigureAwait(false);
     }
 
-    private static void EnsureParentDirectoryExists(SftpClient client, string remotePath)
+    /// <summary>Creates the parent directory of <paramref name="remotePath" /> and any missing ancestors.</summary>
+    internal static async Task EnsureParentDirectoryExistsAsync(SftpClient client, string remotePath, CancellationToken cancellationToken)
     {
         var parentPath = GetParentPath(remotePath);
 
         if (string.IsNullOrEmpty(parentPath))
             return;
 
-        // Check if directory exists
-        if (!client.Exists(parentPath))
-        {
-            // Create directory recursively
-            CreateDirectoryRecursive(client, parentPath);
-        }
+        if (!await client.ExistsAsync(parentPath, cancellationToken).ConfigureAwait(false))
+            await CreateDirectoryRecursiveAsync(client, parentPath, cancellationToken).ConfigureAwait(false);
     }
 
     private static string? GetParentPath(string path)
@@ -210,11 +217,10 @@ public sealed class SftpWriteStream : Stream
         return normalizedPath[..lastSlashIndex];
     }
 
-    private static void CreateDirectoryRecursive(SftpClient client, string path)
+    private static async Task CreateDirectoryRecursiveAsync(SftpClient client, string path, CancellationToken cancellationToken)
     {
         var parts = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
         var currentPath = string.Empty;
-        List<string>? failedPaths = null;
 
         foreach (var part in parts)
         {
@@ -224,25 +230,22 @@ public sealed class SftpWriteStream : Stream
 
             try
             {
-                if (!client.Exists(currentPath))
-                    client.CreateDirectory(currentPath);
+                if (!await client.ExistsAsync(currentPath, cancellationToken).ConfigureAwait(false))
+                    await client.CreateDirectoryAsync(currentPath, cancellationToken).ConfigureAwait(false);
             }
             catch (SshException ex)
             {
-                // Track failures but continue - directory might exist from race condition
-                // or we might not have permission. The subsequent Open will fail with
-                // a clear error if the directory truly doesn't exist.
-                failedPaths ??= [];
-                failedPaths.Add(currentPath);
-
-                // If this is a permission error, we want to know about it
-                if (ex.Message.Contains("permission", StringComparison.OrdinalIgnoreCase) ||
+                if (ex is SftpPermissionDeniedException ||
+                    ex.Message.Contains("permission", StringComparison.OrdinalIgnoreCase) ||
                     ex.Message.Contains("denied", StringComparison.OrdinalIgnoreCase))
                 {
                     throw new UnauthorizedAccessException(
                         $"Permission denied creating SFTP directory '{currentPath}': {ex.Message}",
                         ex);
                 }
+
+                // Any other failure is tolerated: the directory may exist from a race. The Open that follows fails
+                // with a clear error if the directory truly does not exist.
             }
         }
     }

@@ -1,4 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
+using NPipeline.StorageProviders.Abstractions;
+using NPipeline.StorageProviders.DependencyInjection;
+using NPipeline.StorageProviders.Models;
 
 namespace NPipeline.StorageProviders.Sftp.Tests;
 
@@ -20,7 +23,7 @@ public class ServiceCollectionExtensionsTests
         var serviceProvider = services.BuildServiceProvider();
         var options = serviceProvider.GetService<SftpStorageProviderOptions>();
         var factory = serviceProvider.GetService<SftpClientFactory>();
-        var provider = serviceProvider.GetService<SftpStorageProvider>();
+        var provider = serviceProvider.GetServices<IStorageProvider>().OfType<SftpStorageProvider>().SingleOrDefault();
 
         options.Should().NotBeNull();
         factory.Should().NotBeNull();
@@ -117,12 +120,34 @@ public class ServiceCollectionExtensionsTests
         var options2 = serviceProvider.GetService<SftpStorageProviderOptions>();
         var factory1 = serviceProvider.GetService<SftpClientFactory>();
         var factory2 = serviceProvider.GetService<SftpClientFactory>();
-        var provider1 = serviceProvider.GetService<SftpStorageProvider>();
-        var provider2 = serviceProvider.GetService<SftpStorageProvider>();
+        var provider1 = serviceProvider.GetServices<IStorageProvider>().Single();
+        var provider2 = serviceProvider.GetServices<IStorageProvider>().Single();
 
         // Assert
         options1.Should().BeSameAs(options2);
         factory1.Should().BeSameAs(factory2);
         provider1.Should().BeSameAs(provider2);
+    }
+
+    [Fact]
+    public void AddSftpStorageProvider_Twice_RegistersOneProvider()
+    {
+        var services = new ServiceCollection();
+
+        services.AddSftpStorageProvider().AddSftpStorageProvider();
+
+        services.Count(d => d.ServiceType == typeof(IStorageProvider)).Should().Be(1);
+    }
+
+    [Fact]
+    public void AddSftpStorageProvider_ProviderIsResolvableThroughIStorageResolver()
+    {
+        var services = new ServiceCollection();
+        services.AddSftpStorageProvider().AddStorageResolver(false);
+
+        using var serviceProvider = services.BuildServiceProvider();
+        var resolver = serviceProvider.GetRequiredService<IStorageResolver>();
+
+        resolver.Resolve(StorageUri.Parse("sftp://example.com/file.txt")).Should().BeOfType<SftpStorageProvider>();
     }
 }

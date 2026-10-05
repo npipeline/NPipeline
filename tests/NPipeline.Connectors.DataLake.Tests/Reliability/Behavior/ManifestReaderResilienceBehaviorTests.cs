@@ -180,7 +180,7 @@ public sealed class ManifestReaderResilienceBehaviorTests : IDisposable
         File.WriteAllText(file, string.Join('\n', lines));
     }
 
-    private sealed class FaultyProvider : IStorageProvider
+    private sealed class FaultyProvider : StorageProvider
     {
         private readonly FileSystemStorageProvider _inner = new();
 
@@ -194,11 +194,14 @@ public sealed class ManifestReaderResilienceBehaviorTests : IDisposable
 
         public int ListCalls { get; private set; }
 
-        public StorageScheme Scheme => _inner.Scheme;
+        public override string Name => "Faulty";
 
-        public bool CanHandle(StorageUri uri) => _inner.CanHandle(uri);
+        public override IReadOnlyList<StorageScheme> Schemes => _inner.Schemes;
 
-        public Task<Stream> OpenReadAsync(StorageUri uri, CancellationToken cancellationToken = default)
+        public override StorageCapabilities Capabilities =>
+            _inner.Capabilities & ~(StorageCapabilities.Move | StorageCapabilities.AtomicMove | StorageCapabilities.Delete);
+
+        protected override Task<Stream> OpenReadCoreAsync(StorageUri uri, CancellationToken cancellationToken)
         {
             if (uri.Path?.Contains("/_manifest/snapshots/", StringComparison.Ordinal) == true)
             {
@@ -211,29 +214,29 @@ public sealed class ManifestReaderResilienceBehaviorTests : IDisposable
             return _inner.OpenReadAsync(uri, cancellationToken);
         }
 
-        public Task<Stream> OpenWriteAsync(StorageUri uri, CancellationToken cancellationToken = default) =>
-            _inner.OpenWriteAsync(uri, cancellationToken);
+        protected override Task<StorageWriteStream> OpenWriteCoreAsync(StorageUri uri, StorageWriteOptions? options, CancellationToken cancellationToken) =>
+            _inner.OpenWriteAsync(uri, options, cancellationToken);
 
-        public Task<bool> ExistsAsync(StorageUri uri, CancellationToken cancellationToken = default) =>
+        protected override Task<bool> ExistsCoreAsync(StorageUri uri, CancellationToken cancellationToken) =>
             _inner.ExistsAsync(uri, cancellationToken);
 
-        public async IAsyncEnumerable<StorageItem> ListAsync(
-            StorageUri prefix,
-            bool recursive = false,
-            [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        protected override async IAsyncEnumerable<StorageItem> ListCoreAsync(
+            StorageUri directory,
+            bool recursive,
+            [EnumeratorCancellation] CancellationToken cancellationToken)
         {
             ListCalls++;
 
             if (ListFailures.TryDequeue(out var failure))
                 throw failure;
 
-            await foreach (var item in _inner.ListAsync(prefix, recursive, cancellationToken))
+            await foreach (var item in _inner.ListAsync(directory, recursive, cancellationToken))
             {
                 yield return item;
             }
         }
 
-        public Task<StorageMetadata?> GetMetadataAsync(StorageUri uri, CancellationToken cancellationToken = default) =>
+        protected override Task<StorageMetadata?> GetMetadataCoreAsync(StorageUri uri, CancellationToken cancellationToken) =>
             MetadataFailures.TryDequeue(out var failure)
                 ? Task.FromException<StorageMetadata?>(failure)
                 : _inner.GetMetadataAsync(uri, cancellationToken);

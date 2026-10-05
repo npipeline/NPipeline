@@ -3,6 +3,7 @@ using System.Text.Json;
 using AwesomeAssertions;
 using Azure.Storage.Blobs.Models;
 using NPipeline.StorageProviders.Models;
+using NPipeline.StorageProviders.Abstractions;
 using Xunit;
 
 namespace NPipeline.StorageProviders.Azure.Tests;
@@ -792,49 +793,11 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IClassFixture<Azu
     #region Provider Metadata Tests
 
     [Fact]
-    public void GetMetadata_ReturnsCorrectProviderMetadata()
+    public void ProviderIdentity_ReportsAzureSchemeAndCapabilities()
     {
-        // Act
-        var metadata = _provider!.GetMetadata();
-
-        // Assert
-        metadata.Should().NotBeNull();
-        metadata.Name.Should().Be("Azure Blob Storage");
-        metadata.SupportedSchemes.Should().Contain("azure");
-        metadata.SupportsRead.Should().BeTrue();
-        metadata.SupportsWrite.Should().BeTrue();
-        metadata.SupportsListing.Should().BeTrue();
-        metadata.SupportsMetadata.Should().BeTrue();
-        metadata.SupportsHierarchy.Should().BeFalse();
-    }
-
-    [Fact]
-    public void CanHandle_WithAzureScheme_ReturnsTrue()
-    {
-        // Arrange
-        var uri = StorageUri.Parse("azure://container/blob.txt");
-
-        // Act
-        var canHandle = _provider!.CanHandle(uri);
-
-        // Assert
-        canHandle.Should().BeTrue();
-    }
-
-    [Fact]
-    public void CanHandle_WithOtherScheme_ReturnsFalse()
-    {
-        // Arrange
-        var s3Uri = StorageUri.Parse("s3://bucket/key.txt");
-        var fileUri = StorageUri.FromFilePath("/path/to/file.txt");
-
-        // Act
-        var canHandleS3 = _provider!.CanHandle(s3Uri);
-        var canHandleFile = _provider.CanHandle(fileUri);
-
-        // Assert
-        canHandleS3.Should().BeFalse();
-        canHandleFile.Should().BeFalse();
+        _provider!.Name.Should().Be("Azure Blob Storage");
+        _provider.Schemes.Should().ContainSingle().Which.Should().Be(StorageScheme.Azure);
+        _provider.Capabilities.Should().Be(StorageCapabilities.Read | StorageCapabilities.Write | StorageCapabilities.List);
     }
 
     #endregion

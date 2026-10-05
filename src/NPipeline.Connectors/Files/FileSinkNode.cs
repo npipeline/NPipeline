@@ -71,7 +71,7 @@ public abstract class FileSinkNode<T> : SinkNode<T>
         {
             AtomicWrite.Always => true,
             AtomicWrite.Never => false,
-            _ => provider is IMoveableStorageProvider,
+            _ => provider.Capabilities.HasFlag(StorageCapabilities.AtomicMove),
         };
 
         var writeUri = viaTemporary ? FileNodeSupport.TemporaryUri(target) : target;
@@ -122,7 +122,7 @@ public abstract class FileSinkNode<T> : SinkNode<T>
 
         await using (chain.ConfigureAwait(false))
         {
-            var raw = chain.Push(await provider.OpenWriteAsync(writeUri, cancellationToken).ConfigureAwait(false));
+            var raw = chain.Push(await provider.OpenWriteAsync(writeUri, null, cancellationToken).ConfigureAwait(false));
             counted = chain.Push(new CountingStream(raw));
             var output = chain.Push(FileNodeSupport.Compress(counted, compression));
 
@@ -145,9 +145,9 @@ public abstract class FileSinkNode<T> : SinkNode<T>
 
     private async Task PublishAsync(IStorageProvider provider, StorageUri temporary, StorageUri target, CancellationToken cancellationToken)
     {
-        if (provider is IMoveableStorageProvider moveable)
+        if (provider.Capabilities.HasFlag(StorageCapabilities.Move))
         {
-            await moveable.MoveAsync(temporary, target, cancellationToken).ConfigureAwait(false);
+            await provider.MoveAsync(temporary, target, cancellationToken).ConfigureAwait(false);
             return;
         }
 
@@ -156,7 +156,7 @@ public abstract class FileSinkNode<T> : SinkNode<T>
 
         await using (source.ConfigureAwait(false))
         {
-            var destination = await provider.OpenWriteAsync(target, cancellationToken).ConfigureAwait(false);
+            var destination = await provider.OpenWriteAsync(target, null, cancellationToken).ConfigureAwait(false);
 
             await using (destination.ConfigureAwait(false))
             {

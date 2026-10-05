@@ -36,4 +36,13 @@ public sealed class S3CompatibleStorageProviderOptions : S3CoreOptions
     ///     Default is true - required by most S3-compatible services.
     /// </summary>
     public bool ForcePathStyle { get; init; } = true;
+
+    /// <summary>
+    ///     Gets or initializes the URI schemes this provider handles. Default is <c>["s3"]</c>.
+    /// </summary>
+    /// <remarks>
+    ///     Set a different scheme, for example <c>["minio"]</c>, to register the provider next to the AWS provider
+    ///     in one resolver.
+    /// </remarks>
+    public IReadOnlyList<string> Schemes { get; init; } = ["s3"];
 }

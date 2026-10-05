@@ -12,8 +12,6 @@ public static class MySqlStorageResolverFactory
     /// </summary>
     public static StorageResolver CreateResolver()
     {
-        var resolver = new StorageResolver();
-        resolver.RegisterProvider(new MySqlDatabaseStorageProvider());
-        return resolver;
+        return new StorageResolver([new MySqlDatabaseStorageProvider()]);
     }
 }

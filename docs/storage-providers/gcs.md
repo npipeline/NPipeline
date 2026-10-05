@@ -136,7 +136,7 @@ services.AddGcsStorageProvider(options =>
 });
 ```
 
-Registers: `IStorageProvider`, `IStorageProviderMetadataProvider`
+Registers: `IStorageProvider` (capabilities: Read, Write, List, Delete, Move)
 
 ## Features
 

@@ -1,3 +1,5 @@
+using NPipeline.StorageProviders.Exceptions;
+using NPipeline.StorageProviders.Abstractions;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using NPipeline.Connectors.MongoDB.Attributes;
@@ -23,7 +25,7 @@ public class MongoStorageUriIntegrationTests(MongoTestContainerFixture fixture)
     {
         var provider = new MongoDatabaseStorageProvider();
         var uri = StorageUri.Parse("mongodb://localhost:27017/mydb");
-        provider.CanHandle(uri).Should().BeTrue();
+        provider.Schemes.Contains(uri.Scheme).Should().BeTrue();
     }
 
     [Fact]
@@ -31,7 +33,7 @@ public class MongoStorageUriIntegrationTests(MongoTestContainerFixture fixture)
     {
         var provider = new MongoDatabaseStorageProvider();
         var uri = StorageUri.Parse("mongodb+srv://cluster0.example.com/mydb");
-        provider.CanHandle(uri).Should().BeTrue();
+        provider.Schemes.Contains(uri.Scheme).Should().BeTrue();
     }
 
     [Fact]
@@ -42,8 +44,8 @@ public class MongoStorageUriIntegrationTests(MongoTestContainerFixture fixture)
         var postgres = StorageUri.Parse("postgresql://localhost:5432/mydb");
         var sql = StorageUri.Parse("sqlserver://localhost/mydb");
 
-        provider.CanHandle(postgres).Should().BeFalse();
-        provider.CanHandle(sql).Should().BeFalse();
+        provider.Schemes.Contains(postgres.Scheme).Should().BeFalse();
+        provider.Schemes.Contains(sql.Scheme).Should().BeFalse();
     }
 
     [Fact]
@@ -90,7 +92,7 @@ public class MongoStorageUriIntegrationTests(MongoTestContainerFixture fixture)
     {
         var resolver = MongoStorageResolverFactory.CreateResolver();
         var uri = StorageUri.Parse("mongodb://localhost:27017/mydb");
-        var act = () => resolver.ResolveProvider(uri);
+        var act = () => resolver.Resolve(uri);
 
         // Should not throw - provider is registered
         act.Should().NotThrow();

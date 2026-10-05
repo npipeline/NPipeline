@@ -1,6 +1,7 @@
 ﻿using Amazon;
 using Amazon.Runtime;
 using Microsoft.Extensions.DependencyInjection;
+using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Models;
 using NPipeline.StorageProviders.S3.Aws;
 
@@ -276,9 +277,9 @@ public sealed class Program
 
                 var size = item.IsDirectory
                     ? "-"
-                    : FormatBytes(item.Size);
+                    : FormatBytes(item.Size ?? 0);
 
-                var modified = item.LastModified.ToString("yyyy-MM-dd HH:mm:ss");
+                var modified = (item.LastModified?.ToString("yyyy-MM-dd HH:mm:ss") ?? "-");
 
                 Console.WriteLine($"{type} {item.Uri.Path.PadRight(40)} | Size: {size.PadRight(12)} | Modified: {modified}");
                 count++;
@@ -302,9 +303,9 @@ public sealed class Program
 
                 var size = item.IsDirectory
                     ? "-"
-                    : FormatBytes(item.Size);
+                    : FormatBytes(item.Size ?? 0);
 
-                var modified = item.LastModified.ToString("yyyy-MM-dd HH:mm:ss");
+                var modified = (item.LastModified?.ToString("yyyy-MM-dd HH:mm:ss") ?? "-");
 
                 Console.WriteLine($"{type} {item.Uri.Path.PadRight(40)} | Size: {size.PadRight(12)} | Modified: {modified}");
                 count++;
@@ -481,34 +482,24 @@ public sealed class Program
         try
         {
             // Resolve the S3 storage provider from DI container
-            var provider = serviceProvider.GetRequiredService<AwsS3StorageProvider>();
+            var provider = serviceProvider.GetServices<IStorageProvider>().OfType<AwsS3StorageProvider>().Single();
 
             Console.WriteLine("✓ Successfully resolved S3StorageProvider from DI container");
             Console.WriteLine();
 
             // Use the provider to get provider metadata
-            var providerMetadata = provider.GetMetadata();
+            var providerMetadata = provider;
 
             Console.WriteLine("Provider Metadata:");
             Console.WriteLine("─────────────────────────────────────────────────────────────");
             Console.WriteLine($"  Name:                {providerMetadata.Name}");
-            Console.WriteLine($"  Supported Schemes:   {string.Join(", ", providerMetadata.SupportedSchemes)}");
-            Console.WriteLine($"  Supports Read:       {providerMetadata.SupportsRead}");
-            Console.WriteLine($"  Supports Write:      {providerMetadata.SupportsWrite}");
-            Console.WriteLine($"  Supports Listing:    {providerMetadata.SupportsListing}");
-            Console.WriteLine($"  Supports Metadata:   {providerMetadata.SupportsMetadata}");
-            Console.WriteLine($"  Supports Hierarchy: {providerMetadata.SupportsHierarchy}");
+            Console.WriteLine($"  Supported Schemes:   {string.Join(", ", providerMetadata.Schemes)}");
+            Console.WriteLine($"  Supports Read:       {providerMetadata.Capabilities.HasFlag(NPipeline.StorageProviders.Abstractions.StorageCapabilities.Read)}");
+            Console.WriteLine($"  Supports Write:      {providerMetadata.Capabilities.HasFlag(NPipeline.StorageProviders.Abstractions.StorageCapabilities.Write)}");
+            Console.WriteLine($"  Supports Listing:    {providerMetadata.Capabilities.HasFlag(NPipeline.StorageProviders.Abstractions.StorageCapabilities.List)}");
+            Console.WriteLine($"  Supports Metadata:   {providerMetadata.Capabilities.HasFlag(NPipeline.StorageProviders.Abstractions.StorageCapabilities.Read)}");
+            Console.WriteLine($"  Supports Hierarchy: {providerMetadata.Capabilities.HasFlag(NPipeline.StorageProviders.Abstractions.StorageCapabilities.Hierarchy)}");
 
-            if (providerMetadata.Capabilities.Count > 0)
-            {
-                Console.WriteLine();
-                Console.WriteLine("  Capabilities:");
-
-                foreach (var kvp in providerMetadata.Capabilities)
-                {
-                    Console.WriteLine($"    {kvp.Key}: {kvp.Value}");
-                }
-            }
 
             Console.WriteLine("─────────────────────────────────────────────────────────────");
             Console.WriteLine();

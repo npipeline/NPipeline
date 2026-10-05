@@ -11,6 +11,8 @@ using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using FakeItEasy;
 using NPipeline.StorageProviders.Models;
+using NPipeline.StorageProviders.Abstractions;
+using NPipeline.StorageProviders.Exceptions;
 using Xunit;
 
 namespace NPipeline.StorageProviders.Azure.Tests;
@@ -230,56 +232,35 @@ public class AzureBlobStorageProviderTests
     }
 
     [Fact]
-    public void Scheme_ReturnsAzure()
+    public void Schemes_ContainsOnlyAzure()
     {
-        // Act & Assert
-        _provider.Scheme.Should().Be(StorageScheme.Azure);
+        _provider.Schemes.Should().ContainSingle().Which.Should().Be(StorageScheme.Azure);
     }
 
     [Fact]
-    public void CanHandle_WithAzureScheme_ReturnsTrue()
+    public void Name_IsAzureBlobStorage()
     {
-        // Arrange
-        var uri = StorageUri.Parse("azure://container/blob");
-
-        // Act
-        var result = _provider.CanHandle(uri);
-
-        // Assert
-        result.Should().BeTrue();
+        _provider.Name.Should().Be("Azure Blob Storage");
     }
 
     [Fact]
-    public void CanHandle_WithFileScheme_ReturnsFalse()
+    public void Capabilities_DeclaresReadWriteList()
     {
-        // Arrange
-        var uri = StorageUri.Parse("file:///path/to/file");
-
-        // Act
-        var result = _provider.CanHandle(uri);
-
-        // Assert
-        result.Should().BeFalse();
+        _provider.Capabilities.Should().Be(StorageCapabilities.Read | StorageCapabilities.Write | StorageCapabilities.List);
     }
 
     [Fact]
-    public void CanHandle_WithNullUri_ThrowsArgumentNullException()
+    public async Task DeleteAsync_NotSupported_ThrowsUnsupportedStorageCapabilityException()
     {
-        // Act & Assert
-        Assert.Throws<ArgumentNullException>(() => _provider.CanHandle(null!));
+        await Assert.ThrowsAsync<UnsupportedStorageCapabilityException>(
+            () => _provider.DeleteAsync(StorageUri.Parse("azure://test-container/test-blob")));
     }
 
     [Fact]
-    public void CanHandle_WithS3Scheme_ReturnsFalse()
+    public async Task MoveAsync_NotSupported_ThrowsUnsupportedStorageCapabilityException()
     {
-        // Arrange
-        var uri = StorageUri.Parse("s3://bucket/key");
-
-        // Act
-        var result = _provider.CanHandle(uri);
-
-        // Assert
-        result.Should().BeFalse();
+        await Assert.ThrowsAsync<UnsupportedStorageCapabilityException>(
+            () => _provider.MoveAsync(StorageUri.Parse("azure://test-container/a"), StorageUri.Parse("azure://test-container/b")));
     }
 
     [Fact]
@@ -477,7 +458,7 @@ public class AzureBlobStorageProviderTests
 
         // Assert
         stream.Should().NotBeNull();
-        stream.Should().BeOfType<AzureBlobWriteStream>();
+        stream.Should().BeOfType<PassThroughWriteStream>();
     }
 
     [Fact]
@@ -501,7 +482,7 @@ public class AzureBlobStorageProviderTests
 
         // Assert
         stream.Should().NotBeNull();
-        stream.Should().BeOfType<AzureBlobWriteStream>();
+        stream.Should().BeOfType<PassThroughWriteStream>();
     }
 
     [Fact]
@@ -739,13 +720,40 @@ public class AzureBlobStorageProviderTests
 
         var directory = items.FirstOrDefault(i => i.IsDirectory);
         directory.Should().NotBeNull();
-        directory!.Uri.Path.Should().Be("/prefix/subdir");
-        directory.Size.Should().Be(0);
+        directory!.Uri.Path.Should().Be("/prefix/subdir/");
+        directory.Size.Should().BeNull();
+        directory.LastModified.Should().BeNull();
 
         var file = items.FirstOrDefault(i => !i.IsDirectory);
         file.Should().NotBeNull();
         file!.Uri.Path.Should().Be("/prefix/file1.txt");
         file.Size.Should().Be(100);
+    }
+
+    [Fact]
+    public async Task ListAsync_Recursive_SkipsFolderMarkersAndKeepsCallerParameters()
+    {
+        var uri = StorageUri.Parse("azure://test-container/prefix?serviceUrl=http://localhost:10000/acct");
+
+        A.CallTo(() => _fakeClientFactory.GetClientAsync(A<StorageUri>._, A<CancellationToken>._))
+            .Returns(Task.FromResult(_fakeBlobServiceClient));
+        A.CallTo(() => _fakeBlobServiceClient.GetBlobContainerClient("test-container")).Returns(_fakeContainerClient);
+        A.CallTo(() => _fakeContainerClient.ExistsAsync(A<CancellationToken>._))
+            .Returns(Task.FromResult(Response.FromValue(true, A.Fake<Response>())));
+
+        string? capturedPrefix = null;
+
+        A.CallTo(() => _fakeContainerClient.GetBlobsAsync(A<BlobTraits>._, A<BlobStates>._, A<string>._, A<CancellationToken>._))
+            .Invokes((BlobTraits _, BlobStates _, string p, CancellationToken _) => capturedPrefix = p)
+            .Returns(new TestBlobItemAsyncPageable([BlobItemBuilder("prefix/", 0), BlobItemBuilder("prefix/a.txt", 5)]));
+
+        var items = await _provider.ListAsync(uri, true).ToListAsync();
+
+        capturedPrefix.Should().Be("prefix/");
+        items.Should().ContainSingle();
+        items[0].Uri.Path.Should().Be("/prefix/a.txt");
+        items[0].Uri.Parameters.Should().ContainKey("serviceUrl");
+        items[0].IsDirectory.Should().BeFalse();
     }
 
     [Fact]
@@ -902,47 +910,6 @@ public class AzureBlobStorageProviderTests
 
         // Act & Assert
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() => _provider.GetMetadataAsync(uri));
-    }
-
-    [Fact]
-    public void GetMetadata_ReturnsCorrectProviderMetadata()
-    {
-        // Act
-        var metadata = _provider.GetMetadata();
-
-        // Assert
-        metadata.Should().NotBeNull();
-        metadata.Name.Should().Be("Azure Blob Storage");
-        metadata.SupportedSchemes.Should().Contain("azure");
-        metadata.SupportsRead.Should().BeTrue();
-        metadata.SupportsWrite.Should().BeTrue();
-        metadata.SupportsListing.Should().BeTrue();
-        metadata.SupportsMetadata.Should().BeTrue();
-        metadata.SupportsHierarchy.Should().BeFalse();
-        metadata.Capabilities["blockBlobUploadThresholdBytes"].Should().Be(64 * 1024 * 1024);
-        metadata.Capabilities["supportsServiceUrl"].Should().Be(true);
-        metadata.Capabilities["supportsConnectionString"].Should().Be(true);
-        metadata.Capabilities["supportsSasToken"].Should().Be(true);
-        metadata.Capabilities["supportsAccountKey"].Should().Be(true);
-        metadata.Capabilities["supportsDefaultCredentialChain"].Should().Be(true);
-    }
-
-    [Fact]
-    public void GetMetadata_WithCustomOptions_ReturnsCorrectCapabilities()
-    {
-        // Arrange
-        var customOptions = new AzureBlobStorageProviderOptions
-        {
-            BlockBlobUploadThresholdBytes = 128 * 1024 * 1024,
-        };
-
-        var customProvider = new AzureBlobStorageProvider(_fakeClientFactory, customOptions);
-
-        // Act
-        var metadata = customProvider.GetMetadata();
-
-        // Assert
-        metadata.Capabilities["blockBlobUploadThresholdBytes"].Should().Be(128 * 1024 * 1024);
     }
 
     [Fact]

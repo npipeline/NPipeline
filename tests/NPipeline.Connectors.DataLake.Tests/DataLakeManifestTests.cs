@@ -16,8 +16,8 @@ public sealed class DataLakeManifestTests : IAsyncDisposable
         _tempDir = Path.Combine(Path.GetTempPath(), $"datalake_manifest_{Guid.NewGuid():N}");
         _ = Directory.CreateDirectory(_tempDir);
         _tableUri = StorageUri.FromFilePath(_tempDir);
-        var resolver = StorageProviderFactory.CreateResolver();
-        _provider = StorageProviderFactory.GetProviderOrThrow(resolver, _tableUri);
+        var resolver = StorageResolver.Default;
+        _provider = resolver.Resolve(_tableUri);
     }
 
     public async ValueTask DisposeAsync()

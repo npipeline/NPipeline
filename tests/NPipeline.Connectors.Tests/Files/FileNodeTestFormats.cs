@@ -87,35 +87,39 @@ public sealed class LineSink(LineSinkOptions options) : FileSinkNode<string?>(op
 }
 
 /// <summary>An in-memory provider that can move objects (like the file system) and records every URI it opens.</summary>
-public sealed class MoveableProvider(InMemoryStorageProvider inner) : IStorageProvider, IMoveableStorageProvider, IDeletableStorageProvider
+public sealed class MoveableProvider(InMemoryStorageProvider inner) : StorageProvider
 {
     public List<StorageUri> Reads { get; } = [];
 
     public List<(StorageUri From, StorageUri To)> Moves { get; } = [];
 
-    public StorageScheme Scheme => inner.Scheme;
+    public override string Name => "Moveable in-memory";
 
-    public bool CanHandle(StorageUri uri) => inner.CanHandle(uri);
+    public override IReadOnlyList<StorageScheme> Schemes => inner.Schemes;
 
-    public Task<Stream> OpenReadAsync(StorageUri uri, CancellationToken cancellationToken = default)
+    public override StorageCapabilities Capabilities => inner.Capabilities | StorageCapabilities.Move | StorageCapabilities.AtomicMove;
+
+    protected override Task<Stream> OpenReadCoreAsync(StorageUri uri, CancellationToken cancellationToken)
     {
         Reads.Add(uri);
         return inner.OpenReadAsync(uri, cancellationToken);
     }
 
-    public Task<Stream> OpenWriteAsync(StorageUri uri, CancellationToken cancellationToken = default) => inner.OpenWriteAsync(uri, cancellationToken);
+    protected override Task<StorageWriteStream> OpenWriteCoreAsync(StorageUri uri, StorageWriteOptions? options, CancellationToken cancellationToken) =>
+        inner.OpenWriteAsync(uri, options, cancellationToken);
 
-    public Task<bool> ExistsAsync(StorageUri uri, CancellationToken cancellationToken = default) => inner.ExistsAsync(uri, cancellationToken);
+    protected override Task<StorageMetadata?> GetMetadataCoreAsync(StorageUri uri, CancellationToken cancellationToken) =>
+        inner.GetMetadataAsync(uri, cancellationToken);
 
-    public IAsyncEnumerable<StorageItem> ListAsync(StorageUri prefix, bool recursive = false, CancellationToken cancellationToken = default) =>
-        inner.ListAsync(prefix, recursive, cancellationToken);
+    protected override IAsyncEnumerable<StorageItem> ListCoreAsync(StorageUri directory, bool recursive, CancellationToken cancellationToken) =>
+        inner.ListAsync(directory, recursive, cancellationToken);
 
-    public Task DeleteAsync(StorageUri uri, CancellationToken cancellationToken = default) => inner.DeleteAsync(uri, cancellationToken);
+    protected override Task DeleteCoreAsync(StorageUri uri, CancellationToken cancellationToken) => inner.DeleteAsync(uri, cancellationToken);
 
-    public async Task MoveAsync(StorageUri sourceUri, StorageUri destinationUri, CancellationToken cancellationToken = default)
+    protected override async Task MoveCoreAsync(StorageUri source, StorageUri destination, CancellationToken cancellationToken)
     {
-        Moves.Add((sourceUri, destinationUri));
-        inner.Put(destinationUri, inner.Get(sourceUri));
-        await inner.DeleteAsync(sourceUri, cancellationToken);
+        Moves.Add((source, destination));
+        inner.Put(destination, inner.Get(source));
+        await inner.DeleteAsync(source, cancellationToken);
     }
 }

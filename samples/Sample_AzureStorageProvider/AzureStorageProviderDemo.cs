@@ -87,24 +87,15 @@ public class AzureStorageProviderDemo
         Console.WriteLine("│  Provider Metadata                                               │");
         Console.WriteLine("└──────────────────────────────────────────────────────────────────┘");
 
-        var metadata = _provider.GetMetadata();
+        var metadata = _provider;
         Console.WriteLine($"  Name: {metadata.Name}");
-        Console.WriteLine($"  Supported Schemes: {string.Join(", ", metadata.SupportedSchemes)}");
-        Console.WriteLine($"  Supports Read: {metadata.SupportsRead}");
-        Console.WriteLine($"  Supports Write: {metadata.SupportsWrite}");
-        Console.WriteLine($"  Supports Listing: {metadata.SupportsListing}");
-        Console.WriteLine($"  Supports Metadata: {metadata.SupportsMetadata}");
-        Console.WriteLine($"  Supports Hierarchy: {metadata.SupportsHierarchy}");
+        Console.WriteLine($"  Supported Schemes: {string.Join(", ", metadata.Schemes)}");
+        Console.WriteLine($"  Supports Read: {metadata.Capabilities.HasFlag(NPipeline.StorageProviders.Abstractions.StorageCapabilities.Read)}");
+        Console.WriteLine($"  Supports Write: {metadata.Capabilities.HasFlag(NPipeline.StorageProviders.Abstractions.StorageCapabilities.Write)}");
+        Console.WriteLine($"  Supports Listing: {metadata.Capabilities.HasFlag(NPipeline.StorageProviders.Abstractions.StorageCapabilities.List)}");
+        Console.WriteLine($"  Supports Metadata: {metadata.Capabilities.HasFlag(NPipeline.StorageProviders.Abstractions.StorageCapabilities.Read)}");
+        Console.WriteLine($"  Supports Hierarchy: {metadata.Capabilities.HasFlag(NPipeline.StorageProviders.Abstractions.StorageCapabilities.Hierarchy)}");
 
-        if (metadata.Capabilities != null && metadata.Capabilities.Count > 0)
-        {
-            Console.WriteLine("  Capabilities:");
-
-            foreach (var capability in metadata.Capabilities)
-            {
-                Console.WriteLine($"    - {capability.Key}: {capability.Value}");
-            }
-        }
 
         Console.WriteLine();
         await Task.CompletedTask;
@@ -128,7 +119,7 @@ public class AzureStorageProviderDemo
             // Write content to blob
             Console.WriteLine($"  Writing to: {uri}");
 
-            await using (var writeStream = await _provider.OpenWriteAsync(uri, cancellationToken))
+            await using (var writeStream = await _provider.OpenWriteAsync(uri, null, cancellationToken))
             {
                 await writeStream.WriteAsync(Encoding.UTF8.GetBytes(content), cancellationToken);
             }
@@ -199,7 +190,7 @@ public class AzureStorageProviderDemo
             // Upload CSV to blob storage
             Console.WriteLine($"  Uploading CSV to: {csvUri}");
 
-            await using (var writeStream = await _provider.OpenWriteAsync(csvUri, cancellationToken))
+            await using (var writeStream = await _provider.OpenWriteAsync(csvUri, null, cancellationToken))
             {
                 await writeStream.WriteAsync(Encoding.UTF8.GetBytes(csvContent.ToString()), cancellationToken);
             }
@@ -249,7 +240,7 @@ public class AzureStorageProviderDemo
                 processedCsvContent.AppendLine($"{data.ToCsv()},{status}");
             }
 
-            await using (var writeStream = await _provider.OpenWriteAsync(outputUri, cancellationToken))
+            await using (var writeStream = await _provider.OpenWriteAsync(outputUri, null, cancellationToken))
             {
                 await writeStream.WriteAsync(Encoding.UTF8.GetBytes(processedCsvContent.ToString()), cancellationToken);
             }
@@ -292,7 +283,7 @@ public class AzureStorageProviderDemo
             Console.WriteLine($"  Uploading large file to: {uri}");
             var stopwatch = Stopwatch.StartNew();
 
-            await using (var writeStream = await _provider.OpenWriteAsync(uri, cancellationToken))
+            await using (var writeStream = await _provider.OpenWriteAsync(uri, null, cancellationToken))
             {
                 await writeStream.WriteAsync(buffer, cancellationToken);
             }
@@ -361,7 +352,7 @@ public class AzureStorageProviderDemo
                 var uri = StorageUri.Parse($"azure://{_containerName}/{file}");
                 var content = $"Content of {file}";
 
-                await using (var writeStream = await _provider.OpenWriteAsync(uri, cancellationToken))
+                await using (var writeStream = await _provider.OpenWriteAsync(uri, null, cancellationToken))
                 {
                     await writeStream.WriteAsync(Encoding.UTF8.GetBytes(content), cancellationToken);
                 }
@@ -451,7 +442,7 @@ public class AzureStorageProviderDemo
             Console.WriteLine($"  Uploading blob with content type: {uri}");
             var contentTypeUri = StorageUri.Parse($"azure://{_containerName}/{blobPath}?contentType=text/plain");
 
-            await using (var writeStream = await _provider.OpenWriteAsync(contentTypeUri, cancellationToken))
+            await using (var writeStream = await _provider.OpenWriteAsync(contentTypeUri, null, cancellationToken))
             {
                 await writeStream.WriteAsync(Encoding.UTF8.GetBytes(content), cancellationToken);
             }

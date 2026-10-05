@@ -17,9 +17,6 @@ namespace NPipeline.Connectors.DataLake;
 /// <typeparam name="T">The record type being written.</typeparam>
 public sealed class DataLakePartitionedSinkNode<T> : SinkNode<T>
 {
-    private static readonly Lazy<IStorageResolver> DefaultResolver =
-        new(() => StorageProviderFactory.CreateResolver());
-
     private readonly DataLakeParquetOptions _options;
     private readonly PartitionSpec<T>? _partitionSpec;
     private readonly IStorageProvider? _provider;
@@ -43,7 +40,7 @@ public sealed class DataLakePartitionedSinkNode<T> : SinkNode<T>
 
         _tableBasePath = tableBasePath;
         _partitionSpec = partitionSpec;
-        _resolver = resolver ?? DefaultResolver.Value;
+        _resolver = resolver ?? StorageResolver.Default;
         _options = (options ?? DataLakeParquetOptions.Default).Validated();
     }
 
@@ -75,9 +72,7 @@ public sealed class DataLakePartitionedSinkNode<T> : SinkNode<T>
         PipelineContext context,
         CancellationToken cancellationToken)
     {
-        var provider = _provider ?? StorageProviderFactory.GetProviderOrThrow(
-            _resolver ?? throw new InvalidOperationException("No storage resolver configured."),
-            _tableBasePath);
+        var provider = _provider ?? (_resolver ?? throw new InvalidOperationException("No storage resolver configured.")).Resolve(_tableBasePath);
 
         var snapshotId = ManifestWriter.GenerateSnapshotId();
 

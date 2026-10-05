@@ -140,7 +140,7 @@ services.AddSftpStorageProvider(options =>
 });
 ```
 
-Registers: `IStorageProvider`, `IStorageProviderMetadataProvider`
+Registers: `IStorageProvider` (capabilities: Read, Write, List, Delete, Move, AtomicMove, Hierarchy)
 
 ## Features
 
@@ -195,7 +195,7 @@ var uri2 = StorageUri.Parse("sftp://server2.example.com/path/file2.csv");
 
 ## Error Handling
 
-The provider translates common SFTP exceptions into `SftpStorageException`:
+The provider translates SSH.NET exceptions into standard .NET exceptions:
 
 | Scenario | Exception |
 |----------|-----------|

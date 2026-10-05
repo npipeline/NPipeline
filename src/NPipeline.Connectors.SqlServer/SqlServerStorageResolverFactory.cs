@@ -26,8 +26,6 @@ public static class SqlServerStorageResolverFactory
     /// </remarks>
     public static StorageResolver CreateResolver()
     {
-        var resolver = new StorageResolver();
-        resolver.RegisterProvider(new SqlServerDatabaseStorageProvider());
-        return resolver;
+        return new StorageResolver([new SqlServerDatabaseStorageProvider()]);
     }
 }

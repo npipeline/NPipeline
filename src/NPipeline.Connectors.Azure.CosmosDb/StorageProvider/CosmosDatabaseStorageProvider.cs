@@ -16,23 +16,18 @@ namespace NPipeline.Connectors.Azure.CosmosDb.StorageProvider;
 ///     Stream-based operations (OpenReadAsync, OpenWriteAsync, ExistsAsync) are not supported
 ///     as database providers are intended for connection management only.
 /// </remarks>
-public sealed class CosmosDatabaseStorageProvider : IDatabaseStorageProvider, IStorageProviderMetadataProvider
+public sealed class CosmosDatabaseStorageProvider : NPipeline.StorageProviders.Abstractions.StorageProvider, IDatabaseStorageProvider
 {
-    private static readonly StorageProviderMetadata Metadata = new()
-    {
-        Name = "Azure Cosmos DB",
-        SupportedSchemes = ["cosmosdb", "cosmos", "cosmos-mongo", "cosmos-cassandra"],
-        SupportsRead = false,
-        SupportsWrite = false,
-        SupportsListing = false,
-        SupportsMetadata = false,
-        SupportsHierarchy = false,
-    };
+    private static readonly IReadOnlyList<StorageScheme> SupportedSchemeList = [new StorageScheme("cosmosdb"), new StorageScheme("cosmos"), new StorageScheme("cosmos-mongo"), new StorageScheme("cosmos-cassandra")];
 
-    /// <summary>
-    ///     Gets the primary URI scheme this provider targets.
-    /// </summary>
-    public StorageScheme Scheme => new("cosmosdb");
+    /// <inheritdoc />
+    public override string Name => "Azure Cosmos DB";
+
+    /// <inheritdoc />
+    public override IReadOnlyList<StorageScheme> Schemes => SupportedSchemeList;
+
+    /// <inheritdoc />
+    public override StorageCapabilities Capabilities => StorageCapabilities.None;
 
     /// <summary>
     ///     Generates a Cosmos DB connection string from the specified <see cref="StorageUri" />.
@@ -87,18 +82,6 @@ public sealed class CosmosDatabaseStorageProvider : IDatabaseStorageProvider, IS
             Endpoint = info.Endpoint,
             AccountKey = info.AccountKey ?? info.Password,
         });
-    }
-
-    /// <summary>
-    ///     Indicates whether this provider can handle the specified <see cref="StorageUri" />.
-    /// </summary>
-    /// <param name="uri">The storage location to evaluate.</param>
-    /// <returns>True if the provider can handle the given uri; otherwise false.</returns>
-    public bool CanHandle(StorageUri uri)
-    {
-        ArgumentNullException.ThrowIfNull(uri);
-
-        return uri.Scheme.Value is "cosmosdb" or "cosmos" or "cosmos-mongo" or "cosmos-cassandra";
     }
 
     /// <summary>
@@ -185,54 +168,6 @@ public sealed class CosmosDatabaseStorageProvider : IDatabaseStorageProvider, IS
                 $"Failed to establish Cosmos DB connection to {uri.Host}/{uri.Path}.", ex);
         }
     }
-
-    /// <summary>
-    ///     Opens a readable stream for the specified <see cref="StorageUri" />.
-    ///     Not supported for database providers.
-    /// </summary>
-    /// <param name="uri">The storage location to read from.</param>
-    /// <param name="cancellationToken">Token to observe while waiting for the task to complete.</param>
-    /// <returns>A task producing a readable <see cref="Stream" />.</returns>
-    /// <exception cref="NotSupportedException">Always thrown for database providers.</exception>
-    public Task<Stream> OpenReadAsync(StorageUri uri, CancellationToken cancellationToken = default) =>
-        throw new NotSupportedException(
-            $"OpenReadAsync is not supported by {nameof(CosmosDatabaseStorageProvider)}. " +
-            $"Database providers are intended for connection management only. " +
-            $"Use {nameof(IDatabaseConnection)} and {nameof(IDatabaseCommand)} for database operations.");
-
-    /// <summary>
-    ///     Opens a writable stream for the specified <see cref="StorageUri" />.
-    ///     Not supported for database providers.
-    /// </summary>
-    /// <param name="uri">The storage location to write to.</param>
-    /// <param name="cancellationToken">Token to observe while waiting for the task to complete.</param>
-    /// <returns>A task producing a writable <see cref="Stream" />.</returns>
-    /// <exception cref="NotSupportedException">Always thrown for database providers.</exception>
-    public Task<Stream> OpenWriteAsync(StorageUri uri, CancellationToken cancellationToken = default) =>
-        throw new NotSupportedException(
-            $"OpenWriteAsync is not supported by {nameof(CosmosDatabaseStorageProvider)}. " +
-            $"Database providers are intended for connection management only. " +
-            $"Use {nameof(IDatabaseConnection)} and {nameof(IDatabaseCommand)} for database operations.");
-
-    /// <summary>
-    ///     Checks whether a resource exists at the specified <see cref="StorageUri" />.
-    ///     Not supported for database providers.
-    /// </summary>
-    /// <param name="uri">The storage location to check.</param>
-    /// <param name="cancellationToken">Token to observe while waiting for the task to complete.</param>
-    /// <returns>True if the resource exists; otherwise false.</returns>
-    /// <exception cref="NotSupportedException">Always thrown for database providers.</exception>
-    public Task<bool> ExistsAsync(StorageUri uri, CancellationToken cancellationToken = default) =>
-        throw new NotSupportedException(
-            $"ExistsAsync is not supported by {nameof(CosmosDatabaseStorageProvider)}. " +
-            $"Database providers are intended for connection management only. " +
-            $"Use {nameof(IDatabaseConnection)} and {nameof(IDatabaseCommand)} for database operations.");
-
-    /// <summary>
-    ///     Returns metadata describing the provider's capabilities and supported schemes.
-    /// </summary>
-    /// <returns>A <see cref="StorageProviderMetadata" /> instance describing the provider.</returns>
-    public StorageProviderMetadata GetMetadata() => Metadata;
 
     private static CosmosUriInfo ParseCosmosUri(StorageUri uri)
     {

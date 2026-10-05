@@ -19,8 +19,6 @@ public static class SnowflakeStorageResolverFactory
     /// </returns>
     public static StorageResolver CreateResolver()
     {
-        var resolver = new StorageResolver();
-        resolver.RegisterProvider(new SnowflakeDatabaseStorageProvider());
-        return resolver;
+        return new StorageResolver([new SnowflakeDatabaseStorageProvider()]);
     }
 }

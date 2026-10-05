@@ -30,13 +30,13 @@ public enum FileCompression
 public enum AtomicWrite
 {
     /// <summary>
-    ///     Only when the provider can move objects (<see cref="IMoveableStorageProvider" />, such as the file system and
-    ///     ADLS). Object stores write directly: their uploads already become visible all at once, and copying a temporary
+    ///     Only when the provider can rename atomically (<see cref="StorageCapabilities.AtomicMove" />, such as the file
+    ///     system, ADLS and SFTP). Object stores write directly: their uploads already become visible all at once, and copying a temporary
     ///     object would double the I/O.
     /// </summary>
     Auto,
 
-    /// <summary>Always; on a provider that cannot move objects, the temporary object is copied into place and deleted.</summary>
+    /// <summary>Always; on a provider that cannot move objects (<see cref="StorageCapabilities.Move" />), the temporary object is copied into place and deleted.</summary>
     Always,
 
     /// <summary>Never; write the target directly.</summary>

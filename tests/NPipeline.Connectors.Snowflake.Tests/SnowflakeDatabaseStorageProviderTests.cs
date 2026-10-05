@@ -1,3 +1,5 @@
+using NPipeline.StorageProviders.Exceptions;
+using NPipeline.StorageProviders.Abstractions;
 using AwesomeAssertions;
 using NPipeline.StorageProviders.Models;
 
@@ -13,7 +15,7 @@ public sealed class SnowflakeDatabaseStorageProviderTests
         var uri = StorageUri.Parse("snowflake://myaccount/mydb");
 
         // Act
-        var result = provider.CanHandle(uri);
+        var result = provider.Schemes.Contains(uri.Scheme);
 
         // Assert
         result.Should().BeTrue();
@@ -27,20 +29,10 @@ public sealed class SnowflakeDatabaseStorageProviderTests
         var uri = StorageUri.Parse("mssql://localhost/mydb");
 
         // Act
-        var result = provider.CanHandle(uri);
+        var result = provider.Schemes.Contains(uri.Scheme);
 
         // Assert
         result.Should().BeFalse();
-    }
-
-    [Fact]
-    public void CanHandle_WithNullUri_ShouldThrow()
-    {
-        // Arrange
-        var provider = new SnowflakeDatabaseStorageProvider();
-
-        // Act & Assert
-        Assert.Throws<ArgumentNullException>(() => provider.CanHandle(null!));
     }
 
     [Fact]
@@ -54,53 +46,48 @@ public sealed class SnowflakeDatabaseStorageProviderTests
     }
 
     [Fact]
-    public async Task OpenReadAsync_ShouldThrowNotSupportedException()
+    public async Task OpenReadAsync_ThrowsUnsupportedStorageCapability()
     {
         // Arrange
         var provider = new SnowflakeDatabaseStorageProvider();
         var uri = StorageUri.Parse("snowflake://myaccount/mydb");
 
         // Act & Assert
-        await Assert.ThrowsAsync<NotSupportedException>(() => provider.OpenReadAsync(uri));
+        await Assert.ThrowsAsync<UnsupportedStorageCapabilityException>(() => provider.OpenReadAsync(uri));
     }
 
     [Fact]
-    public async Task OpenWriteAsync_ShouldThrowNotSupportedException()
+    public async Task OpenWriteAsync_ThrowsUnsupportedStorageCapability()
     {
         // Arrange
         var provider = new SnowflakeDatabaseStorageProvider();
         var uri = StorageUri.Parse("snowflake://myaccount/mydb");
 
         // Act & Assert
-        await Assert.ThrowsAsync<NotSupportedException>(() => provider.OpenWriteAsync(uri));
+        await Assert.ThrowsAsync<UnsupportedStorageCapabilityException>(() => provider.OpenWriteAsync(uri));
     }
 
     [Fact]
-    public async Task ExistsAsync_ShouldThrowNotSupportedException()
+    public async Task ExistsAsync_ThrowsUnsupportedStorageCapability()
     {
         // Arrange
         var provider = new SnowflakeDatabaseStorageProvider();
         var uri = StorageUri.Parse("snowflake://myaccount/mydb");
 
         // Act & Assert
-        await Assert.ThrowsAsync<NotSupportedException>(() => provider.ExistsAsync(uri));
+        await Assert.ThrowsAsync<UnsupportedStorageCapabilityException>(() => provider.ExistsAsync(uri));
     }
 
     [Fact]
-    public void GetMetadata_ShouldReturnValidMetadata()
+    public void Provider_DeclaresNameSchemesAndNoFileCapabilities()
     {
         // Arrange
         var provider = new SnowflakeDatabaseStorageProvider();
-
-        // Act
-        var metadata = provider.GetMetadata();
 
         // Assert
-        metadata.Should().NotBeNull();
-        metadata.Name.Should().Be("Snowflake");
-        metadata.SupportedSchemes.Should().Contain("snowflake");
-        metadata.SupportsRead.Should().BeFalse();
-        metadata.SupportsWrite.Should().BeFalse();
+        Assert.Equal("Snowflake", provider.Name);
+        Assert.Equal(StorageCapabilities.None, provider.Capabilities);
+        Assert.Contains(new StorageScheme("snowflake"), provider.Schemes);
     }
 
     [Fact]

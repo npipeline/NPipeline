@@ -27,8 +27,6 @@ public static class CosmosStorageResolverFactory
     /// </remarks>
     public static StorageResolver CreateResolver()
     {
-        var resolver = new StorageResolver();
-        resolver.RegisterProvider(new CosmosDatabaseStorageProvider());
-        return resolver;
+        return new StorageResolver([new CosmosDatabaseStorageProvider()]);
     }
 }

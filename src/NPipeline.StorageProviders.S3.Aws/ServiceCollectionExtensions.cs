@@ -1,4 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using NPipeline.StorageProviders.Abstractions;
 
 namespace NPipeline.StorageProviders.S3.Aws;
 
@@ -17,20 +19,12 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         Action<AwsS3StorageProviderOptions>? configure = null)
     {
-        // Configure options
+        ArgumentNullException.ThrowIfNull(services);
+
         var options = new AwsS3StorageProviderOptions();
         configure?.Invoke(options);
 
-        // Register options as singleton
-        _ = services.AddSingleton(options);
-
-        // Register AwsS3ClientFactory as singleton
-        _ = services.AddSingleton<AwsS3ClientFactory>();
-
-        // Register AwsS3StorageProvider as singleton
-        _ = services.AddSingleton<AwsS3StorageProvider>();
-
-        return services;
+        return Register(services, options);
     }
 
     /// <summary>
@@ -43,16 +37,18 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         AwsS3StorageProviderOptions options)
     {
+        ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(options);
 
-        // Register options as singleton
-        _ = services.AddSingleton(options);
+        return Register(services, options);
+    }
 
-        // Register AwsS3ClientFactory as singleton
-        _ = services.AddSingleton<AwsS3ClientFactory>();
-
-        // Register AwsS3StorageProvider as singleton
-        _ = services.AddSingleton<AwsS3StorageProvider>();
+    private static IServiceCollection Register(IServiceCollection services, AwsS3StorageProviderOptions options)
+    {
+        services.TryAddSingleton(options);
+        services.TryAddSingleton<AwsS3ClientFactory>();
+        services.TryAddSingleton<AwsS3StorageProvider>();
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IStorageProvider, AwsS3StorageProvider>());
 
         return services;
     }

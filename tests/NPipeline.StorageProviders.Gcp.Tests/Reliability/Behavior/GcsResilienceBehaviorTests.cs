@@ -121,7 +121,7 @@ public sealed class GcsResilienceBehaviorTests
                 return Task.FromException<Object>(ApiError(HttpStatusCode.ServiceUnavailable));
             });
 
-        var exception = await Assert.ThrowsAsync<GcsStorageException>(() => provider.ExistsAsync(Uri));
+        var exception = await Assert.ThrowsAsync<IOException>(() => provider.ExistsAsync(Uri));
 
         attempts.Should().Be(3);
 
@@ -307,7 +307,7 @@ public sealed class GcsResilienceBehaviorTests
         using var server = new FakeGcsServer(_ => (HttpStatusCode.ServiceUnavailable, null));
         var provider = CreateRealProvider(server, Resilience.None);
 
-        _ = await Assert.ThrowsAsync<GcsStorageException>(() => provider.ExistsAsync(Uri));
+        _ = await Assert.ThrowsAsync<IOException>(() => provider.ExistsAsync(Uri));
 
         // The Google SDK would try three times on its own; with its retry off, one attempt is one request.
         server.Requests.Should().Be(1);
@@ -364,7 +364,7 @@ public sealed class GcsResilienceBehaviorTests
         var stream = await provider.OpenWriteAsync(Uri);
         await stream.WriteAsync(new byte[] { 1, 2, 3 });
 
-        _ = await Assert.ThrowsAsync<GcsStorageException>(async () => await stream.DisposeAsync());
+        _ = await Assert.ThrowsAsync<IOException>(async () => await stream.DisposeAsync());
 
         // The SDK's in-session resume would send the data up to three times; with it off, one attempt is one PUT.
         server.UploadPuts.Should().Be(1);

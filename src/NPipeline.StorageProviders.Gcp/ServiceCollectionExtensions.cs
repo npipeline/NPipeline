@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using NPipeline.StorageProviders.Abstractions;
 
 namespace NPipeline.StorageProviders.Gcp;
@@ -20,23 +21,10 @@ public static class ServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        // Configure options
         var options = new GcsStorageProviderOptions();
         configure?.Invoke(options);
-        options.Validate();
 
-        // Register options as singleton
-        _ = services.AddSingleton(options);
-
-        // Register GcsClientFactory as singleton
-        _ = services.AddSingleton<GcsClientFactory>();
-
-        // Register GcsStorageProvider as singleton
-        _ = services.AddSingleton<GcsStorageProvider>();
-        _ = services.AddSingleton<IStorageProvider>(sp => sp.GetRequiredService<GcsStorageProvider>());
-        _ = services.AddSingleton<IStorageProviderMetadataProvider>(sp => sp.GetRequiredService<GcsStorageProvider>());
-
-        return services;
+        return Register(services, options);
     }
 
     /// <summary>
@@ -51,18 +39,17 @@ public static class ServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(options);
+
+        return Register(services, options);
+    }
+
+    private static IServiceCollection Register(IServiceCollection services, GcsStorageProviderOptions options)
+    {
         options.Validate();
 
-        // Register options as singleton
-        _ = services.AddSingleton(options);
-
-        // Register GcsClientFactory as singleton
-        _ = services.AddSingleton<GcsClientFactory>();
-
-        // Register GcsStorageProvider as singleton
-        _ = services.AddSingleton<GcsStorageProvider>();
-        _ = services.AddSingleton<IStorageProvider>(sp => sp.GetRequiredService<GcsStorageProvider>());
-        _ = services.AddSingleton<IStorageProviderMetadataProvider>(sp => sp.GetRequiredService<GcsStorageProvider>());
+        services.TryAddSingleton(options);
+        services.TryAddSingleton<GcsClientFactory>();
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IStorageProvider, GcsStorageProvider>());
 
         return services;
     }

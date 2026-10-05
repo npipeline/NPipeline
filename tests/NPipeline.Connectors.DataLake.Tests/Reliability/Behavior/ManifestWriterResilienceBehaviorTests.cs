@@ -200,7 +200,7 @@ public sealed class ManifestWriterResilienceBehaviorTests : IDisposable
             .ToList();
     }
 
-    private sealed class FaultyProvider : IStorageProvider, IMoveableStorageProvider
+    private sealed class FaultyProvider : StorageProvider
     {
         private readonly FileSystemStorageProvider _inner = new();
 
@@ -214,7 +214,13 @@ public sealed class ManifestWriterResilienceBehaviorTests : IDisposable
 
         public int MoveCalls { get; set; }
 
-        public async Task MoveAsync(StorageUri sourceUri, StorageUri destinationUri, CancellationToken cancellationToken = default)
+        public override string Name => "Faulty";
+
+        public override IReadOnlyList<StorageScheme> Schemes => _inner.Schemes;
+
+        public override StorageCapabilities Capabilities => _inner.Capabilities & ~StorageCapabilities.Delete;
+
+        protected override async Task MoveCoreAsync(StorageUri source, StorageUri destination, CancellationToken cancellationToken)
         {
             MoveCalls++;
             OnMove?.Invoke();
@@ -222,7 +228,7 @@ public sealed class ManifestWriterResilienceBehaviorTests : IDisposable
             if (MoveFailures.TryDequeue(out var failure))
                 throw failure;
 
-            await _inner.MoveAsync(sourceUri, destinationUri, cancellationToken);
+            await _inner.MoveAsync(source, destination, cancellationToken);
 
             if (FailAfterMove is { } after)
             {
@@ -231,26 +237,19 @@ public sealed class ManifestWriterResilienceBehaviorTests : IDisposable
             }
         }
 
-        public StorageScheme Scheme => _inner.Scheme;
-
-        public bool CanHandle(StorageUri uri) => _inner.CanHandle(uri);
-
-        public Task<Stream> OpenReadAsync(StorageUri uri, CancellationToken cancellationToken = default) =>
+        protected override Task<Stream> OpenReadCoreAsync(StorageUri uri, CancellationToken cancellationToken) =>
             _inner.OpenReadAsync(uri, cancellationToken);
 
-        public Task<Stream> OpenWriteAsync(StorageUri uri, CancellationToken cancellationToken = default) =>
-            _inner.OpenWriteAsync(uri, cancellationToken);
+        protected override Task<StorageWriteStream> OpenWriteCoreAsync(StorageUri uri, StorageWriteOptions? options, CancellationToken cancellationToken) =>
+            _inner.OpenWriteAsync(uri, options, cancellationToken);
 
-        public Task<bool> ExistsAsync(StorageUri uri, CancellationToken cancellationToken = default) =>
+        protected override Task<bool> ExistsCoreAsync(StorageUri uri, CancellationToken cancellationToken) =>
             _inner.ExistsAsync(uri, cancellationToken);
 
-        public IAsyncEnumerable<StorageItem> ListAsync(
-            StorageUri prefix,
-            bool recursive = false,
-            CancellationToken cancellationToken = default) =>
-            _inner.ListAsync(prefix, recursive, cancellationToken);
+        protected override IAsyncEnumerable<StorageItem> ListCoreAsync(StorageUri directory, bool recursive, CancellationToken cancellationToken) =>
+            _inner.ListAsync(directory, recursive, cancellationToken);
 
-        public Task<StorageMetadata?> GetMetadataAsync(StorageUri uri, CancellationToken cancellationToken = default) =>
+        protected override Task<StorageMetadata?> GetMetadataCoreAsync(StorageUri uri, CancellationToken cancellationToken) =>
             MetadataFailures.TryDequeue(out var failure)
                 ? Task.FromException<StorageMetadata?>(failure)
                 : _inner.GetMetadataAsync(uri, cancellationToken);

@@ -3,6 +3,7 @@ using Amazon.S3;
 using Amazon.S3.Model;
 using AwesomeAssertions;
 using FakeItEasy;
+using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Models;
 using Xunit;
 
@@ -55,107 +56,41 @@ public class S3CompatibleStorageProviderTests
         _provider.Should().NotBeNull();
     }
 
-    // ── Scheme / CanHandle ────────────────────────────────────────────────
+    // ── Name / Schemes / Capabilities ─────────────────────────────────────
 
     [Fact]
-    public void Scheme_ReturnsS3()
+    public void Name_IsS3Compatible()
     {
-        _provider.Scheme.Should().Be(StorageScheme.S3);
+        _provider.Name.Should().Be("S3-Compatible");
     }
 
     [Fact]
-    public void CanHandle_WithS3Scheme_ReturnsTrue()
+    public void Schemes_DefaultToS3()
     {
-        _provider.CanHandle(StorageUri.Parse("s3://bucket/key")).Should().BeTrue();
+        _provider.Schemes.Should().ContainSingle().Which.Should().Be(StorageScheme.S3);
     }
 
     [Fact]
-    public void CanHandle_WithFileScheme_ReturnsFalse()
+    public void Schemes_FollowOptionsSchemes()
     {
-        _provider.CanHandle(StorageUri.Parse("file:///path/to/file")).Should().BeFalse();
-    }
-
-    [Fact]
-    public void CanHandle_WithAzureScheme_ReturnsFalse()
-    {
-        _provider.CanHandle(StorageUri.Parse("azure://container/blob")).Should().BeFalse();
-    }
-
-    [Fact]
-    public void CanHandle_WithNullUri_ThrowsArgumentNullException()
-    {
-        Assert.Throws<ArgumentNullException>(() => _provider.CanHandle(null!));
-    }
-
-    // ── GetMetadata ───────────────────────────────────────────────────────
-
-    [Fact]
-    public void GetMetadata_ReturnsCompatibleProviderName()
-    {
-        var metadata = _provider.GetMetadata();
-        metadata.Name.Should().Be("S3-Compatible");
-    }
-
-    [Fact]
-    public void GetMetadata_SupportsS3Scheme()
-    {
-        var metadata = _provider.GetMetadata();
-        metadata.SupportedSchemes.Should().Contain("s3");
-    }
-
-    [Fact]
-    public void GetMetadata_SupportsReadWriteListMetadata()
-    {
-        var metadata = _provider.GetMetadata();
-        metadata.SupportsRead.Should().BeTrue();
-        metadata.SupportsWrite.Should().BeTrue();
-        metadata.SupportsListing.Should().BeTrue();
-        metadata.SupportsMetadata.Should().BeTrue();
-    }
-
-    [Fact]
-    public void GetMetadata_DoesNotSupportHierarchy()
-    {
-        _provider.GetMetadata().SupportsHierarchy.Should().BeFalse();
-    }
-
-    [Fact]
-    public void GetMetadata_CapabilitiesContainEndpoint()
-    {
-        var metadata = _provider.GetMetadata();
-        metadata.Capabilities.Should().ContainKey("endpoint");
-    }
-
-    [Fact]
-    public void GetMetadata_CapabilitiesContainForcePathStyle()
-    {
-        var metadata = _provider.GetMetadata();
-        metadata.Capabilities.Should().ContainKey("forcePathStyle");
-    }
-
-    [Fact]
-    public void GetMetadata_CapabilitiesContainMultipartThreshold()
-    {
-        var metadata = _provider.GetMetadata();
-        metadata.Capabilities.Should().ContainKey("multipartUploadThresholdBytes");
-        metadata.Capabilities["multipartUploadThresholdBytes"].Should().Be(64L * 1024 * 1024);
-    }
-
-    [Fact]
-    public void GetMetadata_WithCustomThreshold_ReturnsCorrectCapability()
-    {
-        var customOptions = new S3CompatibleStorageProviderOptions
+        var options = new S3CompatibleStorageProviderOptions
         {
             ServiceUrl = new Uri("http://localhost:9000"),
             AccessKey = "key",
             SecretKey = "secret",
-            MultipartUploadThresholdBytes = 128 * 1024 * 1024,
+            Schemes = ["minio", "r2"],
         };
 
-        var customProvider = new S3CompatibleStorageProvider(_fakeClientFactory, customOptions);
+        var provider = new S3CompatibleStorageProvider(_fakeClientFactory, options);
 
-        customProvider.GetMetadata().Capabilities["multipartUploadThresholdBytes"]
-            .Should().Be(128L * 1024 * 1024);
+        provider.Schemes.Select(s => s.Value).Should().Equal("minio", "r2");
+    }
+
+    [Fact]
+    public void Capabilities_DeclaresObjectStoreSet()
+    {
+        _provider.Capabilities.Should().Be(
+            StorageCapabilities.Read | StorageCapabilities.Write | StorageCapabilities.List | StorageCapabilities.Delete | StorageCapabilities.Move);
     }
 
     // ── OpenReadAsync ─────────────────────────────────────────────────────
@@ -258,7 +193,7 @@ public class S3CompatibleStorageProviderTests
 
         var stream = await _provider.OpenWriteAsync(uri);
 
-        stream.Should().NotBeNull().And.BeOfType<S3WriteStream>();
+        stream.Should().NotBeNull().And.BeOfType<PassThroughWriteStream>();
         await stream.DisposeAsync();
     }
 
@@ -270,7 +205,7 @@ public class S3CompatibleStorageProviderTests
 
         var stream = await _provider.OpenWriteAsync(uri);
 
-        stream.Should().NotBeNull().And.BeOfType<S3WriteStream>();
+        stream.Should().NotBeNull().And.BeOfType<PassThroughWriteStream>();
         await stream.DisposeAsync();
     }
 

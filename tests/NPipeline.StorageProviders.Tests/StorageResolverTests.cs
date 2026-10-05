@@ -1,80 +1,71 @@
 using AwesomeAssertions;
-using NPipeline.StorageProviders;
 using NPipeline.StorageProviders.Abstractions;
+using NPipeline.StorageProviders.Exceptions;
 using NPipeline.StorageProviders.Models;
 
-namespace NPipeline.Connectors.Tests;
+namespace NPipeline.StorageProviders.Tests;
 
 public sealed class StorageResolverTests
 {
     [Fact]
-    public void ResolveProvider_ProviderRefusesUri_ReturnsNull()
+    public void Resolve_SchemeServedByProvider_ReturnsThatProvider()
     {
-        // The provider claims the "foo" scheme but its CanHandle refuses the URI: the resolver must not return it.
-        var resolver = new StorageResolver();
-        resolver.RegisterProvider(new FooProvider());
+        var multi = new TestStorageProvider("multi", StorageCapabilities.None, "foo", "bar");
+        var other = new TestStorageProvider("other", StorageCapabilities.None, "baz");
+        var resolver = new StorageResolver([multi, other]);
 
-        resolver.ResolveProvider(StorageUri.Parse("foo://bucket/path")).Should().BeNull();
+        resolver.Resolve(StorageUri.Parse("foo://bucket/key")).Should().BeSameAs(multi);
+        resolver.Resolve(StorageUri.Parse("bar://bucket/key")).Should().BeSameAs(multi);
+        resolver.Resolve(StorageUri.Parse("baz://bucket/key")).Should().BeSameAs(other);
+        resolver.Providers.Should().Equal(multi, other);
     }
 
     [Fact]
-    public void ResolveProvider_CanHandleThrows_Propagates()
+    public void Resolve_UnknownScheme_ThrowsStorageProviderNotFoundException()
     {
-        var resolver = new StorageResolver();
-        resolver.RegisterProvider(new ThrowingProvider());
+        var resolver = new StorageResolver([new TestStorageProvider("foo", StorageCapabilities.None, "foo")]);
 
-        var act = () => resolver.ResolveProvider(StorageUri.Parse("foo://bucket/path"));
+        var act = () => resolver.Resolve(StorageUri.Parse("nope://bucket/key"));
 
-        act.Should().Throw<InvalidOperationException>().WithMessage("misconfigured");
+        act.Should().Throw<StorageProviderNotFoundException>().Which.Scheme.Should().Be("nope");
+        typeof(StorageProviderNotFoundException).IsPublic.Should().BeTrue();
     }
 
     [Fact]
-    public void RegisterProvider_SameTypeRegisteredTwice_AllowsMultipleInstances()
+    public void TryResolve_UnknownScheme_ReturnsFalse()
     {
-        var resolver = new StorageResolver();
-        resolver.RegisterProvider(new FooProvider());
-        resolver.RegisterProvider(new FooProvider()); // same type
+        var resolver = new StorageResolver([]);
 
-        var all = resolver.GetAvailableProviders().ToArray();
-
-        all.Count(p => p is FooProvider).Should().Be(2);
-        all.All(p => p.Scheme.ToString() == "foo").Should().BeTrue();
+        resolver.TryResolve(StorageUri.Parse("nope://bucket/key"), out var provider).Should().BeFalse();
+        provider.Should().BeNull();
     }
 
     [Fact]
-    public void GetProviderOrThrow_UnknownScheme_ThrowsPublicStorageProviderNotFoundException()
+    public void Constructor_DuplicateScheme_ThrowsNamingBothProviders()
     {
-        var act = () => StorageProviderFactory.GetProviderOrThrow(new StorageResolver(), StorageUri.Parse("nope://bucket/key"));
+        var first = new TestStorageProvider("First", StorageCapabilities.None, "s3");
+        var second = new TestStorageProvider("Second", StorageCapabilities.None, "s3");
 
-        act.Should().Throw<NPipeline.StorageProviders.Exceptions.StorageProviderNotFoundException>()
-            .Which.Scheme.Should().Be("nope");
+        var act = () => new StorageResolver([first, second]);
 
-        typeof(NPipeline.StorageProviders.Exceptions.StorageProviderNotFoundException).IsPublic.Should().BeTrue();
+        act.Should().Throw<ArgumentException>().Which.Message.Should().Contain("First").And.Contain("Second").And.Contain("s3");
     }
 
-    private sealed class FooProvider : IStorageProvider
+    [Fact]
+    public void Constructor_SameInstanceListedTwice_IsAccepted()
     {
-        public StorageScheme Scheme => new("foo");
+        var provider = new TestStorageProvider("foo", StorageCapabilities.None, "foo");
 
-        public bool CanHandle(StorageUri uri) => false;
+        var resolver = new StorageResolver([provider, provider]);
 
-        public Task<Stream> OpenReadAsync(StorageUri uri, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-
-        public Task<Stream> OpenWriteAsync(StorageUri uri, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-
-        public Task<bool> ExistsAsync(StorageUri uri, CancellationToken cancellationToken = default) => Task.FromResult(false);
+        resolver.Providers.Should().ContainSingle();
     }
 
-    private sealed class ThrowingProvider : IStorageProvider
+    [Fact]
+    public void Default_ServesTheFileSystemOnly()
     {
-        public StorageScheme Scheme => new("foo");
-
-        public bool CanHandle(StorageUri uri) => throw new InvalidOperationException("misconfigured");
-
-        public Task<Stream> OpenReadAsync(StorageUri uri, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-
-        public Task<Stream> OpenWriteAsync(StorageUri uri, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-
-        public Task<bool> ExistsAsync(StorageUri uri, CancellationToken cancellationToken = default) => Task.FromResult(false);
+        StorageResolver.Default.Providers.Should().ContainSingle().Which.Should().BeOfType<FileSystemStorageProvider>();
+        StorageResolver.Default.Resolve(StorageUri.FromFilePath(Path.GetTempPath())).Should().BeOfType<FileSystemStorageProvider>();
+        StorageResolver.Default.Should().BeSameAs(StorageResolver.Default);
     }
 }

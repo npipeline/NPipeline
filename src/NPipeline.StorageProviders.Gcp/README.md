@@ -58,9 +58,12 @@ services.AddGcsStorageProvider(options =>
     options.Resilience = GcsStorageResilience.Default with { Attempts = 5 };
 });
 
+services.AddStorageResolver(); // routes gs:// URIs to the provider
+
 var provider = services
     .BuildServiceProvider()
-    .GetRequiredService<GcsStorageProvider>();
+    .GetRequiredService<IStorageResolver>()
+    .Resolve(StorageUri.Parse("gs://my-bucket/"));
 ```
 
 ### Configuration Options
@@ -110,15 +113,31 @@ if (exists)
 }
 ```
 
+### Deleting and Moving Objects
+
+```csharp
+// Deleting a missing object succeeds.
+await provider.DeleteAsync(uri);
+
+// GCS has no rename, so a move copies the object on the server and then deletes the source.
+// The destination is overwritten. A missing source throws FileNotFoundException.
+await provider.MoveAsync(
+    StorageUri.Parse("gs://my-bucket/incoming/data.csv"),
+    StorageUri.Parse("gs://my-bucket/processed/data.csv"));
+```
+
+The provider declares `Read | Write | List | Delete | Move`. It declares neither `Hierarchy` (a bare prefix is not an object, so `ExistsAsync` returns `false` for it) nor `AtomicMove` (a failure between the copy and the delete leaves both objects).
+
 ### Listing Objects
 
 ```csharp
-// List all objects with a given prefix
+// List the direct children of a prefix. Sub-prefixes come back as entries with IsDirectory = true
+// and null Size and LastModified. A recursive listing yields every object below the prefix and no directory entries.
 var objects = provider.ListAsync(StorageUri.Parse("gs://my-bucket/logs/"));
 
 await foreach (var obj in objects)
 {
-    Console.WriteLine($"{obj.Uri} ({obj.Size} bytes)");
+    Console.WriteLine($"{obj.Uri} ({obj.Size?.ToString() ?? "-"} bytes)");
 }
 
 // Recursively list nested objects
@@ -259,7 +278,11 @@ in-session resume of resumable uploads, and metadata requests also pass `RetryOp
   `client.Service.HttpClient.MessageHandler.NumTries = 1` on it. Otherwise the SDK's upload resume runs inside each
   provider attempt and the attempts multiply.
 
-A `GcsWriteStream` that you construct directly, rather than through `OpenWriteAsync`, uploads once without retrying.
+A `GcsWriteStream` that you construct directly, rather than through the provider's `OpenWriteAsync`, uploads once without retrying.
+
+## Errors
+
+Failures follow the storage provider contract and keep the Google exception as the inner exception: 401 and 403 become `UnauthorizedAccessException`, 404 becomes `FileNotFoundException` (`GetMetadataAsync` returns `null` and `ExistsAsync` returns `false` instead), 400 becomes `ArgumentException`, and any other failure becomes `IOException`. `GcsStorageException` no longer exists; catch `IOException`.
 
 ## Important Notes
 

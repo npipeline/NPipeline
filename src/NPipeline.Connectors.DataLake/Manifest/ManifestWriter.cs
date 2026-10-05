@@ -20,7 +20,7 @@ namespace NPipeline.Connectors.DataLake.Manifest;
 ///         Each flush writes two files: the per-snapshot manifest <c>_manifest/snapshots/{snapshotId}.ndjson</c>, which
 ///         holds every entry this writer has flushed and is written only by this writer, and then the main manifest,
 ///         which it appends to by reading the file, adding the new entries, and replacing it (by an atomic rename when the
-///         provider implements <see cref="IMoveableStorageProvider" />, otherwise by overwriting it in place).
+///         provider declares <see cref="StorageCapabilities.AtomicMove" />, otherwise by overwriting it in place).
 ///     </para>
 ///     <para>
 ///         The main manifest is last-writer-wins: there is no conditional write, so when two writers append at the same
@@ -197,7 +197,7 @@ public sealed class ManifestWriter : IAsyncDisposable
         // what readers use to recover entries a concurrent writer overwrote in the main manifest
         var content = BuildNdJsonContent([.. _flushedEntries, .. _pendingEntries]);
 
-        var stream = await _provider.OpenWriteAsync(_snapshotManifestUri, cancellationToken)
+        var stream = await _provider.OpenWriteAsync(_snapshotManifestUri, null, cancellationToken)
             .ConfigureAwait(false);
 
         await using var streamScope = stream.ConfigureAwait(false);
@@ -238,9 +238,9 @@ public sealed class ManifestWriter : IAsyncDisposable
         if (manifestExists)
         {
             // For atomic appends, we use a temp file pattern when the provider supports it
-            if (_provider is IMoveableStorageProvider moveableProvider)
+            if (_provider.Capabilities.HasFlag(StorageCapabilities.AtomicMove))
             {
-                await AppendWithAtomicRenameAsync(moveableProvider, newContent, cancellationToken)
+                await AppendWithAtomicRenameAsync(newContent, cancellationToken)
                     .ConfigureAwait(false);
             }
             else
@@ -252,7 +252,7 @@ public sealed class ManifestWriter : IAsyncDisposable
         else
         {
             // Create new manifest
-            var writeStream = await _provider.OpenWriteAsync(_manifestUri, cancellationToken)
+            var writeStream = await _provider.OpenWriteAsync(_manifestUri, null, cancellationToken)
                 .ConfigureAwait(false);
 
             await using var writeStreamScope = writeStream.ConfigureAwait(false);
@@ -265,7 +265,6 @@ public sealed class ManifestWriter : IAsyncDisposable
     }
 
     private async Task AppendWithAtomicRenameAsync(
-        IMoveableStorageProvider moveableProvider,
         string newContent,
         CancellationToken cancellationToken)
     {
@@ -295,7 +294,7 @@ public sealed class ManifestWriter : IAsyncDisposable
         // Write to temp file
         var tempUri = CreateTempManifestUri();
 
-        var writeStream = await _provider.OpenWriteAsync(tempUri, cancellationToken).ConfigureAwait(false);
+        var writeStream = await _provider.OpenWriteAsync(tempUri, null, cancellationToken).ConfigureAwait(false);
 
         await using (writeStream.ConfigureAwait(false))
         {
@@ -306,7 +305,7 @@ public sealed class ManifestWriter : IAsyncDisposable
         }
 
         // Atomic rename
-        await moveableProvider.MoveAsync(tempUri, _manifestUri, cancellationToken).ConfigureAwait(false);
+        await _provider.MoveAsync(tempUri, _manifestUri, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task AppendWithReadModifyWriteAsync(string newContent, CancellationToken cancellationToken)
@@ -333,7 +332,7 @@ public sealed class ManifestWriter : IAsyncDisposable
 
         combinedContent += newContent;
 
-        var writeStream = await _provider.OpenWriteAsync(_manifestUri, cancellationToken)
+        var writeStream = await _provider.OpenWriteAsync(_manifestUri, null, cancellationToken)
             .ConfigureAwait(false);
 
         await using var writeStreamScope = writeStream.ConfigureAwait(false);

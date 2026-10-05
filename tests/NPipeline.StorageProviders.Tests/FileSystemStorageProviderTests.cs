@@ -1,3 +1,4 @@
+using NPipeline.StorageProviders.Abstractions;
 using AwesomeAssertions;
 using NPipeline.StorageProviders;
 using NPipeline.StorageProviders.Models;
@@ -62,9 +63,9 @@ public sealed class FileSystemStorageProviderTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task ListAsync_WithRecursiveTrue_ReturnsAllNestedItems()
+    public async Task ListAsync_WithRecursiveTrue_ReturnsEveryNestedFileAndNoDirectories()
     {
-        // Arrange - recursive=true should list all items including nested ones
+        // Arrange - recursive=true lists every file below the directory, and no directory entries
         var file1 = Path.Combine(_testDirectory, "file1.txt");
         var file2 = Path.Combine(_testDirectory, "file2.txt");
         var subDir = Path.Combine(_testDirectory, "subdir");
@@ -85,16 +86,9 @@ public sealed class FileSystemStorageProviderTests : IAsyncLifetime
             items.Add(item);
         }
 
-        // Assert - should include all items including nested file3.txt
-        items.Should().HaveCountGreaterThanOrEqualTo(4); // file1.txt, file2.txt, subdir, file3.txt
-        items.Should().Contain(i => i.Uri.Path.Contains("file1.txt"));
-        items.Should().Contain(i => i.Uri.Path.Contains("file2.txt"));
-        items.Should().Contain(i => i.Uri.Path.Contains("subdir") && i.IsDirectory);
-        items.Should().Contain(i => i.Uri.Path.Contains("file3.txt"));
-
-        var dirItem = items.FirstOrDefault(i => i.Uri.Path.Contains("subdir"));
-        dirItem.Should().NotBeNull();
-        dirItem!.IsDirectory.Should().BeTrue();
+        // Assert
+        items.Should().OnlyContain(i => !i.IsDirectory);
+        items.Select(i => i.Uri.Name).Should().BeEquivalentTo("file1.txt", "file2.txt", "file3.txt");
     }
 
     [Fact]
@@ -280,5 +274,39 @@ public sealed class FileSystemStorageProviderTests : IAsyncLifetime
         StorageUri.Parse(uri.ToString()).Should().Be(uri);
         await using var stream = await _provider.OpenReadAsync(StorageUri.Parse(uri.ToString()));
         stream.CanRead.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Capabilities_DeclareAtomicMoveAndHierarchy()
+    {
+        _provider.Capabilities.Should().HaveFlag(StorageCapabilities.AtomicMove | StorageCapabilities.Hierarchy | StorageCapabilities.Delete | StorageCapabilities.List);
+        _provider.Schemes.Should().ContainSingle().Which.Should().Be(StorageScheme.File);
+        await Task.CompletedTask;
+    }
+
+    [Fact]
+    public async Task ExistsAsync_ExistingDirectory_IsTrue()
+    {
+        (await _provider.ExistsAsync(StorageUri.FromFilePath(_testDirectory))).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task OpenReadAsync_MissingDirectory_ThrowsFileNotFound()
+    {
+        var uri = StorageUri.FromFilePath(Path.Combine(_testDirectory, "no-such-dir", "file.txt"));
+
+        var act = () => _provider.OpenReadAsync(uri);
+
+        await act.Should().ThrowAsync<FileNotFoundException>();
+    }
+
+    [Fact]
+    public async Task MoveAsync_MissingSource_ThrowsFileNotFound()
+    {
+        var act = () => _provider.MoveAsync(
+            StorageUri.FromFilePath(Path.Combine(_testDirectory, "missing.txt")),
+            StorageUri.FromFilePath(Path.Combine(_testDirectory, "target.txt")));
+
+        await act.Should().ThrowAsync<FileNotFoundException>();
     }
 }

@@ -37,7 +37,7 @@ public static class DataLakeConnectorResilience
     /// </summary>
     /// <remarks>
     ///     There is no attempt timeout because cancelling an append part-way through a non-atomic overwrite (on a provider
-    ///     without <see cref="StorageProviders.Abstractions.IMoveableStorageProvider" />) can truncate the manifest. The
+    ///     without <see cref="StorageProviders.Abstractions.StorageCapabilities.AtomicMove" />) can truncate the manifest. The
     ///     attempt count bounds the call; the caller's cancellation token still applies.
     /// </remarks>
     public static Resilience ManifestWrite { get; } = new()

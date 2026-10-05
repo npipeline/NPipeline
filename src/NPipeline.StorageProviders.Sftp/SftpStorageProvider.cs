@@ -8,20 +8,21 @@ using Renci.SshNet.Sftp;
 namespace NPipeline.StorageProviders.Sftp;
 
 /// <summary>
-///     Storage provider for SFTP that implements the IStorageProvider interface.
-///     Handles sftp:// scheme URIs and supports reading, writing, listing, and metadata operations.
+///     Storage provider for SFTP. Handles sftp:// scheme URIs and supports reading, writing, listing, deleting,
+///     moving and metadata operations.
 /// </summary>
 /// <remarks>
-///     - Async-first API design
-///     - Stream-based I/O for scalability
-///     - Connection pooling for high performance
-///     - Keep-alive for reduced latency
-///     - Proper error handling and exception translation
-///     - Cancellation token support throughout
-///     - Thread-safe implementation
+///     <para>
+///         Connections are pooled, and every network call uses the SSH.NET async API. Failures follow the storage provider
+///         contract: a missing path is a <see cref="FileNotFoundException" />, a permission or authentication failure is an
+///         <see cref="UnauthorizedAccessException" />, and any other SSH or socket failure is an <see cref="IOException" />
+///         with the SSH.NET exception as its inner exception.
+///     </para>
 /// </remarks>
-public sealed class SftpStorageProvider : IStorageProvider, IStorageProviderMetadataProvider
+public sealed class SftpStorageProvider : StorageProvider
 {
+    private static readonly IReadOnlyList<StorageScheme> SupportedSchemes = [StorageScheme.Sftp];
+
     private readonly SftpClientFactory _clientFactory;
     private readonly SftpStorageProviderOptions _options;
 
@@ -39,216 +40,254 @@ public sealed class SftpStorageProvider : IStorageProvider, IStorageProviderMeta
     }
 
     /// <inheritdoc />
-    public StorageScheme Scheme => StorageScheme.Sftp;
+    public override string Name => "SFTP";
 
     /// <inheritdoc />
-    public bool CanHandle(StorageUri uri)
-    {
-        ArgumentNullException.ThrowIfNull(uri);
-        return Scheme.Equals(uri.Scheme);
-    }
+    public override IReadOnlyList<StorageScheme> Schemes => SupportedSchemes;
 
     /// <inheritdoc />
-    public async Task<Stream> OpenReadAsync(
-        StorageUri uri,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(uri);
+    /// <remarks>
+    ///     A move is an SFTP rename, which is atomic on POSIX servers. When the destination already exists it is removed first,
+    ///     because a plain rename does not overwrite, so only a move onto a new path is a single atomic step.
+    /// </remarks>
+    public override StorageCapabilities Capabilities =>
+        StorageCapabilities.Read | StorageCapabilities.Write | StorageCapabilities.List | StorageCapabilities.Delete
+        | StorageCapabilities.Move | StorageCapabilities.AtomicMove | StorageCapabilities.Hierarchy;
 
-        var (host, port, path) = ParseUri(uri);
+    /// <inheritdoc />
+    protected override async Task<Stream> OpenReadCoreAsync(StorageUri uri, CancellationToken cancellationToken)
+    {
+        var (host, path) = ParseUri(uri);
+        var lease = await AcquireAsync(uri, host, path, cancellationToken).ConfigureAwait(false);
 
         try
         {
-            var lease = await _clientFactory.AcquirePooledAsync(uri, cancellationToken).ConfigureAwait(false);
+            return await SftpReadStream.OpenAsync(lease, path, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            // If stream creation fails, return the lease
+            await lease.DisposeAsync().ConfigureAwait(false);
 
-            try
-            {
-                return new SftpReadStream(lease, path);
-            }
-            catch
-            {
-                // If stream creation fails, return the lease
-                await lease.DisposeAsync().ConfigureAwait(false);
-                throw;
-            }
-        }
-        catch (SftpPathNotFoundException ex)
-        {
-            throw TranslateSftpException(ex, host, path);
-        }
-        catch (SshException ex)
-        {
-            throw TranslateSftpException(ex, host, path);
+            if (SftpErrors.IsTranslatable(ex))
+                throw SftpErrors.Translate(ex, host, path);
+
+            throw;
         }
     }
 
     /// <inheritdoc />
-    public async Task<Stream> OpenWriteAsync(
-        StorageUri uri,
-        CancellationToken cancellationToken = default)
+    protected override async Task<StorageWriteStream> OpenWriteCoreAsync(StorageUri uri, StorageWriteOptions? options, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(uri);
-
-        var (host, port, path) = ParseUri(uri);
+        var (host, path) = ParseUri(uri);
+        var lease = await AcquireAsync(uri, host, path, cancellationToken).ConfigureAwait(false);
 
         try
         {
-            var lease = await _clientFactory.AcquirePooledAsync(uri, cancellationToken).ConfigureAwait(false);
+            var stream = await SftpWriteStream.OpenAsync(lease, path, true, cancellationToken).ConfigureAwait(false);
 
-            try
-            {
-                return new SftpWriteStream(lease, path);
-            }
-            catch
-            {
-                // If stream creation fails, return the lease
-                await lease.DisposeAsync().ConfigureAwait(false);
-                throw;
-            }
+            return new PassThroughWriteStream(stream);
         }
-        catch (SshException ex)
+        catch (Exception ex)
         {
-            throw TranslateSftpException(ex, host, path);
+            await lease.DisposeAsync().ConfigureAwait(false);
+
+            if (SftpErrors.IsTranslatable(ex))
+                throw SftpErrors.Translate(ex, host, path);
+
+            throw;
         }
     }
 
     /// <inheritdoc />
-    public async Task<bool> ExistsAsync(
-        StorageUri uri,
-        CancellationToken cancellationToken = default)
+    protected override Task<bool> ExistsCoreAsync(StorageUri uri, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(uri);
+        var (host, path) = ParseUri(uri);
 
-        var (host, port, path) = ParseUri(uri);
+        return WithClientAsync(
+            uri,
+            host,
+            path,
+            static (client, p, token) => client.ExistsAsync(p, token),
+            cancellationToken);
+    }
+
+    /// <inheritdoc />
+    protected override async Task<StorageMetadata?> GetMetadataCoreAsync(StorageUri uri, CancellationToken cancellationToken)
+    {
+        var (host, path) = ParseUri(uri);
 
         try
         {
-            var lease = await _clientFactory.AcquirePooledAsync(uri, cancellationToken).ConfigureAwait(false);
-
-            try
-            {
-                var exists = lease.Client.Exists(path);
-                return exists;
-            }
-            finally
-            {
-                await lease.DisposeAsync().ConfigureAwait(false);
-            }
-        }
-        catch (SftpPathNotFoundException)
-        {
-            return false;
-        }
-        catch (SshException ex)
-        {
-            throw TranslateSftpException(ex, host, path);
-        }
-    }
-
-    /// <inheritdoc />
-    public IAsyncEnumerable<StorageItem> ListAsync(
-        StorageUri prefix,
-        bool recursive = false,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(prefix);
-        return ListAsyncCore(prefix, recursive, cancellationToken);
-    }
-
-    /// <inheritdoc />
-    public async Task<StorageMetadata?> GetMetadataAsync(
-        StorageUri uri,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(uri);
-
-        var (host, port, path) = ParseUri(uri);
-
-        try
-        {
-            var lease = await _clientFactory.AcquirePooledAsync(uri, cancellationToken).ConfigureAwait(false);
-
-            try
-            {
-                var attributes = lease.Client.GetAttributes(path);
-
-                if (attributes is null)
-                    return null;
-
-                var metadata = new StorageMetadata
+            return await WithClientAsync<StorageMetadata?>(
+                uri,
+                host,
+                path,
+                static async (client, p, token) =>
                 {
-                    Size = attributes.Size,
-                    LastModified = NormalizeDateTime(attributes.LastWriteTimeUtc),
-                    ContentType = null, // SFTP doesn't provide content type
-                    CustomMetadata = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
-                    IsDirectory = attributes.IsDirectory,
-                    ETag = attributes.LastWriteTimeUtc.Ticks.ToString("x16"),
-                };
+                    var attributes = await client.GetAttributesAsync(p, token).ConfigureAwait(false);
 
-                return metadata;
-            }
-            finally
-            {
-                await lease.DisposeAsync().ConfigureAwait(false);
-            }
+                    if (attributes is null)
+                        return null;
+
+                    var lastModified = ToTimestamp(attributes.LastWriteTimeUtc);
+
+                    return new StorageMetadata
+                    {
+                        Size = attributes.IsDirectory ? 0 : attributes.Size,
+                        LastModified = lastModified,
+                        ContentType = null, // SFTP doesn't provide content type
+                        IsDirectory = attributes.IsDirectory,
+                        ETag = lastModified?.UtcTicks.ToString("x16"),
+                    };
+                },
+                cancellationToken).ConfigureAwait(false);
         }
-        catch (SftpPathNotFoundException)
+        catch (FileNotFoundException ex) when (ex.InnerException is SftpPathNotFoundException)
         {
             return null;
         }
-        catch (SshException ex)
+    }
+
+    /// <inheritdoc />
+    protected override IAsyncEnumerable<StorageItem> ListCoreAsync(StorageUri directory, bool recursive, CancellationToken cancellationToken) =>
+        ListAsyncCore(directory, recursive, cancellationToken);
+
+    /// <inheritdoc />
+    protected override async Task DeleteCoreAsync(StorageUri uri, CancellationToken cancellationToken)
+    {
+        var (host, path) = ParseUri(uri);
+
+        try
         {
-            throw TranslateSftpException(ex, host, path);
+            await WithClientAsync(
+                uri,
+                host,
+                path,
+                static async (client, p, token) =>
+                {
+                    await client.DeleteFileAsync(p, token).ConfigureAwait(false);
+                    return true;
+                },
+                cancellationToken).ConfigureAwait(false);
+        }
+        catch (FileNotFoundException ex) when (ex.InnerException is SftpPathNotFoundException)
+        {
+            // Deleting a missing file succeeds.
         }
     }
 
     /// <inheritdoc />
-    public StorageProviderMetadata GetMetadata() =>
-        new()
-        {
-            Name = "SFTP",
-            SupportedSchemes = [StorageScheme.Sftp.ToString()],
-            SupportsRead = true,
-            SupportsWrite = true,
-            SupportsListing = true,
-            SupportsMetadata = true,
-            SupportsHierarchy = true,
-            Capabilities = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
-            {
-                ["maxPoolSize"] = _options.MaxPoolSize,
-                ["connectionIdleTimeout"] = _options.ConnectionIdleTimeout,
-                ["keepAliveInterval"] = _options.KeepAliveInterval,
-                ["connectionTimeout"] = _options.ConnectionTimeout,
-            },
-        };
+    protected override async Task MoveCoreAsync(StorageUri source, StorageUri destination, CancellationToken cancellationToken)
+    {
+        var (host, from) = ParseUri(source);
+        var (_, to) = ParseUri(destination);
 
-    private static (string host, int port, string path) ParseUri(StorageUri uri)
+        if (!SameServer(source, destination))
+            throw new ArgumentException("An SFTP move needs a source and destination on the same server and user.", nameof(destination));
+
+        _ = await WithClientAsync(
+            source,
+            host,
+            from,
+            async (client, p, token) =>
+            {
+                // Fails with SftpPathNotFoundException (FileNotFoundException) when the source is missing.
+                _ = await client.GetAttributesAsync(p, token).ConfigureAwait(false);
+
+                if (string.Equals(p, to, StringComparison.Ordinal))
+                    return true;
+
+                await SftpWriteStream.EnsureParentDirectoryExistsAsync(client, to, token).ConfigureAwait(false);
+
+                // A rename does not overwrite, so the destination goes first.
+                try
+                {
+                    await client.DeleteFileAsync(to, token).ConfigureAwait(false);
+                }
+                catch (SftpPathNotFoundException)
+                {
+                    // Nothing to overwrite.
+                }
+
+                await client.RenameFileAsync(p, to, token).ConfigureAwait(false);
+
+                return true;
+            },
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    private static (string host, string path) ParseUri(StorageUri uri)
     {
         var host = uri.Host;
 
         if (string.IsNullOrWhiteSpace(host))
             throw new ArgumentException("SFTP URI must specify a host.", nameof(uri));
 
-        var port = uri.Port ?? 22;
         var path = uri.Path;
 
         // Ensure path starts with /
         if (!path.StartsWith('/'))
             path = "/" + path;
 
-        return (host, port, path);
+        return (host, path);
+    }
+
+    private static bool SameServer(StorageUri a, StorageUri b) =>
+        string.Equals(a.Host, b.Host, StringComparison.OrdinalIgnoreCase)
+        && (a.Port ?? 22) == (b.Port ?? 22)
+        && string.Equals(a.UserName, b.UserName, StringComparison.Ordinal);
+
+    /// <summary>Acquires a pooled connection, translating connection failures.</summary>
+    private async Task<IPooledConnection> AcquireAsync(StorageUri uri, string host, string path, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await _clientFactory.AcquirePooledAsync(uri, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (SftpErrors.IsTranslatable(ex))
+        {
+            throw SftpErrors.Translate(ex, host, path);
+        }
+    }
+
+    /// <summary>Runs <paramref name="operation" /> on a pooled connection that is returned afterwards, translating SSH failures.</summary>
+    private async Task<T> WithClientAsync<T>(
+        StorageUri uri,
+        string host,
+        string path,
+        Func<SftpClient, string, CancellationToken, Task<T>> operation,
+        CancellationToken cancellationToken)
+    {
+        var lease = await AcquireAsync(uri, host, path, cancellationToken).ConfigureAwait(false);
+
+        try
+        {
+            return await operation(lease.Client, path, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (SftpErrors.IsTranslatable(ex))
+        {
+            throw SftpErrors.Translate(ex, host, path);
+        }
+        finally
+        {
+            await lease.DisposeAsync().ConfigureAwait(false);
+        }
     }
 
     private async IAsyncEnumerable<StorageItem> ListAsyncCore(
-        StorageUri prefix,
+        StorageUri directory,
         bool recursive,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var (_, _, rootPath) = ParseUri(prefix);
+        var (host, directoryPath) = ParseUri(directory);
+
+        // Directory entries below are built as "<path>/<name>", so the root is held without its trailing slash.
+        var rootPath = directoryPath.Length > 1 ? directoryPath.TrimEnd('/') : directoryPath;
 
         // One connection for the whole walk. Acquiring another per subdirectory while holding the parent's would
         // deadlock once the tree is as deep as the pool is large.
-        var lease = await _clientFactory.AcquirePooledAsync(prefix, cancellationToken).ConfigureAwait(false);
+        var lease = await AcquireAsync(directory, host, rootPath, cancellationToken).ConfigureAwait(false);
 
         try
         {
@@ -258,7 +297,7 @@ public sealed class SftpStorageProvider : IStorageProvider, IStorageProviderMeta
 
             while (pending.TryPop(out var path))
             {
-                var entries = await ListDirectoryAsync(lease.Client, path, cancellationToken).ConfigureAwait(false);
+                var entries = await ListDirectoryAsync(lease.Client, host, path, cancellationToken).ConfigureAwait(false);
 
                 foreach (var entry in entries)
                 {
@@ -271,18 +310,34 @@ public sealed class SftpStorageProvider : IStorageProvider, IStorageProviderMeta
                         ? $"{path}{entry.Name}"
                         : $"{path}/{entry.Name}";
 
+                    if (entry.Attributes.IsDirectory)
+                    {
+                        // Directory entries carry lstat attributes, so symbolic links are never followed; the visited set
+                        // guards against servers that report them as directories anyway.
+                        if (recursive)
+                        {
+                            if (visited.Add(itemPath))
+                                pending.Push(itemPath);
+
+                            continue;
+                        }
+
+                        yield return new StorageItem
+                        {
+                            Uri = directory.WithPath(itemPath + "/"),
+                            IsDirectory = true,
+                        };
+
+                        continue;
+                    }
+
                     yield return new StorageItem
                     {
-                        Uri = BuildItemUri(prefix, itemPath),
+                        Uri = directory.WithPath(itemPath),
                         Size = entry.Attributes.Size,
-                        LastModified = NormalizeDateTime(entry.Attributes.LastWriteTimeUtc),
-                        IsDirectory = entry.Attributes.IsDirectory,
+                        LastModified = ToTimestamp(entry.Attributes.LastWriteTimeUtc),
+                        IsDirectory = false,
                     };
-
-                    // Directory entries carry lstat attributes, so symbolic links are never followed; the visited set
-                    // guards against servers that report them as directories anyway.
-                    if (recursive && entry.Attributes.IsDirectory && visited.Add(itemPath))
-                        pending.Push(itemPath);
                 }
             }
         }
@@ -293,7 +348,7 @@ public sealed class SftpStorageProvider : IStorageProvider, IStorageProviderMeta
     }
 
     /// <summary>Lists one directory; a directory that does not exist (or was removed during the walk) is empty.</summary>
-    private static async Task<List<ISftpFile>> ListDirectoryAsync(SftpClient client, string path, CancellationToken cancellationToken)
+    private static async Task<List<ISftpFile>> ListDirectoryAsync(SftpClient client, string host, string path, CancellationToken cancellationToken)
     {
         var entries = new List<ISftpFile>();
 
@@ -308,72 +363,21 @@ public sealed class SftpStorageProvider : IStorageProvider, IStorageProviderMeta
         {
             entries.Clear();
         }
+        catch (Exception ex) when (SftpErrors.IsTranslatable(ex))
+        {
+            throw SftpErrors.Translate(ex, host, path);
+        }
 
         return entries;
     }
 
-    private static StorageUri BuildItemUri(StorageUri baseUri, string path)
+    /// <summary>Converts a server timestamp, treating the Unix epoch that SSH.NET reports for a missing one as unknown.</summary>
+    private static DateTimeOffset? ToTimestamp(DateTime value)
     {
-        return baseUri.WithPath(path);
-    }
+        var utc = value.Kind == DateTimeKind.Unspecified
+            ? DateTime.SpecifyKind(value, DateTimeKind.Utc)
+            : value.ToUniversalTime();
 
-    private static Exception TranslateSftpException(Exception ex, string host, string path)
-    {
-        return ex switch
-        {
-            SftpPathNotFoundException =>
-                new SftpStorageException(
-                    $"SFTP file not found: '{path}' on server '{host}'",
-                    host,
-                    path,
-                    SftpErrorCode.FileNotFound,
-                    ex),
-
-            SftpPermissionDeniedException =>
-                new SftpStorageException(
-                    $"Access denied to SFTP path '{path}' on server '{host}'. {ex.Message}",
-                    host,
-                    path,
-                    SftpErrorCode.PermissionDenied,
-                    ex),
-
-            SshAuthenticationException =>
-                new SftpStorageException(
-                    $"Authentication failed for SFTP server '{host}'. {ex.Message}",
-                    host,
-                    path,
-                    SftpErrorCode.AuthenticationFailed,
-                    ex),
-
-            SshConnectionException =>
-                new SftpStorageException(
-                    $"Failed to connect to SFTP server '{host}'. {ex.Message}",
-                    host,
-                    path,
-                    SftpErrorCode.ConnectionFailed,
-                    ex),
-
-            OperationCanceledException =>
-                ex,
-
-            _ =>
-                new SftpStorageException(
-                    $"SFTP operation failed on server '{host}' for path '{path}'. {ex.Message}",
-                    host,
-                    path,
-                    SftpErrorCode.Unknown,
-                    ex),
-        };
-    }
-
-    private static DateTimeOffset NormalizeDateTime(DateTime? value)
-    {
-        var actual = value ?? DateTime.UtcNow;
-
-        var utc = actual.Kind == DateTimeKind.Unspecified
-            ? DateTime.SpecifyKind(actual, DateTimeKind.Utc)
-            : actual.ToUniversalTime();
-
-        return new DateTimeOffset(utc);
+        return utc <= DateTime.UnixEpoch ? null : new DateTimeOffset(utc);
     }
 }

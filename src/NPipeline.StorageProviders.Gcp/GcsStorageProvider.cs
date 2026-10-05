@@ -12,8 +12,8 @@ using NResilience;
 namespace NPipeline.StorageProviders.Gcp;
 
 /// <summary>
-///     Storage provider for Google Cloud Storage that implements the <see cref="IStorageProvider" /> interface.
-///     Handles "gs" scheme URIs and supports reading, writing, listing, and metadata operations.
+///     Storage provider for Google Cloud Storage that derives from <see cref="StorageProvider" />.
+///     Handles "gs" scheme URIs and supports reading, writing, listing, deleting, moving and metadata operations.
 /// </summary>
 /// <remarks>
 ///     <para>
@@ -29,10 +29,14 @@ namespace NPipeline.StorageProviders.Gcp;
 ///         Supported URI parameters: projectId, contentType, serviceUrl, accessToken, credentialsPath
 ///     </para>
 /// </remarks>
-public sealed class GcsStorageProvider : IStorageProvider, IStorageProviderMetadataProvider
+public sealed class GcsStorageProvider : StorageProvider
 {
+    private static readonly IReadOnlyList<StorageScheme> SupportedSchemes = [StorageScheme.Gcs];
+
     // The SDK's own retry of metadata calls is off, so NResilience is the only layer that retries them.
     private static readonly GetObjectOptions GetObjectOnce = new() { RetryOptions = RetryOptions.Never };
+
+    private static readonly DeleteObjectOptions DeleteObjectOnce = new() { RetryOptions = RetryOptions.Never };
 
     private readonly GcsClientFactory _clientFactory;
     private readonly GcsStorageProviderOptions _options;
@@ -50,32 +54,20 @@ public sealed class GcsStorageProvider : IStorageProvider, IStorageProviderMetad
         _resilience = _options.Resilience ?? throw new ArgumentException("Resilience must not be null.", nameof(options));
     }
 
-    /// <summary>
-    ///     Gets the storage scheme supported by this provider.
-    /// </summary>
-    public StorageScheme Scheme => StorageScheme.Gcs;
+    /// <inheritdoc />
+    public override string Name => "Google Cloud Storage";
 
-    /// <summary>
-    ///     Determines whether this provider can handle the specified storage URI.
-    /// </summary>
-    /// <param name="uri">The storage URI to check.</param>
-    /// <returns>True if the URI scheme matches "gs"; otherwise false.</returns>
-    public bool CanHandle(StorageUri uri)
+    /// <inheritdoc />
+    public override IReadOnlyList<StorageScheme> Schemes => SupportedSchemes;
+
+    /// <inheritdoc />
+    /// <remarks>GCS is a flat object store, so it declares neither hierarchy nor atomic move: a move is a copy followed by a delete.</remarks>
+    public override StorageCapabilities Capabilities =>
+        StorageCapabilities.Read | StorageCapabilities.Write | StorageCapabilities.List | StorageCapabilities.Delete | StorageCapabilities.Move;
+
+    /// <inheritdoc />
+    protected override async Task<Stream> OpenReadCoreAsync(StorageUri uri, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(uri);
-        return Scheme.Equals(uri.Scheme);
-    }
-
-    /// <summary>
-    ///     Opens a readable stream for the specified GCS object.
-    /// </summary>
-    /// <param name="uri">The storage URI pointing to the GCS object.</param>
-    /// <param name="cancellationToken">Token to observe while waiting for the task to complete.</param>
-    /// <returns>A task producing a readable stream for the GCS object.</returns>
-    public async Task<Stream> OpenReadAsync(StorageUri uri, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(uri);
-
         var (bucket, objectName) = GetBucketAndObjectName(uri, true);
         var client = await _clientFactory.GetClientAsync(uri, cancellationToken).ConfigureAwait(false);
         var tempFilePath = Path.Combine(Path.GetTempPath(), $"gcs-download-{Guid.NewGuid():N}.tmp");
@@ -108,7 +100,7 @@ public sealed class GcsStorageProvider : IStorageProvider, IStorageProviderMetad
             if (tempFileStream is not null)
                 await tempFileStream.DisposeAsync().ConfigureAwait(false);
 
-            throw TranslateGcsException(ex, bucket, objectName, "read");
+            throw GcsErrors.Translate(ex, bucket, objectName, "read");
         }
         catch
         {
@@ -119,43 +111,32 @@ public sealed class GcsStorageProvider : IStorageProvider, IStorageProviderMetad
         }
     }
 
-    /// <summary>
-    ///     Opens a writable stream for the specified GCS object.
-    /// </summary>
-    /// <param name="uri">The storage URI pointing to the GCS object.</param>
-    /// <param name="cancellationToken">Token to observe while waiting for the task to complete.</param>
-    /// <returns>A task producing a writable stream for the GCS object.</returns>
-    public async Task<Stream> OpenWriteAsync(StorageUri uri, CancellationToken cancellationToken = default)
+    /// <inheritdoc />
+    protected override async Task<StorageWriteStream> OpenWriteCoreAsync(StorageUri uri, StorageWriteOptions? options, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(uri);
-
         var (bucket, objectName) = GetBucketAndObjectName(uri, true);
         var client = await _clientFactory.GetClientAsync(uri, cancellationToken).ConfigureAwait(false);
 
-        var contentType = uri.Parameters.TryGetValue("contentType", out var ct) && !string.IsNullOrEmpty(ct)
-            ? ct
-            : null;
+        // The write options win; the contentType URI parameter is the fallback.
+        var contentType = !string.IsNullOrEmpty(options?.ContentType)
+            ? options.ContentType
+            : uri.Parameters.TryGetValue("contentType", out var ct) && !string.IsNullOrEmpty(ct)
+                ? ct
+                : null;
 
-        return new GcsWriteStream(
+        return new PassThroughWriteStream(new GcsWriteStream(
             client,
             bucket,
             objectName,
             contentType,
             _options.UploadChunkSizeBytes,
             _resilience,
-            cancellationToken);
+            cancellationToken));
     }
 
-    /// <summary>
-    ///     Checks whether a GCS object exists at the specified URI.
-    /// </summary>
-    /// <param name="uri">The storage URI to check.</param>
-    /// <param name="cancellationToken">Token to observe while waiting for the task to complete.</param>
-    /// <returns>True if the GCS object exists; otherwise false.</returns>
-    public async Task<bool> ExistsAsync(StorageUri uri, CancellationToken cancellationToken = default)
+    /// <inheritdoc />
+    protected override async Task<bool> ExistsCoreAsync(StorageUri uri, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(uri);
-
         var (bucket, objectName) = GetBucketAndObjectName(uri, true);
         var client = await _clientFactory.GetClientAsync(uri, cancellationToken).ConfigureAwait(false);
 
@@ -173,36 +154,17 @@ public sealed class GcsStorageProvider : IStorageProvider, IStorageProviderMetad
         }
         catch (GoogleApiException ex)
         {
-            throw TranslateGcsException(ex, bucket, objectName, "exists");
+            throw GcsErrors.Translate(ex, bucket, objectName, "exists");
         }
     }
 
-    /// <summary>
-    ///     Lists GCS objects at the specified prefix.
-    /// </summary>
-    /// <param name="prefix">The URI prefix to list.</param>
-    /// <param name="recursive">If true, recursively lists all objects; if false, lists only objects in the specified prefix.</param>
-    /// <param name="cancellationToken">Token to observe while waiting for the task to complete.</param>
-    /// <returns>An async enumerable of <see cref="StorageItem" /> representing GCS objects.</returns>
-    public IAsyncEnumerable<StorageItem> ListAsync(
-        StorageUri prefix,
-        bool recursive = false,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(prefix);
-        return ListAsyncCore(prefix, recursive, cancellationToken);
-    }
+    /// <inheritdoc />
+    protected override IAsyncEnumerable<StorageItem> ListCoreAsync(StorageUri directory, bool recursive, CancellationToken cancellationToken) =>
+        ListAsyncCore(directory, recursive, cancellationToken);
 
-    /// <summary>
-    ///     Retrieves metadata for the GCS object at the specified URI.
-    /// </summary>
-    /// <param name="uri">The storage URI pointing to the GCS object.</param>
-    /// <param name="cancellationToken">Token to observe while waiting for the task to complete.</param>
-    /// <returns>A task producing <see cref="StorageMetadata" /> if the object exists; otherwise null.</returns>
-    public async Task<StorageMetadata?> GetMetadataAsync(StorageUri uri, CancellationToken cancellationToken = default)
+    /// <inheritdoc />
+    protected override async Task<StorageMetadata?> GetMetadataCoreAsync(StorageUri uri, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(uri);
-
         var (bucket, objectName) = GetBucketAndObjectName(uri, true);
         var client = await _clientFactory.GetClientAsync(uri, cancellationToken).ConfigureAwait(false);
 
@@ -223,17 +185,15 @@ public sealed class GcsStorageProvider : IStorageProvider, IStorageProviderMetad
                 }
             }
 
-            var metadata = new StorageMetadata
+            return new StorageMetadata
             {
                 Size = (long)(obj.Size ?? 0),
-                LastModified = NormalizeDateTimeOffset(obj.UpdatedDateTimeOffset),
+                LastModified = obj.UpdatedDateTimeOffset,
                 ContentType = obj.ContentType,
                 ETag = obj.ETag,
                 CustomMetadata = customMetadata,
                 IsDirectory = false,
             };
-
-            return metadata;
         }
         catch (GoogleApiException ex) when (ex.HttpStatusCode == HttpStatusCode.NotFound)
         {
@@ -241,33 +201,82 @@ public sealed class GcsStorageProvider : IStorageProvider, IStorageProviderMetad
         }
         catch (GoogleApiException ex)
         {
-            throw TranslateGcsException(ex, bucket, objectName, "metadata");
+            throw GcsErrors.Translate(ex, bucket, objectName, "metadata");
         }
     }
 
-    /// <summary>
-    ///     Gets metadata describing this storage provider's capabilities.
-    /// </summary>
-    /// <returns>A <see cref="StorageProviderMetadata" /> object containing information about the provider's supported features.</returns>
-    public StorageProviderMetadata GetMetadata() =>
-        new()
+    /// <inheritdoc />
+    protected override async Task DeleteCoreAsync(StorageUri uri, CancellationToken cancellationToken)
+    {
+        var (bucket, objectName) = GetBucketAndObjectName(uri, true);
+        var client = await _clientFactory.GetClientAsync(uri, cancellationToken).ConfigureAwait(false);
+
+        try
         {
-            Name = "Google Cloud Storage",
-            SupportedSchemes = ["gs"],
-            SupportsRead = true,
-            SupportsWrite = true,
-            SupportsListing = true,
-            SupportsMetadata = true,
-            SupportsHierarchy = false, // GCS is flat
-            Capabilities = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
+            await DeleteObjectAsync(client, bucket, objectName, cancellationToken).ConfigureAwait(false);
+        }
+        catch (GoogleApiException ex) when (ex.HttpStatusCode == HttpStatusCode.NotFound)
+        {
+            // Deleting a missing object succeeds.
+        }
+        catch (GoogleApiException ex)
+        {
+            throw GcsErrors.Translate(ex, bucket, objectName, "delete");
+        }
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    ///     GCS has no rename. The object is copied with a server-side rewrite and then the source is deleted, so a failure
+    ///     between the two steps leaves both objects. The destination is overwritten.
+    /// </remarks>
+    protected override async Task MoveCoreAsync(StorageUri source, StorageUri destination, CancellationToken cancellationToken)
+    {
+        var (sourceBucket, sourceName) = GetBucketAndObjectName(source, true);
+        var (destinationBucket, destinationName) = GetBucketAndObjectName(destination, true);
+        var client = await _clientFactory.GetClientAsync(source, cancellationToken).ConfigureAwait(false);
+
+        try
+        {
+            // Copying an object onto itself and then deleting the source would lose it.
+            if (string.Equals(sourceBucket, destinationBucket, StringComparison.Ordinal)
+                && string.Equals(sourceName, destinationName, StringComparison.Ordinal))
             {
-                ["uploadChunkSizeBytes"] = _options.UploadChunkSizeBytes,
-                ["uploadBufferThresholdBytes"] = _options.UploadBufferThresholdBytes,
-                ["supportsServiceUrl"] = true,
-                ["supportsAccessToken"] = true,
-                ["supportsCredentialsPath"] = true,
+                _ = await RunAsync(
+                    token => client.GetObjectAsync(sourceBucket, sourceName, GetObjectOnce, token),
+                    cancellationToken).ConfigureAwait(false);
+
+                return;
+            }
+
+            _ = await RunAsync(
+                token => client.CopyObjectAsync(sourceBucket, sourceName, destinationBucket, destinationName, cancellationToken: token),
+                cancellationToken).ConfigureAwait(false);
+
+            try
+            {
+                await DeleteObjectAsync(client, sourceBucket, sourceName, cancellationToken).ConfigureAwait(false);
+            }
+            catch (GoogleApiException ex) when (ex.HttpStatusCode == HttpStatusCode.NotFound)
+            {
+                // A retried delete can find that its first attempt already removed the source.
+            }
+        }
+        catch (GoogleApiException ex)
+        {
+            throw GcsErrors.Translate(ex, sourceBucket, sourceName, "move");
+        }
+    }
+
+    private async Task DeleteObjectAsync(StorageClient client, string bucket, string objectName, CancellationToken cancellationToken) =>
+        _ = await RunAsync(
+            async token =>
+            {
+                await client.DeleteObjectAsync(bucket, objectName, DeleteObjectOnce, token).ConfigureAwait(false);
+                return true;
             },
-        };
+            cancellationToken).ConfigureAwait(false);
+
 
     private static (string bucket, string objectName) GetBucketAndObjectName(StorageUri uri, bool requireObjectName)
     {
@@ -318,25 +327,24 @@ public sealed class GcsStorageProvider : IStorageProvider, IStorageProviderMetad
             }
             catch (GoogleApiException ex)
             {
-                throw TranslateGcsException(ex, bucket, prefixPath, "list");
+                throw GcsErrors.Translate(ex, bucket, prefixPath, "list");
             }
 
             foreach (var obj in response.Items ?? [])
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                if (obj is null || string.IsNullOrWhiteSpace(obj.Name))
+                // Names ending in '/' are folder placeholder objects, not files.
+                if (obj is null || string.IsNullOrWhiteSpace(obj.Name) || obj.Name.EndsWith('/'))
                     continue;
 
-                var objectKey = obj.Name;
-                var itemUri = prefix.WithPath("/" + objectKey);
-                var size = (long)(obj.Size ?? 0);
+                var itemUri = prefix.WithPath("/" + obj.Name);
 
                 yield return new StorageItem
                 {
                     Uri = itemUri,
-                    Size = size,
-                    LastModified = NormalizeDateTimeOffset(obj.UpdatedDateTimeOffset),
+                    Size = obj.Size is { } size ? (long)size : null,
+                    LastModified = obj.UpdatedDateTimeOffset,
                     IsDirectory = false,
                 };
             }
@@ -350,14 +358,9 @@ public sealed class GcsStorageProvider : IStorageProvider, IStorageProviderMetad
                     if (string.IsNullOrWhiteSpace(commonPrefix))
                         continue;
 
-                    var directoryPath = commonPrefix.TrimEnd('/');
-                    var itemUri = prefix.WithPath("/" + directoryPath);
-
                     yield return new StorageItem
                     {
-                        Uri = itemUri,
-                        Size = 0,
-                        LastModified = DateTimeOffset.MinValue,
+                        Uri = prefix.WithPath("/" + commonPrefix),
                         IsDirectory = true,
                     };
                 }
@@ -374,59 +377,6 @@ public sealed class GcsStorageProvider : IStorageProvider, IStorageProviderMetad
             operation,
             cancellationToken);
     }
-
-    internal static Exception TranslateGcsException(
-        GoogleApiException ex,
-        string bucket,
-        string objectName,
-        string operation)
-    {
-        var translated = TranslateGcsExceptionCore(ex, bucket, objectName, operation);
-
-        // Keeps NResilience's record that this failure was already retried, so a pipeline-level retry does not
-        // multiply the provider's attempts.
-        foreach (DictionaryEntry entry in ex.Data)
-        {
-            translated.Data[entry.Key] = entry.Value;
-        }
-
-        return translated;
-    }
-
-    private static Exception TranslateGcsExceptionCore(
-        GoogleApiException ex,
-        string bucket,
-        string objectName,
-        string operation)
-    {
-        return ex.HttpStatusCode switch
-        {
-            HttpStatusCode.Unauthorized
-                => new UnauthorizedAccessException(
-                    $"Access denied to GCS bucket '{bucket}' and object '{objectName}'. {ex.Message}", ex),
-            HttpStatusCode.Forbidden
-                => new UnauthorizedAccessException(
-                    $"Permission denied for GCS bucket '{bucket}' and object '{objectName}'. {ex.Message}", ex),
-            HttpStatusCode.NotFound
-                => new FileNotFoundException(
-                    $"GCS bucket '{bucket}' or object '{objectName}' not found.", ex),
-            HttpStatusCode.BadRequest
-                => new ArgumentException(
-                    $"Invalid request for GCS bucket '{bucket}' and object '{objectName}'. {ex.Message}", ex),
-            HttpStatusCode.Conflict
-                => new IOException(
-                    $"Conflict occurred for GCS bucket '{bucket}' and object '{objectName}'. {ex.Message}", ex),
-            _
-                => new GcsStorageException(
-                    $"Failed to {operation} on GCS bucket '{bucket}' and object '{objectName}'. {ex.Message}",
-                    bucket,
-                    objectName,
-                    operation,
-                    ex),
-        };
-    }
-
-    private static DateTimeOffset NormalizeDateTimeOffset(DateTimeOffset? value) => value ?? DateTimeOffset.MinValue;
 
     /// <summary>
     ///     Wrapper stream for GCS downloads that ensures proper disposal.

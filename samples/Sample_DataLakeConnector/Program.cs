@@ -27,8 +27,7 @@ public static class Program
 
         // Show what was written
         var (tableUri, tablePath) = DataLakeConnectorPipeline.GetTableLocation();
-        var resolver = StorageProviderFactory.CreateResolver();
-        var provider = StorageProviderFactory.GetProviderOrThrow(resolver, tableUri);
+        var provider = StorageResolver.Default.Resolve(tableUri);
 
         var manifestReader = new ManifestReader(provider, tableUri);
         var entries = await manifestReader.ReadAllAsync(CancellationToken.None);

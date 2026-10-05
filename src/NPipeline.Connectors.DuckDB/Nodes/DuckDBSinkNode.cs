@@ -27,7 +27,7 @@ public sealed class DuckDBSinkNode<T> : SqlSinkNode<T>
     }
 
     /// <inheritdoc />
-    protected override IStorageResolver DefaultResolver => StorageProviderFactory.CreateResolver();
+    protected override IStorageResolver DefaultResolver => StorageResolver.Default;
 
     /// <inheritdoc />
     protected override DbConnection CreateConnection(string connectionString) => new DuckDBConnection(connectionString);

@@ -6,15 +6,15 @@ Shared S3 protocol abstractions and base implementation for NPipeline S3 storage
 
 `NPipeline.StorageProviders.S3` provides the provider-agnostic core that both S3 implementations build on:
 
-- **`S3CoreStorageProvider`** - Abstract base class implementing `IStorageProvider` and `IStorageProviderMetadataProvider` with full read, write, list, exists, and metadata support
+- **`S3CoreStorageProvider`** - Abstract base class deriving from `StorageProvider` with read, write, list, delete, move, exists, and metadata support. Subclasses supply `Name` and `Schemes`
 - **`S3ClientFactoryBase`** - Abstract factory that creates and caches `IAmazonS3` clients by configuration key
 - **`S3CoreOptions`** - Base configuration with `MultipartUploadThresholdBytes` (default 64 MB)
 - **`S3WriteStream`** - Streaming write implementation that switches to S3 multipart upload for large objects
-- **`S3StorageException`** - Base exception for S3-specific errors
+- **Error translation** - One internal translator maps the HTTP status first (404 to `FileNotFoundException`, 401/403 to `UnauthorizedAccessException`, 400 to `ArgumentException`) and refines by error code; other failures become `IOException` with the `AmazonS3Exception` as inner exception
 
 ## URI Scheme
 
-Both concrete providers use the `s3://` scheme:
+Both concrete providers use the `s3://` scheme by default (the S3-compatible provider can be registered under other schemes):
 
 ```
 s3://bucket-name/key/path
@@ -27,7 +27,15 @@ s3://bucket-name/key/path
 
 ## Key Behaviours
 
-**Flat storage** - S3 has no real directory hierarchy. Prefixes simulate folders. `SupportsHierarchy = false`.
+**Flat storage** - S3 has no real directory hierarchy. Prefixes simulate folders. The providers declare `Read | Write | List | Delete | Move`, and not `Hierarchy`.
+
+**Delete and move** - `DeleteAsync` calls `DeleteObject` and succeeds for a missing key. `MoveAsync` copies with `CopyObject` (or a multipart `UploadPartCopy` for objects over 5 GiB) and then deletes the source, so it overwrites the destination but is not atomic (`AtomicMove` is not declared). It throws `FileNotFoundException` when the source is missing.
+
+**Listing** - The directory URI ends with `/`, so `logs` does not match `logs-archive/`. A non-recursive listing yields objects and prefix entries (`IsDirectory = true`, `Size` and `LastModified` null). A recursive listing yields only objects. Listed URIs keep the caller's host and parameters. A missing bucket yields nothing.
+
+**Timestamps** - `LastModified` and `Size` are `null` when S3 does not report them.
+
+**Read streams** - The read stream reports `Length` from `ContentLength`.
 
 **Multipart uploads** - `S3WriteStream` automatically switches to the S3 multipart upload API when the written content exceeds `MultipartUploadThresholdBytes`. The threshold is configurable per provider instance.
 
@@ -55,17 +63,9 @@ public class MyS3Provider : S3CoreStorageProvider
     public MyS3Provider(MyClientFactory factory, S3CoreOptions options)
         : base(factory, options) { }
 
-    protected override StorageProviderMetadata BuildMetadata() =>
-        new StorageProviderMetadata
-        {
-            Name = "My S3",
-            SupportedSchemes = ["s3"],
-            SupportsRead = true,
-            SupportsWrite = true,
-            SupportsListing = true,
-            SupportsMetadata = true,
-            SupportsHierarchy = false
-        };
+    public override string Name => "My S3";
+
+    public override IReadOnlyList<StorageScheme> Schemes { get; } = [StorageScheme.S3];
 }
 
 public class MyClientFactory : S3ClientFactoryBase

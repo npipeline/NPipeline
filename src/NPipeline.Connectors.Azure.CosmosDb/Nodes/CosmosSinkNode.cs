@@ -267,9 +267,7 @@ public class CosmosSinkNode<T> : DatabaseSinkNode<T>, IAsyncDisposable
         // If using StorageUri-based construction, get connection from database storage provider
         if (_storageUri != null)
         {
-            var provider = _storageProvider ?? StorageProviderFactory.GetProviderOrThrow(
-                _storageResolver ?? DefaultResolver.Value,
-                _storageUri);
+            var provider = _storageProvider ?? (_storageResolver ?? DefaultResolver.Value).Resolve(_storageUri);
 
             if (provider is IDatabaseStorageProvider databaseProvider)
                 return await databaseProvider.GetConnectionAsync(_storageUri, cancellationToken).ConfigureAwait(false);

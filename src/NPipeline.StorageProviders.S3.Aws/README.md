@@ -125,7 +125,7 @@ services.AddAwsS3StorageProvider(new AwsS3StorageProviderOptions
 });
 ```
 
-Registers `AwsS3StorageProvider` as a singleton, along with `AwsS3ClientFactory` and `AwsS3StorageProviderOptions`.
+Registers `AwsS3StorageProvider` as a singleton, along with `AwsS3ClientFactory` and `AwsS3StorageProviderOptions`, and adds it to the `IStorageProvider` collection that `AddStorageResolver()` reads. Calling the method twice registers one provider.
 
 ## Examples
 
@@ -172,6 +172,20 @@ if (metadata is not null)
     Console.WriteLine($"Size: {metadata.Size}, ETag: {metadata.ETag}, Modified: {metadata.LastModified}");
 ```
 
+### Deleting and moving
+
+```csharp
+// Idempotent: succeeds when the key is already gone
+await provider.DeleteAsync(StorageUri.Parse("s3://my-bucket/data/old.csv"));
+
+// Copy then delete (multipart copy above 5 GiB). Overwrites the destination; not atomic.
+await provider.MoveAsync(
+    StorageUri.Parse("s3://my-bucket/staging/orders.csv"),
+    StorageUri.Parse("s3://my-bucket/data/orders.csv"));
+```
+
+The provider declares `Read | Write | List | Delete | Move`.
+
 ### Floci (Testing)
 
 ```csharp
@@ -185,11 +199,13 @@ services.AddAwsS3StorageProvider(options =>
 
 ## Error Handling
 
-| S3 Error Code | .NET Exception | Cause |
+The HTTP status decides first; the error code only refines the result when the status is missing or generic. The `AmazonS3Exception` is always the inner exception.
+
+| HTTP status / error code | .NET Exception | Cause |
 |---------------|----------------|-------|
-| `AccessDenied`, `InvalidAccessKeyId`, `SignatureDoesNotMatch` | `UnauthorizedAccessException` | Auth or permission failure |
-| `InvalidBucketName`, `InvalidKey` | `ArgumentException` | Malformed bucket or key |
-| `NoSuchBucket`, `NotFound` | `FileNotFoundException` | Bucket or object does not exist |
+| 401, 403, `AccessDenied`, `InvalidAccessKeyId`, `SignatureDoesNotMatch` | `UnauthorizedAccessException` | Auth or permission failure |
+| 400 with `InvalidBucketName` or `InvalidKey` | `ArgumentException` | Malformed bucket or key |
+| 404, `NoSuchKey`, `NoSuchBucket`, `NotFound` | `FileNotFoundException` | Bucket or object does not exist |
 | Other `AmazonS3Exception` | `IOException` | General S3 failure |
 
 ## IAM Permissions
@@ -199,6 +215,8 @@ services.AddAwsS3StorageProvider(options =>
 | `OpenReadAsync` | `s3:GetObject` |
 | `OpenWriteAsync` | `s3:PutObject` |
 | `ListAsync` | `s3:ListBucket` |
+| `DeleteAsync` | `s3:DeleteObject` |
+| `MoveAsync` | `s3:GetObject`, `s3:PutObject`, `s3:DeleteObject` |
 | `ExistsAsync` | `s3:GetObject` |
 | `GetMetadataAsync` | `s3:GetObject` |
 
