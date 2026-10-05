@@ -43,7 +43,7 @@ public sealed record DataLakeParquetOptions
         return this;
     }
 
-    /// <summary>The sink for one data file. Files have unique names and are published by the manifest, so they are written directly.</summary>
+    /// <summary>The sink for one data file. A file becomes visible only when its write commits, and the manifest publishes it.</summary>
     internal ParquetSinkNode<T> Sink<T>(IStorageProvider provider, StorageUri file) =>
         new(new ParquetWriteOptions
         {
@@ -52,7 +52,6 @@ public sealed record DataLakeParquetOptions
             RowGroupSize = RowGroupSize,
             RowGroupBytes = RowGroupBytes,
             Codec = Codec,
-            AtomicWrite = AtomicWrite.Never,
         });
 
     /// <summary>The source for one data file. Partition values are stored in the files, so they are not read from the path.</summary>

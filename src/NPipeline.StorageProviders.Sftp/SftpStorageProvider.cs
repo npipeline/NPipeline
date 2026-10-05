@@ -84,9 +84,7 @@ public sealed class SftpStorageProvider : StorageProvider
 
         try
         {
-            var stream = await SftpWriteStream.OpenAsync(lease, path, true, cancellationToken).ConfigureAwait(false);
-
-            return new PassThroughWriteStream(stream);
+            return await SftpWriteStream.OpenAsync(lease, path, true, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex)
         {

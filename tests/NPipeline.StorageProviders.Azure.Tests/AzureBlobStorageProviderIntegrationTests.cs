@@ -249,6 +249,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IClassFixture<Azu
         {
             var buffer = Encoding.UTF8.GetBytes(content);
             await writeStream.WriteAsync(buffer, 0, buffer.Length);
+            await writeStream.CommitAsync();
         }
 
         // Assert
@@ -275,6 +276,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IClassFixture<Azu
         {
             var buffer = Encoding.UTF8.GetBytes(newContent);
             await writeStream.WriteAsync(buffer, 0, buffer.Length);
+            await writeStream.CommitAsync();
         }
 
         // Assert
@@ -300,6 +302,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IClassFixture<Azu
         {
             var buffer = Encoding.UTF8.GetBytes(content);
             await writeStream.WriteAsync(buffer, 0, buffer.Length);
+            await writeStream.CommitAsync();
         }
 
         // Assert
@@ -322,6 +325,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IClassFixture<Azu
         {
             var buffer = Encoding.UTF8.GetBytes(content);
             await writeStream.WriteAsync(buffer, 0, buffer.Length);
+            await writeStream.CommitAsync();
         }
 
         // Assert
@@ -343,6 +347,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IClassFixture<Azu
         using (var writeStream = await _provider!.OpenWriteAsync(uri))
         {
             await writeStream.WriteAsync(largeContent, 0, largeContent.Length);
+            await writeStream.CommitAsync();
         }
 
         // Assert
@@ -390,6 +395,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IClassFixture<Azu
         using (var writeStream = await customProvider.OpenWriteAsync(uri))
         {
             await writeStream.WriteAsync(largeContent, 0, largeContent.Length);
+            await writeStream.CommitAsync();
         }
 
         // Assert
@@ -692,6 +698,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IClassFixture<Azu
         {
             var buffer = Encoding.UTF8.GetBytes(content);
             await writeStream.WriteAsync(buffer, 0, buffer.Length);
+            await writeStream.CommitAsync();
         }
 
         using var readStream = await provider.OpenReadAsync(uri);
@@ -716,6 +723,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IClassFixture<Azu
         {
             var buffer = Encoding.UTF8.GetBytes(content);
             await writeStream.WriteAsync(buffer, 0, buffer.Length);
+            await writeStream.CommitAsync();
         }
 
         using var readStream = await _provider.OpenReadAsync(uri);
@@ -827,6 +835,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IClassFixture<Azu
             using var writeStream = await _provider!.OpenWriteAsync(uri);
             var buffer = Encoding.UTF8.GetBytes($"Content {index}");
             await writeStream.WriteAsync(buffer, 0, buffer.Length);
+            await writeStream.CommitAsync();
         });
 
         await Task.WhenAll(tasks);
@@ -864,6 +873,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IClassFixture<Azu
             using var writeStream = await _provider!.OpenWriteAsync(uri);
             var buffer = Encoding.UTF8.GetBytes("Updated content");
             await writeStream.WriteAsync(buffer, 0, buffer.Length);
+            await writeStream.CommitAsync();
         });
 
         await Task.WhenAll(readTask, writeTask);
@@ -880,7 +890,8 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IClassFixture<Azu
     {
         _provider!.Name.Should().Be("Azure Blob Storage");
         _provider.Schemes.Should().ContainSingle().Which.Should().Be(StorageScheme.Azure);
-        _provider.Capabilities.Should().Be(StorageCapabilities.Read | StorageCapabilities.Write | StorageCapabilities.List | StorageCapabilities.Delete | StorageCapabilities.Move);
+        _provider.Capabilities.Should().Be(StorageCapabilities.Read | StorageCapabilities.Write | StorageCapabilities.List | StorageCapabilities.Delete | StorageCapabilities.Move
+            | StorageCapabilities.ConditionalWrite);
     }
 
     #endregion

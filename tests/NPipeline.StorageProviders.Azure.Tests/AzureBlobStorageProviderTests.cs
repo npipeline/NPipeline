@@ -247,7 +247,8 @@ public class AzureBlobStorageProviderTests
     public void Capabilities_DeclaresObjectStoreFeatures()
     {
         _provider.Capabilities.Should().Be(
-            StorageCapabilities.Read | StorageCapabilities.Write | StorageCapabilities.List | StorageCapabilities.Delete | StorageCapabilities.Move);
+            StorageCapabilities.Read | StorageCapabilities.Write | StorageCapabilities.List | StorageCapabilities.Delete | StorageCapabilities.Move
+            | StorageCapabilities.ConditionalWrite);
     }
 
     [Fact]
@@ -454,7 +455,7 @@ public class AzureBlobStorageProviderTests
 
         // Assert
         stream.Should().NotBeNull();
-        stream.Should().BeOfType<PassThroughWriteStream>();
+        stream.Should().BeOfType<AzureBlobWriteStream>();
     }
 
     [Fact]
@@ -478,7 +479,7 @@ public class AzureBlobStorageProviderTests
 
         // Assert
         stream.Should().NotBeNull();
-        stream.Should().BeOfType<PassThroughWriteStream>();
+        stream.Should().BeOfType<AzureBlobWriteStream>();
     }
 
     [Fact]

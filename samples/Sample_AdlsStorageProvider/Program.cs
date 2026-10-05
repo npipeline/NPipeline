@@ -79,6 +79,7 @@ public sealed class Program
             {
                 var bytes = System.Text.Encoding.UTF8.GetBytes("Hello, ADLS Gen2!");
                 await writeStream.WriteAsync(bytes);
+                await writeStream.CommitAsync();
             }
             Console.WriteLine("  Write completed.");
 

@@ -51,20 +51,8 @@ public sealed class FileSystemStorageProvider : StorageProvider
     protected override Task<StorageWriteStream> OpenWriteCoreAsync(StorageUri uri, StorageWriteOptions? options, CancellationToken cancellationToken)
     {
         var path = ToLocalPath(uri);
-        var directory = Path.GetDirectoryName(path);
 
-        if (!string.IsNullOrEmpty(directory))
-            _ = Directory.CreateDirectory(directory);
-
-        var stream = new FileStream(
-            path,
-            FileMode.Create,
-            FileAccess.Write,
-            FileShare.Read, // Allow other processes to read while writing
-            4096,
-            FileOptions.Asynchronous | FileOptions.SequentialScan);
-
-        return Task.FromResult<StorageWriteStream>(new PassThroughWriteStream(stream));
+        return Task.FromResult<StorageWriteStream>(new FileSystemWriteStream(path, options?.Overwrite ?? true));
     }
 
     /// <inheritdoc />

@@ -82,7 +82,7 @@ var source = ParquetConnector.Source(uri, row => new Order(
 
 See the [Parquet connector documentation](https://docs.npipeline.net/connectors/parquet) for the type mapping and every
 option, and [File Connectors: Shared Behaviour](https://docs.npipeline.net/connectors/file-connectors) for globs,
-atomic writes, row errors and metrics.
+commit behavior, row errors and metrics.
 
 ## Related Packages
 

@@ -122,6 +122,7 @@ public class AzureStorageProviderDemo
             await using (var writeStream = await _provider.OpenWriteAsync(uri, null, cancellationToken))
             {
                 await writeStream.WriteAsync(Encoding.UTF8.GetBytes(content), cancellationToken);
+                await writeStream.CommitAsync(cancellationToken);
             }
 
             Console.WriteLine("  ✓ Write successful");
@@ -193,6 +194,7 @@ public class AzureStorageProviderDemo
             await using (var writeStream = await _provider.OpenWriteAsync(csvUri, null, cancellationToken))
             {
                 await writeStream.WriteAsync(Encoding.UTF8.GetBytes(csvContent.ToString()), cancellationToken);
+                await writeStream.CommitAsync(cancellationToken);
             }
 
             Console.WriteLine("  ✓ CSV uploaded successfully");
@@ -243,6 +245,7 @@ public class AzureStorageProviderDemo
             await using (var writeStream = await _provider.OpenWriteAsync(outputUri, null, cancellationToken))
             {
                 await writeStream.WriteAsync(Encoding.UTF8.GetBytes(processedCsvContent.ToString()), cancellationToken);
+                await writeStream.CommitAsync(cancellationToken);
             }
 
             Console.WriteLine("  ✓ Processed data written successfully");
@@ -286,6 +289,7 @@ public class AzureStorageProviderDemo
             await using (var writeStream = await _provider.OpenWriteAsync(uri, null, cancellationToken))
             {
                 await writeStream.WriteAsync(buffer, cancellationToken);
+                await writeStream.CommitAsync(cancellationToken);
             }
 
             stopwatch.Stop();
@@ -355,6 +359,7 @@ public class AzureStorageProviderDemo
                 await using (var writeStream = await _provider.OpenWriteAsync(uri, null, cancellationToken))
                 {
                     await writeStream.WriteAsync(Encoding.UTF8.GetBytes(content), cancellationToken);
+                    await writeStream.CommitAsync(cancellationToken);
                 }
             }
 
@@ -445,6 +450,7 @@ public class AzureStorageProviderDemo
             await using (var writeStream = await _provider.OpenWriteAsync(contentTypeUri, null, cancellationToken))
             {
                 await writeStream.WriteAsync(Encoding.UTF8.GetBytes(content), cancellationToken);
+                await writeStream.CommitAsync(cancellationToken);
             }
 
             Console.WriteLine("  ✓ Blob uploaded with content type");

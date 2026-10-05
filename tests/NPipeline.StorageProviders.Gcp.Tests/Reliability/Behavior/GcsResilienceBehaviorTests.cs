@@ -227,6 +227,7 @@ public sealed class GcsResilienceBehaviorTests
         await using (var stream = await provider.OpenWriteAsync(Uri))
         {
             await stream.WriteAsync(payload);
+            await stream.CommitAsync();
         }
 
         uploads.Should().HaveCount(2);
@@ -249,7 +250,7 @@ public sealed class GcsResilienceBehaviorTests
         var stream = await provider.OpenWriteAsync(Uri);
         await stream.WriteAsync(new byte[] { 1, 2, 3 });
 
-        _ = await Assert.ThrowsAsync<UnauthorizedAccessException>(async () => await stream.DisposeAsync());
+        _ = await Assert.ThrowsAsync<UnauthorizedAccessException>(async () => await stream.CommitAsync());
         attempts.Should().Be(1);
     }
 
@@ -364,7 +365,7 @@ public sealed class GcsResilienceBehaviorTests
         var stream = await provider.OpenWriteAsync(Uri);
         await stream.WriteAsync(new byte[] { 1, 2, 3 });
 
-        _ = await Assert.ThrowsAsync<IOException>(async () => await stream.DisposeAsync());
+        _ = await Assert.ThrowsAsync<IOException>(async () => await stream.CommitAsync());
 
         // The SDK's in-session resume would send the data up to three times; with it off, one attempt is one PUT.
         server.UploadPuts.Should().Be(1);
@@ -385,6 +386,7 @@ public sealed class GcsResilienceBehaviorTests
         await using (var stream = await provider.OpenWriteAsync(Uri))
         {
             await stream.WriteAsync(new byte[] { 1, 2, 3 });
+            await stream.CommitAsync();
         }
 
         server.UploadPuts.Should().Be(2);

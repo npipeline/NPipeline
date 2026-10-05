@@ -46,7 +46,7 @@ public class AdlsGen2StorageProviderTests
         _provider.Capabilities.Should().HaveFlag(StorageCapabilities.Delete);
         _provider.Capabilities.Should().HaveFlag(StorageCapabilities.Move);
         _provider.Capabilities.Should().NotHaveFlag(StorageCapabilities.AtomicMove);
-        _provider.Capabilities.Should().NotHaveFlag(StorageCapabilities.ConditionalWrite);
+        _provider.Capabilities.Should().HaveFlag(StorageCapabilities.ConditionalWrite);
     }
 
     #endregion
@@ -133,7 +133,7 @@ public class AdlsGen2StorageProviderTests
 
         // Assert
         result.Should().NotBeNull();
-        result.Should().BeOfType<PassThroughWriteStream>();
+        result.Should().BeOfType<AdlsGen2WriteStream>();
     }
 
     [Fact]

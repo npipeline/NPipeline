@@ -1,6 +1,6 @@
 ---
 title: "File Connectors: Shared Behaviour"
-description: "Options, globs, compression, atomic writes, row errors and metrics shared by the file connectors."
+description: "Options, globs, compression, commit behavior, row errors and metrics shared by the file connectors."
 order: 1
 ---
 
@@ -117,18 +117,13 @@ Types can use setters, `init` accessors, `required` members, positional records 
 
 ## Sinks
 
-### Atomic writes
+### Commit behavior
 
-`AtomicWrite` controls whether readers can see a partial file:
-
-| `AtomicWrite` | Effect |
-| --- | --- |
-| `Auto` (default) | On providers that can move files (the file system, ADLS), write to a temporary name next to the target and move it into place. Object stores (S3, Azure Blob, GCS) write directly: their uploads already appear all at once. |
-| `Always` | Always write to a temporary object. Where the provider cannot move objects, it is copied into place and deleted. |
-| `Never` | Write the target directly. |
-
-When a write fails, the sink deletes what it wrote (the temporary object, or the partial target), so a failure never
-leaves a truncated file behind. Set `DeletePartialOnFailure = false` to keep a partial target for debugging.
+A file appears at its target only when the write has finished. The sink writes through the storage provider and
+commits after the format writer and the compressor have written their last bytes (the compression trailer included).
+A write that fails or is cancelled leaves the target as it was: a new file doesn't exist and an existing file keeps its
+old content. There is no partial file and nothing to clean up. Each provider does this in its own way; see
+[Writes commit explicitly](../storage-providers/index.md#writes-commit-explicitly).
 
 ### Null items
 

@@ -118,8 +118,11 @@ bool exists = await provider.ExistsAsync(fileUri);
 // Open file for reading
 using var readStream = await provider.OpenReadAsync(fileUri);
 
-// Open file for writing (creates directories as needed)
-using var writeStream = await provider.OpenWriteAsync(fileUri);
+// Open file for writing (creates directories as needed).
+// The file appears only after CommitAsync; disposing without it discards the data.
+await using var writeStream = await provider.OpenWriteAsync(fileUri);
+await writeStream.WriteAsync(bytes);
+await writeStream.CommitAsync();
 
 // List files in directory
 var directoryUri = StorageUri.FromFilePath("./data/");
@@ -467,9 +470,13 @@ using var reader = new StreamReader(inputStream);
 var content = await reader.ReadToEndAsync();
 
 // Write to file
-using var outputStream = await provider.OpenWriteAsync(outputUri);
-using var writer = new StreamWriter(outputStream);
-await writer.WriteAsync(content.ToUpperInvariant());
+await using var outputStream = await provider.OpenWriteAsync(outputUri);
+await using (var writer = new StreamWriter(outputStream, leaveOpen: true)) // leaveOpen keeps the stream open for the commit
+{
+    await writer.WriteAsync(content.ToUpperInvariant());
+}
+
+await outputStream.CommitAsync(); // the file appears now; disposing without a commit discards the data
 ```
 
 ### Provider Registration with Dependency Injection
@@ -529,19 +536,14 @@ public class S3StorageProvider : IStorageProvider
         return response.ResponseStream;
     }
 
-    public async Task<Stream> OpenWriteAsync(StorageUri uri, CancellationToken cancellationToken = default)
+    public Task<StorageWriteStream> OpenWriteAsync(
+        StorageUri uri, StorageWriteOptions? options = null, CancellationToken cancellationToken = default)
     {
-        // Implementation for writing to S3
+        // Return a StorageWriteStream that buffers the writes and uploads them to S3 in CommitAsync.
+        // Disposing it without a commit must discard the data and upload nothing.
+        // S3UploadStream is your own subclass (for example, of SpooledWriteStream).
         var client = GetS3Client();
-        var request = new PutObjectRequest
-        {
-            BucketName = uri.Host,
-            Key = uri.Path.TrimStart('/'),
-            InputStream = new MemoryStream() // Will be replaced with actual stream
-        };
-
-        // Return a stream that uploads to S3 when disposed
-        return new S3UploadStream(client, request, cancellationToken);
+        return Task.FromResult<StorageWriteStream>(new S3UploadStream(client, uri.Host, uri.Path.TrimStart('/')));
     }
 
     // Implement other required methods...
@@ -629,7 +631,7 @@ services.AddStorageProvidersFromConfiguration(config =>
 
 ### Stream Usage
 
-- Always dispose streams properly to release resources
+- Always dispose streams properly to release resources. For a write stream, call `CommitAsync` first: disposing without a commit discards the data
 - Use appropriate buffer sizes for large file operations
 - Consider using `FileStream` with `FileOptions.SequentialScan` for sequential reads
 

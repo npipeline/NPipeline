@@ -2,6 +2,7 @@ using Amazon.S3;
 using Amazon.S3.Model;
 using AwesomeAssertions;
 using FakeItEasy;
+using NPipeline.StorageProviders.Exceptions;
 using Xunit;
 
 namespace NPipeline.StorageProviders.S3.Tests;
@@ -233,7 +234,7 @@ public class S3WriteStreamTests
     }
 
     [Fact]
-    public async Task DisposeAsync_UploadsToS3()
+    public async Task CommitAsync_UploadsToS3()
     {
         // Arrange
         A.CallTo(() => _fakeS3Client.PutObjectAsync(A<PutObjectRequest>._, A<CancellationToken>._))
@@ -244,6 +245,7 @@ public class S3WriteStreamTests
         await stream.WriteAsync(data, 0, data.Length);
 
         // Act
+        await stream.CommitAsync();
         await stream.DisposeAsync();
 
         // Assert
@@ -257,7 +259,7 @@ public class S3WriteStreamTests
     }
 
     [Fact]
-    public void Dispose_UploadsToS3()
+    public void Dispose_WithoutCommit_UploadsNothing()
     {
         // Arrange
         A.CallTo(() => _fakeS3Client.PutObjectAsync(A<PutObjectRequest>._, A<CancellationToken>._))
@@ -277,11 +279,11 @@ public class S3WriteStreamTests
                     r.Key == TestKey &&
                     r.ContentType == "application/json"),
                 A<CancellationToken>._))
-            .MustHaveHappenedOnceExactly();
+            .MustNotHaveHappened();
     }
 
     [Fact]
-    public async Task DisposeAsync_WithoutContentType_UploadsToS3WithoutContentType()
+    public async Task CommitAsync_WithoutContentType_UploadsToS3WithoutContentType()
     {
         // Arrange
         A.CallTo(() => _fakeS3Client.PutObjectAsync(A<PutObjectRequest>._, A<CancellationToken>._))
@@ -292,6 +294,7 @@ public class S3WriteStreamTests
         await stream.WriteAsync(data, 0, data.Length);
 
         // Act
+        await stream.CommitAsync();
         await stream.DisposeAsync();
 
         // Assert
@@ -305,7 +308,7 @@ public class S3WriteStreamTests
     }
 
     [Fact]
-    public async Task DisposeAsync_WithAccessDenied_ThrowsUnauthorizedAccessException()
+    public async Task CommitAsync_WithAccessDenied_ThrowsUnauthorizedAccessException()
     {
         // Arrange
         var s3Exception = new AmazonS3Exception("Access denied")
@@ -321,11 +324,11 @@ public class S3WriteStreamTests
         await stream.WriteAsync(data, 0, data.Length);
 
         // Act & Assert
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(async () => await stream.DisposeAsync());
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(async () => await stream.CommitAsync());
     }
 
     [Fact]
-    public async Task DisposeAsync_WithInvalidAccessKeyId_ThrowsUnauthorizedAccessException()
+    public async Task CommitAsync_WithInvalidAccessKeyId_ThrowsUnauthorizedAccessException()
     {
         // Arrange
         var s3Exception = new AmazonS3Exception("Invalid access key")
@@ -341,11 +344,11 @@ public class S3WriteStreamTests
         await stream.WriteAsync(data, 0, data.Length);
 
         // Act & Assert
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(async () => await stream.DisposeAsync());
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(async () => await stream.CommitAsync());
     }
 
     [Fact]
-    public async Task DisposeAsync_WithSignatureDoesNotMatch_ThrowsUnauthorizedAccessException()
+    public async Task CommitAsync_WithSignatureDoesNotMatch_ThrowsUnauthorizedAccessException()
     {
         // Arrange
         var s3Exception = new AmazonS3Exception("Signature does not match")
@@ -361,11 +364,11 @@ public class S3WriteStreamTests
         await stream.WriteAsync(data, 0, data.Length);
 
         // Act & Assert
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(async () => await stream.DisposeAsync());
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(async () => await stream.CommitAsync());
     }
 
     [Fact]
-    public async Task DisposeAsync_WithInvalidBucketName_ThrowsArgumentException()
+    public async Task CommitAsync_WithInvalidBucketName_ThrowsArgumentException()
     {
         // Arrange
         var s3Exception = new AmazonS3Exception("Invalid bucket name")
@@ -381,11 +384,11 @@ public class S3WriteStreamTests
         await stream.WriteAsync(data, 0, data.Length);
 
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentException>(async () => await stream.DisposeAsync());
+        await Assert.ThrowsAsync<ArgumentException>(async () => await stream.CommitAsync());
     }
 
     [Fact]
-    public async Task DisposeAsync_WithInvalidKey_ThrowsArgumentException()
+    public async Task CommitAsync_WithInvalidKey_ThrowsArgumentException()
     {
         // Arrange
         var s3Exception = new AmazonS3Exception("Invalid key")
@@ -401,11 +404,11 @@ public class S3WriteStreamTests
         await stream.WriteAsync(data, 0, data.Length);
 
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentException>(async () => await stream.DisposeAsync());
+        await Assert.ThrowsAsync<ArgumentException>(async () => await stream.CommitAsync());
     }
 
     [Fact]
-    public async Task DisposeAsync_WithNoSuchBucket_ThrowsFileNotFoundException()
+    public async Task CommitAsync_WithNoSuchBucket_ThrowsFileNotFoundException()
     {
         // Arrange
         var s3Exception = new AmazonS3Exception("Bucket not found")
@@ -421,11 +424,11 @@ public class S3WriteStreamTests
         await stream.WriteAsync(data, 0, data.Length);
 
         // Act & Assert
-        await Assert.ThrowsAsync<FileNotFoundException>(async () => await stream.DisposeAsync());
+        await Assert.ThrowsAsync<FileNotFoundException>(async () => await stream.CommitAsync());
     }
 
     [Fact]
-    public async Task DisposeAsync_WithNotFound_ThrowsFileNotFoundException()
+    public async Task CommitAsync_WithNotFound_ThrowsFileNotFoundException()
     {
         // Arrange
         var s3Exception = new AmazonS3Exception("Not found")
@@ -441,11 +444,11 @@ public class S3WriteStreamTests
         await stream.WriteAsync(data, 0, data.Length);
 
         // Act & Assert
-        await Assert.ThrowsAsync<FileNotFoundException>(async () => await stream.DisposeAsync());
+        await Assert.ThrowsAsync<FileNotFoundException>(async () => await stream.CommitAsync());
     }
 
     [Fact]
-    public async Task DisposeAsync_WithGenericError_ThrowsIOException()
+    public async Task CommitAsync_WithGenericError_ThrowsIOException()
     {
         // Arrange
         var s3Exception = new AmazonS3Exception("Generic error")
@@ -461,11 +464,11 @@ public class S3WriteStreamTests
         await stream.WriteAsync(data, 0, data.Length);
 
         // Act & Assert
-        await Assert.ThrowsAsync<IOException>(async () => await stream.DisposeAsync());
+        await Assert.ThrowsAsync<IOException>(async () => await stream.CommitAsync());
     }
 
     [Fact]
-    public async Task DisposeAsync_CalledMultipleTimes_UploadsOnlyOnce()
+    public async Task CommitAsync_CalledMultipleTimes_UploadsOnlyOnce()
     {
         // Arrange
         A.CallTo(() => _fakeS3Client.PutObjectAsync(A<PutObjectRequest>._, A<CancellationToken>._))
@@ -476,6 +479,7 @@ public class S3WriteStreamTests
         await stream.WriteAsync(data, 0, data.Length);
 
         // Act
+        await stream.CommitAsync();
         await stream.DisposeAsync();
         await stream.DisposeAsync();
 
@@ -485,7 +489,7 @@ public class S3WriteStreamTests
     }
 
     [Fact]
-    public void Dispose_CalledMultipleTimes_UploadsOnlyOnce()
+    public void Dispose_WithoutCommit_CalledMultipleTimes_UploadsNothing()
     {
         // Arrange
         A.CallTo(() => _fakeS3Client.PutObjectAsync(A<PutObjectRequest>._, A<CancellationToken>._))
@@ -501,11 +505,11 @@ public class S3WriteStreamTests
 
         // Assert
         A.CallTo(() => _fakeS3Client.PutObjectAsync(A<PutObjectRequest>._, A<CancellationToken>._))
-            .MustHaveHappenedOnceExactly();
+            .MustNotHaveHappened();
     }
 
     [Fact]
-    public async Task DisposeAsync_WithLargeData_UploadsAllData()
+    public async Task CommitAsync_WithLargeData_UploadsAllData()
     {
         // Arrange
         A.CallTo(() => _fakeS3Client.PutObjectAsync(A<PutObjectRequest>._, A<CancellationToken>._))
@@ -522,6 +526,7 @@ public class S3WriteStreamTests
         await stream.WriteAsync(data, 0, data.Length);
 
         // Act
+        await stream.CommitAsync();
         await stream.DisposeAsync();
 
         // Assert
@@ -530,7 +535,7 @@ public class S3WriteStreamTests
     }
 
     [Fact]
-    public async Task DisposeAsync_WithThresholdReached_UsesMultipartUpload()
+    public async Task CommitAsync_WithThresholdReached_UsesMultipartUpload()
     {
         // Arrange
         A.CallTo(() => _fakeS3Client.InitiateMultipartUploadAsync(A<InitiateMultipartUploadRequest>._, A<CancellationToken>._))
@@ -560,6 +565,7 @@ public class S3WriteStreamTests
         await stream.WriteAsync(data, 0, data.Length);
 
         // Act
+        await stream.CommitAsync();
         await stream.DisposeAsync();
 
         // Assert
@@ -596,7 +602,7 @@ public class S3WriteStreamTests
     }
 
     [Fact]
-    public async Task DisposeAsync_WithZeroLengthAndZeroThreshold_UsesSingleUpload()
+    public async Task CommitAsync_WithZeroLengthAndZeroThreshold_UsesSingleUpload()
     {
         // Arrange
         A.CallTo(() => _fakeS3Client.PutObjectAsync(A<PutObjectRequest>._, A<CancellationToken>._))
@@ -605,6 +611,7 @@ public class S3WriteStreamTests
         var stream = new S3WriteStream(_fakeS3Client, TestBucket, TestKey, multipartUploadThreshold: 0);
 
         // Act
+        await stream.CommitAsync();
         await stream.DisposeAsync();
 
         // Assert
@@ -620,7 +627,7 @@ public class S3WriteStreamTests
     }
 
     [Fact]
-    public async Task DisposeAsync_WithMultipleWrites_UploadsAllData()
+    public async Task CommitAsync_WithMultipleWrites_UploadsAllData()
     {
         // Arrange
         A.CallTo(() => _fakeS3Client.PutObjectAsync(A<PutObjectRequest>._, A<CancellationToken>._))
@@ -635,6 +642,7 @@ public class S3WriteStreamTests
             await stream.WriteAsync(data, 0, data.Length);
         }
 
+        await stream.CommitAsync();
         await stream.DisposeAsync();
 
         // Assert
@@ -647,7 +655,7 @@ public class S3WriteStreamTests
     [InlineData("text/csv")]
     [InlineData("application/octet-stream")]
     [InlineData("image/png")]
-    public async Task DisposeAsync_WithVariousContentTypes_SetsContentTypeCorrectly(string contentType)
+    public async Task CommitAsync_WithVariousContentTypes_SetsContentTypeCorrectly(string contentType)
     {
         // Arrange
         A.CallTo(() => _fakeS3Client.PutObjectAsync(A<PutObjectRequest>._, A<CancellationToken>._))
@@ -658,6 +666,7 @@ public class S3WriteStreamTests
         await stream.WriteAsync(data, 0, data.Length);
 
         // Act
+        await stream.CommitAsync();
         await stream.DisposeAsync();
 
         // Assert
@@ -665,5 +674,102 @@ public class S3WriteStreamTests
                 A<PutObjectRequest>.That.Matches(r => r.ContentType == contentType),
                 A<CancellationToken>._))
             .MustHaveHappenedOnceExactly();
+    }
+
+    [Fact]
+    public async Task CommitAsync_WithIfMatch_SetsIfMatchOnThePut()
+    {
+        PutObjectRequest? captured = null;
+
+        A.CallTo(() => _fakeS3Client.PutObjectAsync(A<PutObjectRequest>._, A<CancellationToken>._))
+            .Invokes((PutObjectRequest r, CancellationToken _) => captured = r)
+            .Returns(Task.FromResult(new PutObjectResponse()));
+
+        var stream = new S3WriteStream(_fakeS3Client, TestBucket, TestKey, ifMatch: "\"abc\"");
+        await stream.WriteAsync(new byte[] { 1 });
+
+        await stream.CommitAsync();
+
+        captured!.IfMatch.Should().Be("\"abc\"");
+        captured.IfNoneMatch.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task CommitAsync_WithOverwriteFalse_SetsIfNoneMatchStarOnThePut()
+    {
+        PutObjectRequest? captured = null;
+
+        A.CallTo(() => _fakeS3Client.PutObjectAsync(A<PutObjectRequest>._, A<CancellationToken>._))
+            .Invokes((PutObjectRequest r, CancellationToken _) => captured = r)
+            .Returns(Task.FromResult(new PutObjectResponse()));
+
+        var stream = new S3WriteStream(_fakeS3Client, TestBucket, TestKey, overwrite: false);
+        await stream.WriteAsync(new byte[] { 1 });
+
+        await stream.CommitAsync();
+
+        captured!.IfNoneMatch.Should().Be("*");
+        captured.IfMatch.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task CommitAsync_WithAConditionOnAMultipartUpload_SetsItOnTheCompletion()
+    {
+        CompleteMultipartUploadRequest? captured = null;
+
+        A.CallTo(() => _fakeS3Client.InitiateMultipartUploadAsync(A<InitiateMultipartUploadRequest>._, A<CancellationToken>._))
+            .Returns(Task.FromResult(new InitiateMultipartUploadResponse { UploadId = "upload-1" }));
+
+        A.CallTo(() => _fakeS3Client.UploadPartAsync(A<UploadPartRequest>._, A<CancellationToken>._))
+            .ReturnsLazily(() => Task.FromResult(new UploadPartResponse { ETag = "\"part\"" }));
+
+        A.CallTo(() => _fakeS3Client.CompleteMultipartUploadAsync(A<CompleteMultipartUploadRequest>._, A<CancellationToken>._))
+            .Invokes((CompleteMultipartUploadRequest r, CancellationToken _) => captured = r)
+            .Returns(Task.FromResult(new CompleteMultipartUploadResponse { ETag = "\"done\"" }));
+
+        var stream = new S3WriteStream(_fakeS3Client, TestBucket, TestKey, multipartUploadThreshold: 1024, ifMatch: "\"abc\"");
+        await stream.WriteAsync(new byte[2048]);
+
+        await stream.CommitAsync();
+
+        captured!.IfMatch.Should().Be("\"abc\"");
+        stream.ETag.Should().Be("\"done\"");
+    }
+
+    [Fact]
+    public async Task CommitAsync_WhenS3RefusesTheCondition_ThrowsStoragePreconditionFailedException()
+    {
+        A.CallTo(() => _fakeS3Client.PutObjectAsync(A<PutObjectRequest>._, A<CancellationToken>._))
+            .Throws(new AmazonS3Exception("failed", Amazon.Runtime.ErrorType.Sender, "PreconditionFailed", "req", System.Net.HttpStatusCode.PreconditionFailed));
+
+        var stream = new S3WriteStream(_fakeS3Client, TestBucket, TestKey, overwrite: false);
+        await stream.WriteAsync(new byte[] { 1 });
+
+        await Assert.ThrowsAsync<StoragePreconditionFailedException>(async () => await stream.CommitAsync());
+    }
+
+    [Fact]
+    public async Task CommitAsync_ExposesTheETagOfThePut()
+    {
+        A.CallTo(() => _fakeS3Client.PutObjectAsync(A<PutObjectRequest>._, A<CancellationToken>._))
+            .Returns(Task.FromResult(new PutObjectResponse { ETag = "\"put\"" }));
+
+        var stream = new S3WriteStream(_fakeS3Client, TestBucket, TestKey);
+        await stream.WriteAsync(new byte[] { 1 });
+
+        await stream.CommitAsync();
+
+        stream.ETag.Should().Be("\"put\"");
+    }
+
+    [Fact]
+    public async Task DisposeAsync_WithoutCommit_StartsNoMultipartUpload()
+    {
+        var stream = new S3WriteStream(_fakeS3Client, TestBucket, TestKey, multipartUploadThreshold: 1024);
+        await stream.WriteAsync(new byte[4096]);
+
+        await stream.DisposeAsync();
+
+        A.CallTo(_fakeS3Client).MustNotHaveHappened();
     }
 }

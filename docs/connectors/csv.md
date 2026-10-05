@@ -11,7 +11,7 @@ The `NPipeline.Connectors.Csv` package reads and writes CSV and TSV files. It pa
 to members by name once per file, and values convert strictly and culture-invariantly, so what the sink writes the
 source reads back unchanged.
 
-Globs, compression, atomic writes, row errors and metrics work the same in every file connector; see
+Globs, compression, commit behavior, row errors and metrics work the same in every file connector; see
 [File Connectors: Shared Behaviour](file-connectors.md).
 
 ## Installation
@@ -128,8 +128,8 @@ written so the source reads them back unchanged, whatever the machine's culture:
 | `null` | An empty field |
 
 Fields containing the delimiter, a quote, a line break or leading or trailing spaces are quoted. A target ending in `.gz`,
-`.br` or `.zz` is compressed. On the file system, the file is written under a temporary name and moved into place when
-complete.
+`.br` or `.zz` is compressed. The file appears only when the write is complete; see
+[Commit behavior](file-connectors.md#commit-behavior).
 
 A `null` item fails the write by default; set `NullItems = NullItemHandling.Skip` to drop them.
 
@@ -163,7 +163,7 @@ var sink = CsvConnector.Sink<Order>(
 | `ConfigureCsvHelper` | `null` | Adjusts CsvHelper's configuration after these options are applied |
 
 Plus the [shared sink options](file-connectors.md#options-every-file-source-and-sink-has): `Provider`, `Resolver`,
-`Compression`, `BufferSize`, `AtomicWrite`, `NullItems` and `DeletePartialOnFailure`.
+`Compression`, `BufferSize` and `NullItems`.
 
 ## Examples
 
@@ -210,7 +210,7 @@ var source = CsvConnector.Source<Order>(
 
 ## Next Steps
 
-- [File Connectors: Shared Behaviour](file-connectors.md): globs, compression, atomic writes, row errors, metrics
+- [File Connectors: Shared Behaviour](file-connectors.md): globs, compression, commit behavior, row errors, metrics
 - [JSON Connector](json.md): structured and nested data
 - [Parquet Connector](parquet.md): columnar format for large datasets
 - [Storage Providers](../storage-providers/index.md): read CSV from S3, Azure Blob, GCS or SFTP

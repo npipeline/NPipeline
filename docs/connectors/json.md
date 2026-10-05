@@ -12,7 +12,7 @@ record is deserialized straight from UTF-8, so anything the serializer supports 
 records and source-generated metadata. A record that fails to deserialize is a row error, and the read can skip it
 and go on.
 
-Globs, compression, atomic writes, row errors and metrics work the same in every file connector; see
+Globs, compression, commit behavior, row errors and metrics work the same in every file connector; see
 [File Connectors: Shared Behaviour](file-connectors.md).
 
 ## Installation
@@ -143,7 +143,7 @@ drop it.
 | `SerializerOptions` | `null` | System.Text.Json options; `null` uses the defaults above |
 
 Plus the [shared sink options](file-connectors.md#options-every-file-source-and-sink-has): `Provider`, `Resolver`,
-`Compression`, `BufferSize`, `AtomicWrite`, `NullItems` and `DeletePartialOnFailure`.
+`Compression`, `BufferSize` and `NullItems`.
 
 ## Examples
 
@@ -188,7 +188,7 @@ public sealed class ConvertPipeline : IPipelineDefinition
 
 ## Next Steps
 
-- [File Connectors: Shared Behaviour](file-connectors.md): globs, compression, atomic writes, row errors, metrics
+- [File Connectors: Shared Behaviour](file-connectors.md): globs, compression, commit behavior, row errors, metrics
 - [CSV Connector](csv.md): tabular data
 - [HTTP Connector](http.md): read JSON straight from REST APIs
 - [Storage Providers](../storage-providers/index.md): read JSON from S3, Azure Blob, GCS or SFTP

@@ -1,35 +1,41 @@
 using Renci.SshNet;
 using Renci.SshNet.Common;
+using NPipeline.StorageProviders.Abstractions;
 
 namespace NPipeline.StorageProviders.Sftp;
 
 /// <summary>
-///     A write stream backed by an SSH.NET <c>SftpFileStream</c>, opened with <see cref="FileMode.Create" /> so an existing file is truncated.
-///     Holds a connection lease from <see cref="SftpClientPool" /> for its lifetime;
-///     the lease is returned to the pool when the stream is disposed.
+///     A write stream backed by an SSH.NET <c>SftpFileStream</c>. It writes to a hidden sibling of the target and renames it
+///     into place in <see cref="CommitAsync" />; disposing without committing deletes the sibling. Holds a connection lease
+///     from <see cref="SftpClientPool" /> for its lifetime; the lease is returned to the pool when the stream is disposed.
 /// </summary>
 /// <remarks>
 ///     Do NOT buffer the entire payload in a <see cref="MemoryStream" /> - that would cause
 ///     OOM on large files. SSH.NET streams data over the wire as each Write/WriteAsync call is made.
 /// </remarks>
-public sealed class SftpWriteStream : Stream
+public sealed class SftpWriteStream : StorageWriteStream
 {
     private readonly IPooledConnection _lease;
     private readonly Stream _sftpStream;
+    private readonly string _targetPath;
+    private readonly string _tempPath;
+    private bool _committed;
     private bool _disposed;
 
-    private SftpWriteStream(IPooledConnection lease, Stream sftpStream)
+    private SftpWriteStream(IPooledConnection lease, Stream sftpStream, string targetPath, string tempPath)
     {
         _lease = lease ?? throw new ArgumentNullException(nameof(lease));
         _sftpStream = sftpStream ?? throw new ArgumentNullException(nameof(sftpStream));
+        _targetPath = targetPath;
+        _tempPath = tempPath;
     }
 
     /// <summary>
-    ///     Opens the remote file for writing, truncating an existing file. The returned stream owns <paramref name="lease" />;
+    ///     Opens a temporary sibling of <paramref name="remotePath" /> for writing. The returned stream owns <paramref name="lease" />;
     ///     if opening fails, the caller keeps it.
     /// </summary>
     /// <param name="lease">The pooled connection lease.</param>
-    /// <param name="remotePath">The remote file path.</param>
+    /// <param name="remotePath">The remote file path the content is published to on commit.</param>
     /// <param name="createDirectory">Whether to create the parent directory if it doesn't exist.</param>
     /// <param name="cancellationToken">Token to observe while waiting for the task to complete.</param>
     internal static async Task<SftpWriteStream> OpenAsync(
@@ -46,10 +52,13 @@ public sealed class SftpWriteStream : Stream
         if (createDirectory)
             await EnsureParentDirectoryExistsAsync(lease.Client, remotePath, cancellationToken).ConfigureAwait(false);
 
-        // FileMode.Create truncates; SftpClient.OpenWrite opens with OpenOrCreate, which leaves the old file's tail after shorter content.
-        var stream = await lease.Client.OpenAsync(remotePath, FileMode.Create, FileAccess.Write, cancellationToken).ConfigureAwait(false);
+        var slash = remotePath.LastIndexOf('/');
+        var tempPath = $"{remotePath[..(slash + 1)]}.{remotePath[(slash + 1)..]}.{Guid.NewGuid():N}.tmp";
 
-        return new SftpWriteStream(lease, stream);
+        // CreateNew: the name is unique, and a leftover must never be appended to or truncated by another writer.
+        var stream = await lease.Client.OpenAsync(tempPath, FileMode.CreateNew, FileAccess.Write, cancellationToken).ConfigureAwait(false);
+
+        return new SftpWriteStream(lease, stream, remotePath, tempPath);
     }
 
     /// <inheritdoc />
@@ -59,7 +68,7 @@ public sealed class SftpWriteStream : Stream
     public override bool CanSeek => false;
 
     /// <inheritdoc />
-    public override bool CanWrite => !_disposed && _sftpStream.CanWrite;
+    public override bool CanWrite => !_disposed && !_committed && _sftpStream.CanWrite;
 
     /// <inheritdoc />
     public override long Length
@@ -79,16 +88,44 @@ public sealed class SftpWriteStream : Stream
     }
 
     /// <inheritdoc />
-    public override void Write(byte[] buffer, int offset, int count)
+    public override async Task CommitAsync(CancellationToken cancellationToken = default)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
+
+        if (_committed)
+            throw new InvalidOperationException("The stream has already been committed.");
+
+        cancellationToken.ThrowIfCancellationRequested();
+        await _sftpStream.FlushAsync(cancellationToken).ConfigureAwait(false);
+        await _sftpStream.DisposeAsync().ConfigureAwait(false);
+
+        var client = _lease.Client;
+
+        // A rename does not overwrite, so the destination goes first.
+        try
+        {
+            await client.DeleteFileAsync(_targetPath, cancellationToken).ConfigureAwait(false);
+        }
+        catch (SftpPathNotFoundException)
+        {
+            // Nothing to overwrite.
+        }
+
+        await client.RenameFileAsync(_tempPath, _targetPath, cancellationToken).ConfigureAwait(false);
+        _committed = true;
+    }
+
+    /// <inheritdoc />
+    public override void Write(byte[] buffer, int offset, int count)
+    {
+        ThrowIfNotWritable();
         _sftpStream.Write(buffer, offset, count);
     }
 
     /// <inheritdoc />
     public override void Write(ReadOnlySpan<byte> buffer)
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
+        ThrowIfNotWritable();
         _sftpStream.Write(buffer);
     }
 
@@ -99,7 +136,7 @@ public sealed class SftpWriteStream : Stream
         int count,
         CancellationToken cancellationToken)
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
+        ThrowIfNotWritable();
         return _sftpStream.WriteAsync(buffer, offset, count, cancellationToken);
     }
 
@@ -108,7 +145,7 @@ public sealed class SftpWriteStream : Stream
         ReadOnlyMemory<byte> buffer,
         CancellationToken cancellationToken = default)
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
+        ThrowIfNotWritable();
         return _sftpStream.WriteAsync(buffer, cancellationToken);
     }
 
@@ -145,14 +182,16 @@ public sealed class SftpWriteStream : Stream
     public override void Flush()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        _sftpStream.Flush();
+
+        if (!_committed)
+            _sftpStream.Flush();
     }
 
     /// <inheritdoc />
     public override Task FlushAsync(CancellationToken cancellationToken)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        return _sftpStream.FlushAsync(cancellationToken);
+        return _committed ? Task.CompletedTask : _sftpStream.FlushAsync(cancellationToken);
     }
 
     /// <inheritdoc />
@@ -165,8 +204,17 @@ public sealed class SftpWriteStream : Stream
 
         if (disposing)
         {
-            _sftpStream.Dispose();
-            _lease.Dispose();
+            try
+            {
+                _sftpStream.Dispose();
+
+                if (!_committed)
+                    TryDeleteTemp();
+            }
+            finally
+            {
+                _lease.Dispose();
+            }
         }
 
         base.Dispose(disposing);
@@ -180,10 +228,52 @@ public sealed class SftpWriteStream : Stream
 
         _disposed = true;
 
-        await _sftpStream.DisposeAsync().ConfigureAwait(false);
-        await _lease.DisposeAsync().ConfigureAwait(false);
+        try
+        {
+            await _sftpStream.DisposeAsync().ConfigureAwait(false);
+
+            if (!_committed)
+                await TryDeleteTempAsync().ConfigureAwait(false);
+        }
+        finally
+        {
+            await _lease.DisposeAsync().ConfigureAwait(false);
+        }
 
         await base.DisposeAsync().ConfigureAwait(false);
+        GC.SuppressFinalize(this);
+    }
+
+    private void ThrowIfNotWritable()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
+        if (_committed)
+            throw new InvalidOperationException("The stream has been committed and accepts no more writes.");
+    }
+
+    private void TryDeleteTemp()
+    {
+        try
+        {
+            _lease.Client.DeleteFile(_tempPath);
+        }
+        catch (Exception ex) when (ex is SshException or InvalidOperationException or ObjectDisposedException)
+        {
+            // Best effort: the temporary file is hidden and the target was never touched.
+        }
+    }
+
+    private async Task TryDeleteTempAsync()
+    {
+        try
+        {
+            await _lease.Client.DeleteFileAsync(_tempPath, CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is SshException or InvalidOperationException or ObjectDisposedException)
+        {
+            // Best effort: the temporary file is hidden and the target was never touched.
+        }
     }
 
     /// <summary>Creates the parent directory of <paramref name="remotePath" /> and any missing ancestors.</summary>

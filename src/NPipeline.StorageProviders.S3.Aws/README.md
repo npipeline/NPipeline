@@ -38,8 +38,10 @@ using var readStream = await provider.OpenReadAsync(
     StorageUri.Parse("s3://my-bucket/data/orders.csv"));
 
 // Write
-using var writeStream = await provider.OpenWriteAsync(
+await using var writeStream = await provider.OpenWriteAsync(
     StorageUri.Parse("s3://my-bucket/output/results.csv"));
+await writeStream.WriteAsync(bytes);
+await writeStream.CommitAsync(); // uploads the object; disposing without a commit discards the data
 ```
 
 ## URI Format
@@ -142,11 +144,20 @@ var content = await reader.ReadToEndAsync();
 
 ```csharp
 var uri = StorageUri.Parse("s3://my-bucket/output/results.csv");
-using var stream = await provider.OpenWriteAsync(uri);
-using var writer = new StreamWriter(stream);
-await writer.WriteLineAsync("id,name,value");
-await writer.WriteLineAsync("1,Widget,42.00");
+await using var stream = await provider.OpenWriteAsync(uri);
+await using (var writer = new StreamWriter(stream, leaveOpen: true))
+{
+    await writer.WriteLineAsync("id,name,value");
+    await writer.WriteLineAsync("1,Widget,42.00");
+}
+
+// The object appears only after CommitAsync. Disposing the stream without it uploads nothing.
+await stream.CommitAsync();
 ```
+
+The provider buffers the data to a local temporary file and uploads it in `CommitAsync` (as a multipart upload above the threshold). Upload errors surface from `CommitAsync`.
+
+`AwsS3StorageProvider` declares `StorageCapabilities.ConditionalWrite`. With `new StorageWriteOptions { Overwrite = false }` the commit fails if the object exists. With `new StorageWriteOptions { IfMatch = etag }` (an ETag from `GetMetadataAsync`) it commits only if the current ETag matches. A refused condition throws `StoragePreconditionFailedException` from `CommitAsync`.
 
 ### Listing
 

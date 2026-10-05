@@ -78,6 +78,9 @@ public abstract class JsonRoundTripTests(JsonFormat format)
 
 public sealed class JsonArrayRoundTripTests() : JsonRoundTripTests(JsonFormat.Array)
 {
+    private static long PendingBytes(string path) =>
+        Directory.GetFiles(Path.GetDirectoryName(path)!, $".{Path.GetFileName(path)}.*.tmp").Sum(file => new FileInfo(file).Length);
+
     [Fact]
     public async Task Sink_streams_output_before_the_input_completes()
     {
@@ -93,14 +96,14 @@ public sealed class JsonArrayRoundTripTests() : JsonRoundTripTests(JsonFormat.Ar
             }
 
             await Task.Yield();
-            bytesBeforeLastItem = new FileInfo(path).Length;
+            bytesBeforeLastItem = PendingBytes(path);
             yield return ScalarRecord.Create(50_000);
         }
 
         try
         {
-            // Written directly, not through a temporary file, so the test can watch the target grow.
-            var sink = JsonConnector.Sink<ScalarRecord>(StorageUri.FromFilePath(path), o => o with { AtomicWrite = AtomicWrite.Never });
+            // The file system provider writes a hidden temporary sibling until the commit, so the test watches that grow.
+            var sink = JsonConnector.Sink<ScalarRecord>(StorageUri.FromFilePath(path));
             await sink.ConsumeAsync(new NPipeline.DataFlow.DataStreams.DataStream<ScalarRecord>(Items()), PipelineContext.CreateDefault(), CancellationToken.None);
 
             bytesBeforeLastItem.Should().BeGreaterThan(1_000_000, "a 50,000-item array must not be held in memory until the end");

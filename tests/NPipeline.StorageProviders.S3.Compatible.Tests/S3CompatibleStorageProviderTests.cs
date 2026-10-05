@@ -193,7 +193,7 @@ public class S3CompatibleStorageProviderTests
 
         var stream = await _provider.OpenWriteAsync(uri);
 
-        stream.Should().NotBeNull().And.BeOfType<PassThroughWriteStream>();
+        stream.Should().NotBeNull().And.BeOfType<S3WriteStream>();
         await stream.DisposeAsync();
     }
 
@@ -205,7 +205,7 @@ public class S3CompatibleStorageProviderTests
 
         var stream = await _provider.OpenWriteAsync(uri);
 
-        stream.Should().NotBeNull().And.BeOfType<PassThroughWriteStream>();
+        stream.Should().NotBeNull().And.BeOfType<S3WriteStream>();
         await stream.DisposeAsync();
     }
 

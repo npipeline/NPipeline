@@ -1,5 +1,6 @@
 using Azure;
 using AwesomeAssertions;
+using NPipeline.StorageProviders.Exceptions;
 using Xunit;
 
 namespace NPipeline.StorageProviders.Azure.Tests;
@@ -19,7 +20,8 @@ public class AzureErrorsTests
     [InlineData(0, "AuthenticationFailed", typeof(UnauthorizedAccessException))]
     [InlineData(0, "InvalidQueryParameterValue", typeof(ArgumentException))]
     [InlineData(500, "InternalError", typeof(IOException))]
-    [InlineData(409, "BlobAlreadyExists", typeof(IOException))]
+    [InlineData(409, "BlobAlreadyExists", typeof(StoragePreconditionFailedException))]
+    [InlineData(412, "ConditionNotMet", typeof(StoragePreconditionFailedException))]
     public void Translate_MapsStatusFirstThenErrorCode(int status, string? errorCode, Type expectedType)
     {
         var ex = new RequestFailedException(status, "failure", errorCode, null);

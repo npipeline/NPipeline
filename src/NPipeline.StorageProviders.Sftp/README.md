@@ -45,9 +45,14 @@ using var reader = new StreamReader(stream);
 var content = await reader.ReadToEndAsync();
 
 // Write a file
-using var writeStream = await provider.OpenWriteAsync(uri);
-using var writer = new StreamWriter(writeStream);
-await writer.WriteAsync("Hello, SFTP!");
+await using var writeStream = await provider.OpenWriteAsync(uri);
+await using (var writer = new StreamWriter(writeStream, leaveOpen: true))
+{
+    await writer.WriteAsync("Hello, SFTP!");
+}
+
+// The file appears (renamed from a hidden temporary file) only after CommitAsync.
+await writeStream.CommitAsync();
 ```
 
 ### Key-Based Authentication
@@ -152,7 +157,7 @@ Derives from `StorageProvider` and implements `IStorageProvider`. `AddSftpStorag
 | Method                                                   | Description                                                                               |
 |----------------------------------------------------------|-------------------------------------------------------------------------------------------|
 | `OpenReadAsync(uri, cancellationToken)`                  | Opens a readable stream. Throws `FileNotFoundException` when the file is missing          |
-| `OpenWriteAsync(uri, options, cancellationToken)`        | Opens a writable stream, creating missing parent directories and truncating an old file   |
+| `OpenWriteAsync(uri, options, cancellationToken)`        | Opens a writable stream, creating missing parent directories. Call `CommitAsync` to replace the file |
 | `ExistsAsync(uri, cancellationToken)`                    | Returns whether a file or directory exists                                                |
 | `ListAsync(directory, recursive, cancellationToken)`     | Lists a directory. Non-recursive listings include directory entries; recursive ones list files only |
 | `GetMetadataAsync(uri, cancellationToken)`               | Gets metadata, or `null` when the path is missing                                         |

@@ -113,10 +113,15 @@ var provider = new AzureBlobStorageProvider(
 
 var uri = StorageUri.Parse("azure://my-container/output.csv");
 
-using var stream = await provider.OpenWriteAsync(uri);
-using var writer = new StreamWriter(stream);
-await writer.WriteLineAsync("id,name,value");
-await writer.WriteLineAsync("1,Item A,100");
+await using var stream = await provider.OpenWriteAsync(uri);
+await using (var writer = new StreamWriter(stream, leaveOpen: true))
+{
+    await writer.WriteLineAsync("id,name,value");
+    await writer.WriteLineAsync("1,Item A,100");
+}
+
+// The blob appears only after CommitAsync. Disposing without it uploads nothing.
+await stream.CommitAsync();
 ```
 
 ### Minimal Working Code
@@ -136,6 +141,7 @@ var uri = StorageUri.Parse("azure://demo-container/hello.txt");
 await using (var writeStream = await provider.OpenWriteAsync(uri))
 {
     await writeStream.WriteAsync(System.Text.Encoding.UTF8.GetBytes("Hello, Azure!"));
+    await writeStream.CommitAsync();
 }
 
 // Read
@@ -447,12 +453,20 @@ Console.WriteLine(content);
 var provider = serviceProvider.GetRequiredService<AzureBlobStorageProvider>();
 var uri = StorageUri.Parse("azure://my-container/output.csv");
 
-using var stream = await provider.OpenWriteAsync(uri);
-using var writer = new StreamWriter(stream);
-await writer.WriteLineAsync("id,name,value");
-await writer.WriteLineAsync("1,Item A,100");
-await writer.WriteLineAsync("2,Item B,200");
+await using var stream = await provider.OpenWriteAsync(uri);
+await using (var writer = new StreamWriter(stream, leaveOpen: true))
+{
+    await writer.WriteLineAsync("id,name,value");
+    await writer.WriteLineAsync("1,Item A,100");
+    await writer.WriteLineAsync("2,Item B,200");
+}
+
+await stream.CommitAsync();
 ```
+
+The provider buffers the data to a local temporary file and uploads it in `CommitAsync`. Disposing the stream without committing uploads nothing and leaves an existing blob as it was. Upload errors surface from `CommitAsync`.
+
+The provider declares `StorageCapabilities.ConditionalWrite`. With `new StorageWriteOptions { Overwrite = false }` the commit fails if the blob exists. With `new StorageWriteOptions { IfMatch = etag }` (an ETag from `GetMetadataAsync`) it commits only if the current ETag matches. A refused condition throws `StoragePreconditionFailedException` from `CommitAsync`. `StorageWriteOptions.ContentType` sets the content type; the `contentType` URI parameter is the fallback.
 
 ### Checking Blob Existence
 
@@ -533,6 +547,7 @@ var jsonUri = StorageUri.Parse("azure://my-container/data.json?contentType=appli
 await using (var stream = await provider.OpenWriteAsync(jsonUri))
 {
     await stream.WriteAsync(Encoding.UTF8.GetBytes("{\"name\":\"value\"}"));
+    await stream.CommitAsync();
 }
 
 // CSV with content type
@@ -540,6 +555,7 @@ var csvUri = StorageUri.Parse("azure://my-container/data.csv?contentType=text/cs
 await using (var stream = await provider.OpenWriteAsync(csvUri))
 {
     await stream.WriteAsync(Encoding.UTF8.GetBytes("id,name\n1,Item A"));
+    await stream.CommitAsync();
 }
 
 // Plain text
@@ -547,6 +563,7 @@ var txtUri = StorageUri.Parse("azure://my-container/data.txt?contentType=text/pl
 await using (var stream = await provider.OpenWriteAsync(txtUri))
 {
     await stream.WriteAsync(Encoding.UTF8.GetBytes("Hello, World!"));
+    await stream.CommitAsync();
 }
 ```
 
@@ -567,6 +584,7 @@ new Random().NextBytes(buffer);
 await using (var stream = await provider.OpenWriteAsync(uri))
 {
     await stream.WriteAsync(buffer, CancellationToken.None);
+    await stream.CommitAsync(CancellationToken.None); // the upload happens here
 }
 
 Console.WriteLine("Large file uploaded successfully!");
@@ -600,6 +618,7 @@ await using (var stream = await provider.OpenWriteAsync(largeUri))
 {
     // Write data - provider handles block blob upload automatically
     await stream.WriteAsync(largeData);
+    await stream.CommitAsync();
 }
 ```
 
@@ -672,7 +691,7 @@ await using (var stream = await provider.OpenReadAsync(uri))
     }
 }
 
-// Streaming write - uploads data as it's written
+// Streaming write - buffers the chunks to a local temporary file and uploads them on commit
 await using (var stream = await provider.OpenWriteAsync(uri))
 {
     // Write data in chunks
@@ -680,6 +699,8 @@ await using (var stream = await provider.OpenWriteAsync(uri))
     {
         await stream.WriteAsync(chunk);
     }
+
+    await stream.CommitAsync();
 }
 ```
 
@@ -878,6 +899,7 @@ var content = await File.ReadAllTextAsync(localPath);
 await using (var stream = await provider.OpenWriteAsync(uri))
 {
     await stream.WriteAsync(Encoding.UTF8.GetBytes(content));
+    await stream.CommitAsync();
 }
 ```
 
@@ -979,6 +1001,7 @@ var uri = StorageUri.Parse("azure://test-container/test-blob");
 await using (var stream = await provider.OpenWriteAsync(uri))
 {
     await stream.WriteAsync(Encoding.UTF8.GetBytes("Test data"));
+    await stream.CommitAsync();
 }
 
 var exists = await provider.ExistsAsync(uri);
@@ -1381,7 +1404,7 @@ Main storage provider implementation for Azure Blob Storage.
 
 **Location:** [`AzureBlobStorageProvider.cs`](AzureBlobStorageProvider.cs)
 
-Derives from `StorageProvider`. Declares `StorageCapabilities.Read | Write | List | Delete | Move` (move is a same-account server-side copy, then delete) (the namespace is flat, so no `Hierarchy`).
+Derives from `StorageProvider`. Declares `StorageCapabilities.Read | Write | List | Delete | Move | ConditionalWrite` (move is a same-account server-side copy, then delete) (the namespace is flat, so no `Hierarchy`).
 `DeleteAsync` is idempotent. `MoveAsync` copies the blob server-side within one storage account (overwriting the destination), then deletes the source; a missing source throws `FileNotFoundException`, and a different account throws `ArgumentException`.
 
 **Properties:**
@@ -1390,7 +1413,7 @@ Derives from `StorageProvider`. Declares `StorageCapabilities.Read | Write | Lis
 |----------------|-------------------------------|------------------------------------------------------|
 | `Name`         | `string`                      | `"Azure Blob Storage"`                               |
 | `Schemes`      | `IReadOnlyList<StorageScheme>` | `[StorageScheme.Azure]`                              |
-| `Capabilities` | `StorageCapabilities`         | `Read \| Write \| List \| Delete \| Move`                           |
+| `Capabilities` | `StorageCapabilities`         | `Read \| Write \| List \| Delete \| Move \| ConditionalWrite`       |
 
 **Methods:**
 

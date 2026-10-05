@@ -66,7 +66,8 @@ public class AwsS3StorageProviderTests
     public void Capabilities_DeclaresObjectStoreSet()
     {
         _provider.Capabilities.Should().Be(
-            StorageCapabilities.Read | StorageCapabilities.Write | StorageCapabilities.List | StorageCapabilities.Delete | StorageCapabilities.Move);
+            StorageCapabilities.Read | StorageCapabilities.Write | StorageCapabilities.List | StorageCapabilities.Delete | StorageCapabilities.Move
+            | StorageCapabilities.ConditionalWrite);
     }
 
     [Fact]
@@ -259,7 +260,7 @@ public class AwsS3StorageProviderTests
 
         // Assert
         stream.Should().NotBeNull();
-        stream.Should().BeOfType<PassThroughWriteStream>();
+        stream.Should().BeOfType<S3WriteStream>();
     }
 
     [Fact]
@@ -283,7 +284,7 @@ public class AwsS3StorageProviderTests
 
         // Assert
         stream.Should().NotBeNull();
-        stream.Should().BeOfType<PassThroughWriteStream>();
+        stream.Should().BeOfType<S3WriteStream>();
     }
 
     [Fact]

@@ -68,16 +68,15 @@ public sealed class ParquetRoundTripTests
     }
 
     [Fact]
-    public async Task Atomic_write_keeps_uri_parameters_on_the_temporary_object()
+    public async Task Write_keeps_uri_parameters_on_the_written_file()
     {
         var uri = StorageUri.Parse("mem://test/data.parquet?region=ap-southeast-2");
-        // Always: the in-memory provider cannot move objects, so Auto would write the target directly.
-        var sink = ParquetConnector.Sink<ScalarRecord>(uri, o => o with { Provider = _harness.Provider, AtomicWrite = AtomicWrite.Always });
+        var sink = ParquetConnector.Sink<ScalarRecord>(uri, o => o with { Provider = _harness.Provider });
 
         await NodeRunner.WriteAsync(sink, [ScalarRecord.Create(1)]);
 
-        _harness.Provider.WriteRequests.Should().HaveCountGreaterThan(1, "the atomic write goes through a temporary object")
-            .And.AllSatisfy(written => written.Parameters.Should().Contain("region", "ap-southeast-2"));
+        _harness.Provider.WriteRequests.Should().ContainSingle()
+            .Which.Parameters.Should().Contain("region", "ap-southeast-2");
     }
 
     [Fact]

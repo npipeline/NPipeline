@@ -11,7 +11,7 @@ The `NPipeline.Connectors.Excel` package reads a sheet of an XLSX, XLSM or legac
 writer. Columns bind to members by header, cells convert strictly, and written numbers, booleans and dates are typed
 cells that Excel shows as numbers, checkboxes and dates.
 
-Globs, atomic writes, row errors and metrics work the same in every file connector; see
+Globs, commit behavior, row errors and metrics work the same in every file connector; see
 [File Connectors: Shared Behaviour](file-connectors.md).
 
 ## Installation
@@ -142,7 +142,7 @@ var sink = ExcelConnector.Sink<Order>(
 | `Naming` | `AsIs` | How member names become column names, such as `ColumnNamingPolicy.Custom(name => ...)` |
 
 Plus the [shared sink options](file-connectors.md#options-every-file-source-and-sink-has): `Provider`, `Resolver`,
-`BufferSize`, `AtomicWrite`, `NullItems` and `DeletePartialOnFailure`.
+`BufferSize` and `NullItems`.
 
 ## Example: Excel to Parquet
 
@@ -170,7 +170,7 @@ public sealed class ExcelToParquetPipeline : IPipelineDefinition
 
 ## Next Steps
 
-- [File Connectors: Shared Behaviour](file-connectors.md): globs, atomic writes, row errors, metrics
+- [File Connectors: Shared Behaviour](file-connectors.md): globs, commit behavior, row errors, metrics
 - [CSV Connector](csv.md): streaming alternative for tabular data
 - [Parquet Connector](parquet.md): columnar format for large datasets
 - [Storage Providers](../storage-providers/index.md): read workbooks from cloud storage

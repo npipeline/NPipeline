@@ -6,7 +6,7 @@ order: 7
 
 # Data Lake Connector
 
-The `NPipeline.Connectors.DataLake` package provides source and sink nodes for Hive-style partitioned Parquet tables. It manages manifest files for snapshot tracking, enabling time-travel queries and atomic writes across partitions. Works with any storage backend (local, S3, Azure Blob, GCS) via the storage abstraction layer.
+The `NPipeline.Connectors.DataLake` package provides source and sink nodes for Hive-style partitioned Parquet tables. It manages manifest files for snapshot tracking, enabling time-travel queries across partitions. Works with any storage backend (local, S3, Azure Blob, GCS) via the storage abstraction layer.
 
 ## Installation
 
@@ -114,8 +114,8 @@ the compactor take it; readers need none.
 | `Codec` | `Snappy` | The compression codec |
 | `MaxBufferedRows` | `250_000` | The most rows buffered across all partitions; beyond it the largest buffers are written early |
 
-Data files have unique names and only become part of the table when the manifest records them, so they are written
-directly rather than through a temporary file.
+Data files have unique names and only become part of the table when the manifest records them. Each data file is
+committed when it's complete, so a failed write leaves no partial file at its final name.
 
 ## Example: Full Pipeline
 
@@ -216,18 +216,27 @@ append.
 
 ### Concurrent writers
 
-The main manifest is **last-writer-wins**. An append reads `manifest.ndjson`, adds its entries, and replaces the file (by
-atomic rename on providers that support it, such as ADLS Gen2 and the local file system, and by overwriting it on the
-others). There is no conditional write, so when two writers append at the same time, one writer's entries can be
-missing from the main manifest.
+When the storage provider declares `ConditionalWrite` (Azure Blob, ADLS Gen2 and AWS S3), the manifest writer replaces
+`manifest.ndjson` conditionally. It reads the manifest and its ETag, adds its entries, and commits the new content with
+`IfMatch` set to that ETag. If another writer changed the manifest in the meantime, the commit fails with
+`StoragePreconditionFailedException`. The writer then reads the manifest again and retries, up to 16 times. Two
+concurrent writers therefore lose no entries.
 
-Readers still see every entry. Before appending, each flush writes the writer's per-snapshot manifest,
+On providers without `ConditionalWrite` (S3-compatible stores, GCS, SFTP and the file system), the main manifest is
+**last-writer-wins**. An append reads `manifest.ndjson`, adds its entries, and replaces the file (by atomic rename on
+providers that declare `AtomicMove`, such as ADLS Gen2 and the local file system, and by overwriting it on the others).
+When two writers append at the same time, one writer's entries can be missing from the main manifest.
+
+On providers without `ConditionalWrite`, readers still see every entry. Before appending, each flush writes the writer's per-snapshot manifest,
 `_manifest/snapshots/{snapshotId}.ndjson`, holding every entry that writer has flushed. Only that writer writes this
 file. `ManifestReader` (and so `DataLakeTableSourceNode` and time travel) merges all snapshot manifests into the main
 manifest, so entries lost from the main manifest come back. Two conditions apply:
 
 - Give each writer its own snapshot ID. The built-in writers generate one with `ManifestWriter.GenerateSnapshotId()`.
-- Tools that read `manifest.ndjson` directly, without the snapshot files, can miss entries.
+- Tools that read `manifest.ndjson` directly, without the snapshot files, can miss entries on providers without
+  `ConditionalWrite`.
+
+The connector writes manifests as UTF-8 without a byte-order mark. Readers accept files with or without one.
 
 Reads use `DataLakeConnectorResilience.ManifestRead` (the same attempts, backoff, and classifier as writes). A missing
 manifest or snapshot directory reads as empty. Any other failure to list or read the manifest or a snapshot file is

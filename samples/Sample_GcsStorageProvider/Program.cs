@@ -127,6 +127,7 @@ public sealed class Program
                 await using var stream = await storageProvider.OpenWriteAsync(uri);
                 var bytes = Encoding.UTF8.GetBytes(content);
                 await stream.WriteAsync(bytes);
+                await stream.CommitAsync();
                 Console.WriteLine($"    Wrote {bytes.Length} bytes");
             }
             catch (Exception ex)

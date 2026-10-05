@@ -1,28 +1,26 @@
-using System.Runtime.ExceptionServices;
 using Azure;
 using Azure.Storage;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
+using NPipeline.StorageProviders.Abstractions;
 
 namespace NPipeline.StorageProviders.Azure;
 
 /// <summary>
-///     A stream that buffers writes and uploads to Azure Blob Storage on disposal.
+///     A write stream that buffers to a local file and uploads the blob in <see cref="StorageWriteStream.CommitAsync" />.
+///     Disposing without committing uploads nothing.
 /// </summary>
-public sealed class AzureBlobWriteStream : Stream
+public sealed class AzureBlobWriteStream : SpooledWriteStream
 {
     private readonly string _blob;
     private readonly BlobServiceClient _blobServiceClient;
     private readonly long _blockBlobUploadThreshold;
     private readonly string _container;
     private readonly string? _contentType;
-    private readonly CancellationToken _disposeCancellationToken;
     private readonly int? _maximumConcurrency;
+    private readonly string? _ifMatch;
     private readonly int? _maximumTransferSizeBytes;
-    private readonly string _tempFilePath;
-    private int _disposeState; // 0 = not disposed, 1 = disposing, 2 = disposed
-    private FileStream? _tempFileStream;
-    private bool _uploaded;
+    private readonly bool _overwrite;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="AzureBlobWriteStream" /> class.
@@ -31,10 +29,11 @@ public sealed class AzureBlobWriteStream : Stream
     /// <param name="container">The Azure container name.</param>
     /// <param name="blob">The Azure blob name.</param>
     /// <param name="contentType">Optional content type for the upload.</param>
-    /// <param name="blockBlobUploadThreshold">Threshold in bytes for using block blob upload.</param>
+    /// <param name="blockBlobUploadThreshold">Threshold in bytes for applying the transfer options.</param>
     /// <param name="maximumConcurrency">Maximum concurrent upload requests for large blobs.</param>
     /// <param name="maximumTransferSizeBytes">Maximum transfer size in bytes for each upload chunk.</param>
-    /// <param name="disposeCancellationToken">Cancellation token to observe while disposing the stream.</param>
+    /// <param name="ifMatch">Commit only if the blob's current ETag matches.</param>
+    /// <param name="overwrite">When <see langword="false" />, commit fails if the blob exists.</param>
     public AzureBlobWriteStream(
         BlobServiceClient blobServiceClient,
         string container,
@@ -43,7 +42,9 @@ public sealed class AzureBlobWriteStream : Stream
         long blockBlobUploadThreshold = 64 * 1024 * 1024,
         int? maximumConcurrency = null,
         int? maximumTransferSizeBytes = null,
-        CancellationToken disposeCancellationToken = default)
+        string? ifMatch = null,
+        bool overwrite = true)
+        : base("azure-upload")
     {
         _blobServiceClient = blobServiceClient ?? throw new ArgumentNullException(nameof(blobServiceClient));
         _container = container ?? throw new ArgumentNullException(nameof(container));
@@ -52,297 +53,22 @@ public sealed class AzureBlobWriteStream : Stream
         _blockBlobUploadThreshold = blockBlobUploadThreshold;
         _maximumConcurrency = maximumConcurrency;
         _maximumTransferSizeBytes = maximumTransferSizeBytes;
-        _tempFilePath = Path.Combine(Path.GetTempPath(), $"azure-upload-{Guid.NewGuid()}.tmp");
-        _disposeCancellationToken = disposeCancellationToken;
-
-        _tempFileStream = new FileStream(
-            _tempFilePath,
-            FileMode.Create,
-            FileAccess.ReadWrite,
-            FileShare.None,
-            81920,
-            FileOptions.Asynchronous | FileOptions.DeleteOnClose);
-    }
-
-    private bool IsDisposed => Volatile.Read(ref _disposeState) != 0;
-
-    /// <inheritdoc />
-    public override bool CanRead => false;
-
-    /// <inheritdoc />
-    public override bool CanSeek => false;
-
-    /// <inheritdoc />
-    public override bool CanWrite => true;
-
-    /// <inheritdoc />
-    public override long Length
-    {
-        get
-        {
-            ObjectDisposedException.ThrowIf(IsDisposed, this);
-            return _tempFileStream?.Length ?? 0;
-        }
+        _ifMatch = ifMatch;
+        _overwrite = overwrite;
     }
 
     /// <inheritdoc />
-    public override long Position
+    protected override async Task<string?> UploadAsync(Stream content, CancellationToken cancellationToken)
     {
-        get => throw new NotSupportedException();
-        set => throw new NotSupportedException();
-    }
-
-    /// <inheritdoc />
-    public override void Flush()
-    {
-        // Flush is a no-op - upload happens on disposal
-    }
-
-    /// <inheritdoc />
-    public override Task FlushAsync(CancellationToken cancellationToken) =>
-
-        // Flush is a no-op - upload happens on disposal
-        Task.CompletedTask;
-
-    /// <inheritdoc />
-    public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
-
-    /// <inheritdoc />
-    public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
-
-    /// <inheritdoc />
-    public override void SetLength(long value)
-    {
-        throw new NotSupportedException();
-    }
-
-    /// <inheritdoc />
-    public override void Write(byte[] buffer, int offset, int count)
-    {
-        ObjectDisposedException.ThrowIf(IsDisposed, this);
-        _tempFileStream?.Write(buffer, offset, count);
-    }
-
-    /// <inheritdoc />
-    public override async Task WriteAsync(
-        byte[] buffer,
-        int offset,
-        int count,
-        CancellationToken cancellationToken)
-    {
-        ObjectDisposedException.ThrowIf(IsDisposed, this);
-
-        if (_tempFileStream is null)
-            ObjectDisposedException.ThrowIf(true, this);
-
-        await _tempFileStream.WriteAsync(new ReadOnlyMemory<byte>(buffer, offset, count), cancellationToken).ConfigureAwait(false);
-    }
-
-    /// <inheritdoc />
-    public override async ValueTask WriteAsync(
-        ReadOnlyMemory<byte> buffer,
-        CancellationToken cancellationToken = default)
-    {
-        ObjectDisposedException.ThrowIf(IsDisposed, this);
-
-        if (_tempFileStream is null)
-            ObjectDisposedException.ThrowIf(true, this);
-
-        await _tempFileStream.WriteAsync(buffer, cancellationToken).ConfigureAwait(false);
-    }
-
-    /// <inheritdoc />
-    protected override void Dispose(bool disposing)
-    {
-        // Ensure only one disposing path executes
-        if (Interlocked.CompareExchange(ref _disposeState, 1, 0) != 0)
-            return;
-
-        ExceptionDispatchInfo? capturedException = null;
-
-        if (disposing)
-        {
-            try
-            {
-                if (!_uploaded && _tempFileStream is not null)
-                {
-                    // Flush the temp file stream to ensure all data is written
-                    _tempFileStream.Flush();
-
-                    // Reset position to beginning for upload
-                    _tempFileStream.Position = 0;
-
-                    // Upload with no timeout: it takes as long as the object needs, and only the caller's token cancels it.
-                    UploadAsync(_disposeCancellationToken).GetAwaiter().GetResult();
-                }
-            }
-            catch (Exception ex)
-            {
-                if (ex is OperationCanceledException)
-                    throw;
-
-                capturedException = ExceptionDispatchInfo.Capture(ex);
-            }
-            finally
-            {
-                _tempFileStream?.Dispose();
-                _tempFileStream = null;
-
-                TryDeleteTempFileOnSuccess();
-            }
-        }
-
-        Interlocked.Exchange(ref _disposeState, 2);
-
-        capturedException?.Throw();
-
-        base.Dispose(disposing);
-    }
-
-    /// <inheritdoc />
-    public override async ValueTask DisposeAsync()
-    {
-        // Ensure only one async disposing path executes
-        if (Interlocked.CompareExchange(ref _disposeState, 1, 0) != 0)
-            return;
-
-        ExceptionDispatchInfo? capturedException = null;
-
-        try
-        {
-            if (!_uploaded && _tempFileStream is not null)
-            {
-                // Flush the temp file stream to ensure all data is written
-                await _tempFileStream.FlushAsync(CancellationToken.None).ConfigureAwait(false);
-
-                // Reset position to beginning for upload
-                _tempFileStream.Position = 0;
-
-                // Upload with no timeout: it takes as long as the object needs, and only the caller's token cancels it.
-                await UploadAsync(_disposeCancellationToken).ConfigureAwait(false);
-            }
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            capturedException = ExceptionDispatchInfo.Capture(ex);
-        }
-        finally
-        {
-            if (_tempFileStream is not null)
-            {
-                await _tempFileStream.DisposeAsync().ConfigureAwait(false);
-                _tempFileStream = null;
-            }
-
-            TryDeleteTempFileOnSuccess();
-
-            Interlocked.Exchange(ref _disposeState, 2);
-        }
-
-        await base.DisposeAsync().ConfigureAwait(false);
-
-        capturedException?.Throw();
-    }
-
-    /// <summary>
-    ///     Uploads the buffered data to Azure Blob Storage.
-    /// </summary>
-    /// <param name="cancellationToken">Token to observe while waiting for the task to complete.</param>
-    private async Task UploadAsync(CancellationToken cancellationToken)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-
-        if (_tempFileStream is null || _uploaded)
-            return;
-
-        var blobClient = _blobServiceClient.GetBlobContainerClient(_container).GetBlobClient(_blob);
-
-        try
-        {
-            // Determine if we should use block blob upload based on file size
-            var fileSize = _tempFileStream.Length;
-
-            if (fileSize >= _blockBlobUploadThreshold)
-            {
-                // Use block blob upload for large files
-                await UploadBlockBlobAsync(blobClient, cancellationToken).ConfigureAwait(false);
-            }
-            else
-            {
-                // Use simple upload for smaller files
-                await UploadSimpleAsync(blobClient, cancellationToken).ConfigureAwait(false);
-            }
-
-            _uploaded = true;
-        }
-        catch (RequestFailedException ex)
-        {
-            throw AzureErrors.Translate(ex, _container, _blob);
-        }
-    }
-
-    private void TryDeleteTempFileOnSuccess()
-    {
-        if (!_uploaded)
-            return;
-
-        try
-        {
-            if (File.Exists(_tempFilePath))
-                File.Delete(_tempFilePath);
-        }
-        catch
-        {
-            // Best-effort cleanup; ignore failures to delete the temporary file.
-        }
-    }
-
-    /// <summary>
-    ///     Uploads the blob using simple upload for smaller files.
-    /// </summary>
-    private async Task UploadSimpleAsync(BlobClient blobClient, CancellationToken cancellationToken)
-    {
-        var options = new BlobUploadOptions();
-
-        if (!string.IsNullOrEmpty(_contentType))
-        {
-            options.HttpHeaders = new BlobHttpHeaders
-            {
-                ContentType = _contentType,
-            };
-        }
-
-        // Ensure container exists before uploading
         var containerClient = _blobServiceClient.GetBlobContainerClient(_container);
-        _ = await containerClient.CreateIfNotExistsAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
-
-        _ = await blobClient.UploadAsync(_tempFileStream, options, cancellationToken).ConfigureAwait(false);
-    }
-
-    /// <summary>
-    ///     Uploads the blob using block blob upload for large files.
-    /// </summary>
-    private async Task UploadBlockBlobAsync(BlobClient blobClient, CancellationToken cancellationToken)
-    {
-        // Ensure container exists before uploading
-        var containerClient = _blobServiceClient.GetBlobContainerClient(_container);
-        _ = await containerClient.CreateIfNotExistsAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+        var blobClient = containerClient.GetBlobClient(_blob);
 
         var options = new BlobUploadOptions();
 
         if (!string.IsNullOrEmpty(_contentType))
-        {
-            options.HttpHeaders = new BlobHttpHeaders
-            {
-                ContentType = _contentType,
-            };
-        }
+            options.HttpHeaders = new BlobHttpHeaders { ContentType = _contentType };
 
-        if (_maximumConcurrency.HasValue || _maximumTransferSizeBytes.HasValue)
+        if (content.Length >= _blockBlobUploadThreshold && (_maximumConcurrency.HasValue || _maximumTransferSizeBytes.HasValue))
         {
             var transferOptions = new StorageTransferOptions();
 
@@ -355,6 +81,24 @@ public sealed class AzureBlobWriteStream : Stream
             options.TransferOptions = transferOptions;
         }
 
-        _ = await blobClient.UploadAsync(_tempFileStream, options, cancellationToken).ConfigureAwait(false);
+        if (_ifMatch is not null)
+            options.Conditions = new BlobRequestConditions { IfMatch = new global::Azure.ETag(_ifMatch) };
+        else if (!_overwrite)
+            options.Conditions = new BlobRequestConditions { IfNoneMatch = global::Azure.ETag.All };
+
+        try
+        {
+            // Ensure container exists before uploading
+            _ = await containerClient.CreateIfNotExistsAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+
+            var response = await blobClient.UploadAsync(content, options, cancellationToken).ConfigureAwait(false);
+            var etag = response?.Value?.ETag.ToString();
+
+            return string.IsNullOrEmpty(etag) ? null : etag;
+        }
+        catch (RequestFailedException ex)
+        {
+            throw AzureErrors.Translate(ex, _container, _blob);
+        }
     }
 }

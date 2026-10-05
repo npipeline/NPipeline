@@ -13,6 +13,9 @@ namespace NPipeline.Connectors.Excel.Tests;
 
 public sealed class ExcelSinkNodeTests : ExcelTestBase
 {
+    private static long PendingBytes(string path) =>
+        Directory.GetFiles(Path.GetDirectoryName(path)!, $".{Path.GetFileName(path)}.*.tmp").Sum(file => new FileInfo(file).Length);
+
     private static readonly TypedRow Typed = new()
     {
         Big = 9_007_199_254_740_993,
@@ -162,13 +165,13 @@ public sealed class ExcelSinkNodeTests : ExcelTestBase
             }
 
             await Task.Yield();
-            bytesBeforeLastItem = new FileInfo(path).Length;
+            bytesBeforeLastItem = PendingBytes(path);
             yield return new Person { Id = 50_000 };
         }
 
         try
         {
-            var sink = ExcelConnector.Sink<Person>(StorageUri.FromFilePath(path), o => o with { AtomicWrite = AtomicWrite.Never });
+            var sink = ExcelConnector.Sink<Person>(StorageUri.FromFilePath(path));
             await sink.ConsumeAsync(new DataStream<Person>(Items(), "people"), new PipelineContext(), CancellationToken.None);
 
             bytesBeforeLastItem.Should().BeGreaterThan(200_000, "rows must reach storage as they are written");

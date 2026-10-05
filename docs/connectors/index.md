@@ -82,7 +82,7 @@ public void Define(PipelineBuilder builder, PipelineContext context)
 
 ### Storage Provider Integration
 
-File-based connectors (CSV, JSON, Parquet, Excel) read from and write to `IStorageProvider`. This means the same connector code works with local files, S3, Azure Blob, GCS, or SFTP. Globs, compression, atomic writes and row errors are described in [File Connectors: Shared Behaviour](file-connectors.md).
+File-based connectors (CSV, JSON, Parquet, Excel) read from and write to `IStorageProvider`. This means the same connector code works with local files, S3, Azure Blob, GCS, or SFTP. Globs, compression, commit behavior and row errors are described in [File Connectors: Shared Behaviour](file-connectors.md).
 
 The SQL connectors (SQL Server, PostgreSQL, MySQL, Snowflake, DuckDB) share their mapping, row errors, transactions,
 upserts and checkpoints; see [SQL Connectors: Shared Behaviour](sql-connectors.md).

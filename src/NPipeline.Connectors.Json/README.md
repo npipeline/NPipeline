@@ -63,7 +63,7 @@ var source = JsonConnector.Source<Order>(uri, o => o with
 
 See the [JSON connector documentation](https://docs.npipeline.net/connectors/json) for every option, and
 [File Connectors: Shared Behaviour](https://docs.npipeline.net/connectors/file-connectors) for globs, compression,
-atomic writes, row errors and metrics.
+commit behavior, row errors and metrics.
 
 ## Related Packages
 

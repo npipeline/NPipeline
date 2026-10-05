@@ -194,11 +194,18 @@ var content = await reader.ReadToEndAsync();
 
 ```csharp
 var uri = StorageUri.Parse("s3://my-bucket/output/results.csv");
-using var stream = await provider.OpenWriteAsync(uri);
-using var writer = new StreamWriter(stream);
-await writer.WriteLineAsync("id,name,value");
-await writer.WriteLineAsync("1,Widget,42.00");
+await using var stream = await provider.OpenWriteAsync(uri);
+await using (var writer = new StreamWriter(stream, leaveOpen: true))
+{
+    await writer.WriteLineAsync("id,name,value");
+    await writer.WriteLineAsync("1,Widget,42.00");
+}
+
+// The object appears only after CommitAsync. Disposing the stream without it uploads nothing.
+await stream.CommitAsync();
 ```
+
+The provider buffers the data to a local temporary file and uploads it in `CommitAsync`. Upload errors surface from `CommitAsync`. This provider doesn't declare `ConditionalWrite`.
 
 ### Listing
 

@@ -3,6 +3,7 @@ using Azure;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using FakeItEasy;
+using NPipeline.StorageProviders.Exceptions;
 using Xunit;
 
 namespace NPipeline.StorageProviders.Adls.Tests;
@@ -34,8 +35,7 @@ public class AdlsGen2WriteStreamTests
             "text/plain",
             64 * 1024 * 1024,
             null,
-            null,
-            CancellationToken.None);
+            null);
 
         // Assert
         stream.Should().NotBeNull();
@@ -53,8 +53,7 @@ public class AdlsGen2WriteStreamTests
             "text/plain",
             64 * 1024 * 1024,
             null,
-            null,
-            CancellationToken.None));
+            null));
     }
 
     [Fact]
@@ -68,8 +67,7 @@ public class AdlsGen2WriteStreamTests
             "text/plain",
             64 * 1024 * 1024,
             null,
-            null,
-            CancellationToken.None));
+            null));
     }
 
     [Fact]
@@ -83,8 +81,7 @@ public class AdlsGen2WriteStreamTests
             "text/plain",
             64 * 1024 * 1024,
             null,
-            null,
-            CancellationToken.None));
+            null));
     }
 
     [Fact]
@@ -98,8 +95,7 @@ public class AdlsGen2WriteStreamTests
             "text/plain",
             64 * 1024 * 1024,
             null,
-            null,
-            CancellationToken.None);
+            null);
 
         var data = "Hello, World!"u8.ToArray();
 
@@ -121,8 +117,7 @@ public class AdlsGen2WriteStreamTests
             "text/plain",
             64 * 1024 * 1024,
             null,
-            null,
-            CancellationToken.None);
+            null);
 
         var data = "Hello, World!"u8.ToArray();
 
@@ -144,8 +139,7 @@ public class AdlsGen2WriteStreamTests
             "text/plain",
             64 * 1024 * 1024,
             null,
-            null,
-            CancellationToken.None);
+            null);
 
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() => stream.Write(null!, 0, 0));
@@ -162,8 +156,7 @@ public class AdlsGen2WriteStreamTests
             "text/plain",
             64 * 1024 * 1024,
             null,
-            null,
-            CancellationToken.None);
+            null);
 
         // Act & Assert
         Assert.Throws<NotSupportedException>(() => stream.Seek(0, SeekOrigin.Begin));
@@ -180,8 +173,7 @@ public class AdlsGen2WriteStreamTests
             "text/plain",
             64 * 1024 * 1024,
             null,
-            null,
-            CancellationToken.None);
+            null);
 
         // Act & Assert
         Assert.Throws<NotSupportedException>(() => stream.SetLength(100));
@@ -198,8 +190,7 @@ public class AdlsGen2WriteStreamTests
             "text/plain",
             64 * 1024 * 1024,
             null,
-            null,
-            CancellationToken.None);
+            null);
 
         var buffer = new byte[100];
 
@@ -218,8 +209,7 @@ public class AdlsGen2WriteStreamTests
             "text/plain",
             64 * 1024 * 1024,
             null,
-            null,
-            CancellationToken.None);
+            null);
 
         // Assert
         stream.CanRead.Should().BeFalse();
@@ -236,8 +226,7 @@ public class AdlsGen2WriteStreamTests
             "text/plain",
             64 * 1024 * 1024,
             null,
-            null,
-            CancellationToken.None);
+            null);
 
         // Assert
         stream.CanSeek.Should().BeFalse();
@@ -254,8 +243,7 @@ public class AdlsGen2WriteStreamTests
             "text/plain",
             64 * 1024 * 1024,
             null,
-            null,
-            CancellationToken.None);
+            null);
 
         // Act & Assert - should not throw
         stream.Flush();
@@ -272,15 +260,14 @@ public class AdlsGen2WriteStreamTests
             "text/plain",
             64 * 1024 * 1024,
             null,
-            null,
-            CancellationToken.None);
+            null);
 
         // Act & Assert - should not throw
         await stream.FlushAsync();
     }
 
     [Fact]
-    public async Task DisposeAsync_UploadsFile()
+    public async Task CommitAsync_UploadsFile()
     {
         // Arrange
         A.CallTo(() => _containerClient.CreateIfNotExistsAsync(A<PublicAccessType>._, A<IDictionary<string, string>?>._, A<CancellationToken>._))
@@ -296,13 +283,13 @@ public class AdlsGen2WriteStreamTests
             "text/plain",
             64 * 1024 * 1024,
             null,
-            null,
-            CancellationToken.None);
+            null);
 
         var data = "Hello, World!"u8.ToArray();
         await stream.WriteAsync(data);
 
         // Act
+        await stream.CommitAsync();
         await stream.DisposeAsync();
 
         // Assert
@@ -311,7 +298,7 @@ public class AdlsGen2WriteStreamTests
     }
 
     [Fact]
-    public void Dispose_UploadsFile()
+    public void Dispose_WithoutCommit_UploadsNothing()
     {
         // Arrange
         A.CallTo(() => _containerClient.CreateIfNotExistsAsync(A<PublicAccessType>._, A<IDictionary<string, string>?>._, A<CancellationToken>._))
@@ -327,8 +314,7 @@ public class AdlsGen2WriteStreamTests
             "text/plain",
             64 * 1024 * 1024,
             null,
-            null,
-            CancellationToken.None);
+            null);
 
         var data = "Hello, World!"u8.ToArray();
         stream.Write(data, 0, data.Length);
@@ -338,7 +324,7 @@ public class AdlsGen2WriteStreamTests
 
         // Assert
         A.CallTo(() => _blobClient.UploadAsync(A<Stream>._, A<BlobUploadOptions?>._, A<CancellationToken>._))
-            .MustHaveHappened();
+            .MustNotHaveHappened();
     }
 
     [Fact]
@@ -358,8 +344,7 @@ public class AdlsGen2WriteStreamTests
             "text/plain",
             64 * 1024 * 1024,
             null,
-            null,
-            CancellationToken.None);
+            null);
 
         // Act & Assert - should not throw
         stream.Dispose();
@@ -368,7 +353,7 @@ public class AdlsGen2WriteStreamTests
     }
 
     [Fact]
-    public async Task DisposeAsync_WithoutCallerToken_UploadHasNoTimeout()
+    public async Task CommitAsync_WithoutCallerToken_UploadHasNoTimeout()
     {
         // The upload used to run under a hard-coded 5-minute CancelAfter, which cut off large uploads.
         CancellationToken uploadToken = default;
@@ -383,8 +368,57 @@ public class AdlsGen2WriteStreamTests
         var stream = new AdlsGen2WriteStream(_serviceClient, "filesystem", "path/file.txt");
         await stream.WriteAsync("x"u8.ToArray());
 
+        await stream.CommitAsync();
         await stream.DisposeAsync();
 
         uploadToken.CanBeCanceled.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task CommitAsync_WithIfMatch_SendsTheETagAsACondition()
+    {
+        A.CallTo(() => _blobClient.UploadAsync(A<Stream>._, A<BlobUploadOptions?>._, A<CancellationToken>._))
+            .ReturnsLazily(() => Task.FromResult(A.Fake<Response<BlobContentInfo>>()));
+
+        var stream = new AdlsGen2WriteStream(_serviceClient, "filesystem", "path/file.txt", ifMatch: "\"0x8DC\"");
+        await stream.WriteAsync(new byte[] { 1 });
+
+        await stream.CommitAsync();
+
+        A.CallTo(() => _blobClient.UploadAsync(
+                A<Stream>._,
+                A<BlobUploadOptions?>.That.Matches(o => o!.Conditions != null && o.Conditions.IfMatch == new global::Azure.ETag("\"0x8DC\"")),
+                A<CancellationToken>._))
+            .MustHaveHappenedOnceExactly();
+    }
+
+    [Fact]
+    public async Task CommitAsync_WithOverwriteFalse_SendsIfNoneMatchStar()
+    {
+        A.CallTo(() => _blobClient.UploadAsync(A<Stream>._, A<BlobUploadOptions?>._, A<CancellationToken>._))
+            .ReturnsLazily(() => Task.FromResult(A.Fake<Response<BlobContentInfo>>()));
+
+        var stream = new AdlsGen2WriteStream(_serviceClient, "filesystem", "path/file.txt", overwrite: false);
+        await stream.WriteAsync(new byte[] { 1 });
+
+        await stream.CommitAsync();
+
+        A.CallTo(() => _blobClient.UploadAsync(
+                A<Stream>._,
+                A<BlobUploadOptions?>.That.Matches(o => o!.Conditions != null && o.Conditions.IfNoneMatch == global::Azure.ETag.All),
+                A<CancellationToken>._))
+            .MustHaveHappenedOnceExactly();
+    }
+
+    [Fact]
+    public async Task CommitAsync_WhenTheConditionFails_ThrowsStoragePreconditionFailedException()
+    {
+        A.CallTo(() => _blobClient.UploadAsync(A<Stream>._, A<BlobUploadOptions?>._, A<CancellationToken>._))
+            .Throws(new RequestFailedException(412, "failed", "ConditionNotMet", null));
+
+        var stream = new AdlsGen2WriteStream(_serviceClient, "filesystem", "path/file.txt", ifMatch: "\"stale\"");
+        await stream.WriteAsync(new byte[] { 1 });
+
+        await Assert.ThrowsAsync<StoragePreconditionFailedException>(async () => await stream.CommitAsync());
     }
 }

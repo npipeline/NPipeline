@@ -26,23 +26,6 @@ public enum FileCompression
     Deflate,
 }
 
-/// <summary>Whether a file sink writes to a temporary object and moves it into place.</summary>
-public enum AtomicWrite
-{
-    /// <summary>
-    ///     Only when the provider can rename atomically (<see cref="StorageCapabilities.AtomicMove" />, such as the file
-    ///     system, ADLS and SFTP). Object stores write directly: their uploads already become visible all at once, and copying a temporary
-    ///     object would double the I/O.
-    /// </summary>
-    Auto,
-
-    /// <summary>Always; on a provider that cannot move objects (<see cref="StorageCapabilities.Move" />), the temporary object is copied into place and deleted.</summary>
-    Always,
-
-    /// <summary>Never; write the target directly.</summary>
-    Never,
-}
-
 /// <summary>What a file sink does with a <c>null</c> item.</summary>
 public enum NullItemHandling
 {
@@ -123,15 +106,6 @@ public abstract record FileSourceOptions : FileNodeOptions
 /// <summary>Options for a <see cref="FileSinkNode{T}" />.</summary>
 public abstract record FileSinkOptions : FileNodeOptions
 {
-    /// <summary>Whether to write through a temporary object. Defaults to <see cref="Files.AtomicWrite.Auto" />.</summary>
-    public AtomicWrite AtomicWrite { get; init; } = AtomicWrite.Auto;
-
     /// <summary>What to do with a <c>null</c> item. Defaults to <see cref="NullItemHandling.Throw" />.</summary>
     public NullItemHandling NullItems { get; init; } = NullItemHandling.Throw;
-
-    /// <summary>
-    ///     Whether a failed write deletes what it wrote, when the provider can delete: the temporary object, or the target
-    ///     when writing directly. Defaults to <c>true</c>, so a failure never leaves a truncated file behind.
-    /// </summary>
-    public bool DeletePartialOnFailure { get; init; } = true;
 }

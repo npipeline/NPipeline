@@ -166,10 +166,19 @@ await using var stream = await provider.OpenReadAsync(uri);
 
 ```csharp
 var uri = StorageUri.Parse("adls://my-filesystem/data/output.csv?contentType=text/csv");
-await using var stream = await provider.OpenWriteAsync(uri);
+await using var stream = await provider.OpenWriteAsync(uri, cancellationToken: ct);
+await using (var writer = new StreamWriter(stream, leaveOpen: true))
+{
+    await writer.WriteLineAsync("id,name,value");
+}
+
+// The file appears only after CommitAsync. Disposing the stream without it discards the data.
+await stream.CommitAsync(ct);
 ```
 
-Data is buffered to a local temporary file and uploaded atomically when the stream is disposed.
+Call `CommitAsync` once, after the last write. The provider buffers the data to a local temporary file and uploads it when you commit. Disposing the stream without committing uploads nothing and leaves an existing file as it was. Upload errors surface from `CommitAsync`.
+
+The provider declares `ConditionalWrite`. Pass `new StorageWriteOptions { Overwrite = false }` to fail the commit if the file exists, or `new StorageWriteOptions { IfMatch = etag }` (an ETag from `GetMetadataAsync`) to commit only if the file is unchanged. A refused condition throws `StoragePreconditionFailedException` from `CommitAsync`. Set `StorageWriteOptions.ContentType` to set the content type.
 
 ### Listing
 
@@ -226,7 +235,7 @@ await provider.MoveAsync(src, dest);
 
 ## Provider Capabilities
 
-`provider.Capabilities` is `Read | Write | List | Delete | Move | Hierarchy` (plus `AtomicMove` where the move is the Data Lake rename).
+`provider.Capabilities` is `Read | Write | List | Delete | Move | Hierarchy | ConditionalWrite` (plus `AtomicMove` where the move is the Data Lake rename).
 
 ## Azurite (Local Development)
 

@@ -287,7 +287,7 @@ public class GcsStorageProviderTests
 
         // Assert
         stream.Should().NotBeNull();
-        stream.Should().BeOfType<PassThroughWriteStream>();
+        stream.Should().BeOfType<GcsWriteStream>();
     }
 
     [Fact]
@@ -311,7 +311,7 @@ public class GcsStorageProviderTests
 
         // Assert
         stream.Should().NotBeNull();
-        stream.Should().BeOfType<PassThroughWriteStream>();
+        stream.Should().BeOfType<GcsWriteStream>();
     }
 
     [Fact]
@@ -411,6 +411,7 @@ public class GcsStorageProviderTests
         await stream.WriteAsync([1, 2, 3], 0, 3);
 
         // Act
+        await stream.CommitAsync();
         await stream.DisposeAsync();
 
         // Assert

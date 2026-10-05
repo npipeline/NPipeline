@@ -167,10 +167,17 @@ var content = await reader.ReadToEndAsync();
 ```csharp
 var uri = StorageUri.Parse("sftp://sftp.example.com/output/results.csv");
 
-using var stream = await provider.OpenWriteAsync(uri);
-using var writer = new StreamWriter(stream);
-await writer.WriteLineAsync("id,name,value");
+await using var stream = await provider.OpenWriteAsync(uri, cancellationToken: ct);
+await using (var writer = new StreamWriter(stream, leaveOpen: true))
+{
+    await writer.WriteLineAsync("id,name,value");
+}
+
+// The object appears only after CommitAsync. Disposing the stream without it discards the data.
+await stream.CommitAsync(ct);
 ```
+
+Call `CommitAsync` once, after the last write. The provider writes to a hidden temporary file next to the target (`.<name>.<guid>.tmp`) and renames it into place when you commit. Disposing the stream without committing deletes the temporary file and leaves an existing file as it was. This provider doesn't declare `ConditionalWrite`.
 
 ### Listing
 

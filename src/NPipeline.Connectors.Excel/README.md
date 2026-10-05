@@ -56,7 +56,7 @@ public sealed class OrdersPipeline : IPipelineDefinition
 ```
 
 See the [Excel connector documentation](https://docs.npipeline.net/connectors/excel) for every option, and
-[File Connectors: Shared Behaviour](https://docs.npipeline.net/connectors/file-connectors) for globs, atomic writes,
+[File Connectors: Shared Behaviour](https://docs.npipeline.net/connectors/file-connectors) for globs, commit behavior,
 row errors and metrics.
 
 ## Related Packages

@@ -191,9 +191,12 @@ public sealed class Program
                              $"Written by the NPipeline S3-Compatible storage provider sample.\n";
 
             await using var stream = await provider.OpenWriteAsync(fileUri);
-            await using var writer = new StreamWriter(stream);
-            await writer.WriteAsync(sampleData);
-            await writer.FlushAsync();
+            await using (var writer = new StreamWriter(stream, leaveOpen: true))
+            {
+                await writer.WriteAsync(sampleData);
+            }
+
+            await stream.CommitAsync();
 
             Console.WriteLine("Data written:");
             Console.WriteLine("─────────────────────────────────────────────────────────────");
