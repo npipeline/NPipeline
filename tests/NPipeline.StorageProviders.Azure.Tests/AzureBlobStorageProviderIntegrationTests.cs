@@ -49,6 +49,89 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IClassFixture<Azu
             _ = await blobClient.SetHttpHeadersAsync(new BlobHttpHeaders { ContentType = contentType });
     }
 
+    #region Delete and Move Tests
+
+    private StorageUri BlobUri(string container, string blob) =>
+        StorageUri.Parse($"azure://{container}/{blob}?accountName={AzuriteAccountName}&accountKey={Uri.EscapeDataString(AzuriteAccountKey)}");
+
+    [Fact]
+    public async Task DeleteAsync_ExistingBlob_RemovesIt()
+    {
+        var container = GetUniqueContainerName();
+        await CreateTestBlobAsync(container, "doomed.txt", "bye");
+        var uri = BlobUri(container, "doomed.txt");
+
+        await Provider.DeleteAsync(uri);
+
+        (await Provider.ExistsAsync(uri)).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task DeleteAsync_MissingBlobOrContainer_Succeeds()
+    {
+        var container = GetUniqueContainerName();
+        await CreateTestBlobAsync(container, "other.txt", "x");
+
+        await Provider.DeleteAsync(BlobUri(container, "missing.txt"));
+        await Provider.DeleteAsync(BlobUri(GetUniqueContainerName(), "missing.txt"));
+    }
+
+    [Fact]
+    public async Task MoveAsync_OverwritesDestinationAndRemovesSource()
+    {
+        var container = GetUniqueContainerName();
+        await CreateTestBlobAsync(container, "source.txt", "new content", "text/plain");
+        await CreateTestBlobAsync(container, "dir/destination.txt", "old content that is longer");
+        var source = BlobUri(container, "source.txt");
+        var destination = BlobUri(container, "dir/destination.txt");
+
+        await Provider.MoveAsync(source, destination);
+
+        (await Provider.ExistsAsync(source)).Should().BeFalse();
+        using var reader = new StreamReader(await Provider.OpenReadAsync(destination));
+        (await reader.ReadToEndAsync()).Should().Be("new content");
+        (await Provider.GetMetadataAsync(destination))!.ContentType.Should().Be("text/plain");
+    }
+
+    [Fact]
+    public async Task MoveAsync_AcrossContainers_Works()
+    {
+        var sourceContainer = GetUniqueContainerName();
+        var destinationContainer = GetUniqueContainerName();
+        await CreateTestBlobAsync(sourceContainer, "a.txt", "payload");
+        _ = await _fixture.BlobServiceClient.GetBlobContainerClient(destinationContainer).CreateIfNotExistsAsync();
+
+        await Provider.MoveAsync(BlobUri(sourceContainer, "a.txt"), BlobUri(destinationContainer, "b.txt"));
+
+        (await Provider.ExistsAsync(BlobUri(sourceContainer, "a.txt"))).Should().BeFalse();
+        (await Provider.ExistsAsync(BlobUri(destinationContainer, "b.txt"))).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task MoveAsync_MissingSource_ThrowsFileNotFound()
+    {
+        var container = GetUniqueContainerName();
+        await CreateTestBlobAsync(container, "present.txt", "x");
+
+        var act = () => Provider.MoveAsync(BlobUri(container, "missing.txt"), BlobUri(container, "target.txt"));
+
+        await act.Should().ThrowAsync<FileNotFoundException>();
+    }
+
+    [Fact]
+    public async Task MoveAsync_ToSameLocation_KeepsTheBlob()
+    {
+        var container = GetUniqueContainerName();
+        await CreateTestBlobAsync(container, "same.txt", "x");
+        var uri = BlobUri(container, "same.txt");
+
+        await Provider.MoveAsync(uri, uri);
+
+        (await Provider.ExistsAsync(uri)).Should().BeTrue();
+    }
+
+    #endregion
+
     #region Read Operations Tests
 
     [Fact]
@@ -797,7 +880,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IClassFixture<Azu
     {
         _provider!.Name.Should().Be("Azure Blob Storage");
         _provider.Schemes.Should().ContainSingle().Which.Should().Be(StorageScheme.Azure);
-        _provider.Capabilities.Should().Be(StorageCapabilities.Read | StorageCapabilities.Write | StorageCapabilities.List);
+        _provider.Capabilities.Should().Be(StorageCapabilities.Read | StorageCapabilities.Write | StorageCapabilities.List | StorageCapabilities.Delete | StorageCapabilities.Move);
     }
 
     #endregion

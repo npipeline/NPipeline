@@ -12,8 +12,9 @@ namespace NPipeline.StorageProviders.Azure;
 ///     Handles "azure" scheme URIs and supports reading, writing, listing and metadata operations.
 /// </summary>
 /// <remarks>
-///     Declares <see cref="StorageCapabilities.Read" />, <see cref="StorageCapabilities.Write" /> and
-///     <see cref="StorageCapabilities.List" />. The namespace is flat, so it is not a <see cref="StorageCapabilities.Hierarchy" /> provider.
+///     Declares <see cref="StorageCapabilities.Read" />, <see cref="StorageCapabilities.Write" />,
+///     <see cref="StorageCapabilities.List" />, <see cref="StorageCapabilities.Delete" /> and <see cref="StorageCapabilities.Move" />
+///     (a server-side copy, then a delete, so it is not atomic). The namespace is flat, so it is not a <see cref="StorageCapabilities.Hierarchy" /> provider.
 /// </remarks>
 public sealed class AzureBlobStorageProvider : StorageProvider
 {
@@ -45,7 +46,8 @@ public sealed class AzureBlobStorageProvider : StorageProvider
     public override IReadOnlyList<StorageScheme> Schemes => SchemeList;
 
     /// <inheritdoc />
-    public override StorageCapabilities Capabilities => StorageCapabilities.Read | StorageCapabilities.Write | StorageCapabilities.List;
+    public override StorageCapabilities Capabilities => StorageCapabilities.Read | StorageCapabilities.Write | StorageCapabilities.List
+        | StorageCapabilities.Delete | StorageCapabilities.Move;
 
     /// <inheritdoc />
     protected override async Task<Stream> OpenReadCoreAsync(StorageUri uri, CancellationToken cancellationToken)
@@ -145,6 +147,66 @@ public sealed class AzureBlobStorageProvider : StorageProvider
         catch (RequestFailedException ex)
         {
             throw AzureErrors.Translate(ex, container, blob);
+        }
+    }
+
+    /// <inheritdoc />
+    protected override async Task DeleteCoreAsync(StorageUri uri, CancellationToken cancellationToken)
+    {
+        var (container, blob) = GetContainerAndBlob(uri, true);
+        var blobServiceClient = await _clientFactory.GetClientAsync(uri, cancellationToken).ConfigureAwait(false);
+        var blobClient = blobServiceClient.GetBlobContainerClient(container).GetBlobClient(blob);
+
+        try
+        {
+            // DeleteIfExists is idempotent: a missing blob (or container) is not an error.
+            _ = await blobClient.DeleteIfExistsAsync(DeleteSnapshotsOption.IncludeSnapshots, cancellationToken: cancellationToken).ConfigureAwait(false);
+        }
+        catch (RequestFailedException ex) when (ex.Status == 404)
+        {
+            // The container does not exist, so there is nothing to delete.
+        }
+        catch (RequestFailedException ex)
+        {
+            throw AzureErrors.Translate(ex, container, blob);
+        }
+    }
+
+    /// <inheritdoc />
+    protected override async Task MoveCoreAsync(StorageUri source, StorageUri destination, CancellationToken cancellationToken)
+    {
+        var (sourceContainer, sourceBlob) = GetContainerAndBlob(source, true);
+        var (destinationContainer, destinationBlob) = GetContainerAndBlob(destination, true);
+
+        if (sourceContainer == destinationContainer && sourceBlob == destinationBlob)
+        {
+            // Copying a blob onto itself fails; moving it onto itself changes nothing once it is known to exist.
+            if (!await ExistsCoreAsync(source, cancellationToken).ConfigureAwait(false))
+                throw new FileNotFoundException($"Azure blob '{sourceBlob}' in container '{sourceContainer}' not found.");
+
+            return;
+        }
+
+        if (!source.Parameters.OrderBy(p => p.Key, StringComparer.Ordinal).SequenceEqual(destination.Parameters.OrderBy(p => p.Key, StringComparer.Ordinal))
+            || source.UserName != destination.UserName)
+        {
+            throw new ArgumentException("Moving a blob between storage accounts is not supported; the source and destination must use the same account parameters.", nameof(destination));
+        }
+
+        var blobServiceClient = await _clientFactory.GetClientAsync(source, cancellationToken).ConfigureAwait(false);
+        var sourceClient = blobServiceClient.GetBlobContainerClient(sourceContainer).GetBlobClient(sourceBlob);
+        var destinationClient = blobServiceClient.GetBlobContainerClient(destinationContainer).GetBlobClient(destinationBlob);
+
+        try
+        {
+            // A copy within one account is authorized by the request's own credentials, and overwrites the destination.
+            var copy = await destinationClient.StartCopyFromUriAsync(sourceClient.Uri, cancellationToken: cancellationToken).ConfigureAwait(false);
+            _ = await copy.WaitForCompletionAsync(cancellationToken).ConfigureAwait(false);
+            _ = await sourceClient.DeleteIfExistsAsync(DeleteSnapshotsOption.IncludeSnapshots, cancellationToken: cancellationToken).ConfigureAwait(false);
+        }
+        catch (RequestFailedException ex)
+        {
+            throw AzureErrors.Translate(ex, sourceContainer, sourceBlob);
         }
     }
 

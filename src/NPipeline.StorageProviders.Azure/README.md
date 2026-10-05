@@ -1381,8 +1381,8 @@ Main storage provider implementation for Azure Blob Storage.
 
 **Location:** [`AzureBlobStorageProvider.cs`](AzureBlobStorageProvider.cs)
 
-Derives from `StorageProvider`. Declares `StorageCapabilities.Read | Write | List` (the namespace is flat, so no `Hierarchy`).
-Delete and move are not supported and throw `UnsupportedStorageCapabilityException`.
+Derives from `StorageProvider`. Declares `StorageCapabilities.Read | Write | List | Delete | Move` (move is a same-account server-side copy, then delete) (the namespace is flat, so no `Hierarchy`).
+`DeleteAsync` is idempotent. `MoveAsync` copies the blob server-side within one storage account (overwriting the destination), then deletes the source; a missing source throws `FileNotFoundException`, and a different account throws `ArgumentException`.
 
 **Properties:**
 
@@ -1390,7 +1390,7 @@ Delete and move are not supported and throw `UnsupportedStorageCapabilityExcepti
 |----------------|-------------------------------|------------------------------------------------------|
 | `Name`         | `string`                      | `"Azure Blob Storage"`                               |
 | `Schemes`      | `IReadOnlyList<StorageScheme>` | `[StorageScheme.Azure]`                              |
-| `Capabilities` | `StorageCapabilities`         | `Read \| Write \| List`                               |
+| `Capabilities` | `StorageCapabilities`         | `Read \| Write \| List \| Delete \| Move`                           |
 
 **Methods:**
 
