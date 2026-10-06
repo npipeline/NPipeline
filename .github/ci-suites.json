@@ -58,5 +58,15 @@
     "name": "StorageProviders.Azure",
     "test": "tests/NPipeline.StorageProviders.Azure.Tests/NPipeline.StorageProviders.Azure.Tests.csproj",
     "paths": ["src/NPipeline.StorageProviders.Azure/", "tests/NPipeline.StorageProviders.Azure.Tests/"]
+  },
+  {
+    "name": "StorageProviders.S3.Compatible",
+    "test": "tests/NPipeline.StorageProviders.S3.Compatible.Tests/NPipeline.StorageProviders.S3.Compatible.Tests.csproj",
+    "paths": ["src/NPipeline.StorageProviders.S3/", "src/NPipeline.StorageProviders.S3.Compatible/", "tests/NPipeline.StorageProviders.S3.Compatible.Tests/"]
+  },
+  {
+    "name": "StorageProviders.Sftp",
+    "test": "tests/NPipeline.StorageProviders.Sftp.Tests/NPipeline.StorageProviders.Sftp.Tests.csproj",
+    "paths": ["src/NPipeline.StorageProviders.Sftp/", "tests/NPipeline.StorageProviders.Sftp.Tests/"]
   }
 ]
