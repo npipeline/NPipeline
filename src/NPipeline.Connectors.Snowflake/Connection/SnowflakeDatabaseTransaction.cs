@@ -1,5 +1,5 @@
 using System.Data.Common;
-using NPipeline.StorageProviders.Abstractions;
+using NPipeline.Connectors.Database;
 
 namespace NPipeline.Connectors.Snowflake.Connection;
 

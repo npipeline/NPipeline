@@ -1,11 +1,11 @@
 using MongoDB.Bson;
 using MongoDB.Driver;
+using NPipeline.Connectors.Database;
 using NPipeline.Connectors.MongoDB.Configuration;
 using NPipeline.Connectors.MongoDB.Writers;
 using NPipeline.DataFlow;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
-using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Models;
 using NResilience;
 using OurMongoWriteException = NPipeline.Connectors.MongoDB.Exceptions.MongoWriteException;
@@ -23,7 +23,7 @@ public class MongoSinkNode<T> : SinkNode<T>, IAsyncDisposable
     private readonly MongoConfiguration _configuration;
     private readonly string? _connectionString;
     private readonly Func<T, BsonDocument>? _documentMapper;
-    private readonly IStorageProvider? _storageProvider;
+    private readonly IDatabaseConnectionProvider? _connectionProvider;
     private readonly StorageUri? _storageUri;
     private readonly Func<T, FilterDefinition<BsonDocument>>? _upsertFilterBuilder;
 
@@ -76,39 +76,17 @@ public class MongoSinkNode<T> : SinkNode<T>, IAsyncDisposable
     /// <param name="configuration">The MongoDB configuration.</param>
     /// <param name="documentMapper">Optional custom document mapper function.</param>
     /// <param name="upsertFilterBuilder">Optional custom filter builder for upsert operations.</param>
+    /// <param name="connectionProvider">The connection provider used to open the connection. Defaults to the MongoDB provider.</param>
     public MongoSinkNode(
         StorageUri uri,
         MongoConfiguration configuration,
         Func<T, BsonDocument>? documentMapper = null,
-        Func<T, FilterDefinition<BsonDocument>>? upsertFilterBuilder = null)
+        Func<T, FilterDefinition<BsonDocument>>? upsertFilterBuilder = null,
+        IDatabaseConnectionProvider? connectionProvider = null)
     {
         _storageUri = uri ?? throw new ArgumentNullException(nameof(uri));
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-        _storageProvider = new MongoDatabaseStorageProvider();
-        ApplyStorageUriDefaults(_storageUri, _configuration);
-        _configuration.Validate();
-        _documentMapper = documentMapper;
-        _upsertFilterBuilder = upsertFilterBuilder;
-    }
-
-    /// <summary>
-    ///     Initializes a new instance of the <see cref="MongoSinkNode{T}" /> class using a storage provider.
-    /// </summary>
-    /// <param name="storageProvider">The storage provider.</param>
-    /// <param name="uri">The storage URI.</param>
-    /// <param name="configuration">The MongoDB configuration.</param>
-    /// <param name="documentMapper">Optional custom document mapper function.</param>
-    /// <param name="upsertFilterBuilder">Optional custom filter builder for upsert operations.</param>
-    public MongoSinkNode(
-        IStorageProvider storageProvider,
-        StorageUri uri,
-        MongoConfiguration configuration,
-        Func<T, BsonDocument>? documentMapper = null,
-        Func<T, FilterDefinition<BsonDocument>>? upsertFilterBuilder = null)
-    {
-        _storageProvider = storageProvider ?? throw new ArgumentNullException(nameof(storageProvider));
-        _storageUri = uri ?? throw new ArgumentNullException(nameof(uri));
-        _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+        _connectionProvider = connectionProvider ?? new MongoDatabaseConnectionProvider();
         ApplyStorageUriDefaults(_storageUri, _configuration);
         _configuration.Validate();
         _documentMapper = documentMapper;
@@ -193,17 +171,11 @@ public class MongoSinkNode<T> : SinkNode<T>, IAsyncDisposable
             return _ownedClient;
         }
 
-        if (_storageProvider != null && _storageUri != null)
+        if (_connectionProvider != null && _storageUri != null)
         {
-            if (_storageProvider is IDatabaseStorageProvider dbProvider)
-            {
-                var connectionString = dbProvider.GetConnectionString(_storageUri);
-                _ownedClient = new MongoClient(connectionString);
-                return _ownedClient;
-            }
-
-            throw new InvalidOperationException(
-                $"Storage provider must implement {nameof(IDatabaseStorageProvider)} to use StorageUri.");
+            var connectionString = _connectionProvider.GetConnectionString(_storageUri);
+            _ownedClient = new MongoClient(connectionString);
+            return _ownedClient;
         }
 
         throw new InvalidOperationException("No MongoDB client or connection string provided.");

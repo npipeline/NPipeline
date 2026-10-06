@@ -35,7 +35,7 @@ public class PostgresStorageUriIntegrationTests(PostgresTestContainerFixture fix
         var username = builder.Username;
         var password = builder.Password;
         var encodedPassword = Uri.EscapeDataString(password ?? string.Empty);
-        var provider = new PostgresDatabaseStorageProvider();
+        var provider = new PostgresDatabaseConnectionProvider();
 
         try
         {
@@ -125,7 +125,7 @@ public class PostgresStorageUriIntegrationTests(PostgresTestContainerFixture fix
         var username = builder.Username;
         var password = builder.Password;
         var encodedPassword = Uri.EscapeDataString(password ?? string.Empty);
-        var provider = new PostgresDatabaseStorageProvider();
+        var provider = new PostgresDatabaseConnectionProvider();
 
         try
         {
@@ -205,7 +205,7 @@ public class PostgresStorageUriIntegrationTests(PostgresTestContainerFixture fix
         var username = builder.Username;
         var password = builder.Password;
         var encodedPassword = Uri.EscapeDataString(password ?? string.Empty);
-        var provider = new PostgresDatabaseStorageProvider();
+        var provider = new PostgresDatabaseConnectionProvider();
 
         try
         {

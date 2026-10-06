@@ -1,11 +1,11 @@
 using System.Data.Common;
+using NPipeline.Connectors.Database;
 using NPipeline.Connectors.Mapping;
 using NPipeline.Connectors.Sql;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
-using NPipeline.StorageProviders;
-using NPipeline.StorageProviders.Abstractions;
+using NPipeline.StorageProviders.Models;
 
 namespace NPipeline.Connectors.Tests.Sql;
 
@@ -22,6 +22,15 @@ public sealed class TestDialect(int maxParameters = 100) : SqlDialect
 
     public override string Upsert(string table, IReadOnlyList<string> columns, IReadOnlyList<string> keys, SqlUpsertAction onMatch, int rows) =>
         $"UPSERT {table} ({string.Join(", ", columns)}) ON ({string.Join(", ", keys)}) {onMatch} VALUES {Values(columns.Count, rows)}";
+}
+
+/// <summary>A connection provider that is never actually used: the test nodes below always supply a connector connection.</summary>
+public sealed class UnreachableDatabaseConnectionProvider : IDatabaseConnectionProvider
+{
+    public string GetConnectionString(StorageUri uri) => throw new NotSupportedException();
+
+    public Task<IDatabaseConnection> OpenConnectionAsync(StorageUri uri, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException();
 }
 
 public sealed record TestReadOptions : SqlSourceOptions
@@ -55,7 +64,7 @@ public sealed class TestSource<T> : SqlSourceNode<T>
 
     protected override string ConnectorName => "test";
 
-    protected override IStorageResolver DefaultResolver => StorageResolver.Default;
+    protected override IDatabaseConnectionProvider DefaultProvider => new UnreachableDatabaseConnectionProvider();
 
     protected override DbConnection CreateConnection(string connectionString) => throw new NotSupportedException();
 
@@ -77,7 +86,7 @@ public sealed class TestSink<T> : SqlSinkNode<T>
         _options = options;
     }
 
-    protected override IStorageResolver DefaultResolver => StorageResolver.Default;
+    protected override IDatabaseConnectionProvider DefaultProvider => new UnreachableDatabaseConnectionProvider();
 
     protected override DbConnection CreateConnection(string connectionString) => throw new NotSupportedException();
 

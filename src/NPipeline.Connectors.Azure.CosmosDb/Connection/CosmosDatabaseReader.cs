@@ -1,7 +1,7 @@
 using Microsoft.Azure.Cosmos;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using NPipeline.StorageProviders.Abstractions;
+using NPipeline.Connectors.Database;
 using NPipeline.Connectors.Mapping;
 
 namespace NPipeline.Connectors.Azure.CosmosDb.Connection;

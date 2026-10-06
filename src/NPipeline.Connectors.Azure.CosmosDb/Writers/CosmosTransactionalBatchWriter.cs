@@ -3,7 +3,7 @@ using System.Reflection;
 using Microsoft.Azure.Cosmos;
 using NPipeline.Connectors.Azure.CosmosDb.Configuration;
 using NPipeline.Connectors.Azure.CosmosDb.Mapping;
-using NPipeline.StorageProviders.Abstractions;
+using NPipeline.Connectors.Database;
 
 namespace NPipeline.Connectors.Azure.CosmosDb.Writers;
 

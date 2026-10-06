@@ -1,19 +1,18 @@
 using System.Data.Common;
-using NPipeline.StorageProviders;
-using NPipeline.StorageProviders.Abstractions;
+using NPipeline.Connectors.Database;
 
 namespace NPipeline.Connectors.Sql;
 
-/// <summary>Opens the connection a SQL node's options name: a connection string, or a database URI through its storage provider.</summary>
+/// <summary>Opens the connection a SQL node's options name: a connection string, or a database URI through its connection provider.</summary>
 internal static class SqlConnections
 {
     public static async Task<DbConnection> OpenAsync(
         SqlNodeOptions options,
         Func<string, DbConnection> create,
-        Func<IStorageResolver> defaultResolver,
+        Func<IDatabaseConnectionProvider> defaultProvider,
         CancellationToken cancellationToken)
     {
-        var connectionString = options.ConnectionString ?? ResolveConnectionString(options, defaultResolver);
+        var connectionString = options.ConnectionString ?? ResolveConnectionString(options, defaultProvider);
         var connection = create(connectionString);
 
         try
@@ -28,13 +27,11 @@ internal static class SqlConnections
         }
     }
 
-    private static string ResolveConnectionString(SqlNodeOptions options, Func<IStorageResolver> defaultResolver)
+    private static string ResolveConnectionString(SqlNodeOptions options, Func<IDatabaseConnectionProvider> defaultProvider)
     {
         var uri = options.Uri ?? throw new InvalidOperationException("The options name no connection string or URI.");
-        var provider = options.Provider ?? (options.Resolver ?? defaultResolver()).Resolve(uri);
+        var provider = options.Provider ?? defaultProvider();
 
-        return provider is IDatabaseStorageProvider database
-            ? database.GetConnectionString(uri)
-            : throw new InvalidOperationException($"The provider for '{uri.Scheme}' is not a database provider ({nameof(IDatabaseStorageProvider)}).");
+        return provider.GetConnectionString(uri);
     }
 }

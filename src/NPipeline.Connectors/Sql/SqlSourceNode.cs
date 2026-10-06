@@ -2,6 +2,7 @@ using System.Data.Common;
 using System.Runtime.CompilerServices;
 using NPipeline.Connectors.Checkpointing;
 using NPipeline.Connectors.Configuration;
+using NPipeline.Connectors.Database;
 using NPipeline.Connectors.Diagnostics;
 using NPipeline.Connectors.Errors;
 using NPipeline.Connectors.Mapping;
@@ -10,7 +11,6 @@ using NPipeline.DataFlow.DataStreams;
 using NPipeline.ErrorHandling;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
-using NPipeline.StorageProviders.Abstractions;
 
 namespace NPipeline.Connectors.Sql;
 
@@ -51,15 +51,15 @@ public abstract class SqlSourceNode<T> : SourceNode<T>
     /// <summary>Creates an unopened connection for <paramref name="connectionString" />.</summary>
     protected abstract DbConnection CreateConnection(string connectionString);
 
-    /// <summary>The resolver used for a URI when the options name neither a provider nor a resolver.</summary>
-    protected abstract IStorageResolver DefaultResolver { get; }
+    /// <summary>The connection provider used for a URI when the options name no provider of their own.</summary>
+    protected abstract IDatabaseConnectionProvider DefaultProvider { get; }
 
     /// <summary>
     ///     Opens a connection for the options' connection string or URI. Connectors with a connection pool override this to
     ///     take one from the pool when the options name it.
     /// </summary>
     protected virtual Task<DbConnection> OpenConnectionAsync(CancellationToken cancellationToken) =>
-        SqlConnections.OpenAsync(_options, CreateConnection, () => DefaultResolver, cancellationToken);
+        SqlConnections.OpenAsync(_options, CreateConnection, () => DefaultProvider, cancellationToken);
 
     /// <summary>Types a query parameter. The default leaves it to the provider.</summary>
     protected virtual void BindParameter(DbParameter parameter, object? value) => parameter.Value = value ?? DBNull.Value;

@@ -1,6 +1,6 @@
 using System.Data;
 using MySqlConnector;
-using NPipeline.StorageProviders.Abstractions;
+using NPipeline.Connectors.Database;
 
 namespace NPipeline.Connectors.MySql.Connection;
 

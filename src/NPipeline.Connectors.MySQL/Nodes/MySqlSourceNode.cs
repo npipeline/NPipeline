@@ -1,8 +1,8 @@
 using System.Data.Common;
 using MySqlConnector;
+using NPipeline.Connectors.Database;
 using NPipeline.Connectors.Sql;
 using NPipeline.Connectors.MySql.Configuration;
-using NPipeline.StorageProviders.Abstractions;
 
 namespace NPipeline.Connectors.MySql.Nodes;
 
@@ -12,7 +12,7 @@ namespace NPipeline.Connectors.MySql.Nodes;
 /// <typeparam name="T">The record type.</typeparam>
 public sealed class MySqlSourceNode<T> : SqlSourceNode<T>
 {
-    private static readonly Lazy<IStorageResolver> Resolver = new(MySqlStorageResolverFactory.CreateResolver);
+    private static readonly Lazy<IDatabaseConnectionProvider> Provider = new(() => new MySqlDatabaseConnectionProvider());
 
     private readonly MySqlReadOptions _options;
 
@@ -36,7 +36,7 @@ public sealed class MySqlSourceNode<T> : SqlSourceNode<T>
     protected override string ConnectorName => MySqlDialect.Instance.Name;
 
     /// <inheritdoc />
-    protected override IStorageResolver DefaultResolver => Resolver.Value;
+    protected override IDatabaseConnectionProvider DefaultProvider => Provider.Value;
 
     /// <inheritdoc />
     protected override DbConnection CreateConnection(string connectionString) => new MySqlConnection(connectionString);

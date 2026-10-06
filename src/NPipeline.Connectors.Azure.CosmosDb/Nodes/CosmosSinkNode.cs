@@ -1,10 +1,10 @@
 using Microsoft.Azure.Cosmos;
 using NPipeline.Connectors.Azure.CosmosDb.Configuration;
 using NPipeline.Connectors.Azure.CosmosDb.Connection;
+using NPipeline.Connectors.Azure.CosmosDb.StorageProvider;
 using NPipeline.Connectors.Azure.CosmosDb.Writers;
+using NPipeline.Connectors.Database;
 using NPipeline.Connectors.Nodes;
-using NPipeline.StorageProviders;
-using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Models;
 
 namespace NPipeline.Connectors.Azure.CosmosDb.Nodes;
@@ -15,8 +15,8 @@ namespace NPipeline.Connectors.Azure.CosmosDb.Nodes;
 /// <typeparam name="T">The type of objects consumed by sink.</typeparam>
 public class CosmosSinkNode<T> : DatabaseSinkNode<T>, IAsyncDisposable
 {
-    private static readonly Lazy<IStorageResolver> DefaultResolver = new(
-        () => CosmosStorageResolverFactory.CreateResolver(),
+    private static readonly Lazy<IDatabaseConnectionProvider> DefaultProvider = new(
+        () => new CosmosDatabaseConnectionProvider(),
         LazyThreadSafetyMode.ExecutionAndPublication);
 
     private readonly CosmosConfiguration _configuration;
@@ -27,8 +27,7 @@ public class CosmosSinkNode<T> : DatabaseSinkNode<T>, IAsyncDisposable
     private readonly Func<T, string>? _idSelector;
     private readonly bool _ownsConnectionPool;
     private readonly Func<T, PartitionKey>? _partitionKeySelector;
-    private readonly IStorageProvider? _storageProvider;
-    private readonly IStorageResolver? _storageResolver;
+    private readonly IDatabaseConnectionProvider? _connectionProvider;
     private readonly StorageUri? _storageUri;
     private readonly CosmosWriteStrategy _writeStrategy;
 
@@ -146,14 +145,14 @@ public class CosmosSinkNode<T> : DatabaseSinkNode<T>, IAsyncDisposable
     /// </summary>
     /// <param name="uri">The storage URI containing Cosmos DB connection information.</param>
     /// <param name="writeStrategy">The write strategy.</param>
-    /// <param name="resolver">The storage resolver used to obtain storage provider.</param>
+    /// <param name="provider">The connection provider used to open the connection. Defaults to the Cosmos provider.</param>
     /// <param name="idSelector">Optional function to extract document ID from item.</param>
     /// <param name="partitionKeySelector">Optional function to extract partition key from item.</param>
     /// <param name="configuration">Optional configuration.</param>
     public CosmosSinkNode(
         StorageUri uri,
         CosmosWriteStrategy writeStrategy = CosmosWriteStrategy.Batch,
-        IStorageResolver? resolver = null,
+        IDatabaseConnectionProvider? provider = null,
         Func<T, string>? idSelector = null,
         Func<T, PartitionKey>? partitionKeySelector = null,
         CosmosConfiguration? configuration = null)
@@ -165,55 +164,7 @@ public class CosmosSinkNode<T> : DatabaseSinkNode<T>, IAsyncDisposable
         var (databaseId, containerId) = ParseUriPath(uri.Path);
 
         _storageUri = uri;
-        _storageResolver = resolver;
-        _writeStrategy = writeStrategy;
-        _idSelector = idSelector;
-        _partitionKeySelector = partitionKeySelector;
-        _configuration = configuration ?? new CosmosConfiguration();
-
-        if (string.IsNullOrWhiteSpace(_configuration.DatabaseId))
-            _configuration.DatabaseId = databaseId;
-
-        _configuration.WriteStrategy = writeStrategy;
-
-        if (writeStrategy == CosmosWriteStrategy.Insert)
-            _configuration.UseUpsert = false;
-        else if (writeStrategy == CosmosWriteStrategy.Upsert)
-            _configuration.UseUpsert = true;
-
-        _configuration.Validate();
-        _connectionName = null;
-
-        _databaseId = databaseId;
-        _containerId = containerId;
-    }
-
-    /// <summary>
-    ///     Initializes a new instance of <see cref="CosmosSinkNode{T}" /> class using a specific storage provider.
-    /// </summary>
-    /// <param name="provider">The storage provider.</param>
-    /// <param name="uri">The storage URI containing Cosmos DB connection information.</param>
-    /// <param name="writeStrategy">The write strategy.</param>
-    /// <param name="idSelector">Optional function to extract document ID from item.</param>
-    /// <param name="partitionKeySelector">Optional function to extract partition key from item.</param>
-    /// <param name="configuration">Optional configuration.</param>
-    public CosmosSinkNode(
-        IStorageProvider provider,
-        StorageUri uri,
-        CosmosWriteStrategy writeStrategy = CosmosWriteStrategy.Batch,
-        Func<T, string>? idSelector = null,
-        Func<T, PartitionKey>? partitionKeySelector = null,
-        CosmosConfiguration? configuration = null)
-    {
-        ArgumentNullException.ThrowIfNull(provider);
-        ArgumentNullException.ThrowIfNull(uri);
-
-        // Extract database and container from URI path
-        // Path format: /databaseId/containerId
-        var (databaseId, containerId) = ParseUriPath(uri.Path);
-
-        _storageProvider = provider;
-        _storageUri = uri;
+        _connectionProvider = provider;
         _writeStrategy = writeStrategy;
         _idSelector = idSelector;
         _partitionKeySelector = partitionKeySelector;
@@ -264,16 +215,11 @@ public class CosmosSinkNode<T> : DatabaseSinkNode<T>, IAsyncDisposable
     /// <returns>A task representing the asynchronous operation.</returns>
     protected override async Task<IDatabaseConnection> GetConnectionAsync(CancellationToken cancellationToken)
     {
-        // If using StorageUri-based construction, get connection from database storage provider
+        // If using StorageUri-based construction, get connection from the database connection provider
         if (_storageUri != null)
         {
-            var provider = _storageProvider ?? (_storageResolver ?? DefaultResolver.Value).Resolve(_storageUri);
-
-            if (provider is IDatabaseStorageProvider databaseProvider)
-                return await databaseProvider.GetConnectionAsync(_storageUri, cancellationToken).ConfigureAwait(false);
-
-            throw new InvalidOperationException(
-                $"Storage provider must implement {nameof(IDatabaseStorageProvider)} to use StorageUri.");
+            var provider = _connectionProvider ?? DefaultProvider.Value;
+            return await provider.OpenConnectionAsync(_storageUri, cancellationToken).ConfigureAwait(false);
         }
 
         // Original connection pool logic

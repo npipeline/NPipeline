@@ -39,7 +39,7 @@ public sealed class SqlServerStorageUriIntegrationTests
         var username = builder.UserID;
         var password = builder.Password;
         var encodedPassword = Uri.EscapeDataString(password ?? string.Empty);
-        var provider = new SqlServerDatabaseStorageProvider();
+        var provider = new SqlServerDatabaseConnectionProvider();
 
         try
         {
@@ -132,7 +132,7 @@ public sealed class SqlServerStorageUriIntegrationTests
         var username = builder.UserID;
         var password = builder.Password;
         var encodedPassword = Uri.EscapeDataString(password ?? string.Empty);
-        var provider = new SqlServerDatabaseStorageProvider();
+        var provider = new SqlServerDatabaseConnectionProvider();
 
         try
         {
@@ -210,7 +210,7 @@ public sealed class SqlServerStorageUriIntegrationTests
         var username = builder.UserID;
         var password = builder.Password;
         var encodedPassword = Uri.EscapeDataString(password ?? string.Empty);
-        var provider = new SqlServerDatabaseStorageProvider();
+        var provider = new SqlServerDatabaseConnectionProvider();
 
         try
         {

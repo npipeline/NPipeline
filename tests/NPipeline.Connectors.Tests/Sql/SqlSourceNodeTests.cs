@@ -2,6 +2,7 @@ using Xunit;
 using System.Data;
 using AwesomeAssertions;
 using NPipeline.Connectors.Configuration;
+using NPipeline.Connectors.Database;
 using NPipeline.Connectors.Errors;
 using NPipeline.Connectors.Mapping;
 using NPipeline.Connectors.Sql;

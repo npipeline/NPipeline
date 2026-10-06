@@ -1,5 +1,3 @@
-using NPipeline.StorageProviders.Exceptions;
-using NPipeline.StorageProviders.Abstractions;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using NPipeline.Connectors.MongoDB.Attributes;
@@ -18,12 +16,12 @@ public class MongoStorageUriIntegrationTests(MongoTestContainerFixture fixture)
 
     private static PipelineContext DefaultContext() => new();
 
-    // ── MongoDatabaseStorageProvider ──────────────────────────────────────────
+    // ── MongoDatabaseConnectionProvider ──────────────────────────────────────────
 
     [Fact]
     public void StorageProvider_CanHandle_MongodbScheme()
     {
-        var provider = new MongoDatabaseStorageProvider();
+        var provider = new MongoDatabaseConnectionProvider();
         var uri = StorageUri.Parse("mongodb://localhost:27017/mydb");
         provider.Schemes.Contains(uri.Scheme).Should().BeTrue();
     }
@@ -31,7 +29,7 @@ public class MongoStorageUriIntegrationTests(MongoTestContainerFixture fixture)
     [Fact]
     public void StorageProvider_CanHandle_MongodbSrvScheme()
     {
-        var provider = new MongoDatabaseStorageProvider();
+        var provider = new MongoDatabaseConnectionProvider();
         var uri = StorageUri.Parse("mongodb+srv://cluster0.example.com/mydb");
         provider.Schemes.Contains(uri.Scheme).Should().BeTrue();
     }
@@ -39,7 +37,7 @@ public class MongoStorageUriIntegrationTests(MongoTestContainerFixture fixture)
     [Fact]
     public void StorageProvider_CannotHandle_OtherSchemes()
     {
-        var provider = new MongoDatabaseStorageProvider();
+        var provider = new MongoDatabaseConnectionProvider();
 
         var postgres = StorageUri.Parse("postgresql://localhost:5432/mydb");
         var sql = StorageUri.Parse("sqlserver://localhost/mydb");
@@ -51,7 +49,7 @@ public class MongoStorageUriIntegrationTests(MongoTestContainerFixture fixture)
     [Fact]
     public void StorageProvider_GetConnectionString_ReconstructsUri()
     {
-        var provider = new MongoDatabaseStorageProvider();
+        var provider = new MongoDatabaseConnectionProvider();
         var uri = StorageUri.Parse("mongodb://localhost:27017/mydb");
 
         var cs = provider.GetConnectionString(uri);
@@ -64,7 +62,7 @@ public class MongoStorageUriIntegrationTests(MongoTestContainerFixture fixture)
     [Fact]
     public void StorageProvider_GetConnectionString_ThrowsForUnsupportedScheme()
     {
-        var provider = new MongoDatabaseStorageProvider();
+        var provider = new MongoDatabaseConnectionProvider();
         var uri = StorageUri.Parse("postgresql://localhost/mydb");
         var act = () => provider.GetConnectionString(uri);
         act.Should().Throw<ArgumentException>();
@@ -73,29 +71,9 @@ public class MongoStorageUriIntegrationTests(MongoTestContainerFixture fixture)
     [Fact]
     public void StorageProvider_GetConnectionString_NullUri_Throws()
     {
-        var provider = new MongoDatabaseStorageProvider();
+        var provider = new MongoDatabaseConnectionProvider();
         var act = () => provider.GetConnectionString(null!);
         act.Should().Throw<ArgumentNullException>();
-    }
-
-    // ── MongoStorageResolverFactory ───────────────────────────────────────────
-
-    [Fact]
-    public void StorageResolverFactory_CreateResolver_ReturnsNonNull()
-    {
-        var resolver = MongoStorageResolverFactory.CreateResolver();
-        resolver.Should().NotBeNull();
-    }
-
-    [Fact]
-    public void StorageResolverFactory_CreateResolver_CanResolveMongoUri()
-    {
-        var resolver = MongoStorageResolverFactory.CreateResolver();
-        var uri = StorageUri.Parse("mongodb://localhost:27017/mydb");
-        var act = () => resolver.Resolve(uri);
-
-        // Should not throw - provider is registered
-        act.Should().NotThrow();
     }
 
     // ── SourceNode via StorageUri ─────────────────────────────────────────────
@@ -142,7 +120,7 @@ public class MongoStorageUriIntegrationTests(MongoTestContainerFixture fixture)
         var storageUri = StorageUri.Parse(
             $"mongodb://{userInfo}{server.Host}:{server.Port}?{query}");
 
-        var provider = new MongoDatabaseStorageProvider();
+        var provider = new MongoDatabaseConnectionProvider();
 
         var config = new MongoConfiguration
         {
@@ -150,7 +128,7 @@ public class MongoStorageUriIntegrationTests(MongoTestContainerFixture fixture)
             CollectionName = colName,
         };
 
-        await using var source = new MongoSourceNode<NameRecord>(provider, storageUri, config);
+        await using var source = new MongoSourceNode<NameRecord>(storageUri, config, connectionProvider: provider);
 
         var results = new List<NameRecord>();
 

@@ -3,7 +3,7 @@ using System.Text.Json;
 using AwesomeAssertions;
 using FakeItEasy;
 using NPipeline.Connectors.Azure.CosmosDb.Mapping;
-using NPipeline.StorageProviders.Abstractions;
+using NPipeline.Connectors.Database;
 
 namespace NPipeline.Connectors.Azure.CosmosDb.Tests.Mapping;
 

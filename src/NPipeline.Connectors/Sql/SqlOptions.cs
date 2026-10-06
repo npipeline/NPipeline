@@ -1,9 +1,9 @@
 using NPipeline.Connectors.Checkpointing;
 using NPipeline.Connectors.Configuration;
+using NPipeline.Connectors.Database;
 using NPipeline.Connectors.Errors;
 using NPipeline.Connectors.Files;
 using NPipeline.Connectors.Mapping;
-using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Models;
 
 namespace NPipeline.Connectors.Sql;
@@ -75,14 +75,11 @@ public abstract record SqlNodeOptions
     /// <summary>The connection string. One of this, <see cref="Uri" /> or the connector's connection pool is required.</summary>
     public string? ConnectionString { get; init; }
 
-    /// <summary>A storage URI naming the database, resolved through <see cref="Provider" /> or <see cref="Resolver" />.</summary>
+    /// <summary>A storage URI naming the database, resolved through <see cref="Provider" />.</summary>
     public StorageUri? Uri { get; init; }
 
-    /// <summary>The database storage provider for <see cref="Uri" />.</summary>
-    public IStorageProvider? Provider { get; init; }
-
-    /// <summary>The resolver for <see cref="Uri" /> when <see cref="Provider" /> is <c>null</c>.</summary>
-    public IStorageResolver? Resolver { get; init; }
+    /// <summary>The database connection provider for <see cref="Uri" />. Defaults to the connector's own provider.</summary>
+    public IDatabaseConnectionProvider? Provider { get; init; }
 
     /// <summary>The command timeout in seconds. Defaults to 30; 0 waits indefinitely.</summary>
     public int CommandTimeout { get; init; } = DefaultCommandTimeout;
