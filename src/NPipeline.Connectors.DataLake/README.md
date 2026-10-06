@@ -97,10 +97,8 @@ using NPipeline.StorageProviders;
 using NPipeline.StorageProviders.Models;
 using NPipeline.DataFlow.DataStreams;
 
-var resolver = StorageProviderFactory.CreateResolver();
-var provider = StorageProviderFactory.GetProviderOrThrow(
-    resolver,
-    StorageUri.Parse("file:///data/warehouse"));
+var resolver = StorageResolver.Default; // serves file:// URIs only; pass your own providers for S3, Azure, etc.
+var provider = resolver.Resolve(StorageUri.Parse("file:///data/warehouse"));
 
 var tableUri = StorageUri.Parse("file:///data/warehouse/sales_table");
 var partitionSpec = PartitionSpec<SalesRecord>
@@ -513,8 +511,8 @@ public class DataLakePipeline : IPipelineDefinition
 
     public void Define(PipelineBuilder builder, PipelineContext context)
     {
-        var resolver = StorageProviderFactory.CreateResolver();
-        var provider = StorageProviderFactory.GetProviderOrThrow(resolver, _tableUri);
+        var resolver = new StorageResolver([new AwsS3StorageProvider(s3ClientFactory, s3Options)]);
+        var provider = resolver.Resolve(_tableUri);
 
         var partitionSpec = PartitionSpec<SalesRecord>
             .By(x => x.EventDate)

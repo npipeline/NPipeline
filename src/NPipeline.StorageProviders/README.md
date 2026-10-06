@@ -10,11 +10,11 @@ connectors to work with any storage backend without code changes.
 
 ### Key Features
 
-- **Unified Storage Interface**: Single [`IStorageProvider`](./Abstractions/IStorageProvider.cs) interface for read, write, list, and metadata operations
-- **URI-Based Resolution**: [`StorageUri`](./Models/StorageUri.cs) class normalizes storage locations across different backends
-- **Provider Discovery**: [`IStorageResolver`](./Abstractions/IStorageResolver.cs) discovers appropriate providers for given URIs
-- **Thread-Safe Factory**: [`StorageProviderFactory`](./StorageProviderFactory.cs) creates resolvers with error collection
-- **Extensible Design**: Implement custom providers for specialized storage systems
+- **Unified Storage Interface**: Single [`IStorageProvider`](./Abstractions/IStorageProvider.cs) interface for read, write, list, delete, move and metadata operations, plus a `StorageCapabilities` flags property that says what a provider supports
+- **URI-Based Resolution**: [`StorageUri`](./Models/StorageUri.cs) is an immutable, value-equal address type that normalizes storage locations across different backends and never rewrites or double-decodes a path
+- **Provider Routing**: [`StorageResolver`](./StorageResolver.cs) is an immutable `IStorageResolver` built from a fixed set of providers, one per scheme
+- **Explicit commit writes**: `OpenWriteAsync` returns a `StorageWriteStream`; nothing appears at the target until you call `CommitAsync`
+- **Extensible Design**: Derive from the `StorageProvider` base class to implement custom providers for specialized storage systems
 
 ## Installation
 
@@ -34,41 +34,51 @@ dotnet add package NPipeline.StorageProviders
 
 Primary interface defining storage operations:
 
-- `OpenReadAsync`: Open stream for reading
+- `OpenReadAsync`: Open a stream for reading
 - `OpenWriteAsync`: Open a `StorageWriteStream` for writing. The data appears at the target only after `CommitAsync`; disposing without a commit discards it
-- `ListAsync`: Enumerate items in a location
-- `GetMetadataAsync`: Retrieve file metadata
+- `ListAsync`: Enumerate items under a directory, recursively or not
+- `GetMetadataAsync`: Retrieve an object's metadata, or `null` when it doesn't exist
 - `ExistsAsync`: Check if an item exists
+- `DeleteAsync`: Delete an object (idempotent: deleting a missing object succeeds)
+- `MoveAsync`: Move an object, overwriting the destination
+- `Capabilities`: Which of the operations above the provider actually supports; an unsupported one throws `UnsupportedStorageCapabilityException`
 
 ### StorageUri
 
-Represents storage locations with scheme-based routing:
+Represents storage locations with scheme-based routing. The path is decoded exactly once, at parse time, and is never
+rewritten, so it round-trips exactly:
 
 ```csharp
 // Local file
 var fileUri = StorageUri.Parse("file:///path/to/data.csv");
 
-// Cloud storage (requires provider implementation)
+// Cloud storage (requires a provider implementation for the scheme)
 var s3Uri = StorageUri.Parse("s3://bucket/key.csv");
 
 // Custom scheme
 var customUri = StorageUri.Parse("custom://location/data.csv");
 ```
 
+`StorageUri` never carries secrets: routing data (region, service URL, account name) stays in the URI, but credentials
+belong in a provider's options. `ToString()` redacts the password and any parameter in `StorageUri.SecretParameterNames`.
+
 ### StorageResolver
 
-Resolves providers based on URI scheme:
+Resolves providers based on URI scheme. It's immutable: build it once from the providers you want. Two providers that
+serve the same scheme make the constructor throw `ArgumentException`, so a misconfiguration fails at startup instead of
+silently picking one provider:
 
 ```csharp
-var resolver = StorageProviderFactory.CreateResolver(
-    new StorageResolverOptions
-    {
-        IncludeFileSystem = true
-    }
-);
+var resolver = new StorageResolver(new IStorageProvider[]
+{
+    new FileSystemStorageProvider(),
+    new AwsS3StorageProvider(s3ClientFactory, s3Options),
+});
 
-var provider = resolver.ResolveProvider(uri);
+var provider = resolver.Resolve(uri); // throws StorageProviderNotFoundException if none serves the scheme
 ```
+
+`StorageResolver.Default` is a shared resolver that serves the file system only.
 
 ## Usage Patterns
 
@@ -77,10 +87,9 @@ var provider = resolver.ResolveProvider(uri);
 ```csharp
 using NPipeline.StorageProviders;
 
-var resolver = StorageProviderFactory.CreateResolver();
+var resolver = StorageResolver.Default;
 var uri = StorageUri.FromFilePath("./data.csv");
-var provider = resolver.ResolveProvider(uri)
-    ?? throw new InvalidOperationException("No provider registered for the URI scheme.");
+var provider = resolver.Resolve(uri);
 
 // Check existence
 bool exists = await provider.ExistsAsync(uri);
@@ -99,59 +108,21 @@ await writeStream.CommitAsync(); // without this, disposing discards the data
 ```csharp
 using NPipeline.StorageProviders;
 
-var resolver = new StorageResolver();
-resolver.RegisterProvider(new CustomStorageProvider());
+var resolver = new StorageResolver(new IStorageProvider[]
+{
+    new FileSystemStorageProvider(),
+    new CustomStorageProvider(),
+});
 
-var provider = resolver.ResolveProvider(customUri);
+var provider = resolver.Resolve(customUri);
 ```
 
-### Error Collection
+### Dependency injection
 
 ```csharp
-var (resolver, errors) = StorageProviderFactory.CreateResolverWithErrors(
-    new StorageResolverOptions { CollectErrors = true }
-);
-
-if (errors.Count > 0)
-{
-    foreach (var (name, details) in errors)
-    {
-        Console.WriteLine($"{name}: {string.Join(", ", details)}");
-    }
-}
-```
-
-## Configuration
-
-### StorageResolverOptions
-
-Controls resolver behavior:
-
-- `IncludeFileSystem`: Include built-in filesystem provider
-- `Configuration`: Provider configuration from app settings
-- `AdditionalProviders`: Custom provider instances
-- `CollectErrors`: Capture provider creation errors
-
-### ConnectorConfiguration
-
-Defines provider settings for application configuration:
-
-```csharp
-var config = new ConnectorConfiguration
-{
-    Providers = new Dictionary<string, StorageProviderConfig>
-    {
-        ["S3"] = new StorageProviderConfig
-        {
-            ProviderType = "S3StorageProvider",
-            Enabled = true,
-            Settings = new Dictionary<string, string>
-            {
-                ["Region"] = "us-east-1"
-            }
-        }
-    }
-};
+services.AddFileSystemStorageProvider();
+services.AddStorageProvider<CustomStorageProvider>();
+services.AddStorageResolver(); // builds IStorageResolver from every IStorageProvider in the container
 ```
 
 ## Architecture
@@ -159,31 +130,35 @@ var config = new ConnectorConfiguration
 The storage provider system follows dependency inversion principles:
 
 1. **Abstractions Layer**: Interfaces and models in `NPipeline.StorageProviders`
-2. **Implementation Layer**: Concrete providers (FileSystem, S3, etc.)
+2. **Implementation Layer**: Concrete providers (FileSystem, S3, Azure Blob, ADLS Gen2, GCS, SFTP, ...)
 3. **Connector Layer**: Connectors depend only on abstractions
 
 This design enables:
 
 - Swapping storage backends without connector changes
-- Testing connectors with mock providers
+- Testing connectors with fake or in-memory providers
 - Adding new storage systems without modifying existing code
 
 ## Thread Safety
 
-- `StorageResolver`: Thread-safe registration and resolution
-- `StorageProviderRegistry`: Thread-safe alias registration
-- `StorageProviderFactory`: Static methods, stateless
+- `StorageResolver`: Immutable after construction; safe to resolve concurrently
+- `StorageUri`: Immutable value type
 
 ## Supported Providers
 
 - **FileSystem**: Built-in support for local and network file systems
-- **AWS S3**: Available via [`NPipeline.StorageProviders.Aws`](../NPipeline.StorageProviders.Aws/)
-- **Custom**: Implement [`IStorageProvider`](./Abstractions/IStorageProvider.cs) for any backend
+- **AWS S3**: [`NPipeline.StorageProviders.S3.Aws`](../NPipeline.StorageProviders.S3.Aws/)
+- **S3-compatible services** (MinIO, DigitalOcean Spaces, Cloudflare R2, ...): [`NPipeline.StorageProviders.S3.Compatible`](../NPipeline.StorageProviders.S3.Compatible/)
+- **Azure Blob Storage**: [`NPipeline.StorageProviders.Azure`](../NPipeline.StorageProviders.Azure/)
+- **Azure Data Lake Storage Gen2**: [`NPipeline.StorageProviders.Adls`](../NPipeline.StorageProviders.Adls/)
+- **Google Cloud Storage**: [`NPipeline.StorageProviders.Gcp`](../NPipeline.StorageProviders.Gcp/)
+- **SFTP**: [`NPipeline.StorageProviders.Sftp`](../NPipeline.StorageProviders.Sftp/)
+- **Custom**: Derive from the `StorageProvider` base class in [`Abstractions/StorageProvider.cs`](./Abstractions/StorageProvider.cs) for any other backend
 
 ## Documentation
 
 - [Storage Providers Overview](../../docs/storage-providers/index.md)
-- [Storage Provider Interface](../../docs/storage-providers/storage-provider.md)
+- [Custom Storage Provider](../../docs/storage-providers/custom-provider.md)
 - [AWS S3 Provider](../../docs/storage-providers/aws-s3.md)
 
 ## License
