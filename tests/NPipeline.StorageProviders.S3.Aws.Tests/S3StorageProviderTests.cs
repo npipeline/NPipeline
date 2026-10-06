@@ -9,7 +9,7 @@ using Xunit;
 
 namespace NPipeline.StorageProviders.S3.Aws.Tests;
 
-public class AwsS3StorageProviderTests
+public class AwsS3StorageProviderTests : IAsyncDisposable
 {
     private readonly AwsS3ClientFactory _fakeClientFactory;
     private readonly IAmazonS3 _fakeS3Client;
@@ -25,6 +25,12 @@ public class AwsS3StorageProviderTests
         _fakeS3Client = A.Fake<IAmazonS3>();
         _options = new AwsS3StorageProviderOptions();
         _provider = new AwsS3StorageProvider(_fakeClientFactory, _options);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await _provider.DisposeAsync();
+        GC.SuppressFinalize(this);
     }
 
     [Fact]

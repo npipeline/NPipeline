@@ -623,7 +623,7 @@ public class S3WriteStreamTests
             {
                 lock (parts)
                 {
-                    parts.Add((int)r.PartSize);
+                    parts.Add((int)r.PartSize!.Value);
                 }
 
                 return Task.FromResult(new UploadPartResponse { ETag = "e" });

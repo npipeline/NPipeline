@@ -69,13 +69,16 @@ public sealed class BranchingTerminalDrainTests
     {
         var (context, recorder) = CreateRun();
 
-        await PipelineRunner.Create().RunAsync<UnboundedBranchPipeline>(context, CancellationToken.None);
+        // The source blocks mid-stream until the second sink has received an item. Terminals drained one after another
+        // never start the second sink before the source completes, so the run would stall instead of finishing.
+        var run = PipelineRunner.Create().RunAsync<GatedUnboundedBranchPipeline>(context, CancellationToken.None);
+        var finished = await Task.WhenAny(run, Task.Delay(DeadlockTimeout));
+
+        _ = finished.Should().BeSameAs(run, "every terminal must start draining before the source has run to completion");
+        await run;
 
         _ = recorder.FirstSinkCount.Should().Be(SourceItemCount);
         _ = recorder.SecondSinkCount.Should().Be(SourceItemCount);
-
-        _ = recorder.ProducedWhenFirstItemObserved.Should()
-            .BeLessThan(SourceItemCount / 4, "consumers must start draining before the source has run to completion");
     }
 
     [Fact]
@@ -446,6 +449,10 @@ public sealed class BranchingTerminalDrainTests
         private int _producedWhenFirstItemObserved = -1;
         private int _secondSinkCount;
 
+        public Task SecondSinkObserved => _secondSinkObserved.Task;
+
+        private readonly TaskCompletionSource _secondSinkObserved = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
         public int FirstSinkCount => Volatile.Read(ref _firstSinkCount);
 
         public int AggregatedCount => Volatile.Read(ref _aggregatedCount);
@@ -478,7 +485,8 @@ public sealed class BranchingTerminalDrainTests
 
         public void RecordSecondSinkItem()
         {
-            _ = Interlocked.Increment(ref _secondSinkCount);
+            if (Interlocked.Increment(ref _secondSinkCount) == 1)
+                _ = _secondSinkObserved.TrySetResult();
         }
     }
 
@@ -497,6 +505,31 @@ public sealed class BranchingTerminalDrainTests
                 recorder.RecordProduced();
 
                 // Yield so the source can outrun an unthrottled consumer, making a buffering regression visible.
+                await Task.Yield();
+                yield return i;
+            }
+        }
+    }
+
+    /// <summary>
+    ///     Pauses at the midpoint until the second sink has consumed an item, proving the sinks drain together.
+    /// </summary>
+    private sealed class GatedSource : SourceNode<int>
+    {
+        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken) =>
+            new DataStream<int>(Produce(DrainRecorder.For(context), cancellationToken), "gated-source");
+
+        private static async IAsyncEnumerable<int> Produce(
+            DrainRecorder recorder,
+            [EnumeratorCancellation] CancellationToken cancellationToken)
+        {
+            for (var i = 0; i < SourceItemCount; i++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                if (i == SourceItemCount / 2)
+                    await recorder.SecondSinkObserved.WaitAsync(cancellationToken);
+
                 await Task.Yield();
                 yield return i;
             }
@@ -547,6 +580,16 @@ public sealed class BranchingTerminalDrainTests
         public void Define(PipelineBuilder builder, PipelineContext context)
         {
             var source = builder.AddSource<YieldingSource, int>("source");
+            _ = builder.Connect(source, builder.AddSink<FirstSink, int>("first"));
+            _ = builder.Connect(source, builder.AddSink<SecondSink, int>("second"));
+        }
+    }
+
+    private sealed class GatedUnboundedBranchPipeline : IPipelineDefinition
+    {
+        public void Define(PipelineBuilder builder, PipelineContext context)
+        {
+            var source = builder.AddSource<GatedSource, int>("source");
             _ = builder.Connect(source, builder.AddSink<FirstSink, int>("first"));
             _ = builder.Connect(source, builder.AddSink<SecondSink, int>("second"));
         }
