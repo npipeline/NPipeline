@@ -40,7 +40,21 @@ public MongoSourceNode(
     SortDefinition<BsonDocument>? sort = null,
     ProjectionDefinition<BsonDocument>? projection = null,
     Func<MongoRow, T>? customMapper = null)
+
+// Storage URI
+public MongoSourceNode(
+    StorageUri uri,
+    MongoConfiguration configuration,
+    FilterDefinition<BsonDocument>? filter = null,
+    SortDefinition<BsonDocument>? sort = null,
+    ProjectionDefinition<BsonDocument>? projection = null,
+    Func<MongoRow, T>? customMapper = null,
+    IDatabaseConnectionProvider? connectionProvider = null)
 ```
+
+The storage URI constructor opens the connection through an `IDatabaseConnectionProvider` (in `NPipeline.Connectors.Database`),
+defaulting to `MongoDatabaseConnectionProvider` when `connectionProvider` is omitted, and fills in `configuration`'s host,
+database and credentials from the URI where they aren't already set.
 
 ### Example
 

@@ -37,8 +37,10 @@ public interface IStorageProvider
 | S3 (AWS) | Read, Write, List, Delete, Move (copy, then delete), ConditionalWrite |
 | S3-compatible, GCS | Read, Write, List, Delete, Move (copy, then delete) |
 | Azure Blob | Read, Write, List, Delete, Move (copy, then delete), ConditionalWrite |
-| ADLS Gen2 | Read, Write, List, Delete, Move, Hierarchy, ConditionalWrite (plus AtomicMove where the rename is atomic) |
-| SFTP | Read, Write, List, Delete, Move, Hierarchy (plus AtomicMove where the rename is atomic) |
+| ADLS Gen2 | Read, Write, List, Delete, Move, Hierarchy, ConditionalWrite |
+| SFTP | Read, Write, List, Delete, Move, AtomicMove, Hierarchy |
+
+ADLS Gen2 doesn't declare `AtomicMove`, even though an account with a hierarchical namespace renames atomically: whether that's true depends on the account, and `Capabilities` can't vary by endpoint. An account without a hierarchical namespace, such as the Azurite emulator, moves by copy and delete instead. SFTP declares `AtomicMove` because the server does a POSIX rename, but a rename can't overwrite, so a move onto an existing destination deletes it first and is not atomic in that case.
 
 ### Writes commit explicitly
 

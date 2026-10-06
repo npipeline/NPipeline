@@ -29,78 +29,37 @@ dotnet add package NPipeline.Connectors
 - **Stream-based I/O**: Efficient async-first operations with minimal memory footprint
 - **Built-in File System Provider**: Out-of-the-box support for local file system operations
 - **Dependency Injection Support**: Seamless integration with Microsoft.Extensions.DependencyInjection
-- **Configuration-driven Setup**: Flexible provider configuration through code or configuration files
+- **Configuration-driven Setup**: Provider options bind from `IConfiguration` like any other options object; providers themselves are registered in code
 - **Cross-platform Compatibility**: Works on Windows, Linux, and macOS
 
 ## Key Components
 
-### StorageProviderFactory
-
-The `StorageProviderFactory` provides factory methods to create and configure storage provider resolvers without requiring dependency injection:
-
-```csharp
-// Create a resolver with built-in file system provider
-var resolver = StorageProviderFactory.CreateResolver();
-
-// Create a resolver with additional custom providers
-var customProviders = new[] { new S3StorageProvider(), new AzureBlobStorageProvider() };
-var resolverResult = StorageProviderFactory.CreateResolver(new StorageResolverOptions
-{
-    IncludeFileSystem = true,
-    AdditionalProviders = customProviders,
-});
-var resolver = resolverResult.Resolver;
-
-// Create from configuration and capture errors
-var config = new ConnectorConfiguration
-{
-    Providers = new Dictionary<string, StorageProviderConfig>
-    {
-        ["S3"] = new StorageProviderConfig
-        {
-            ProviderType = "MyApp.S3StorageProvider",
-            Enabled = true,
-            Settings = new Dictionary<string, string>
-            {
-                ["Region"] = "us-west-2",
-                ["AccessKey"] = "your-access-key"
-            }
-        }
-    }
-};
-var (configuredResolver, errors) = StorageProviderFactory.CreateResolver(new StorageResolverOptions
-{
-    Configuration = config,
-    CollectErrors = true,
-});
-
-if (errors.Count > 0)
-{
-    // log or surface configuration issues here
-}
-
-// Register a friendly alias for custom providers
-StorageProviderFactory.RegisterProviderAlias("s3", typeof(S3StorageProvider));
-```
-
 ### StorageResolver
 
-The `StorageResolver` maintains a thread-safe list of explicitly registered providers and resolves them based on URI schemes:
+`StorageResolver` (in `NPipeline.StorageProviders`) is immutable: build it once from the providers you want. Two
+providers that serve the same scheme make the constructor throw `ArgumentException`, so a misconfiguration fails at
+startup instead of silently picking one provider:
 
 ```csharp
-var resolver = new StorageResolver();
-
-// Register providers manually (factory helpers call this for you)
-resolver.RegisterProvider(new FileSystemStorageProvider());
-resolver.RegisterProvider(new S3StorageProvider());
+var resolver = new StorageResolver(new IStorageProvider[]
+{
+    new FileSystemStorageProvider(),
+    new AwsS3StorageProvider(s3ClientFactory, s3Options),
+});
 
 // Resolve a provider for a specific URI
 var fileUri = StorageUri.FromFilePath("./data/input.csv");
-var provider = resolver.ResolveProvider(fileUri);
+var provider = resolver.Resolve(fileUri); // throws StorageProviderNotFoundException if none serves the scheme
 
-// List all available providers
-var providers = resolver.GetAvailableProviders();
+// Or, without throwing:
+if (resolver.TryResolve(fileUri, out var maybeProvider)) { /* ... */ }
+
+// All registered providers
+var providers = resolver.Providers;
 ```
+
+`StorageResolver.Default` is a shared resolver that serves the file system only. See
+[Storage Providers Overview](../../docs/storage-providers/index.md) for the full contract, capabilities and DI story.
 
 ### FileSystemStorageProvider
 
@@ -206,15 +165,20 @@ public interface IDatabaseWriter<T>
 }
 ```
 
-**IDatabaseMapper<T>** - Database mapper abstraction:
+**IDatabaseConnectionProvider** - Opens a connection, or builds a connection string, from a `StorageUri`:
 
 ```csharp
-public interface IDatabaseMapper<T>
+public interface IDatabaseConnectionProvider
 {
-    T MapFromReader(IDatabaseReader reader);
-    IEnumerable<DatabaseParameter> MapToParameters(T item);
+    string GetConnectionString(StorageUri uri);
+    Task<IDatabaseConnection> OpenConnectionAsync(StorageUri uri, CancellationToken cancellationToken = default);
 }
 ```
+
+Each database connector (Postgres, MySQL, SQL Server, Snowflake, Cosmos, Mongo, DuckDB) has its own
+`IDatabaseConnectionProvider` implementation. It replaces the storage-provider-based resolution these connectors used
+previously: a database connection is never looked up through `IStorageResolver`, because a database isn't a storage
+provider. A SQL node that isn't given a provider explicitly falls back to its connector's default one.
 
 #### Base Classes
 
@@ -298,31 +262,11 @@ public enum CheckpointStrategy
 
 #### Utilities
 
-**DatabaseErrorClassifier** - Error classification:
-
-```csharp
-bool isTransient = DatabaseErrorClassifier.IsTransientError(exception);
-bool isConnectionError = DatabaseErrorClassifier.IsConnectionError(exception);
-bool isMappingError = DatabaseErrorClassifier.IsMappingError(exception);
-bool isConstraintViolation = DatabaseErrorClassifier.IsConstraintViolation(exception);
-bool isSyntaxError = DatabaseErrorClassifier.IsSyntaxError(exception);
-```
-
-**DatabaseConnectionStringBuilder** - Connection string utilities:
-
-```csharp
-// Build connection string from parameters
-var parameters = new Dictionary<string, string>
-{
-    ["Server"] = "localhost",
-    ["Database"] = "mydb",
-    ["Port"] = "5432"
-};
-var connectionString = DatabaseConnectionStringBuilder.BuildConnectionString(parameters);
-
-// Parse connection string into parameters
-var parsed = DatabaseConnectionStringBuilder.ParseConnectionString(connectionString);
-```
+**DatabaseUriParser** - Turns a `StorageUri` (`postgres://user:pass@host:port/database?sslmode=require`, and similarly
+for the other schemes) into the pieces a connector's connection-string builder needs: host, port, database, user name,
+password and any extra parameters. Each connector classifies its own driver's errors as transient, instead of a shared
+classifier: see the connector's resilience section (for example `SqlServerConnectorResilience`,
+`MongoConnectorResilience`).
 
 **DatabaseIdentifierValidator** - SQL injection prevention:
 
@@ -348,7 +292,7 @@ DatabaseIdentifierValidator.ValidateIdentifier(tableName, nameof(tableName));
 public abstract class DatabaseExceptionBase : Exception
 {
     public string? ErrorCode { get; }
-    public int? SqlState { get; }
+    public string? SqlState { get; }   // a five-character SQLSTATE code, such as "23505" or "HY000"
 }
 ```
 
@@ -358,7 +302,8 @@ public abstract class DatabaseExceptionBase : Exception
 - `DatabaseConnectionException` - Connection-related errors
 - `DatabaseMappingException` - Mapping errors with property name
 - `DatabaseOperationException` - Operation errors with error code and SQL state
-- `DatabaseParameter` - Record for database parameters
+
+`DatabaseParameter` is a separate record for database parameters, not an exception type.
 
 #### Dependency Injection
 
@@ -378,10 +323,11 @@ services.AddDatabaseOptions(options =>
 services.AddDatabaseOptions<MyDatabaseOptions>("Database");
 ```
 
-## Database Storage Providers
+## Database Connection Providers
 
-NPipeline.Connectors ecosystem includes database storage providers that enable environment-aware configuration through URI-based connections. This approach
-allows seamless switching between local development databases and cloud-hosted databases (e.g., AWS RDS, Azure SQL) by simply changing a URI.
+Each database connector has an `IDatabaseConnectionProvider` that turns a `StorageUri` into a connection, enabling
+environment-aware configuration through URI-based connections. This approach allows seamless switching between local
+development databases and cloud-hosted databases (e.g., AWS RDS, Azure SQL) by simply changing a URI.
 
 ### PostgreSQL URI Format
 
@@ -405,11 +351,14 @@ var devUri = StorageUri.Parse("postgres://localhost:5432/mydb?username=postgres&
 var prodUri = StorageUri.Parse("postgres://mydb.prod.ap-southeast-2.rds.amazonaws.com:5432/mydb?username=produser&password=${DB_PASSWORD}");
 
 // Same pipeline code works in both environments
-var source = new PostgresSourceNode<Customer>(uri: devUri, query: "SELECT * FROM customers");
+var source = PostgresConnector.Source<Customer>(devUri, "SELECT * FROM customers");
 
 // Switch to production by changing the URI
-var prodSource = new PostgresSourceNode<Customer>(uri: prodUri, query: "SELECT * FROM customers");
+var prodSource = PostgresConnector.Source<Customer>(prodUri, "SELECT * FROM customers");
 ```
+
+See [SQL Connectors: Shared Behaviour](../../docs/connectors/sql-connectors.md) for the full URI format, credential
+handling and the node options every SQL source and sink shares.
 
 ### Benefits
 
@@ -446,7 +395,9 @@ Additional schemes can be supported by implementing custom storage providers:
 - **ftp** - FTP/FTPS servers
 - **sftp** - SFTP servers
 - **http/https** - HTTP/HTTPS endpoints
-- **database** - Database storage (custom implementations)
+
+Database schemes (`postgres`, `mssql`, `mysql`, `snowflake`, `cosmos`, `mongodb`, ...) are not storage schemes: a
+database connection is opened through the connector's own `IDatabaseConnectionProvider`, not through `IStorageResolver`.
 
 ## Usage Examples
 
@@ -460,9 +411,9 @@ using NPipeline.StorageProviders;
 var inputUri = StorageUri.FromFilePath("./data/input.csv");
 var outputUri = StorageUri.FromFilePath("./data/output.csv");
 
-// Create resolver with file system provider
-var resolver = StorageProviderFactory.CreateResolver();
-var provider = StorageProviderFactory.GetProviderOrThrow(resolver, inputUri);
+// A resolver that serves the file system only
+var resolver = StorageResolver.Default;
+var provider = resolver.Resolve(inputUri);
 
 // Read from file
 using var inputStream = await provider.OpenReadAsync(inputUri);
@@ -489,15 +440,15 @@ using NPipeline.Connectors.DependencyInjection;
 // Configure services
 var services = new ServiceCollection();
 
-// Add the storage resolver with file system provider
+// Add cloud providers; each package's AddXxxStorageProvider also registers IStorageProvider
+services.AddAwsS3StorageProvider(options => options.DefaultRegion = RegionEndpoint.USWest2);
+services.AddAzureBlobStorageProvider(options => options.DefaultConnectionString = "...");
+
+// Add a custom provider instance
+services.AddStorageProvider(new CustomStorageProvider());
+
+// Build the resolver from every IStorageProvider above, plus the file system provider
 services.AddStorageResolver(includeFileSystem: true);
-
-// Add custom storage providers
-services.AddStorageProvider<S3StorageProvider>();
-services.AddStorageProvider<AzureBlobStorageProvider>();
-
-// Add provider instance
-services.AddStorageProvider(new CustomDatabaseStorageProvider(connectionString));
 
 // Build service provider
 var serviceProvider = services.BuildServiceProvider();
@@ -505,50 +456,49 @@ var serviceProvider = services.BuildServiceProvider();
 // Resolve and use the storage resolver
 var resolver = serviceProvider.GetRequiredService<IStorageResolver>();
 var s3Uri = StorageUri.Parse("s3://my-bucket/data/input.csv");
-var provider = resolver.ResolveProvider(s3Uri);
+var provider = resolver.Resolve(s3Uri);
 ```
 
-### Custom Provider Example (S3)
+### Custom Provider Example
+
+Derive from the `StorageProvider` base class (in `NPipeline.StorageProviders.Abstractions`) rather than implementing
+`IStorageProvider` directly: it validates arguments, observes cancellation and rejects operations you don't declare in
+`Capabilities`, so your code only implements the `...CoreAsync` methods for the capabilities you support.
 
 ```csharp
-using NPipeline.Connectors.Abstractions;
-
-public class S3StorageProvider : IStorageProvider
+public sealed class FtpStorageProvider : StorageProvider
 {
-    public StorageScheme Scheme => StorageScheme.S3;
+    private static readonly IReadOnlyList<StorageScheme> Supported = [new StorageScheme("ftp")];
 
-    public bool CanHandle(StorageUri uri)
+    public override string Name => "FTP";
+    public override IReadOnlyList<StorageScheme> Schemes => Supported;
+
+    public override StorageCapabilities Capabilities =>
+        StorageCapabilities.Read | StorageCapabilities.Write | StorageCapabilities.List | StorageCapabilities.Hierarchy;
+
+    protected override async Task<Stream> OpenReadCoreAsync(StorageUri uri, CancellationToken cancellationToken)
     {
-        return Scheme.Equals(uri.Scheme) && !string.IsNullOrEmpty(uri.Host);
+        var client = new FtpClient(uri.Host);
+        await client.ConnectAsync(cancellationToken);
+        return await client.OpenReadAsync(uri.Path, cancellationToken);
     }
 
-    public async Task<Stream> OpenReadAsync(StorageUri uri, CancellationToken cancellationToken = default)
+    protected override async Task<StorageWriteStream> OpenWriteCoreAsync(
+        StorageUri uri, StorageWriteOptions? options, CancellationToken cancellationToken)
     {
-        // Implementation for reading from S3
-        var client = GetS3Client();
-        var request = new GetObjectRequest
-        {
-            BucketName = uri.Host,
-            Key = uri.Path.TrimStart('/')
-        };
-
-        var response = await client.GetObjectAsync(request, cancellationToken);
-        return response.ResponseStream;
+        // FtpWriteStream derives from StorageWriteStream (or SpooledWriteStream / ChunkedUploadStream). Nothing
+        // appears at the target until CommitAsync; disposing without a commit discards what was written.
+        var client = new FtpClient(uri.Host);
+        await client.ConnectAsync(cancellationToken);
+        return new FtpWriteStream(client, uri.Path);
     }
 
-    public Task<StorageWriteStream> OpenWriteAsync(
-        StorageUri uri, StorageWriteOptions? options = null, CancellationToken cancellationToken = default)
-    {
-        // Return a StorageWriteStream that buffers the writes and uploads them to S3 in CommitAsync.
-        // Disposing it without a commit must discard the data and upload nothing.
-        // S3UploadStream is your own subclass (for example, of SpooledWriteStream).
-        var client = GetS3Client();
-        return Task.FromResult<StorageWriteStream>(new S3UploadStream(client, uri.Host, uri.Path.TrimStart('/')));
-    }
-
-    // Implement other required methods...
+    // Implement the other ...CoreAsync methods for the capabilities you declare.
 }
 ```
+
+See [Custom Storage Provider](../../docs/storage-providers/custom-provider.md) for the full contract (error
+translation, the conformance test suite, client caching) and the chunked-upload and spooled-write base classes.
 
 ## Configuration
 
@@ -560,72 +510,21 @@ using NPipeline.Connectors.DependencyInjection;
 
 var services = new ServiceCollection();
 
-// Method 1: Register individual providers
+// Register individual providers, each as a singleton
 services.AddStorageProvider<FileSystemStorageProvider>();
-services.AddStorageProvider<S3StorageProvider>();
-services.AddStorageResolver(includeFileSystem: false); // Skip auto-registration
+services.AddAwsS3StorageProvider(options => options.DefaultRegion = RegionEndpoint.USWest2);
 
-// Method 2: Register from configuration
-services.AddStorageProvidersFromConfiguration(config =>
-{
-    config.Providers["S3"] = new StorageProviderConfig
-    {
-        ProviderType = "MyApp.Providers.S3StorageProvider",
-        Enabled = true,
-        Settings = new Dictionary<string, string>
-        {
-            ["Region"] = "us-west-2",
-            ["AccessKey"] = "${S3_ACCESS_KEY}",
-            ["SecretKey"] = "${S3_SECRET_KEY}"
-        }
-    };
-});
+// Or register a pre-built instance, for example when more than one of the same type must coexist
+// (two S3-compatible endpoints, each given its own scheme)
+services.AddStorageProvider(new S3CompatibleStorageProvider(minioClientFactory, minioOptions));
 
-// Method 3: Register all discovered providers
-services.AddConnectorsFromConfiguration(config =>
-{
-    config.DefaultScheme = "file";
-    // Configure providers as needed
-});
+// Build the resolver from every IStorageProvider registered above (including those registered after this call)
+services.AddStorageResolver(includeFileSystem: false); // false: this example added the file system provider explicitly
 ```
 
-### Configurable Provider Implementation
-
-```csharp
-using NPipeline.Connectors.Configuration;
-using NPipeline.Connectors.Abstractions;
-
-public class ConfigurableStorageProvider : IStorageProvider, IConfigurableStorageProvider
-{
-    public StorageScheme Scheme { get; private set; } = StorageScheme.Custom;
-
-    public void Configure(IReadOnlyDictionary<string, string> settings)
-    {
-        // Apply configuration settings
-        if (settings.TryGetValue("Scheme", out var scheme))
-            Scheme = new StorageScheme(scheme);
-
-        // Configure other properties...
-    }
-
-    // Implement IStorageProvider methods...
-}
-
-// Register with configuration
-services.AddStorageProvidersFromConfiguration(config =>
-{
-    config.Providers["Custom"] = new StorageProviderConfig
-    {
-        ProviderType = "MyApp.Providers.ConfigurableStorageProvider",
-        Enabled = true,
-        Settings = new Dictionary<string, string>
-        {
-            ["Scheme"] = "custom",
-            ["ConnectionString"] = "Server=myserver;Database=mydb;"
-        }
-    };
-});
-```
+Provider options are plain objects with no configuration-section binding of their own: bind them from
+`IConfiguration` the normal ASP.NET Core way (`services.Configure<AwsS3StorageProviderOptions>(configuration.GetSection("S3"))`,
+or read values into the options object yourself) and keep secrets out of `appsettings.json` in source control.
 
 ## Performance Considerations
 
@@ -637,9 +536,11 @@ services.AddStorageProvidersFromConfiguration(config =>
 
 ### Provider Resolution
 
-- Provider resolution is cached after first use for performance
-- Register providers explicitly to avoid reflection overhead
-- Use scheme-specific providers when possible for better performance
+- `StorageResolver` looks a provider up by scheme in a `FrozenDictionary` built once at construction, so resolving a
+  URI is one dictionary lookup; there's no reflection or discovery at resolve time
+- Two providers that serve the same scheme fail at construction (`ArgumentException`), not on first resolve
+- Give a provider its own scheme (or pass it to a node explicitly with `Provider = ...`) when you need two instances
+  of the same provider type behind one resolver, for example two S3 accounts
 
 ### Async Operations
 

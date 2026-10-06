@@ -49,6 +49,16 @@ public CosmosSourceNode(
     DatabaseParameter[]? parameters = null,
     bool continueOnError = false,
     string? connectionName = null)
+
+// Storage URI (path is "/databaseId/containerId")
+public CosmosSourceNode(
+    StorageUri uri,
+    string query,
+    IDatabaseConnectionProvider? provider = null,
+    Func<CosmosRow, T>? mapper = null,
+    CosmosConfiguration? configuration = null,
+    DatabaseParameter[]? parameters = null,
+    bool continueOnError = false)
 ```
 
 ### Example
@@ -59,6 +69,10 @@ var source = new CosmosSourceNode<Order>(
     "orders-db", "orders",
     "SELECT * FROM c WHERE c.status = 'pending'");
 ```
+
+The storage URI constructor pulls `databaseId` and `containerId` from the URI's path (`cosmos://account/orders-db/orders`) and
+opens the connection through an `IDatabaseConnectionProvider` (in `NPipeline.Connectors.Database`), defaulting to the SQL
+API's own provider when `provider` is omitted.
 
 ## Sink Node - `CosmosSinkNode<T>` (SQL API)
 
