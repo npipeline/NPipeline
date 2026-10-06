@@ -1,5 +1,5 @@
 using NPipeline.Connectors.Checkpointing;
-using NPipeline.StorageProviders.Abstractions;
+using NPipeline.Connectors.Database;
 
 namespace NPipeline.Connectors.MySql.Checkpointing;
 

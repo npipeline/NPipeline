@@ -1,6 +1,6 @@
 using System.Data;
 using Microsoft.Azure.Cosmos;
-using NPipeline.StorageProviders.Abstractions;
+using NPipeline.Connectors.Database;
 
 namespace NPipeline.Connectors.Azure.CosmosDb.Connection;
 

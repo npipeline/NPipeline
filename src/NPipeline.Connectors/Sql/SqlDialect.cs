@@ -1,7 +1,7 @@
 using System.Data;
 using System.Data.Common;
 using System.Text;
-using NPipeline.StorageProviders.Utilities;
+using NPipeline.Connectors.Database;
 
 namespace NPipeline.Connectors.Sql;
 

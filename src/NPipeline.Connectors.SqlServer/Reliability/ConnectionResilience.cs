@@ -1,4 +1,4 @@
-using NPipeline.StorageProviders.Abstractions;
+using NPipeline.Connectors.Database;
 using NResilience;
 
 namespace NPipeline.Connectors.SqlServer.Reliability;

@@ -1,5 +1,5 @@
 using MongoDB.Bson;
-using NPipeline.StorageProviders.Exceptions;
+using NPipeline.Connectors.Database;
 
 namespace NPipeline.Connectors.MongoDB.Exceptions;
 

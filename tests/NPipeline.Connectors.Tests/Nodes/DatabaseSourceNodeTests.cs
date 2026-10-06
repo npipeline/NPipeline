@@ -5,7 +5,7 @@ using NPipeline.Connectors.Configuration;
 using NPipeline.Connectors.Nodes;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.Pipeline;
-using NPipeline.StorageProviders.Abstractions;
+using NPipeline.Connectors.Database;
 using Xunit;
 
 namespace NPipeline.Connectors.Tests.Nodes;

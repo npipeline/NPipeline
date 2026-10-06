@@ -1,6 +1,7 @@
 using Microsoft.Azure.Cosmos;
 using NPipeline.Connectors.Azure.CosmosDb.Configuration;
-using NPipeline.StorageProviders.Abstractions;
+using NPipeline.Connectors.Database;
+using CosmosDatabase = Microsoft.Azure.Cosmos.Database;
 
 namespace NPipeline.Connectors.Azure.CosmosDb.Connection;
 
@@ -22,7 +23,7 @@ internal sealed class CosmosDatabaseConnection : IDatabaseConnection
     /// <param name="defaultFetchSize">Default fetch size for queries.</param>
     /// <param name="defaultMaxConcurrency">Default max concurrency for parallel queries.</param>
     public CosmosDatabaseConnection(
-        Database database,
+        CosmosDatabase database,
         Container container,
         int defaultFetchSize = 100,
         int defaultMaxConcurrency = 1)
@@ -40,7 +41,7 @@ internal sealed class CosmosDatabaseConnection : IDatabaseConnection
     /// <param name="container">The Cosmos DB container.</param>
     /// <param name="configuration">The Cosmos configuration.</param>
     public CosmosDatabaseConnection(
-        Database database,
+        CosmosDatabase database,
         Container container,
         CosmosConfiguration configuration)
     {
@@ -58,7 +59,7 @@ internal sealed class CosmosDatabaseConnection : IDatabaseConnection
     /// <summary>
     ///     Gets the underlying Cosmos DB database.
     /// </summary>
-    public Database Database { get; }
+    public CosmosDatabase Database { get; }
 
     /// <summary>
     ///     Gets a value indicating whether the connection is currently open.

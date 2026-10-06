@@ -1,5 +1,5 @@
 using Npgsql;
-using NPipeline.StorageProviders.Abstractions;
+using NPipeline.Connectors.Database;
 
 namespace NPipeline.Connectors.Postgres.Connection;
 

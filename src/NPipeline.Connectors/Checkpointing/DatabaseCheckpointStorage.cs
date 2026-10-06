@@ -1,6 +1,5 @@
 using System.Text.Json;
-using NPipeline.StorageProviders.Abstractions;
-using NPipeline.StorageProviders.Utilities;
+using NPipeline.Connectors.Database;
 
 namespace NPipeline.Connectors.Checkpointing;
 

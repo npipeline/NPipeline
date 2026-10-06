@@ -39,7 +39,7 @@ public sealed class SnowflakeStorageUriIntegrationTests(SnowflakeTestFixture fix
             queryParts.Add($"password={Uri.EscapeDataString(password)}");
 
         var uri = StorageUri.Parse($"snowflake://{account}/{database}?{string.Join("&", queryParts)}");
-        var provider = new SnowflakeDatabaseStorageProvider();
+        var provider = new SnowflakeDatabaseConnectionProvider();
         var builtConnectionString = provider.GetConnectionString(uri);
 
         using var connection = new SnowflakeDbConnection(builtConnectionString);

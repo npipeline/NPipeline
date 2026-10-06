@@ -1,9 +1,9 @@
 using System.Data.Common;
 using Microsoft.Data.SqlClient;
+using NPipeline.Connectors.Database;
 using NPipeline.Connectors.Sql;
 using NPipeline.Connectors.SqlServer.Configuration;
 using NPipeline.Connectors.SqlServer.Writers;
-using NPipeline.StorageProviders.Abstractions;
 
 namespace NPipeline.Connectors.SqlServer.Nodes;
 
@@ -18,7 +18,7 @@ namespace NPipeline.Connectors.SqlServer.Nodes;
 /// <typeparam name="T">The record type.</typeparam>
 public sealed class SqlServerSinkNode<T> : SqlSinkNode<T>
 {
-    private static readonly Lazy<IStorageResolver> Resolver = new(SqlServerStorageResolverFactory.CreateResolver);
+    private static readonly Lazy<IDatabaseConnectionProvider> Provider = new(() => new SqlServerDatabaseConnectionProvider());
 
     private readonly SqlServerWriteOptions _options;
 
@@ -31,7 +31,7 @@ public sealed class SqlServerSinkNode<T> : SqlSinkNode<T>
     }
 
     /// <inheritdoc />
-    protected override IStorageResolver DefaultResolver => Resolver.Value;
+    protected override IDatabaseConnectionProvider DefaultProvider => Provider.Value;
 
     /// <inheritdoc />
     protected override DbConnection CreateConnection(string connectionString) => new SqlConnection(connectionString);

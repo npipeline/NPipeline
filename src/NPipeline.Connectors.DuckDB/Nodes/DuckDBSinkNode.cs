@@ -1,10 +1,9 @@
 using System.Data.Common;
 using DuckDB.NET.Data;
+using NPipeline.Connectors.Database;
 using NPipeline.Connectors.DuckDB.Configuration;
 using NPipeline.Connectors.DuckDB.Writers;
 using NPipeline.Connectors.Sql;
-using NPipeline.StorageProviders;
-using NPipeline.StorageProviders.Abstractions;
 
 namespace NPipeline.Connectors.DuckDB.Nodes;
 
@@ -27,7 +26,7 @@ public sealed class DuckDBSinkNode<T> : SqlSinkNode<T>
     }
 
     /// <inheritdoc />
-    protected override IStorageResolver DefaultResolver => StorageResolver.Default;
+    protected override IDatabaseConnectionProvider DefaultProvider { get; } = new DuckDBDatabaseConnectionProvider();
 
     /// <inheritdoc />
     protected override DbConnection CreateConnection(string connectionString) => new DuckDBConnection(connectionString);

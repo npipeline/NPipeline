@@ -1,4 +1,5 @@
 using System.Data.Common;
+using NPipeline.Connectors.Database;
 using NPipeline.Connectors.Diagnostics;
 using NPipeline.Connectors.Mapping;
 using NPipeline.Connectors.Messaging;
@@ -6,7 +7,6 @@ using NPipeline.DataFlow;
 using NPipeline.ErrorHandling;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
-using NPipeline.StorageProviders.Abstractions;
 
 namespace NPipeline.Connectors.Sql;
 
@@ -61,15 +61,15 @@ public abstract class SqlSinkNode<T> : SinkNode<T>, IReportsWrites
     /// <summary>Creates an unopened connection for <paramref name="connectionString" />.</summary>
     protected abstract DbConnection CreateConnection(string connectionString);
 
-    /// <summary>The resolver used for a URI when the options name neither a provider nor a resolver.</summary>
-    protected abstract IStorageResolver DefaultResolver { get; }
+    /// <summary>The connection provider used for a URI when the options name no provider of their own.</summary>
+    protected abstract IDatabaseConnectionProvider DefaultProvider { get; }
 
     /// <summary>
     ///     Opens a connection for the options' connection string or URI. Connectors with a connection pool override this to
     ///     take one from the pool when the options name it.
     /// </summary>
     protected virtual Task<DbConnection> OpenConnectionAsync(CancellationToken cancellationToken) =>
-        SqlConnections.OpenAsync(_options, CreateConnection, () => DefaultResolver, cancellationToken);
+        SqlConnections.OpenAsync(_options, CreateConnection, () => DefaultProvider, cancellationToken);
 
     /// <summary>The writer for the options' write strategy.</summary>
     protected abstract SqlWriter<T> CreateWriter();

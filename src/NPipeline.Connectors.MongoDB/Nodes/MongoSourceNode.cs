@@ -3,6 +3,7 @@ using MongoDB.Bson;
 using MongoDB.Driver;
 using NPipeline.Connectors.Checkpointing;
 using NPipeline.Connectors.Configuration;
+using NPipeline.Connectors.Database;
 using NPipeline.Connectors.MongoDB.Configuration;
 using NPipeline.Connectors.MongoDB.Exceptions;
 using NPipeline.Connectors.MongoDB.Mapping;
@@ -10,7 +11,6 @@ using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
-using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Models;
 
 namespace NPipeline.Connectors.MongoDB.Nodes;
@@ -29,7 +29,7 @@ public class MongoSourceNode<T> : SourceNode<T>, IAsyncDisposable
     private readonly FilterDefinition<BsonDocument>? _filter;
     private readonly ProjectionDefinition<BsonDocument>? _projection;
     private readonly SortDefinition<BsonDocument>? _sort;
-    private readonly IStorageProvider? _storageProvider;
+    private readonly IDatabaseConnectionProvider? _connectionProvider;
     private readonly StorageUri? _storageUri;
     private IAsyncCursor<BsonDocument>? _cursor;
 
@@ -94,48 +94,19 @@ public class MongoSourceNode<T> : SourceNode<T>, IAsyncDisposable
     /// <param name="sort">Optional sort definition.</param>
     /// <param name="projection">Optional projection definition.</param>
     /// <param name="customMapper">Optional custom mapper function.</param>
+    /// <param name="connectionProvider">The connection provider used to open the connection. Defaults to the MongoDB provider.</param>
     public MongoSourceNode(
         StorageUri uri,
         MongoConfiguration configuration,
         FilterDefinition<BsonDocument>? filter = null,
         SortDefinition<BsonDocument>? sort = null,
         ProjectionDefinition<BsonDocument>? projection = null,
-        Func<MongoRow, T>? customMapper = null)
+        Func<MongoRow, T>? customMapper = null,
+        IDatabaseConnectionProvider? connectionProvider = null)
     {
         _storageUri = uri ?? throw new ArgumentNullException(nameof(uri));
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-        _storageProvider = new MongoDatabaseStorageProvider();
-        _filter = filter;
-        _sort = sort;
-        _projection = projection;
-        _customMapper = customMapper;
-
-        ApplyStorageUriDefaults(_storageUri, _configuration);
-        _configuration.Validate();
-    }
-
-    /// <summary>
-    ///     Initializes a new instance of the <see cref="MongoSourceNode{T}" /> class using a storage provider.
-    /// </summary>
-    /// <param name="storageProvider">The storage provider.</param>
-    /// <param name="uri">The storage URI.</param>
-    /// <param name="configuration">The MongoDB configuration.</param>
-    /// <param name="filter">Optional filter definition.</param>
-    /// <param name="sort">Optional sort definition.</param>
-    /// <param name="projection">Optional projection definition.</param>
-    /// <param name="customMapper">Optional custom mapper function.</param>
-    public MongoSourceNode(
-        IStorageProvider storageProvider,
-        StorageUri uri,
-        MongoConfiguration configuration,
-        FilterDefinition<BsonDocument>? filter = null,
-        SortDefinition<BsonDocument>? sort = null,
-        ProjectionDefinition<BsonDocument>? projection = null,
-        Func<MongoRow, T>? customMapper = null)
-    {
-        _storageProvider = storageProvider ?? throw new ArgumentNullException(nameof(storageProvider));
-        _storageUri = uri ?? throw new ArgumentNullException(nameof(uri));
-        _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+        _connectionProvider = connectionProvider ?? new MongoDatabaseConnectionProvider();
         _filter = filter;
         _sort = sort;
         _projection = projection;
@@ -218,18 +189,11 @@ public class MongoSourceNode<T> : SourceNode<T>, IAsyncDisposable
             return _ownedClient;
         }
 
-        if (_storageProvider != null && _storageUri != null)
+        if (_connectionProvider != null && _storageUri != null)
         {
-            // For storage provider-based construction, we need to resolve the connection string
-            if (_storageProvider is IDatabaseStorageProvider dbProvider)
-            {
-                var connectionString = dbProvider.GetConnectionString(_storageUri);
-                _ownedClient = new MongoClient(connectionString);
-                return _ownedClient;
-            }
-
-            throw new InvalidOperationException(
-                $"Storage provider must implement {nameof(IDatabaseStorageProvider)} to use StorageUri.");
+            var connectionString = _connectionProvider.GetConnectionString(_storageUri);
+            _ownedClient = new MongoClient(connectionString);
+            return _ownedClient;
         }
 
         throw new InvalidOperationException("No MongoDB client or connection string provided.");

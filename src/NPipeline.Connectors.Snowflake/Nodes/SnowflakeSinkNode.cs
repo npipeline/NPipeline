@@ -1,9 +1,9 @@
 using System.Data.Common;
 using Snowflake.Data.Client;
+using NPipeline.Connectors.Database;
 using NPipeline.Connectors.Sql;
 using NPipeline.Connectors.Snowflake.Configuration;
 using NPipeline.Connectors.Snowflake.Writers;
-using NPipeline.StorageProviders.Abstractions;
 
 namespace NPipeline.Connectors.Snowflake.Nodes;
 
@@ -19,7 +19,7 @@ namespace NPipeline.Connectors.Snowflake.Nodes;
 /// <typeparam name="T">The record type.</typeparam>
 public sealed class SnowflakeSinkNode<T> : SqlSinkNode<T>
 {
-    private static readonly Lazy<IStorageResolver> Resolver = new(SnowflakeStorageResolverFactory.CreateResolver);
+    private static readonly Lazy<IDatabaseConnectionProvider> Provider = new(() => new SnowflakeDatabaseConnectionProvider());
 
     private readonly SnowflakeWriteOptions _options;
 
@@ -32,7 +32,7 @@ public sealed class SnowflakeSinkNode<T> : SqlSinkNode<T>
     }
 
     /// <inheritdoc />
-    protected override IStorageResolver DefaultResolver => Resolver.Value;
+    protected override IDatabaseConnectionProvider DefaultProvider => Provider.Value;
 
     /// <inheritdoc />
     protected override DbConnection CreateConnection(string connectionString) => new SnowflakeDbConnection(connectionString);

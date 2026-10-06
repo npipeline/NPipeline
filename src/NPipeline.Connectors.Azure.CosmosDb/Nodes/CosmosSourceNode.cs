@@ -5,10 +5,10 @@ using NPipeline.Connectors.Attributes;
 using NPipeline.Connectors.Azure.CosmosDb.Configuration;
 using NPipeline.Connectors.Azure.CosmosDb.Connection;
 using NPipeline.Connectors.Azure.CosmosDb.Mapping;
+using NPipeline.Connectors.Azure.CosmosDb.StorageProvider;
 using NPipeline.Connectors.Configuration;
+using NPipeline.Connectors.Database;
 using NPipeline.Connectors.Nodes;
-using NPipeline.StorageProviders;
-using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Models;
 using NPipeline.Connectors.Mapping;
 
@@ -24,8 +24,8 @@ public class CosmosSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
     private static readonly Lazy<IReadOnlyList<PropertyBinding>> CachedBindings = new(BuildBindings);
     private static readonly Lazy<Func<T>> CachedCreateInstance = new(BuildCreateInstanceDelegate, LazyThreadSafetyMode.ExecutionAndPublication);
 
-    private static readonly Lazy<IStorageResolver> DefaultResolver = new(
-        CosmosStorageResolverFactory.CreateResolver,
+    private static readonly Lazy<IDatabaseConnectionProvider> DefaultProvider = new(
+        () => new CosmosDatabaseConnectionProvider(),
         LazyThreadSafetyMode.ExecutionAndPublication);
 
     private readonly Func<CosmosRow, T>? _cachedMapper;
@@ -38,8 +38,7 @@ public class CosmosSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
     private readonly Func<CosmosRow, T>? _mapper;
     private readonly DatabaseParameter[] _parameters;
     private readonly string _query;
-    private readonly IStorageProvider? _storageProvider;
-    private readonly IStorageResolver? _storageResolver;
+    private readonly IDatabaseConnectionProvider? _connectionProvider;
     private readonly StorageUri? _storageUri;
     private IDatabaseReader? _cachedReader;
     private CosmosRow? _cachedRow;
@@ -158,7 +157,7 @@ public class CosmosSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
     /// </summary>
     /// <param name="uri">The storage URI containing Cosmos DB connection information.</param>
     /// <param name="query">The SQL query.</param>
-    /// <param name="resolver">The storage resolver used to obtain storage provider.</param>
+    /// <param name="provider">The connection provider used to open the connection. Defaults to the Cosmos provider.</param>
     /// <param name="mapper">Optional custom mapper function.</param>
     /// <param name="configuration">Optional configuration.</param>
     /// <param name="parameters">Optional query parameters.</param>
@@ -166,7 +165,7 @@ public class CosmosSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
     public CosmosSourceNode(
         StorageUri uri,
         string query,
-        IStorageResolver? resolver = null,
+        IDatabaseConnectionProvider? provider = null,
         Func<CosmosRow, T>? mapper = null,
         CosmosConfiguration? configuration = null,
         DatabaseParameter[]? parameters = null,
@@ -182,56 +181,7 @@ public class CosmosSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
         var (databaseId, containerId) = ParseUriPath(uri.Path);
 
         _storageUri = uri;
-        _storageResolver = resolver;
-        _mapper = mapper;
-        _query = query;
-        _parameters = parameters ?? [];
-        _configuration = configuration ?? new CosmosConfiguration();
-
-        if (string.IsNullOrWhiteSpace(_configuration.DatabaseId))
-            _configuration.DatabaseId = databaseId;
-
-        _configuration.Validate();
-        _continueOnError = continueOnError || _configuration.ContinueOnError || !_configuration.ThrowOnMappingError;
-        _connectionName = null;
-
-        _databaseId = databaseId;
-        _containerId = containerId;
-
-        _cachedMapper = ResolveDefaultMapper(mapper, _configuration, _continueOnError);
-    }
-
-    /// <summary>
-    ///     Initializes a new instance of the <see cref="CosmosSourceNode{T}" /> class using a specific storage provider.
-    /// </summary>
-    /// <param name="provider">The storage provider.</param>
-    /// <param name="uri">The storage URI containing Cosmos DB connection information.</param>
-    /// <param name="query">The SQL query.</param>
-    /// <param name="mapper">Optional custom mapper function.</param>
-    /// <param name="configuration">Optional configuration.</param>
-    /// <param name="parameters">Optional query parameters.</param>
-    /// <param name="continueOnError">Whether to continue on row-level errors.</param>
-    public CosmosSourceNode(
-        IStorageProvider provider,
-        StorageUri uri,
-        string query,
-        Func<CosmosRow, T>? mapper = null,
-        CosmosConfiguration? configuration = null,
-        DatabaseParameter[]? parameters = null,
-        bool continueOnError = false)
-    {
-        ArgumentNullException.ThrowIfNull(provider);
-        ArgumentNullException.ThrowIfNull(uri);
-
-        if (string.IsNullOrWhiteSpace(query))
-            throw new ArgumentNullException(nameof(query));
-
-        // Extract database and container from URI path
-        // Path format: /databaseId/containerId
-        var (databaseId, containerId) = ParseUriPath(uri.Path);
-
-        _storageProvider = provider;
-        _storageUri = uri;
+        _connectionProvider = provider;
         _mapper = mapper;
         _query = query;
         _parameters = parameters ?? [];
@@ -277,16 +227,11 @@ public class CosmosSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
     /// <returns>A task representing the asynchronous operation.</returns>
     protected override async Task<IDatabaseConnection> GetConnectionAsync(CancellationToken cancellationToken)
     {
-        // If using StorageUri-based construction, get connection from database storage provider
+        // If using StorageUri-based construction, get connection from the database connection provider
         if (_storageUri != null)
         {
-            var provider = _storageProvider ?? (_storageResolver ?? DefaultResolver.Value).Resolve(_storageUri);
-
-            if (provider is IDatabaseStorageProvider databaseProvider)
-                return await databaseProvider.GetConnectionAsync(_storageUri, cancellationToken).ConfigureAwait(false);
-
-            throw new InvalidOperationException(
-                $"Storage provider must implement {nameof(IDatabaseStorageProvider)} to use StorageUri.");
+            var provider = _connectionProvider ?? DefaultProvider.Value;
+            return await provider.OpenConnectionAsync(_storageUri, cancellationToken).ConfigureAwait(false);
         }
 
         // Original connection pool logic

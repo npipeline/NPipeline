@@ -1,9 +1,9 @@
 using System.Data.Common;
+using NPipeline.Connectors.Database;
 using NPipeline.Connectors.Postgres.Configuration;
 using NPipeline.Connectors.Postgres.Writers;
 using NPipeline.Connectors.Sql;
 using Npgsql;
-using NPipeline.StorageProviders.Abstractions;
 
 namespace NPipeline.Connectors.Postgres.Nodes;
 
@@ -18,7 +18,7 @@ namespace NPipeline.Connectors.Postgres.Nodes;
 /// <typeparam name="T">The record type.</typeparam>
 public sealed class PostgresSinkNode<T> : SqlSinkNode<T>
 {
-    private static readonly Lazy<IStorageResolver> Resolver = new(PostgresStorageResolverFactory.CreateResolver);
+    private static readonly Lazy<IDatabaseConnectionProvider> Provider = new(() => new PostgresDatabaseConnectionProvider());
 
     private readonly PostgresWriteOptions _options;
 
@@ -31,7 +31,7 @@ public sealed class PostgresSinkNode<T> : SqlSinkNode<T>
     }
 
     /// <inheritdoc />
-    protected override IStorageResolver DefaultResolver => Resolver.Value;
+    protected override IDatabaseConnectionProvider DefaultProvider => Provider.Value;
 
     /// <inheritdoc />
     protected override DbConnection CreateConnection(string connectionString) => new NpgsqlConnection(connectionString);
