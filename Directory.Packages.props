@@ -14,7 +14,7 @@
     <PackageVersion Include="AWSSDK.Core" Version="4.0.102.7" />
     <PackageVersion Include="AWSSDK.Extensions.NETCore.Setup" Version="4.0.101.4" />
     <PackageVersion Include="AWSSDK.S3" Version="4.0.103.4" />
-    <PackageVersion Include="AWSSDK.SQS" Version="4.0.100.14" />
+    <PackageVersion Include="AWSSDK.SQS" Version="4.0.100.15" />
     <PackageVersion Include="AwesomeAssertions" Version="9.6.0" />
     <PackageVersion Include="Azure.Core" Version="1.63.0" />
     <PackageVersion Include="Azure.Identity" Version="1.21.0" />
