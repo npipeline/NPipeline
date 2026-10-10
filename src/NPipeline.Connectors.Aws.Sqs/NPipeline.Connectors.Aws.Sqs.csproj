@@ -27,6 +27,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <PackageReference Include="AWSSDK.Core" />
         <PackageReference Include="AWSSDK.SQS"/>
         <PackageReference Include="AWSSDK.Extensions.NETCore.Setup"/>
         <PackageReference Include="Microsoft.Extensions.Logging.Abstractions"/>
