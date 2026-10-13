@@ -353,12 +353,18 @@ public sealed class BranchingTerminalDrainTests
         private readonly TaskCompletionSource _observedCancellation =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
 
+        private readonly TaskCompletionSource _started = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
         public Task ObservedCancellation => _observedCancellation.Task;
+
+        public Task Started => _started.Task;
 
         public volatile bool DisposedWhileConsuming;
 
         public override async Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken cancellationToken)
         {
+            _ = _started.TrySetResult();
+
             try
             {
                 await Task.Delay(Timeout.Infinite, cancellationToken);
@@ -373,6 +379,20 @@ public sealed class BranchingTerminalDrainTests
         {
             DisposedWhileConsuming = !ObservedCancellation.IsCompleted;
             return ValueTask.CompletedTask;
+        }
+    }
+
+    /// <summary>
+    ///     Fails only once its sibling is consuming. Terminals start on separate threads, so a sink that throws
+    ///     straight away can cancel the run before the sibling has started, and a sibling that never started has no
+    ///     cancellation to observe.
+    /// </summary>
+    private sealed class ThrowingAfterSiblingStartsSink(CooperativeCancellationSink sibling) : SinkNode<int>
+    {
+        public override async Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken cancellationToken)
+        {
+            await sibling.Started.WaitAsync(DeadlockTimeout, cancellationToken);
+            throw new InvalidOperationException("sink failed");
         }
     }
 
@@ -396,8 +416,9 @@ public sealed class BranchingTerminalDrainTests
         {
             var source = builder.AddSource<SlowYieldingSource, int>("source");
             var cooperativeHandle = builder.AddSink<CooperativeCancellationSink, int>("cooperative");
-            var throwingHandle = builder.AddSink<ThrowingSink, int>("throwing");
+            var throwingHandle = builder.AddSink<ThrowingAfterSiblingStartsSink, int>("throwing");
             _ = builder.AddPreconfiguredNodeInstance(cooperativeHandle.Id, cooperative);
+            _ = builder.AddPreconfiguredNodeInstance(throwingHandle.Id, new ThrowingAfterSiblingStartsSink(cooperative));
             _ = builder.Connect(source, cooperativeHandle);
             _ = builder.Connect(source, throwingHandle);
             _ = builder.WithBranchOptions("source", new BranchOptions(BranchBufferCapacity));
