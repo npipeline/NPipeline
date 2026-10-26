@@ -11,7 +11,7 @@
     <RoslynAnalyzerHostVersion>4.8.0</RoslynAnalyzerHostVersion>
   </PropertyGroup>
   <ItemGroup>
-    <PackageVersion Include="AWSSDK.Core" Version="4.0.102.10" />
+    <PackageVersion Include="AWSSDK.Core" Version="4.0.102.13" />
     <PackageVersion Include="AWSSDK.Extensions.NETCore.Setup" Version="4.0.102.3" />
     <PackageVersion Include="AWSSDK.S3" Version="4.0.104.3" />
     <PackageVersion Include="AWSSDK.SQS" Version="4.0.100.17" />
